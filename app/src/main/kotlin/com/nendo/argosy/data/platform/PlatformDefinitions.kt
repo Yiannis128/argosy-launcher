@@ -302,13 +302,17 @@ object PlatformDefinitions {
         "sharp-x1" to "sharpx1",
         "pc88" to "pc8800",
         "pc-88" to "pc8800",
+        "pc-8800" to "pc8800",
         "pc_8800" to "pc8800",
         "pc_8800_series" to "pc8800",
+        "pc-8800-series" to "pc8800",
         "nec-pc-8801" to "pc8800",
         "pc98" to "pc9800",
         "pc-98" to "pc9800",
+        "pc-9800" to "pc9800",
         "pc_9800" to "pc9800",
         "pc_9800_series" to "pc9800",
+        "pc-9800-series" to "pc9800",
         "nec-pc-9801" to "pc9800"
     )
 
