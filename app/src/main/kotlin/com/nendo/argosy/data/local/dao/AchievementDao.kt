@@ -78,11 +78,11 @@ interface AchievementDao {
                g.title as gameTitle
         FROM achievements a INNER JOIN games g ON a.gameId = g.id
         WHERE (a.unlockedAt IS NOT NULL OR a.unlockedHardcoreAt IS NOT NULL)
-          AND a.socialSharedAt IS NULL
+          AND (a.socialSharedAt IS NULL OR a.socialSharedAt < :syncCutoff)
         ORDER BY COALESCE(a.unlockedHardcoreAt, a.unlockedAt) DESC
         LIMIT :limit
     """)
-    suspend fun getUnsharedUnlocked(limit: Int = 50): List<UnsharedAchievementRow>
+    suspend fun getUnsharedUnlocked(syncCutoff: Long = 0L, limit: Int = 50): List<UnsharedAchievementRow>
 
     @Query("UPDATE achievements SET socialSharedAt = :sharedAt WHERE raId IN (:raIds)")
     suspend fun markSocialSharedBatch(raIds: List<Long>, sharedAt: Long)

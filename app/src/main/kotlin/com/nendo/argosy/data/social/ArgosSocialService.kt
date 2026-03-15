@@ -46,8 +46,8 @@ class ArgosSocialService @Inject constructor(
     private val _incomingMessages = MutableSharedFlow<IncomingMessage>(replay = 1)
     val incomingMessages: SharedFlow<IncomingMessage> = _incomingMessages.asSharedFlow()
 
-    private val _syncAchievementResult = MutableStateFlow<List<Long>>(emptyList())
-    val syncAchievementResult: StateFlow<List<Long>> = _syncAchievementResult.asStateFlow()
+    private val _syncAchievementResult = MutableSharedFlow<List<Long>>(extraBufferCapacity = 8)
+    val syncAchievementResult: SharedFlow<List<Long>> = _syncAchievementResult.asSharedFlow()
 
     data class SessionSyncResult(
         val startTime: String,
@@ -462,7 +462,7 @@ class ArgosSocialService @Inject constructor(
                             (0 until idsArray.length()).map { idsArray.getLong(it) }
                         } else emptyList()
                         Log.d(TAG, "Sync achievement unlocks result: ${ids.size} accepted")
-                        _syncAchievementResult.value = ids
+                        _syncAchievementResult.tryEmit(ids)
                     }
                     null
                 }
