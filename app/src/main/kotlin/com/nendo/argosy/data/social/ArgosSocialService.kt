@@ -124,7 +124,8 @@ class ArgosSocialService @Inject constructor(
             val igdbId: Long,
             val gameTitle: String,
             val platform: String?,
-            val fields: List<String>
+            val fields: List<String>,
+            val steamAppId: Long? = null
         ) : IncomingMessage()
         data class DiscordTokens(
             val accessToken: String,
@@ -409,12 +410,13 @@ class ArgosSocialService @Inject constructor(
                         val igdbId = payload.getLong("igdb_id")
                         val gameTitle = payload.getString("game_title")
                         val platform = payload.optString("platform", null)
+                        val steamAppId = payload.optLong("steam_app_id", 0).takeIf { it != 0L }
                         val fieldsArray = payload.optJSONArray("fields")
                         val fields = if (fieldsArray != null) {
                             (0 until fieldsArray.length()).map { fieldsArray.getString(it) }
                         } else emptyList()
-                        Log.d(TAG, "Server requesting game data: igdbId=$igdbId, title=$gameTitle, fields=$fields")
-                        IncomingMessage.RequestGameData(igdbId, gameTitle, platform, fields)
+                        Log.d(TAG, "Server requesting game data: igdbId=$igdbId, steamAppId=$steamAppId, title=$gameTitle, fields=$fields")
+                        IncomingMessage.RequestGameData(igdbId, gameTitle, platform, fields, steamAppId)
                     } else null
                 }
 
@@ -640,12 +642,18 @@ class ArgosSocialService @Inject constructor(
         webSocket?.send(json.toString())
     }
 
-    fun sendHideGame(igdbGameId: Int): Boolean {
-        return send(MessageTypes.HIDE_GAME, mapOf("igdb_game_id" to igdbGameId))
+    fun sendHideGame(igdbGameId: Int?, steamAppId: Int? = null): Boolean {
+        return send(MessageTypes.HIDE_GAME, buildMap {
+            if (igdbGameId != null && igdbGameId != 0) put("igdb_game_id", igdbGameId)
+            if (steamAppId != null) put("steam_app_id", steamAppId)
+        })
     }
 
-    fun sendUnhideGame(igdbGameId: Int): Boolean {
-        return send(MessageTypes.UNHIDE_GAME, mapOf("igdb_game_id" to igdbGameId))
+    fun sendUnhideGame(igdbGameId: Int?, steamAppId: Int? = null): Boolean {
+        return send(MessageTypes.UNHIDE_GAME, buildMap {
+            if (igdbGameId != null && igdbGameId != 0) put("igdb_game_id", igdbGameId)
+            if (steamAppId != null) put("steam_app_id", steamAppId)
+        })
     }
 
     fun sendGetHiddenGames(): Boolean {

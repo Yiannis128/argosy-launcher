@@ -364,8 +364,8 @@ class SocialRepository @Inject constructor(
                         _eventComments.value = _eventComments.value + (message.eventId to (current + message.comment))
                     }
                     is ArgosSocialService.IncomingMessage.RequestGameData -> {
-                        Log.d(TAG, "Server requesting game data: igdbId=${message.igdbId}, title=${message.gameTitle}")
-                        handleGameDataRequest(message.igdbId, message.gameTitle, message.fields)
+                        Log.d(TAG, "Server requesting game data: igdbId=${message.igdbId}, steamAppId=${message.steamAppId}, title=${message.gameTitle}")
+                        handleGameDataRequest(message.igdbId, message.gameTitle, message.fields, message.steamAppId)
                     }
                     is ArgosSocialService.IncomingMessage.DiscordTokens -> {
                         Log.d(TAG, "Received Discord tokens (expires in ${message.expiresIn}s)")
@@ -549,22 +549,30 @@ class SocialRepository @Inject constructor(
         }
     }
 
-    fun toggleGameVisibility(igdbGameId: Int) {
+    fun toggleGameVisibility(igdbGameId: Int?, steamAppId: Int? = null, isCurrentlyHidden: Boolean = false) {
         if (!socialService.isConnected()) return
-        val isHidden = igdbGameId in _hiddenGameIds.value
-        if (isHidden) {
-            _hiddenGameIds.value = _hiddenGameIds.value - igdbGameId
-            socialService.sendUnhideGame(igdbGameId)
-        } else {
-            _hiddenGameIds.value = _hiddenGameIds.value + igdbGameId
-            socialService.sendHideGame(igdbGameId)
-        }
-        pendingToggleGameId = igdbGameId
-        hiddenGameToggleJob?.cancel()
-        hiddenGameToggleJob = scope.launch {
-            delay(500)
-            syncPreferencesRepository.setHiddenGameIds(_hiddenGameIds.value)
-            pendingToggleGameId = null
+        if (igdbGameId != null && igdbGameId != 0) {
+            val isHidden = igdbGameId in _hiddenGameIds.value
+            if (isHidden) {
+                _hiddenGameIds.value = _hiddenGameIds.value - igdbGameId
+                socialService.sendUnhideGame(igdbGameId, steamAppId)
+            } else {
+                _hiddenGameIds.value = _hiddenGameIds.value + igdbGameId
+                socialService.sendHideGame(igdbGameId, steamAppId)
+            }
+            pendingToggleGameId = igdbGameId
+            hiddenGameToggleJob?.cancel()
+            hiddenGameToggleJob = scope.launch {
+                delay(500)
+                syncPreferencesRepository.setHiddenGameIds(_hiddenGameIds.value)
+                pendingToggleGameId = null
+            }
+        } else if (steamAppId != null) {
+            if (isCurrentlyHidden) {
+                socialService.sendUnhideGame(null, steamAppId)
+            } else {
+                socialService.sendHideGame(null, steamAppId)
+            }
         }
     }
 
@@ -1041,10 +1049,11 @@ class SocialRepository @Inject constructor(
         }
     }
 
-    private suspend fun handleGameDataRequest(igdbId: Long, gameTitle: String, fields: List<String>) {
+    private suspend fun handleGameDataRequest(igdbId: Long, gameTitle: String, fields: List<String>, steamAppId: Long? = null) {
         val game = gameDao.getByIgdbId(igdbId)
+            ?: steamAppId?.let { gameDao.getBySteamAppId(it) }
         if (game == null) {
-            Log.w(TAG, "Game not found in local DB for igdbId=$igdbId, sending minimal response")
+            Log.w(TAG, "Game not found in local DB for igdbId=$igdbId, steamAppId=$steamAppId, sending minimal response")
             socialService.sendGameData(
                 igdbId = igdbId,
                 gameTitle = gameTitle,

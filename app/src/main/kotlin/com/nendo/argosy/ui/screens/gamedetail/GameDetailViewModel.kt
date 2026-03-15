@@ -1164,8 +1164,11 @@ class GameDetailViewModel @Inject constructor(
     }
 
     fun togglePrivacy() {
-        val igdbId = _uiState.value.game?.igdbId?.toInt() ?: return
-        socialRepository.toggleGameVisibility(igdbId)
+        val game = _uiState.value.game ?: return
+        val igdbId = game.igdbId?.toInt()
+        val steamAppId = game.steamAppId?.toInt()
+        if (igdbId == null && steamAppId == null) return
+        socialRepository.toggleGameVisibility(igdbId, steamAppId, _uiState.value.isPrivate)
     }
 
     private fun refreshAndroidOrRommData() {

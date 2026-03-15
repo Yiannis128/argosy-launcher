@@ -65,7 +65,8 @@ fun GameEntity.toGameDetailUi(
         packageName = packageName,
         isHidden = isHidden,
         titleId = titleId,
-        igdbId = igdbId
+        igdbId = igdbId,
+        steamAppId = steamAppId
     )
 }
 
