@@ -219,7 +219,8 @@ data class ControlsState(
     val selectRCombo: String = "quick_settings",
     val accuratePlayTimeEnabled: Boolean = false,
     val hasUsageStatsPermission: Boolean = false,
-    val hasSecondaryDisplay: Boolean = false
+    val hasSecondaryDisplay: Boolean = false,
+    val menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP
 )
 
 data class SoundState(

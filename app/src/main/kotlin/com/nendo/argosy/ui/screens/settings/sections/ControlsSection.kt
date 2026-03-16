@@ -36,10 +36,12 @@ internal sealed class ControlsItem(
     data object SwapStartSelect : ControlsItem("swapStartSelect")
     data object SelectLCombo : ControlsItem("selectLCombo")
     data object SelectRCombo : ControlsItem("selectRCombo")
+    data object MenuWrap : ControlsItem("menuWrap")
     companion object {
         val ALL: List<ControlsItem> = listOf(
             HapticFeedback, VibrationStrength, ControllerLayout,
-            SwapAB, SwapXY, SwapStartSelect, SelectLCombo, SelectRCombo
+            SwapAB, SwapXY, SwapStartSelect, SelectLCombo, SelectRCombo,
+            MenuWrap
         )
     }
 }
@@ -156,6 +158,14 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     subtitle = "Hold Select and press R1",
                     isFocused = isFocused(item),
                     onClick = { viewModel.cycleSelectRCombo() }
+                )
+
+                ControlsItem.MenuWrap -> CyclePreference(
+                    title = "Menu Wrapping",
+                    value = controls.menuWrapMode.displayName,
+                    subtitle = "Navigate past the last item to the first",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.cycleMenuWrapMode() }
                 )
 
             }

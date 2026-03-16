@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.settings.delegates
 
 import android.app.Application
+import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.ui.input.ControllerDetector
 import com.nendo.argosy.ui.input.DetectedLayout
@@ -145,6 +146,15 @@ class ControlsSettingsDelegate @Inject constructor(
             "quick_menu" -> "Quick Menu"
             "quick_settings" -> "Quick Settings"
             else -> "None"
+        }
+    }
+
+    fun cycleMenuWrapMode(scope: CoroutineScope) {
+        val current = _state.value.menuWrapMode
+        val next = MenuWrapMode.entries[(current.ordinal + 1) % MenuWrapMode.entries.size]
+        scope.launch {
+            preferencesRepository.setMenuWrapMode(next)
+            _state.update { it.copy(menuWrapMode = next) }
         }
     }
 

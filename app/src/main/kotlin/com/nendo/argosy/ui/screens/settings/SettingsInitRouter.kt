@@ -437,7 +437,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             selectLCombo = prefs.selectLCombo,
             selectRCombo = prefs.selectRCombo,
             accuratePlayTimeEnabled = prefs.accuratePlayTimeEnabled,
-            hasSecondaryDisplay = vm.displayAffinityHelper.hasSecondaryDisplay
+            hasSecondaryDisplay = vm.displayAffinityHelper.hasSecondaryDisplay,
+            menuWrapMode = prefs.menuWrapMode
         ))
         vm.controlsDelegate.refreshUsageStatsPermission()
 

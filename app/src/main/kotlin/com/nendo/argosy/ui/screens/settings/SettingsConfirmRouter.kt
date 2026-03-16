@@ -403,6 +403,7 @@ private fun routeControlsConfirm(vm: SettingsViewModel, state: SettingsUiState):
         ControlsItem.SwapStartSelect -> { vm.setSwapStartSelect(!state.controls.swapStartSelect); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SelectLCombo -> vm.cycleSelectLCombo()
         ControlsItem.SelectRCombo -> vm.cycleSelectRCombo()
+        ControlsItem.MenuWrap -> vm.cycleMenuWrapMode()
         null -> {}
     }
     return InputResult.HANDLED
@@ -642,18 +643,18 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
         val newIndex = if (state.currentSection == SettingsSection.SERVER && state.server.rommConfiguring) {
             val isPairingCode = state.server.rommAuthMethod == RomMAuthMethod.PAIRING_CODE
             if (isPairingCode) {
-                (state.focusedIndex + delta).coerceIn(0, maxIndex)
+                computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
             } else {
                 when {
                     delta > 0 && state.focusedIndex == 1 -> 2
                     delta > 0 && (state.focusedIndex == 2 || state.focusedIndex == 3) -> 4
                     delta < 0 && state.focusedIndex == 4 -> 2
                     delta < 0 && (state.focusedIndex == 2 || state.focusedIndex == 3) -> 1
-                    else -> (state.focusedIndex + delta).coerceIn(0, maxIndex)
+                    else -> computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
                 }
             }
         } else {
-            (state.focusedIndex + delta).coerceIn(0, maxIndex)
+            computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
         }
         state.copy(focusedIndex = newIndex)
     }
@@ -663,6 +664,22 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
     if (vm._uiState.value.currentSection == SettingsSection.BIOS) {
         vm.biosDelegate.resetPlatformSubFocus()
         vm.biosDelegate.resetBiosPathActionFocus()
+    }
+}
+
+private fun computeWrappedIndex(
+    current: Int,
+    delta: Int,
+    maxIndex: Int,
+    wrapMode: com.nendo.argosy.data.preferences.MenuWrapMode
+): Int {
+    val raw = current + delta
+    return when {
+        raw in 0..maxIndex -> raw
+        wrapMode == com.nendo.argosy.data.preferences.MenuWrapMode.OFF -> raw.coerceIn(0, maxIndex)
+        wrapMode == com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP &&
+            com.nendo.argosy.ui.input.InputDispatcher.currentIsRepeat -> raw.coerceIn(0, maxIndex)
+        else -> if (raw < 0) maxIndex else 0
     }
 }
 

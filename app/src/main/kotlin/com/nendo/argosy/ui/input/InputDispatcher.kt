@@ -11,9 +11,14 @@ class InputDispatcher(
     private val modalStack = mutableListOf<InputHandler>()
     private var drawerHandler: InputHandler? = null
     private var viewHandler: InputHandler? = null
-    private var pendingEvent: GamepadEvent? = null
+    private var pendingInput: GamepadInput? = null
     private var inputBlockedUntil: Long = 0L
     private var currentRoute: String? = null
+
+    companion object {
+        var currentIsRepeat: Boolean = false
+            internal set
+    }
     private var pendingViewSubscription: Pair<InputHandler, String>? = null
 
     fun setCurrentRoute(route: String?) {
@@ -84,9 +89,9 @@ class InputDispatcher(
     }
 
     private fun processPendingEvent() {
-        pendingEvent?.let { event ->
-            pendingEvent = null
-            dispatch(event)
+        pendingInput?.let { input ->
+            pendingInput = null
+            dispatch(input)
         }
     }
 
@@ -94,20 +99,22 @@ class InputDispatcher(
         inputBlockedUntil = System.currentTimeMillis() + durationMs
     }
 
-    fun dispatch(event: GamepadEvent): InputResult {
+    fun dispatch(input: GamepadInput): InputResult {
         if (System.currentTimeMillis() < inputBlockedUntil) {
             return InputResult.HANDLED
         }
 
         val handler = modalStack.lastOrNull() ?: drawerHandler ?: viewHandler
         if (handler == null) {
-            pendingEvent = event
+            pendingInput = input
             return InputResult.UNHANDLED
         }
 
-        pendingEvent = null
-        val result = dispatchToHandler(event, handler)
-        playFeedback(event, result)
+        pendingInput = null
+        Companion.currentIsRepeat = input.isRepeat
+        val result = dispatchToHandler(input.event, handler)
+        Companion.currentIsRepeat = false
+        playFeedback(input.event, result)
         return result
     }
 

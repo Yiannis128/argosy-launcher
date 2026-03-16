@@ -17,18 +17,12 @@ internal class InterfaceSectionInput(
     private fun layoutState() = InterfaceLayoutState.from(viewModel.uiState.value)
 
     override fun onUp(): InputResult {
-        val layoutState = layoutState()
-        val maxIndex = interfaceMaxFocusIndex(layoutState)
-        val newIndex = (viewModel.uiState.value.focusedIndex - 1).coerceIn(0, maxIndex)
-        viewModel.setFocusIndex(newIndex)
+        viewModel.moveFocusWrapped(-1, interfaceMaxFocusIndex(layoutState()))
         return InputResult.HANDLED
     }
 
     override fun onDown(): InputResult {
-        val layoutState = layoutState()
-        val maxIndex = interfaceMaxFocusIndex(layoutState)
-        val newIndex = (viewModel.uiState.value.focusedIndex + 1).coerceIn(0, maxIndex)
-        viewModel.setFocusIndex(newIndex)
+        viewModel.moveFocusWrapped(1, interfaceMaxFocusIndex(layoutState()))
         return InputResult.HANDLED
     }
 

@@ -20,17 +20,13 @@ internal class StorageSectionInput(
 
     override fun onUp(): InputResult {
         val info = layoutInfo()
-        val maxIndex = info.layout.maxFocusIndex(info.state)
-        val newIndex = (viewModel.uiState.value.focusedIndex - 1).coerceIn(0, maxIndex)
-        viewModel.setFocusIndex(newIndex)
+        viewModel.moveFocusWrapped(-1, info.layout.maxFocusIndex(info.state))
         return InputResult.HANDLED
     }
 
     override fun onDown(): InputResult {
         val info = layoutInfo()
-        val maxIndex = info.layout.maxFocusIndex(info.state)
-        val newIndex = (viewModel.uiState.value.focusedIndex + 1).coerceIn(0, maxIndex)
-        viewModel.setFocusIndex(newIndex)
+        viewModel.moveFocusWrapped(1, info.layout.maxFocusIndex(info.state))
         return InputResult.HANDLED
     }
 

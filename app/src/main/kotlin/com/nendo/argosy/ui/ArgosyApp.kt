@@ -634,8 +634,9 @@ fun ArgosyApp(
 
     // Collect gamepad events (Menu toggles drawer, L3 toggles quick menu, R3 toggles quick settings)
     LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.eventFlow().collect { event ->
-            val result = inputDispatcher.dispatch(event)
+        viewModel.gamepadInputHandler.eventFlow().collect { input ->
+            val result = inputDispatcher.dispatch(input)
+            val event = input.event
             if (!result.handled) {
                 if (showSwappedInteractive) {
                     when (event) {

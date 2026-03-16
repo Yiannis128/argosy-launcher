@@ -360,6 +360,23 @@ class SettingsViewModel @Inject constructor(
     fun navigateToSection(section: SettingsSection) = routeNavigateToSection(this, section)
 
     fun setFocusIndex(index: Int) { _uiState.update { it.copy(focusedIndex = index) } }
+
+    fun moveFocusWrapped(delta: Int, maxIndex: Int) {
+        val state = _uiState.value
+        val current = state.focusedIndex
+        val raw = current + delta
+        val wrapMode = state.controls.menuWrapMode
+        val isRepeat = com.nendo.argosy.ui.input.InputDispatcher.currentIsRepeat
+
+        val newIndex = when {
+            raw in 0..maxIndex -> raw
+            wrapMode == com.nendo.argosy.data.preferences.MenuWrapMode.OFF -> raw.coerceIn(0, maxIndex)
+            wrapMode == com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP && isRepeat -> raw.coerceIn(0, maxIndex)
+            else -> if (raw < 0) maxIndex else 0
+        }
+        _uiState.update { it.copy(focusedIndex = newIndex) }
+    }
+
     fun refreshSteamSettings() = steamDelegate.loadSteamSettings(context, viewModelScope)
 
     fun moveLauncherActionFocus(delta: Int) = routeMoveLauncherActionFocus(this, delta)
@@ -519,6 +536,7 @@ class SettingsViewModel @Inject constructor(
     fun setSwapStartSelect(enabled: Boolean) = controlsDelegate.setSwapStartSelect(viewModelScope, enabled)
     fun cycleSelectLCombo() = controlsDelegate.cycleSelectLCombo(viewModelScope)
     fun cycleSelectRCombo() = controlsDelegate.cycleSelectRCombo(viewModelScope)
+    fun cycleMenuWrapMode() = controlsDelegate.cycleMenuWrapMode(viewModelScope)
     fun setAccuratePlayTimeEnabled(enabled: Boolean) = controlsDelegate.setAccuratePlayTimeEnabled(viewModelScope, enabled)
     fun refreshUsageStatsPermission() = controlsDelegate.refreshUsageStatsPermission()
     fun openUsageStatsSettings() = controlsDelegate.openUsageStatsSettings()

@@ -65,6 +65,7 @@ class UserPreferencesRepository @Inject constructor(
             swapStartSelect = controls.swapStartSelect,
             selectLCombo = controls.selectLCombo,
             selectRCombo = controls.selectRCombo,
+            menuWrapMode = controls.menuWrapMode,
             lastRommSync = sync.lastRommSync,
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
@@ -279,6 +280,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setAmbientAudioVolume(volume: Int) = controlsPrefs.setAmbientAudioVolume(volume)
     suspend fun setAmbientAudioUri(uri: String?) = controlsPrefs.setAmbientAudioUri(uri)
     suspend fun setAmbientAudioShuffle(shuffle: Boolean) = controlsPrefs.setAmbientAudioShuffle(shuffle)
+    suspend fun setMenuWrapMode(mode: MenuWrapMode) = controlsPrefs.setMenuWrapMode(mode)
 
     // --- Storage delegates ---
 
@@ -469,6 +471,7 @@ data class UserPreferences(
     val swapStartSelect: Boolean = false,
     val selectLCombo: String = "quick_menu",
     val selectRCombo: String = "quick_settings",
+    val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP,
     val lastRommSync: Instant? = null,
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,

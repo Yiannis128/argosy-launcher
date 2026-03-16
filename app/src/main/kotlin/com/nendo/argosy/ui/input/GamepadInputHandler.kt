@@ -22,6 +22,8 @@ interface RawInputInterceptor {
     fun mapKeyToEvent(keyCode: Int): GamepadEvent?
 }
 
+data class GamepadInput(val event: GamepadEvent, val isRepeat: Boolean = false)
+
 sealed interface GamepadEvent {
     data object Up : GamepadEvent
     data object Down : GamepadEvent
@@ -47,7 +49,7 @@ class GamepadInputHandler @Inject constructor(
     preferencesRepository: UserPreferencesRepository
 ) : RawInputInterceptor {
 
-    private val _events = MutableSharedFlow<GamepadEvent>(extraBufferCapacity = 16)
+    private val _events = MutableSharedFlow<GamepadInput>(extraBufferCapacity = 16)
     private val _homeEvents = Channel<Unit>(Channel.BUFFERED)
     private val scope = SafeCoroutineScope(Dispatchers.Main.immediate, "GamepadInputHandler")
 
@@ -92,11 +94,11 @@ class GamepadInputHandler @Inject constructor(
         else -> null
     }
 
-    fun eventFlow(): Flow<GamepadEvent> = _events.asSharedFlow()
+    fun eventFlow(): Flow<GamepadInput> = _events.asSharedFlow()
     fun homeEventFlow(): Flow<Unit> = _homeEvents.receiveAsFlow()
 
     fun injectEvent(event: GamepadEvent) {
-        emitWithDebounce(event)
+        emitWithDebounce(event, isRepeat = false)
     }
 
     private val lastInputTimes = mutableMapOf<GamepadEvent, Long>()
@@ -184,27 +186,29 @@ class GamepadInputHandler @Inject constructor(
 
         if (event.action != KeyEvent.ACTION_DOWN) return false
 
+        val isRepeat = event.repeatCount > 0
+
         // While Select is held, check combo map before normal dispatch
         if (modifierState == ModifierState.HELD || modifierState == ModifierState.COMBO_FIRED) {
             val comboEvent = comboMap[gamepadEvent]
             if (comboEvent != null) {
                 modifierState = ModifierState.COMBO_FIRED
-                emitWithDebounce(comboEvent)
+                emitWithDebounce(comboEvent, isRepeat)
                 return true
             }
         }
 
-        emitWithDebounce(gamepadEvent)
+        emitWithDebounce(gamepadEvent, isRepeat)
         return true
     }
 
-    private fun emitWithDebounce(event: GamepadEvent) {
+    private fun emitWithDebounce(event: GamepadEvent, isRepeat: Boolean = false) {
         val currentTime = System.currentTimeMillis()
         if (currentTime < inputBlockedUntil) return
         val lastTime = lastInputTimes[event] ?: 0L
         if (currentTime - lastTime < inputDebounceMs) return
         lastInputTimes[event] = currentTime
-        _events.tryEmit(event)
+        _events.tryEmit(GamepadInput(event, isRepeat))
     }
 
     override fun mapKeyToEvent(keyCode: Int): GamepadEvent? =
