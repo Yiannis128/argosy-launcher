@@ -7,20 +7,38 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.sections.InterfaceItem
 import com.nendo.argosy.ui.screens.settings.sections.InterfaceLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.interfaceItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.interfaceMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.interfaceSections
 
 internal class InterfaceSectionInput(
     private val viewModel: SettingsViewModel
 ) : InputHandler {
 
+    private fun layoutState() = InterfaceLayoutState.from(viewModel.uiState.value)
+
+    override fun onUp(): InputResult {
+        val layoutState = layoutState()
+        val maxIndex = interfaceMaxFocusIndex(layoutState)
+        val newIndex = (viewModel.uiState.value.focusedIndex - 1).coerceIn(0, maxIndex)
+        viewModel.setFocusIndex(newIndex)
+        return InputResult.HANDLED
+    }
+
+    override fun onDown(): InputResult {
+        val layoutState = layoutState()
+        val maxIndex = interfaceMaxFocusIndex(layoutState)
+        val newIndex = (viewModel.uiState.value.focusedIndex + 1).coerceIn(0, maxIndex)
+        viewModel.setFocusIndex(newIndex)
+        return InputResult.HANDLED
+    }
+
     override fun onLeft(): InputResult = cycle(-1)
 
     override fun onRight(): InputResult = cycle(1)
 
     override fun onConfirm(): InputResult {
-        val state = viewModel.uiState.value
-        val layoutState = InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay, state.display.hasPhysicalSecondaryDisplay, state.display.dualScreenEnabled)
-        return when (interfaceItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        val layoutState = layoutState()
+        return when (interfaceItemAtFocusIndex(viewModel.uiState.value.focusedIndex, layoutState)) {
             InterfaceItem.AccentColor -> { viewModel.resetToDefaultColor(); InputResult.HANDLED }
             InterfaceItem.SecondaryColor -> { viewModel.resetToDefaultSecondaryColor(); InputResult.HANDLED }
             else -> InputResult.UNHANDLED
@@ -28,8 +46,7 @@ internal class InterfaceSectionInput(
     }
 
     override fun onPrevSection(): InputResult {
-        val state = viewModel.uiState.value
-        val layoutState = InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay, state.display.hasPhysicalSecondaryDisplay, state.display.dualScreenEnabled)
+        val layoutState = layoutState()
         if (viewModel.jumpToPrevSection(interfaceSections(layoutState))) {
             return InputResult.HANDLED
         }
@@ -37,8 +54,7 @@ internal class InterfaceSectionInput(
     }
 
     override fun onNextSection(): InputResult {
-        val state = viewModel.uiState.value
-        val layoutState = InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay, state.display.hasPhysicalSecondaryDisplay, state.display.dualScreenEnabled)
+        val layoutState = layoutState()
         if (viewModel.jumpToNextSection(interfaceSections(layoutState))) {
             return InputResult.HANDLED
         }
@@ -47,7 +63,7 @@ internal class InterfaceSectionInput(
 
     private fun cycle(direction: Int): InputResult {
         val state = viewModel.uiState.value
-        val layoutState = InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay, state.display.hasPhysicalSecondaryDisplay, state.display.dualScreenEnabled)
+        val layoutState = layoutState()
         val hueStep = SettingsInputHandler.HUE_STEP
         when (interfaceItemAtFocusIndex(state.focusedIndex, layoutState)) {
             InterfaceItem.AccentColor -> { viewModel.adjustHue(direction * hueStep); return InputResult.HANDLED }

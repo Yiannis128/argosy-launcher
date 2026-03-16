@@ -252,7 +252,7 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
 }
 
 private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
-    val layoutState = InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay, state.display.hasPhysicalSecondaryDisplay, state.display.dualScreenEnabled)
+    val layoutState = InterfaceLayoutState.from(state)
     when (interfaceItemAtFocusIndex(state.focusedIndex, layoutState)) {
         InterfaceItem.DualScreenEnabled -> vm.setDualScreenEnabled(!state.display.dualScreenEnabled)
         InterfaceItem.Theme -> {
@@ -585,7 +585,7 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             vm._uiState.update { it.copy(currentSection = SettingsSection.INTERFACE, focusedIndex = 5) }; true
         }
         state.currentSection == SettingsSection.AMBIENT_LED -> {
-            val layoutState = InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay, state.display.hasPhysicalSecondaryDisplay, state.display.dualScreenEnabled)
+            val layoutState = InterfaceLayoutState.from(state)
             val focusIdx = interfaceFocusIndexOf(InterfaceItem.AmbientLedSettings, layoutState)
             vm._uiState.update { it.copy(currentSection = SettingsSection.INTERFACE, focusedIndex = focusIdx) }; true
         }
@@ -685,9 +685,7 @@ private fun computeMaxFocusIndex(
         state.storage.platformsExpanded,
         state.storage.platformConfigs.size
     )
-    SettingsSection.INTERFACE -> interfaceMaxFocusIndex(
-        InterfaceLayoutState(state.display, state.ambientAudio.enabled, state.ambientAudio.isFolder, state.sounds.enabled, state.display.hasSecondaryDisplay)
-    )
+    SettingsSection.INTERFACE -> interfaceMaxFocusIndex(InterfaceLayoutState.from(state))
     SettingsSection.HOME_SCREEN -> homeScreenMaxFocusIndex(state.display)
     SettingsSection.BOX_ART -> boxArtMaxFocusIndex(state.display)
     SettingsSection.AMBIENT_LED -> ambientLedMaxFocusIndex(state.display)

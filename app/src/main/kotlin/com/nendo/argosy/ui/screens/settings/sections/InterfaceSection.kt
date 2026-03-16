@@ -50,7 +50,19 @@ internal data class InterfaceLayoutState(
     val hasSecondaryDisplay: Boolean = false,
     val hasPhysicalSecondaryDisplay: Boolean = false,
     val dualScreenEnabled: Boolean = false
-)
+) {
+    companion object {
+        fun from(state: SettingsUiState) = InterfaceLayoutState(
+            display = state.display,
+            bgmEnabled = state.ambientAudio.enabled,
+            bgmIsFolder = state.ambientAudio.isFolder,
+            uiSoundsEnabled = state.sounds.enabled,
+            hasSecondaryDisplay = state.display.hasSecondaryDisplay,
+            hasPhysicalSecondaryDisplay = state.display.hasPhysicalSecondaryDisplay,
+            dualScreenEnabled = state.display.dualScreenEnabled
+        )
+    }
+}
 
 internal sealed class InterfaceItem(
     val key: String,
