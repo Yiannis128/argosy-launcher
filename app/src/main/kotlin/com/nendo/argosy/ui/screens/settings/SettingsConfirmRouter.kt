@@ -39,7 +39,6 @@ import com.nendo.argosy.ui.screens.settings.sections.interfaceMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.mainSettingsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.permissionsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.storageItemAtFocusIndex
-import com.nendo.argosy.ui.screens.settings.sections.storageMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.coreManagementMaxFocusIndex
@@ -681,10 +680,9 @@ private fun computeMaxFocusIndex(
     SettingsSection.SYNC_SETTINGS -> syncSettingsMaxFocusIndex()
     SettingsSection.STEAM_SETTINGS -> 1 + state.steam.installedLaunchers.size
     SettingsSection.RETRO_ACHIEVEMENTS -> if (state.retroAchievements.showLoginForm) 3 else 0
-    SettingsSection.STORAGE -> storageMaxFocusIndex(
-        state.storage.platformsExpanded,
-        state.storage.platformConfigs.size
-    )
+    SettingsSection.STORAGE -> createStorageLayoutInfo(
+        state.storage.platformConfigs, state.storage.platformsExpanded
+    ).let { it.layout.maxFocusIndex(it.state) }
     SettingsSection.INTERFACE -> interfaceMaxFocusIndex(InterfaceLayoutState.from(state))
     SettingsSection.HOME_SCREEN -> homeScreenMaxFocusIndex(state.display)
     SettingsSection.BOX_ART -> boxArtMaxFocusIndex(state.display)

@@ -10,20 +10,15 @@ import com.nendo.argosy.ui.screens.settings.sections.BiosItem
 import com.nendo.argosy.ui.screens.settings.sections.ControlsItem
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.HomeScreenItem
-import com.nendo.argosy.ui.screens.settings.sections.StorageItem
-import com.nendo.argosy.ui.screens.settings.sections.StorageLayoutInfo
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.aboutItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.biosSections
 import com.nendo.argosy.ui.screens.settings.sections.buildGameDataItemsFromState
 import com.nendo.argosy.ui.screens.settings.sections.controlsItemAtFocusIndex
-import com.nendo.argosy.ui.screens.settings.sections.createStorageLayoutInfo
 import com.nendo.argosy.ui.screens.settings.sections.gameDataItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.homeScreenItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.homeScreenSections
-import com.nendo.argosy.ui.screens.settings.sections.storageItemAtFocusIndex
-import com.nendo.argosy.ui.screens.settings.sections.storageSections
 import com.nendo.argosy.ui.screens.settings.sections.syncSettingsItemAtFocusIndex
 
 internal class LightSectionsInput(
@@ -53,7 +48,6 @@ internal class LightSectionsInput(
             SettingsSection.BIOS -> handleBiosLeftRight(direction)
             SettingsSection.SERVER -> handleServerLeftRight(direction)
             SettingsSection.HOME_SCREEN -> handleHomeScreenLeftRight(direction)
-            SettingsSection.STORAGE -> handleStorageLeftRight(direction)
             SettingsSection.CONTROLS -> handleControlsLeftRight(direction)
             SettingsSection.SYNC_SETTINGS -> handleSyncSettingsLeftRight(direction)
             SettingsSection.ABOUT -> handleAboutLeftRight(direction)
@@ -120,17 +114,6 @@ internal class LightSectionsInput(
         return InputResult.UNHANDLED
     }
 
-    private fun handleStorageLeftRight(direction: Int): InputResult {
-        val state = viewModel.uiState.value
-        val layoutInfo = getStorageLayoutInfo(state)
-        when (storageItemAtFocusIndex(state.focusedIndex, layoutInfo)) {
-            StorageItem.MaxDownloads -> { viewModel.adjustMaxConcurrentDownloads(direction); return InputResult.HANDLED }
-            StorageItem.Threshold -> { viewModel.cycleInstantDownloadThreshold(direction); return InputResult.HANDLED }
-            else -> {}
-        }
-        return InputResult.UNHANDLED
-    }
-
     private fun handleControlsLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         when (controlsItemAtFocusIndex(state.focusedIndex, state.controls)) {
@@ -180,12 +163,6 @@ internal class LightSectionsInput(
     private fun handleSectionJump(direction: Int): InputResult {
         val state = viewModel.uiState.value
         return when (state.currentSection) {
-            SettingsSection.STORAGE -> {
-                val layoutInfo = getStorageLayoutInfo(state)
-                if (direction < 0) viewModel.jumpToPrevSection(storageSections(layoutInfo))
-                else viewModel.jumpToNextSection(storageSections(layoutInfo))
-                InputResult.HANDLED
-            }
             SettingsSection.HOME_SCREEN -> {
                 val jumped = if (direction < 0) viewModel.jumpToPrevSection(homeScreenSections(state.display))
                 else viewModel.jumpToNextSection(homeScreenSections(state.display))
@@ -200,6 +177,4 @@ internal class LightSectionsInput(
         }
     }
 
-    private fun getStorageLayoutInfo(state: com.nendo.argosy.ui.screens.settings.SettingsUiState): StorageLayoutInfo =
-        createStorageLayoutInfo(state.storage.platformConfigs, state.storage.platformsExpanded)
 }

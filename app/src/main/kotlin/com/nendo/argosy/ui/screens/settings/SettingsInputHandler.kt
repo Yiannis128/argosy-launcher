@@ -11,6 +11,7 @@ import com.nendo.argosy.ui.screens.settings.sections.input.CoreOptionsSectionInp
 import com.nendo.argosy.ui.screens.settings.sections.input.InterfaceSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.LightSectionsInput
 import com.nendo.argosy.ui.screens.settings.sections.input.ShaderStackSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.StorageSectionInput
 
 class SettingsInputHandler(
     private val viewModel: SettingsViewModel,
@@ -20,6 +21,19 @@ class SettingsInputHandler(
     companion object {
         internal const val SLIDER_STEP = 10
         internal const val HUE_STEP = 10f
+
+        private val TOP_LEVEL_SECTIONS = listOf(
+            SettingsSection.SERVER,
+            SettingsSection.SOCIAL,
+            SettingsSection.RETRO_ACHIEVEMENTS,
+            SettingsSection.STORAGE,
+            SettingsSection.INTERFACE,
+            SettingsSection.CONTROLS,
+            SettingsSection.EMULATORS,
+            SettingsSection.BIOS,
+            SettingsSection.PERMISSIONS,
+            SettingsSection.ABOUT
+        )
     }
 
     private val modalRouter = ModalInputRouter(viewModel)
@@ -34,9 +48,10 @@ class SettingsInputHandler(
         put(SettingsSection.AMBIENT_LED, AmbientLedSectionInput(viewModel))
         put(SettingsSection.SHADER_STACK, ShaderStackSectionInput(viewModel))
         put(SettingsSection.CORE_OPTIONS, CoreOptionsSectionInput(viewModel))
+        put(SettingsSection.STORAGE, StorageSectionInput(viewModel))
         for (s in listOf(
             SettingsSection.BIOS, SettingsSection.SERVER, SettingsSection.HOME_SCREEN,
-            SettingsSection.STORAGE, SettingsSection.CONTROLS, SettingsSection.SYNC_SETTINGS,
+            SettingsSection.CONTROLS, SettingsSection.SYNC_SETTINGS,
             SettingsSection.ABOUT, SettingsSection.STEAM_SETTINGS, SettingsSection.CORE_MANAGEMENT
         )) {
             put(s, lightHandler)
@@ -112,11 +127,11 @@ class SettingsInputHandler(
     }
 
     override fun onPrevSection(): InputResult = dispatch(InputMethod.PREV_SECTION) {
-        InputResult.UNHANDLED
+        jumpTopLevelSection(-1)
     }
 
     override fun onNextSection(): InputResult = dispatch(InputMethod.NEXT_SECTION) {
-        InputResult.UNHANDLED
+        jumpTopLevelSection(1)
     }
 
     override fun onPrevTrigger(): InputResult = dispatch(InputMethod.PREV_TRIGGER) {
@@ -125,6 +140,16 @@ class SettingsInputHandler(
 
     override fun onNextTrigger(): InputResult = dispatch(InputMethod.NEXT_TRIGGER) {
         InputResult.UNHANDLED
+    }
+
+    private fun jumpTopLevelSection(direction: Int): InputResult {
+        val current = viewModel.uiState.value.currentSection
+        val index = TOP_LEVEL_SECTIONS.indexOf(current)
+        if (index < 0) return InputResult.UNHANDLED
+        val nextIndex = index + direction
+        if (nextIndex !in TOP_LEVEL_SECTIONS.indices) return InputResult.UNHANDLED
+        viewModel.navigateToSection(TOP_LEVEL_SECTIONS[nextIndex])
+        return InputResult.HANDLED
     }
 
     override fun onMenu(): InputResult = InputResult.UNHANDLED
