@@ -221,10 +221,10 @@ class ImageCacheManager @Inject constructor(
             }
         }
 
-        val bitmap = downloadAndResize(request.url, 640) ?: return
+        val bitmap = downloadAndResize(request.url, 1280) ?: return
 
         FileOutputStream(cachedFile).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 87, out)
         }
         bitmap.recycle()
 
@@ -508,11 +508,11 @@ class ImageCacheManager @Inject constructor(
                     }
                 }
 
-                val bitmap = downloadAndResize(url, 480) ?: return@forEachIndexed
+                val bitmap = downloadAndResize(url, 960) ?: return@forEachIndexed
 
                 try {
                     FileOutputStream(cachedFile).use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 75, out)
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to write screenshot cache for gameId $gameId: ${e.message}", e)
