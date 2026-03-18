@@ -200,6 +200,8 @@ fun ShowcaseRoleContent(
     showcaseViewMode: StateFlow<String>,
     collectionShowcaseState: StateFlow<DualCollectionShowcaseState>,
     gameDetailState: StateFlow<DualGameDetailUpperState?>,
+    syncConflictState: StateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?>,
+    syncConflictFocusIndex: StateFlow<Int>,
     onAppClick: (String) -> Unit
 ) {
     BackHandler(enabled = true) { }
@@ -309,6 +311,23 @@ fun ShowcaseRoleContent(
                         }
                     )
                 }
+            }
+
+            val dualSyncConflict by syncConflictState.collectAsState()
+            val dualSyncFocusIndex by syncConflictFocusIndex.collectAsState()
+            dualSyncConflict?.let { conflictState ->
+                val isHardcore = conflictState.syncProgress is com.nendo.argosy.domain.model.SyncProgress.HardcoreConflict
+                com.nendo.argosy.ui.components.SyncOverlay(
+                    syncProgress = conflictState.syncProgress,
+                    gameTitle = conflictState.gameTitle,
+                    onKeepHardcore = conflictState.onKeepHardcore,
+                    onDowngradeToCasual = conflictState.onDowngradeToCasual,
+                    onKeepLocal = conflictState.onKeepLocal,
+                    onKeepLocalModified = conflictState.onKeepLocalModified,
+                    onRestoreSelected = conflictState.onRestoreSelected,
+                    hardcoreConflictFocusIndex = if (isHardcore) dualSyncFocusIndex else 0,
+                    localModifiedFocusIndex = if (!isHardcore) dualSyncFocusIndex else 0
+                )
             }
         }
 

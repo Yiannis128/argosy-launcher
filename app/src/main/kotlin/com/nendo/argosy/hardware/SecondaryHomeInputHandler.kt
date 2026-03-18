@@ -41,15 +41,34 @@ class SecondaryHomeInputHandler(
         isArgosyForeground: Boolean,
         isGameActive: Boolean,
         currentScreen: CompanionScreen
-    ): InputResult = if (useDualScreenMode && isArgosyForeground && !isGameActive) {
-        when (currentScreen) {
+    ): InputResult {
+        val conflictResult = handleSyncConflictInput(event)
+        if (conflictResult.handled) return conflictResult
+
+        return if (useDualScreenMode && isArgosyForeground && !isGameActive) {
+            when (currentScreen) {
             CompanionScreen.HOME -> handleDualHomeInput(event)
             CompanionScreen.GAME_DETAIL -> handleDualDetailInput(event)
         }
-    } else if (useDualScreenMode && isGameActive) {
-        handleCompanionInput(event)
-    } else {
-        handleGridInput(event)
+        } else if (useDualScreenMode && isGameActive) {
+            handleCompanionInput(event)
+        } else {
+            handleGridInput(event)
+        }
+    }
+
+    private fun handleSyncConflictInput(event: GamepadEvent): InputResult {
+        val dsm = com.nendo.argosy.DualScreenManagerHolder.instance ?: return InputResult.UNHANDLED
+        dsm.dualSyncConflict.value ?: return InputResult.UNHANDLED
+
+        when (event) {
+            GamepadEvent.Up -> dsm.moveSyncConflictFocus(-1)
+            GamepadEvent.Down -> dsm.moveSyncConflictFocus(1)
+            GamepadEvent.Confirm -> dsm.confirmSyncConflict()
+            GamepadEvent.Back -> dsm.dismissSyncConflict()
+            else -> {}
+        }
+        return InputResult.HANDLED
     }
 
     fun handleDualHomeInput(event: GamepadEvent): InputResult {

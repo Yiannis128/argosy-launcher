@@ -916,6 +916,25 @@ fun ArgosyApp(
                             modifier = Modifier.blur(contentBlur)
                         )
                     }
+
+                    val dualSyncConflict by activity?.dualScreenManager
+                        ?.dualSyncConflict?.collectAsState() ?: remember { mutableStateOf(null) }
+                    val dualSyncFocusIndex by activity?.dualScreenManager
+                        ?.dualSyncConflictFocusIndex?.collectAsState() ?: remember { mutableStateOf(0) }
+                    dualSyncConflict?.let { conflictState ->
+                        val isHardcore = conflictState.syncProgress is com.nendo.argosy.domain.model.SyncProgress.HardcoreConflict
+                        com.nendo.argosy.ui.components.SyncOverlay(
+                            syncProgress = conflictState.syncProgress,
+                            gameTitle = conflictState.gameTitle,
+                            onKeepHardcore = conflictState.onKeepHardcore,
+                            onDowngradeToCasual = conflictState.onDowngradeToCasual,
+                            onKeepLocal = conflictState.onKeepLocal,
+                            onKeepLocalModified = conflictState.onKeepLocalModified,
+                            onRestoreSelected = conflictState.onRestoreSelected,
+                            hardcoreConflictFocusIndex = if (isHardcore) dualSyncFocusIndex else 0,
+                            localModifiedFocusIndex = if (!isHardcore) dualSyncFocusIndex else 0
+                        )
+                    }
                 } else if (showSwappedInteractive) {
                     val swappedVm = activity?.swappedDualHomeViewModel
                     val dualScreenManager = activity?.dualScreenManager
