@@ -147,7 +147,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                         }
                     }
                 }
-                SyncSettingsItem.MediaHeader, null -> {}
+                SyncSettingsItem.MediaHeader, SyncSettingsItem.ImageCacheProgressIndicator, null -> {}
             }
             InputResult.HANDLED
         }
@@ -696,11 +696,7 @@ private fun computeMaxFocusIndex(
         state.emulators.builtinLibretroEnabled
     )
     SettingsSection.BUILTIN_VIDEO -> builtinVideoMaxFocusIndex(state.builtinVideo, state.platformLibretro.platformSettings)
-    SettingsSection.BUILTIN_CONTROLS -> builtinControlsMaxFocusIndex(
-        state.builtinControls,
-        state.builtinVideo,
-        state.platformLibretro.platformSettings
-    )
+    SettingsSection.BUILTIN_CONTROLS -> builtinControlsMaxFocusIndex(state.builtinControls)
     SettingsSection.CORE_MANAGEMENT -> coreManagementMaxFocusIndex(state.coreManagement.platforms)
     SettingsSection.CORE_OPTIONS -> com.nendo.argosy.ui.screens.settings.sections.coreOptionsMaxFocusIndex(state.coreOptions)
     SettingsSection.SHADER_STACK -> com.nendo.argosy.ui.screens.settings.sections.shaderStackMaxFocusIndex(vm.shaderChainManager.shaderStack)

@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Image
@@ -30,7 +27,7 @@ import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.HueSliderPreference
 import com.nendo.argosy.ui.components.NavigationPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.components.colorIntToHue
@@ -162,7 +159,17 @@ private val interfaceLayout = SettingsLayout<InterfaceItem, InterfaceLayoutState
     allItems = InterfaceItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "appearance" -> "Appearance"
+            "screenSafety" -> "Screen Safety"
+            "bgm" -> "Background Music"
+            "uiSounds" -> "UI Sounds"
+            "customize" -> "Customize Sounds"
+            else -> null
+        }
+    }
 )
 
 internal fun interfaceMaxFocusIndex(state: InterfaceLayoutState): Int = interfaceLayout.maxFocusIndex(state)
@@ -177,7 +184,6 @@ internal fun interfaceFocusIndexOf(item: InterfaceItem, state: InterfaceLayoutSt
 
 @Composable
 fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
     val display = uiState.display
     val storage = uiState.storage
     val bgmEnabled = uiState.ambientAudio.enabled
@@ -209,19 +215,17 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: InterfaceItem): Boolean =
         uiState.focusedIndex == interfaceLayout.focusIndexOf(item, layoutState)
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { interfaceLayout.focusToListIndex(it, layoutState) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { it is InterfaceItem.SectionSpacer },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is InterfaceItem.Header -> InterfaceSectionHeader(item.title)
                 is InterfaceItem.SectionSpacer -> Spacer(modifier = Modifier.height(Dimens.spacingMd))
@@ -426,7 +430,6 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.showSoundPicker(item.soundType) }
                 )
             }
-        }
     }
 }
 

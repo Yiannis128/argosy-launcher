@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 
 data class ListSection(
+    val name: String? = null,
     val listStartIndex: Int,
     val listEndIndex: Int,
     val focusStartIndex: Int,

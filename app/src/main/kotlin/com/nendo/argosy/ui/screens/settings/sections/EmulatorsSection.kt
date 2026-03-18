@@ -19,9 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Icon
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,7 +36,6 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.ui.screens.settings.PlatformEmulatorConfig
@@ -87,7 +84,14 @@ internal fun createEmulatorsLayout(items: List<EmulatorsItem>) = SettingsLayout<
     allItems = items,
     isFocusable = { item -> item !is EmulatorsItem.BuiltinHeader && item !is EmulatorsItem.PlatformsHeader },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "builtin" -> "Built-in Emulator"
+            "platforms" -> "Platforms"
+            else -> null
+        }
+    }
 )
 
 internal fun emulatorsMaxFocusIndex(canAutoAssign: Boolean, platformCount: Int, builtinEnabled: Boolean = true): Int {
@@ -125,7 +129,6 @@ fun EmulatorsSection(
     viewModel: SettingsViewModel,
     onLaunchSavePathPicker: () -> Unit
 ) {
-    val listState = rememberLazyListState()
     val emulators = uiState.emulators
 
     val layoutState = remember(emulators.canAutoAssign, emulators.builtinLibretroEnabled) {
@@ -149,20 +152,18 @@ fun EmulatorsSection(
         label = "emulatorPickerBlur"
     )
 
-    SectionFocusedScroll(
-        listState = listState,
-        focusedIndex = uiState.focusedIndex,
-        focusToListIndex = { layout.focusToListIndex(it, layoutState) },
-        sections = sections
-    )
-
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
+        SectionPaneLayout(
+            items = visibleItems,
+            sections = sections,
+            focusedIndex = uiState.focusedIndex,
+            focusToListIndex = { layout.focusToListIndex(it, layoutState) },
+            itemKey = { it.key },
+            isNavItem = { false },
+            onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            items(visibleItems, key = { it.key }) { item ->
+        ) { item ->
                 when (item) {
                     EmulatorsItem.BuiltinHeader -> {
                         Text(
@@ -263,7 +264,6 @@ fun EmulatorsSection(
                         )
                     }
                 }
-            }
         }
 
         if (emulators.showEmulatorPicker && emulators.emulatorPickerInfo != null) {

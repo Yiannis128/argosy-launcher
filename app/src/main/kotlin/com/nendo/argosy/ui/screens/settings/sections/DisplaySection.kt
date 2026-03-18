@@ -3,9 +3,7 @@ package com.nendo.argosy.ui.screens.settings.sections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Image
@@ -20,7 +18,6 @@ import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.HueSliderPreference
 import com.nendo.argosy.ui.components.NavigationPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.components.colorIntToHue
@@ -80,7 +77,14 @@ private val displayLayout = SettingsLayout<DisplayItem, DisplayState>(
     allItems = DisplayItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "appearance" -> "Appearance"
+            "screenSafety" -> "Screen Safety"
+            else -> null
+        }
+    }
 )
 
 internal fun displayMaxFocusIndex(display: DisplayState): Int = displayLayout.maxFocusIndex(display)
@@ -92,7 +96,6 @@ internal fun displaySections(display: DisplayState) = displayLayout.buildSection
 
 @Composable
 fun DisplaySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
     val display = uiState.display
     val storage = uiState.storage
     val currentHue = display.primaryColor?.let { colorIntToHue(it) }
@@ -108,19 +111,17 @@ fun DisplaySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: DisplayItem): Boolean =
         uiState.focusedIndex == displayLayout.focusIndexOf(item, display)
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { displayLayout.focusToListIndex(it, display) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { false },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is DisplayItem.Header -> DisplaySectionHeader(item.title)
 
@@ -238,7 +239,6 @@ fun DisplaySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.navigateToAmbientLed() }
                 )
             }
-        }
     }
 }
 

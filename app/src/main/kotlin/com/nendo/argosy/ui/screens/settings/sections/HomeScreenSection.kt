@@ -3,9 +3,7 @@ package com.nendo.argosy.ui.screens.settings.sections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.MaterialTheme
@@ -15,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.DisplayState
@@ -82,7 +79,16 @@ private val homeScreenLayout = SettingsLayout<HomeScreenItem, DisplayState>(
     allItems = HomeScreenItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "background" -> "Background"
+            "video" -> "Video Wallpaper"
+            "footer" -> "Footer"
+            "content" -> "Content"
+            else -> null
+        }
+    }
 )
 
 internal fun homeScreenMaxFocusIndex(display: DisplayState): Int = homeScreenLayout.maxFocusIndex(display)
@@ -94,7 +100,6 @@ internal fun homeScreenItemAtFocusIndex(index: Int, display: DisplayState): Home
 
 @Composable
 fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
     val display = uiState.display
 
     val visibleItems = remember(display.useGameBackground, display.videoWallpaperEnabled) {
@@ -107,19 +112,17 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: HomeScreenItem): Boolean =
         uiState.focusedIndex == homeScreenLayout.focusIndexOf(item, display)
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { homeScreenLayout.focusToListIndex(it, display) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { false },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is HomeScreenItem.Header -> HomeScreenSectionHeader(item.title)
 
@@ -221,7 +224,6 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onToggle = { viewModel.setInstalledOnlyHome(it) }
                 )
             }
-        }
     }
 }
 

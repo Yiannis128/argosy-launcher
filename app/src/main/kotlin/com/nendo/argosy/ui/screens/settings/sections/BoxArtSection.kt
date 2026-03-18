@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.BoxArtBorderThickness
 import com.nendo.argosy.data.preferences.BoxArtCornerRadius
@@ -187,7 +184,17 @@ private val boxArtLayout = SettingsLayout<BoxArtItem, DisplayState>(
     allItems = BoxArtItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "styling" -> "Styling"
+            "icon" -> "System Icon"
+            "outer" -> "Outer Effect"
+            "inner" -> "Inner Effect"
+            "gradient" -> "Gradient Colors"
+            else -> null
+        }
+    }
 )
 
 internal fun boxArtMaxFocusIndex(display: DisplayState): Int = boxArtLayout.maxFocusIndex(display)
@@ -200,7 +207,6 @@ fun BoxArtSection(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel
 ) {
-    val listState = rememberLazyListState()
     val display = uiState.display
     val gradientConfig = uiState.gradientConfig
     val extractionResult = uiState.gradientExtractionResult
@@ -212,27 +218,25 @@ fun BoxArtSection(
     fun isFocused(item: BoxArtItem): Boolean =
         uiState.focusedIndex == boxArtLayout.focusIndexOf(item, display)
 
-    SectionFocusedScroll(
-        listState = listState,
-        focusedIndex = uiState.focusedIndex,
-        focusToListIndex = { boxArtLayout.focusToListIndex(it, display) },
-        sections = sections
-    )
-
     Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(Dimens.spacingMd),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)
     ) {
-        LazyColumn(
-            state = listState,
+        SectionPaneLayout(
+            items = visibleItems,
+            sections = sections,
+            focusedIndex = uiState.focusedIndex,
+            focusToListIndex = { boxArtLayout.focusToListIndex(it, display) },
+            itemKey = { it.key },
+            isNavItem = { false },
+            onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier
                 .weight(1.5f)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            items(visibleItems, key = { it.key }) { item ->
+        ) { item ->
                 when (item) {
                     is BoxArtItem.Header -> BoxArtSectionHeader(item.title)
 
@@ -373,7 +377,6 @@ fun BoxArtSection(
                         onClick = { viewModel.cycleGradientValueClamp(1) }
                     )
                 }
-            }
         }
 
         Column(

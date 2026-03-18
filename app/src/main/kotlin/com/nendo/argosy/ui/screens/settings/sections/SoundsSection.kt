@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.input.SoundType
@@ -93,7 +90,14 @@ private val soundsLayout = SettingsLayout<SoundsItem, SoundsLayoutState>(
     allItems = SoundsItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "uiSounds" -> "UI SOUNDS"
+            "customize" -> "CUSTOMIZE SOUNDS"
+            else -> null
+        }
+    }
 )
 
 internal fun soundsMaxFocusIndex(bgmEnabled: Boolean, bgmIsFolder: Boolean, uiSoundsEnabled: Boolean): Int =
@@ -104,8 +108,6 @@ internal fun soundsSections(bgmEnabled: Boolean, bgmIsFolder: Boolean, uiSoundsE
 
 @Composable
 fun SoundsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
-
     val bgmEnabled = uiState.ambientAudio.enabled
     val bgmIsFolder = uiState.ambientAudio.isFolder
     val uiSoundsEnabled = uiState.sounds.enabled
@@ -123,19 +125,17 @@ fun SoundsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: SoundsItem): Boolean =
         uiState.focusedIndex == soundsLayout.focusIndexOf(item, layoutState)
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { soundsLayout.focusToListIndex(it, layoutState) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { it is SoundsItem.SectionSpacer },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is SoundsItem.Header -> {
                     Text(
@@ -223,7 +223,6 @@ fun SoundsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.showSoundPicker(item.soundType) }
                 )
             }
-        }
     }
 }
 

@@ -12,7 +12,8 @@ class SettingsLayout<Item, State>(
     private val isFocusable: (Item) -> Boolean,
     private val visibleWhen: (Item, State) -> Boolean,
     private val disabledBehavior: (Item) -> DisabledBehavior = { DisabledBehavior.HIDDEN },
-    private val sectionOf: (Item) -> String? = { null }
+    private val sectionOf: (Item) -> String? = { null },
+    private val sectionTitle: (String) -> String? = { null }
 ) {
     fun visibleItems(state: State): List<Item> =
         allItems.filter { visibleWhen(it, state) || disabledBehavior(it) == DisabledBehavior.LOCKED }
@@ -45,6 +46,7 @@ class SettingsLayout<Item, State>(
             if (sectionItems.isEmpty() || sectionFocusable.isEmpty()) return@mapNotNull null
 
             ListSection(
+                name = sectionTitle(sectionName),
                 listStartIndex = visible.indexOf(sectionItems.first()),
                 listEndIndex = visible.indexOf(sectionItems.last()),
                 focusStartIndex = focusable.indexOf(sectionFocusable.first()),

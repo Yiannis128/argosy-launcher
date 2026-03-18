@@ -210,9 +210,16 @@ internal fun routeObservePlatformLibretroSettings(vm: SettingsViewModel) {
     vm.platformLibretroSettingsDao.observeAll().onEach { settingsList ->
         val settingsMap = settingsList.associateBy { it.platformId }
         vm._uiState.update { current ->
+            val platformContext = current.builtinVideo.currentPlatformContext
+            val hasControlOverrides = platformContext?.let {
+                settingsMap[it.platformId]?.hasAnyControlOverrides()
+            } == true
             current.copy(
                 platformLibretro = current.platformLibretro.copy(
                     platformSettings = settingsMap
+                ),
+                builtinControls = current.builtinControls.copy(
+                    showResetAll = !current.builtinVideo.isGlobalContext && hasControlOverrides
                 )
             )
         }

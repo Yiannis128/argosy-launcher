@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
@@ -21,14 +19,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
 import com.nendo.argosy.data.platform.PlatformWeightRegistry
 import com.nendo.argosy.ui.components.NavigationPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 import com.nendo.argosy.ui.screens.settings.BuiltinControlsState
-import com.nendo.argosy.ui.screens.settings.BuiltinVideoState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.ControllerOrderModal
@@ -58,6 +53,7 @@ internal sealed class BuiltinControlsItem(
     data object DpadAsAnalog : BuiltinControlsItem("dpadAsAnalog", "sticks", { it.showStickMappings && it.showDpadAsAnalog })
     data object Hotkeys : BuiltinControlsItem("hotkeys", "hotkeys")
     data object LimitHotkeysToPlayer1 : BuiltinControlsItem("limitHotkeys", "hotkeys")
+    data object ResetAllToGlobal : BuiltinControlsItem("resetAllToGlobal", "hotkeys", { it.showResetAll })
 
     companion object {
         private val ControllersHeader = Header("controllersHeader", "controllers", "Controllers")
@@ -74,7 +70,8 @@ internal sealed class BuiltinControlsItem(
             DpadAsAnalog,
             HotkeysHeader,
             Hotkeys,
-            LimitHotkeysToPlayer1
+            LimitHotkeysToPlayer1,
+            ResetAllToGlobal
         )
     }
 }
@@ -83,21 +80,19 @@ private val builtinControlsLayout = SettingsLayout<BuiltinControlsItem, BuiltinC
     allItems = BuiltinControlsItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "controllers" -> "Controllers"
+            "sticks" -> "Analog Sticks"
+            "hotkeys" -> "Hotkeys"
+            else -> null
+        }
+    }
 )
 
-internal fun builtinControlsMaxFocusIndex(
-    state: BuiltinControlsState,
-    videoState: BuiltinVideoState = BuiltinVideoState(),
-    platformSettings: Map<Long, PlatformLibretroSettingsEntity> = emptyMap()
-): Int {
-    val base = builtinControlsLayout.maxFocusIndex(state)
-    val platformContext = videoState.currentPlatformContext
-    val hasControlOverrides = platformContext?.let {
-        platformSettings[it.platformId]?.hasAnyControlOverrides()
-    } == true
-    return if (!videoState.isGlobalContext && hasControlOverrides) base + 1 else base
-}
+internal fun builtinControlsMaxFocusIndex(state: BuiltinControlsState): Int =
+    builtinControlsLayout.maxFocusIndex(state)
 
 internal fun builtinControlsItemAtFocusIndex(index: Int, state: BuiltinControlsState): BuiltinControlsItem? =
     builtinControlsLayout.itemAtFocusIndex(index, state)
@@ -110,7 +105,6 @@ fun BuiltinControlsSection(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel
 ) {
-    val listState = rememberLazyListState()
     val controlsState = uiState.builtinControls
     val controllerOrder by viewModel.getControllerOrder().collectAsState(initial = emptyList())
     val hotkeys by viewModel.observeHotkeys().collectAsState(initial = emptyList())
@@ -121,8 +115,6 @@ fun BuiltinControlsSection(
     val platformSettings = platformContext?.let {
         uiState.platformLibretro.platformSettings[it.platformId]
     }
-    val hasControlOverrides = platformSettings?.hasAnyControlOverrides() == true
-
     val effectiveRumble = if (isGlobal) controlsState.rumbleEnabled
         else platformSettings?.rumbleEnabled ?: controlsState.rumbleEnabled
     val platformSlug = platformContext?.platformSlug
@@ -140,27 +132,23 @@ fun BuiltinControlsSection(
         builtinControlsLayout.buildSections(controlsState)
     }
 
-    val resetAllFocusIndex = builtinControlsLayout.maxFocusIndex(controlsState) + 1
-
     fun isFocused(item: BuiltinControlsItem): Boolean =
         uiState.focusedIndex == builtinControlsLayout.focusIndexOf(item, controlsState)
 
-    SectionFocusedScroll(
-        listState = listState,
-        focusedIndex = uiState.focusedIndex,
-        focusToListIndex = { builtinControlsLayout.focusToListIndex(it, controlsState) },
-        sections = sections
-    )
-
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
+        SectionPaneLayout(
+            items = visibleItems,
+            sections = sections,
+            focusedIndex = uiState.focusedIndex,
+            focusToListIndex = { builtinControlsLayout.focusToListIndex(it, controlsState) },
+            itemKey = { it.key },
+            isNavItem = { false },
+            onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(Dimens.spacingMd),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-        items(visibleItems, key = { it.key }) { item ->
+        ) { item ->
             when (item) {
                 is BuiltinControlsItem.Header -> {
                     if (item.section != "controllers") {
@@ -252,22 +240,21 @@ fun BuiltinControlsSection(
                     isFocused = isFocused(item),
                     onToggle = { viewModel.setBuiltinLimitHotkeysToPlayer1(it) }
                 )
-            }
-        }
 
-        if (!isGlobal && hasControlOverrides) {
-            item(key = "resetAllToGlobal") {
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
-                OptionItem(
-                    label = "Reset All to Global",
-                    isFocused = uiState.focusedIndex == resetAllFocusIndex,
-                    isDangerous = true,
-                    onClick = { viewModel.resetAllPlatformControlSettings() }
-                )
+                BuiltinControlsItem.ResetAllToGlobal -> {
+                    Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                    OptionItem(
+                        label = "Reset All to Global",
+                        isFocused = isFocused(item),
+                        isDangerous = true,
+                        onClick = { viewModel.resetAllPlatformControlSettings() }
+                    )
+                }
+
+                else -> {}
             }
-        }
         }
 
         if (controlsState.showControllerOrderModal) {

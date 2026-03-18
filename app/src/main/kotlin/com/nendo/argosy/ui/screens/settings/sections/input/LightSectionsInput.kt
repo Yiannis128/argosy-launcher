@@ -12,13 +12,16 @@ import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.HomeScreenItem
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.aboutItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.aboutSections
 import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.biosSections
 import com.nendo.argosy.ui.screens.settings.sections.buildGameDataItemsFromState
 import com.nendo.argosy.ui.screens.settings.sections.controlsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.gameDataItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.gameDataSections
 import com.nendo.argosy.ui.screens.settings.sections.homeScreenItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.homeScreenSections
+import com.nendo.argosy.ui.screens.settings.sections.socialSections
 import com.nendo.argosy.ui.screens.settings.sections.syncSettingsItemAtFocusIndex
 
 internal class LightSectionsInput(
@@ -162,19 +165,17 @@ internal class LightSectionsInput(
 
     private fun handleSectionJump(direction: Int): InputResult {
         val state = viewModel.uiState.value
-        return when (state.currentSection) {
-            SettingsSection.HOME_SCREEN -> {
-                val jumped = if (direction < 0) viewModel.jumpToPrevSection(homeScreenSections(state.display))
-                else viewModel.jumpToNextSection(homeScreenSections(state.display))
-                if (jumped) InputResult.HANDLED else InputResult.UNHANDLED
-            }
-            SettingsSection.BIOS -> {
-                val jumped = if (direction < 0) viewModel.jumpToPrevSection(biosSections(state.bios.platformGroups, state.bios.expandedPlatformIndex))
-                else viewModel.jumpToNextSection(biosSections(state.bios.platformGroups, state.bios.expandedPlatformIndex))
-                if (jumped) InputResult.HANDLED else InputResult.UNHANDLED
-            }
-            else -> InputResult.UNHANDLED
+        val sections = when (state.currentSection) {
+            SettingsSection.HOME_SCREEN -> homeScreenSections(state.display)
+            SettingsSection.BIOS -> biosSections(state.bios.platformGroups, state.bios.expandedPlatformIndex)
+            SettingsSection.SERVER -> gameDataSections(buildGameDataItemsFromState(state))
+            SettingsSection.SOCIAL -> socialSections()
+            SettingsSection.ABOUT -> aboutSections(state.fileLoggingPath != null)
+            else -> return InputResult.HANDLED
         }
+        val jumped = if (direction < 0) viewModel.jumpToPrevSection(sections)
+            else viewModel.jumpToNextSection(sections)
+        return if (jumped) InputResult.HANDLED else InputResult.HANDLED
     }
 
 }

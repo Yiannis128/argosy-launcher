@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -42,7 +40,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.NavigationPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.screens.settings.ConnectionStatus
@@ -154,7 +151,18 @@ internal fun createGameDataLayout(items: List<GameDataItem>) =
         allItems = items,
         isFocusable = { it.isFocusable },
         visibleWhen = { _, _ -> true },
-        sectionOf = { it.section }
+        sectionOf = { it.section },
+        sectionTitle = {
+            when (it) {
+                "server" -> "SERVER"
+                "library" -> "LIBRARY"
+                "tracking" -> "TRACKING"
+                "saves" -> "SAVES"
+                "android" -> "ANDROID"
+                "steam" -> "STEAM"
+                else -> null
+            }
+        }
     )
 
 internal data class GameDataLayoutInfo(
@@ -170,6 +178,9 @@ internal fun focusableItems(items: List<GameDataItem>): List<GameDataItem> =
 
 internal fun gameDataItemAtFocusIndex(index: Int, items: List<GameDataItem>): GameDataItem? =
     createGameDataLayout(items).itemAtFocusIndex(index, Unit)
+
+internal fun gameDataSections(items: List<GameDataItem>) =
+    createGameDataLayout(items).buildSections(Unit)
 
 internal fun gameDataMaxFocusIndex(items: List<GameDataItem>): Int =
     createGameDataLayout(items).maxFocusIndex(Unit)
@@ -211,7 +222,6 @@ private fun GameDataContent(
     viewModel: SettingsViewModel
 ) {
     val context = LocalContext.current
-    val listState = rememberLazyListState()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val isConnected = uiState.server.connectionStatus == ConnectionStatus.ONLINE ||
@@ -250,21 +260,19 @@ private fun GameDataContent(
         return uiState.focusedIndex == layout.focusIndexOf(item, Unit)
     }
 
-    SectionFocusedScroll(
-        listState = listState,
-        focusedIndex = uiState.focusedIndex,
-        focusToListIndex = { layout.focusToListIndex(it, Unit) },
-        sections = sections
-    )
-
     val isDownloading = uiState.steam.downloadingLauncherId != null
 
-    LazyColumn(
-        state = listState,
+    SectionPaneLayout(
+        items = allItems,
+        sections = sections,
+        focusedIndex = uiState.focusedIndex,
+        focusToListIndex = { layout.focusToListIndex(it, Unit) },
+        itemKey = { it.key },
+        isNavItem = { false },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(allItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is GameDataItem.Header -> {
                     if (item.key != "serverHeader") {
@@ -493,7 +501,6 @@ private fun GameDataContent(
                     )
                 }
             }
-        }
     }
 }
 

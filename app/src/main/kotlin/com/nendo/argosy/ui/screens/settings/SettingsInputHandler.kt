@@ -52,7 +52,8 @@ class SettingsInputHandler(
         for (s in listOf(
             SettingsSection.BIOS, SettingsSection.SERVER, SettingsSection.HOME_SCREEN,
             SettingsSection.CONTROLS, SettingsSection.SYNC_SETTINGS,
-            SettingsSection.ABOUT, SettingsSection.STEAM_SETTINGS, SettingsSection.CORE_MANAGEMENT
+            SettingsSection.ABOUT, SettingsSection.STEAM_SETTINGS, SettingsSection.CORE_MANAGEMENT,
+            SettingsSection.SOCIAL
         )) {
             put(s, lightHandler)
         }
@@ -127,11 +128,11 @@ class SettingsInputHandler(
     }
 
     override fun onPrevSection(): InputResult = dispatch(InputMethod.PREV_SECTION) {
-        jumpTopLevelSection(-1)
+        InputResult.HANDLED
     }
 
     override fun onNextSection(): InputResult = dispatch(InputMethod.NEXT_SECTION) {
-        jumpTopLevelSection(1)
+        InputResult.HANDLED
     }
 
     override fun onPrevTrigger(): InputResult = dispatch(InputMethod.PREV_TRIGGER) {

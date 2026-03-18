@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,7 +43,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -101,8 +100,19 @@ private val socialLayout = SettingsLayout<SocialItem, SocialLayoutState>(
     allItems = SocialItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "account" -> "ACCOUNT"
+            "privacy" -> "PRIVACY"
+            "notifications" -> "NOTIFICATIONS"
+            else -> null
+        }
+    }
 )
+
+internal fun socialSections() =
+    socialLayout.buildSections(SocialLayoutState(isConnected = true))
 
 internal fun socialMaxFocusIndex(social: SocialState): Int {
     return when (social.authStatus) {
@@ -116,73 +126,30 @@ internal fun socialItemAtFocusIndex(focusIndex: Int, state: SocialLayoutState): 
 
 @Composable
 fun SocialSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
     val social = uiState.social
 
     val layoutState = remember(social.authStatus) {
         SocialLayoutState(isConnected = social.authStatus == SocialAuthStatus.CONNECTED)
     }
 
-    if (social.authStatus == SocialAuthStatus.CONNECTED) {
-        val sections = remember { socialLayout.buildSections(layoutState) }
-
-        SectionFocusedScroll(
-            listState = listState,
-            focusedIndex = uiState.focusedIndex,
-            focusToListIndex = { socialLayout.focusToListIndex(it, layoutState) },
-            sections = sections
-        )
-    } else {
-        LaunchedEffect(uiState.focusedIndex) {
-            if (uiState.focusedIndex == 0) {
-                val layoutInfo = listState.layoutInfo
-                val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
-                val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 60
-                val centerOffset = (viewportHeight - itemHeight) / 2
-                listState.animateScrollToItem(0, -centerOffset)
-            }
-        }
-    }
-
     fun isFocused(item: SocialItem): Boolean =
         uiState.focusedIndex == socialLayout.focusIndexOf(item, layoutState)
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.spacingMd),
-        contentPadding = PaddingValues(top = Dimens.spacingMd, bottom = Dimens.spacingXxl),
-        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        when (social.authStatus) {
-            SocialAuthStatus.NOT_LINKED -> {
-                item {
-                    NotLinkedContent(
-                        isFocused = uiState.focusedIndex == 0,
-                        onStartAuth = { viewModel.startSocialAuth() }
-                    )
-                }
-            }
+    if (social.authStatus == SocialAuthStatus.CONNECTED) {
+        val visibleItems = remember(layoutState) { socialLayout.visibleItems(layoutState) }
+        val sections = remember(layoutState) { socialLayout.buildSections(layoutState) }
 
-            SocialAuthStatus.CONNECTING -> {
-                item {
-                    ConnectingContent()
-                }
-            }
-
-            SocialAuthStatus.AWAITING_AUTH -> {
-                item {
-                    AwaitingAuthContent(
-                        qrUrl = social.qrUrl,
-                        loginCode = social.loginCode,
-                        isFocused = uiState.focusedIndex == 0,
-                        onCancel = { viewModel.cancelSocialAuth() }
-                    )
-                }
-            }
-
-            SocialAuthStatus.CONNECTED -> {
-                val visibleItems = socialLayout.visibleItems(layoutState)
-                items(visibleItems, key = { it.key }) { item ->
+        SectionPaneLayout(
+            items = visibleItems,
+            sections = sections,
+            focusedIndex = uiState.focusedIndex,
+            focusToListIndex = { socialLayout.focusToListIndex(it, layoutState) },
+            itemKey = { it.key },
+            isNavItem = { it is SocialItem.SectionSpacer },
+            onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
+            modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.spacingMd),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) { item ->
                     when (item) {
                         is SocialItem.Header -> SectionHeader(item.title)
 
@@ -271,21 +238,61 @@ fun SocialSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                             onClick = { viewModel.logoutSocial() }
                         )
                     }
-                }
-            }
+        }
+    } else {
+        val listState = rememberLazyListState()
 
-            SocialAuthStatus.ERROR -> {
-                item {
-                    ErrorContent(
-                        message = social.errorMessage ?: "An error occurred",
-                        isFocused = uiState.focusedIndex == 0,
-                        onRetry = { viewModel.startSocialAuth() }
-                    )
+        LaunchedEffect(uiState.focusedIndex) {
+            if (uiState.focusedIndex == 0) {
+                val layoutInfo = listState.layoutInfo
+                val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+                val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 60
+                val centerOffset = (viewportHeight - itemHeight) / 2
+                listState.animateScrollToItem(0, -centerOffset)
+            }
+        }
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.spacingMd),
+            contentPadding = PaddingValues(top = Dimens.spacingMd, bottom = Dimens.spacingXxl),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) {
+            when (social.authStatus) {
+                SocialAuthStatus.NOT_LINKED -> {
+                    item {
+                        NotLinkedContent(
+                            isFocused = uiState.focusedIndex == 0,
+                            onStartAuth = { viewModel.startSocialAuth() }
+                        )
+                    }
                 }
+                SocialAuthStatus.CONNECTING -> {
+                    item { ConnectingContent() }
+                }
+                SocialAuthStatus.AWAITING_AUTH -> {
+                    item {
+                        AwaitingAuthContent(
+                            qrUrl = social.qrUrl,
+                            loginCode = social.loginCode,
+                            isFocused = uiState.focusedIndex == 0,
+                            onCancel = { viewModel.cancelSocialAuth() }
+                        )
+                    }
+                }
+                SocialAuthStatus.ERROR -> {
+                    item {
+                        ErrorContent(
+                            message = social.errorMessage ?: "An error occurred",
+                            isFocused = uiState.focusedIndex == 0,
+                            onRetry = { viewModel.startSocialAuth() }
+                        )
+                    }
+                }
+                else -> {}
             }
         }
     }
-
 }
 
 @Composable

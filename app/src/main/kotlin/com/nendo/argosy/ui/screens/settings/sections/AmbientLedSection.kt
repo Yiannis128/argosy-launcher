@@ -3,9 +3,7 @@ package com.nendo.argosy.ui.screens.settings.sections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.HueSliderPreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.components.TrackSliderPreference
 import com.nendo.argosy.ui.screens.settings.DisplayState
@@ -89,7 +86,16 @@ private val ambientLedLayout = SettingsLayout<AmbientLedItem, DisplayState>(
     allItems = AmbientLedItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "general" -> "General"
+            "coverArt" -> "Cover Art"
+            "reactiveAudio" -> "Reactive Audio"
+            "reactiveScreen" -> "Reactive Screen"
+            else -> null
+        }
+    }
 )
 
 internal fun ambientLedMaxFocusIndex(display: DisplayState): Int =
@@ -113,7 +119,6 @@ fun AmbientLedSection(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel
 ) {
-    val listState = rememberLazyListState()
     val display = uiState.display
 
     val visibleItems = remember(
@@ -136,19 +141,17 @@ fun AmbientLedSection(
     fun isFocused(item: AmbientLedItem): Boolean =
         uiState.focusedIndex == ambientLedLayout.focusIndexOf(item, display)
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { ambientLedLayout.focusToListIndex(it, display) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { false },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is AmbientLedItem.Header -> AmbientLedSectionHeader(item.title)
 
@@ -241,7 +244,6 @@ fun AmbientLedSection(
                     onClick = { viewModel.cycleAmbientLedColorMode() }
                 )
             }
-        }
     }
 }
 

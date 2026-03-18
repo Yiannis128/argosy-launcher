@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
@@ -29,10 +27,9 @@ import com.nendo.argosy.data.cache.ImageCacheProgress
 import com.nendo.argosy.data.preferences.RegionFilterMode
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.ImageCachePreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.PlatformFiltersModal
@@ -46,33 +43,43 @@ import com.nendo.argosy.ui.theme.Motion
 // --- Item definitions ---
 
 internal sealed class SyncSettingsItem(val key: String, val section: String) {
-    val isFocusable: Boolean get() = this !is MediaHeader
+    val isFocusable: Boolean get() = this !is MediaHeader && this !is ImageCacheProgressIndicator
 
     data object PlatformFilters : SyncSettingsItem("platformFilters", "filters")
     data object MetadataFilters : SyncSettingsItem("metadataFilters", "filters")
     data object MediaHeader : SyncSettingsItem("mediaHeader", "media")
     data object CacheScreenshots : SyncSettingsItem("cacheScreenshots", "media")
     data object ImageCacheLocation : SyncSettingsItem("imageCacheLocation", "media")
+    data object ImageCacheProgressIndicator : SyncSettingsItem("imageCacheProgress", "media")
 }
 
-private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Unit>(
+private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Boolean>(
     allItems = listOf(
         SyncSettingsItem.PlatformFilters,
         SyncSettingsItem.MetadataFilters,
         SyncSettingsItem.MediaHeader,
         SyncSettingsItem.CacheScreenshots,
-        SyncSettingsItem.ImageCacheLocation
+        SyncSettingsItem.ImageCacheLocation,
+        SyncSettingsItem.ImageCacheProgressIndicator
     ),
     isFocusable = { it.isFocusable },
-    visibleWhen = { _, _ -> true },
-    sectionOf = { it.section }
+    visibleWhen = { item, isProcessing ->
+        if (item is SyncSettingsItem.ImageCacheProgressIndicator) isProcessing else true
+    },
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "media" -> "MEDIA"
+            else -> null
+        }
+    }
 )
 
-internal fun syncSettingsItemAtFocusIndex(index: Int): SyncSettingsItem? =
-    syncSettingsLayout.itemAtFocusIndex(index, Unit)
+internal fun syncSettingsItemAtFocusIndex(index: Int, isProcessing: Boolean = false): SyncSettingsItem? =
+    syncSettingsLayout.itemAtFocusIndex(index, isProcessing)
 
-internal fun syncSettingsMaxFocusIndex(): Int =
-    syncSettingsLayout.maxFocusIndex(Unit)
+internal fun syncSettingsMaxFocusIndex(isProcessing: Boolean = false): Int =
+    syncSettingsLayout.maxFocusIndex(isProcessing)
 
 @Composable
 fun SyncSettingsSection(
@@ -80,8 +87,6 @@ fun SyncSettingsSection(
     viewModel: SettingsViewModel,
     imageCacheProgress: ImageCacheProgress
 ) {
-    val listState = rememberLazyListState()
-
     val hasAnyModal = uiState.syncSettings.showSyncFiltersModal || uiState.syncSettings.showPlatformFiltersModal
     val modalBlur by animateDpAsState(
         targetValue = if (hasAnyModal) Motion.blurRadiusModal else 0.dp,
@@ -89,27 +94,25 @@ fun SyncSettingsSection(
         label = "syncFiltersModalBlur"
     )
 
+    val isProcessing = imageCacheProgress.isProcessing
+
     fun isFocused(item: SyncSettingsItem): Boolean =
-        uiState.focusedIndex == syncSettingsLayout.focusIndexOf(item, Unit)
-
-    val sections = syncSettingsLayout.buildSections(Unit)
-    val visibleItems = syncSettingsLayout.visibleItems(Unit)
-
-    SectionFocusedScroll(
-        listState = listState,
-        focusedIndex = uiState.focusedIndex,
-        focusToListIndex = { syncSettingsLayout.focusToListIndex(it, Unit) },
-        sections = sections
-    )
+        uiState.focusedIndex == syncSettingsLayout.focusIndexOf(item, isProcessing)
+    val sections = syncSettingsLayout.buildSections(isProcessing)
+    val visibleItems = syncSettingsLayout.visibleItems(isProcessing)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
+        SectionPaneLayout(
+            items = visibleItems,
+            sections = sections,
+            focusedIndex = uiState.focusedIndex,
+            focusToListIndex = { syncSettingsLayout.focusToListIndex(it, isProcessing) },
+            itemKey = { it.key },
+            isNavItem = { false },
+            onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            items(visibleItems.size, key = { visibleItems[it].key }) { index ->
-                val item = visibleItems[index]
+        ) { item ->
                 when (item) {
                     SyncSettingsItem.PlatformFilters -> {
                         val enabledCount = uiState.syncSettings.enabledPlatformCount
@@ -164,15 +167,11 @@ fun SyncSettingsSection(
                             onReset = { viewModel.resetImageCacheToDefault() }
                         )
                     }
+                    SyncSettingsItem.ImageCacheProgressIndicator -> {
+                        Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                        ImageCacheProgressItem(imageCacheProgress)
+                    }
                 }
-            }
-
-            if (imageCacheProgress.isProcessing) {
-                item {
-                    Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                    ImageCacheProgressItem(imageCacheProgress)
-                }
-            }
         }
 
         if (uiState.syncSettings.showPlatformFiltersModal) {

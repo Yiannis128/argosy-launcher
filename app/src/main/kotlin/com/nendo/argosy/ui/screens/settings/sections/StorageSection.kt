@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
@@ -15,7 +13,6 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.ExpandablePreference
@@ -85,7 +82,16 @@ private fun createStorageLayout(items: List<StorageItem>) = SettingsLayout<Stora
     allItems = items,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "downloads" -> "DOWNLOADS"
+            "locations" -> "FILE LOCATIONS"
+            "platforms" -> "PLATFORM STORAGE"
+            "danger" -> "DANGER ZONE"
+            else -> null
+        }
+    }
 )
 
 internal fun storageMaxFocusIndex(platformsExpanded: Boolean, platformCount: Int): Int {
@@ -117,7 +123,6 @@ internal fun storageSections(info: StorageLayoutInfo): List<com.nendo.argosy.ui.
 
 @Composable
 fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
     val storage = uiState.storage
     val syncSettings = uiState.syncSettings
 
@@ -136,19 +141,17 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: StorageItem): Boolean =
         uiState.focusedIndex == layout.focusIndexOf(item, layoutState)
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { layout.focusToListIndex(it, layoutState) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { it is StorageItem.SectionSpacer },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is StorageItem.Header -> SectionHeader(item.title)
 
@@ -269,7 +272,6 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     )
                 }
             }
-        }
     }
 }
 

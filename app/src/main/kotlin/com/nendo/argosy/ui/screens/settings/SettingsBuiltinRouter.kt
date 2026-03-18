@@ -701,14 +701,19 @@ internal fun routeCyclePlatformContext(vm: SettingsViewModel, direction: Int) {
     val maxIndex = state.availablePlatforms.size
     val newIndex = (state.platformContextIndex + direction).mod(maxIndex + 1)
     val isGlobal = newIndex == 0
-    val platformSlug = if (!isGlobal) state.availablePlatforms[newIndex - 1].platformSlug else null
+    val platform = if (!isGlobal) state.availablePlatforms[newIndex - 1] else null
+    val platformSlug = platform?.platformSlug
     vm._uiState.update {
+        val hasControlOverrides = platform?.let {
+            it2 -> it.platformLibretro.platformSettings[it2.platformId]?.hasAnyControlOverrides()
+        } == true
         it.copy(
             builtinVideo = it.builtinVideo.copy(platformContextIndex = newIndex),
             builtinControls = it.builtinControls.copy(
                 showStickMappings = !isGlobal,
                 showDpadAsAnalog = !isGlobal && platformSlug != null && PlatformWeightRegistry.hasAnalogStick(platformSlug),
-                showRumble = isGlobal || (platformSlug != null && PlatformWeightRegistry.hasRumble(platformSlug))
+                showRumble = isGlobal || (platformSlug != null && PlatformWeightRegistry.hasRumble(platformSlug)),
+                showResetAll = !isGlobal && hasControlOverrides
             ),
             focusedIndex = 0
         )

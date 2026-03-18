@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Sync
@@ -32,7 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
-import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -86,8 +83,18 @@ private val aboutLayout = SettingsLayout<AboutItem, AboutLayoutState>(
     allItems = AboutItem.ALL,
     isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "version" -> "VERSION"
+            "debug" -> "DEBUG"
+            else -> null
+        }
+    }
 )
+
+internal fun aboutSections(hasLogPath: Boolean) =
+    aboutLayout.buildSections(AboutLayoutState(hasLogPath))
 
 internal fun aboutMaxFocusIndex(hasLogPath: Boolean): Int =
     aboutLayout.maxFocusIndex(AboutLayoutState(hasLogPath))
@@ -97,7 +104,6 @@ internal fun aboutItemAtFocusIndex(focusIndex: Int, hasLogPath: Boolean): AboutI
 
 @Composable
 fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    val listState = rememberLazyListState()
     val updateCheck = uiState.updateCheck
     val isDebug = com.nendo.argosy.BuildConfig.DEBUG
     val isOnBetaVersion = com.nendo.argosy.BuildConfig.VERSION_NAME.contains("-")
@@ -116,19 +122,17 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         LicensesDialog(onDismiss = { showLicensesDialog = false })
     }
 
-    SectionFocusedScroll(
-        listState = listState,
+    SectionPaneLayout(
+        items = visibleItems,
+        sections = sections,
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { aboutLayout.focusToListIndex(it, layoutState) },
-        sections = sections
-    )
-
-    LazyColumn(
-        state = listState,
+        itemKey = { it.key },
+        isNavItem = { it == AboutItem.SectionSpacer },
+        onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        items(visibleItems, key = { it.key }) { item ->
+    ) { item ->
             when (item) {
                 is AboutItem.Header -> SectionHeader(item.title)
 
@@ -230,7 +234,6 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onToggle = { viewModel.setAppAffinityEnabled(it) }
                 )
             }
-        }
     }
 }
 

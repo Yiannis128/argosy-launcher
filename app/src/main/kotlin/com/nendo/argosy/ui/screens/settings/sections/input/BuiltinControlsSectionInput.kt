@@ -7,7 +7,6 @@ import com.nendo.argosy.ui.input.SoundType
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinControlsItem
 import com.nendo.argosy.ui.screens.settings.sections.builtinControlsItemAtFocusIndex
-import com.nendo.argosy.ui.screens.settings.sections.builtinControlsMaxFocusIndex
 
 internal class BuiltinControlsSectionInput(
     private val viewModel: SettingsViewModel
@@ -15,16 +14,11 @@ internal class BuiltinControlsSectionInput(
 
     override fun onConfirm(): InputResult {
         val state = viewModel.uiState.value
-        val controlsResetAllIndex = builtinControlsMaxFocusIndex(
-            state.builtinControls, state.builtinVideo, state.platformLibretro.platformSettings
-        )
-        val controlsBaseMax = builtinControlsMaxFocusIndex(state.builtinControls)
-        if (state.focusedIndex == controlsResetAllIndex && controlsResetAllIndex > controlsBaseMax) {
-            viewModel.resetAllPlatformControlSettings()
-            return InputResult.handled(SoundType.SELECT)
-        }
-
         return when (builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+            BuiltinControlsItem.ResetAllToGlobal -> {
+                viewModel.resetAllPlatformControlSettings()
+                InputResult.handled(SoundType.SELECT)
+            }
             BuiltinControlsItem.Rumble -> {
                 if (state.builtinVideo.isGlobalContext) {
                     viewModel.setBuiltinRumbleEnabled(!state.builtinControls.rumbleEnabled)
