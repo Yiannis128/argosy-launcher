@@ -9,7 +9,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import android.view.Display
 import androidx.core.app.NotificationCompat
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.MainActivity
@@ -100,23 +99,17 @@ class CompanionGuardService : Service() {
 
             dsm.isCompanionActive.collect { active ->
                 if (!active && dsm.displayAffinityHelper.hasSecondaryDisplay) {
-                    if (!dsm.sessionStateStore.hasActiveSession()) {
-                        Log.d(TAG, "Companion inactive, no game session -- user may have opened another app, skipping relaunch")
+                    if (dsm.sessionStateStore.hasActiveSession()) {
+                        Log.d(TAG, "Companion inactive during game session -- allowing other app to remain in foreground")
                         return@collect
                     }
-                    val emulatorOnSecondary = dsm.emulatorDisplayId != null &&
-                        dsm.emulatorDisplayId != Display.DEFAULT_DISPLAY
-                    if (emulatorOnSecondary) {
-                        Log.d(TAG, "Companion inactive during session but emulator is on secondary display (swapped) -- expected, skipping relaunch")
-                        return@collect
-                    }
-                    Log.d(TAG, "Companion inactive during game session (emulator on primary), scheduling relaunch")
+                    Log.d(TAG, "Companion inactive, no game session, scheduling relaunch")
                     delay(RELAUNCH_DELAY_MS)
                     if (!dsm.isCompanionActive.value &&
-                        dsm.sessionStateStore.hasActiveSession()
+                        !dsm.sessionStateStore.hasActiveSession()
                     ) {
-                        Log.d(TAG, "Companion still inactive during session, relaunching")
-                        dsm.ensureCompanionLaunched(allowDuringSession = true)
+                        Log.d(TAG, "Companion still inactive with no session, relaunching")
+                        dsm.ensureCompanionLaunched()
                     }
                 }
             }
