@@ -50,6 +50,7 @@ data class SocialUiState(
     val profileFocusIndex: Int = 0,
     val userProfile: UserProfileData? = null,
     val isLoadingProfile: Boolean = false,
+    val localIgdbIds: Set<Int> = emptySet(),
     val isLoading: Boolean = false,
     val hasMore: Boolean = false,
     val isCommunityLoading: Boolean = false,
@@ -77,6 +78,13 @@ data class SocialUiState(
 
     val focusedMostPlayedIndex: Int
         get() = (profileFocusIndex - PROFILE_DISPLAY_SECTIONS).coerceAtLeast(0)
+
+    val focusedGameInLibrary: Boolean
+        get() {
+            if (!profileFocusOnMostPlayed) return false
+            val game = userProfile?.mostPlayed?.getOrNull(focusedMostPlayedIndex) ?: return false
+            return game.igdbId in localIgdbIds
+        }
 
     val isConnected: Boolean
         get() = connectionState is SocialConnectionState.Connected
@@ -220,9 +228,15 @@ class SocialViewModel @Inject constructor(
             ) { profile, loading ->
                 profile to loading
             }.collect { (profile, loading) ->
+                val igdbIds = if (profile != null && profile != _uiState.value.userProfile) {
+                    resolveLocalIgdbIds(profile.mostPlayed.map { it.igdbId })
+                } else {
+                    _uiState.value.localIgdbIds
+                }
                 _uiState.value = _uiState.value.copy(
                     userProfile = profile,
-                    isLoadingProfile = loading
+                    isLoadingProfile = loading,
+                    localIgdbIds = igdbIds
                 )
             }
         }
@@ -420,6 +434,12 @@ class SocialViewModel @Inject constructor(
 
     fun loadProfile(userId: String? = null) {
         socialRepository.requestUserProfile(userId)
+    }
+
+    private suspend fun resolveLocalIgdbIds(igdbIds: List<Int>): Set<Int> {
+        return igdbIds.filter { igdbId ->
+            gameDao.getByIgdbId(igdbId.toLong()) != null
+        }.toSet()
     }
 
     fun setSocialOnlineStatus(enabled: Boolean) {

@@ -439,10 +439,6 @@ fun MostPlayedGameItem(
     isLast: Boolean,
     onGameClick: (Int) -> Unit
 ) {
-    val isWide = LocalUiScale.current.aspectRatioClass.let {
-        it == AspectRatioClass.WIDE || it == AspectRatioClass.ULTRA_WIDE
-    }
-
     val shape = when {
         isFirst && isLast -> RoundedCornerShape(12.dp)
         isFirst -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
@@ -459,7 +455,6 @@ fun MostPlayedGameItem(
         MostPlayedGameRow(
             game = game,
             isFocused = isFocused,
-            isWide = isWide,
             onClick = { onGameClick(game.igdbId) }
         )
         if (!isLast) {
@@ -475,7 +470,6 @@ fun MostPlayedGameItem(
 private fun MostPlayedGameRow(
     game: MostPlayedGame,
     isFocused: Boolean,
-    isWide: Boolean,
     onClick: () -> Unit
 ) {
     val bgColor = if (isFocused) {
@@ -525,15 +519,27 @@ private fun MostPlayedGameRow(
             )
         }
 
-        if (isWide) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = game.title,
                 style = MaterialTheme.typography.bodyMedium,
                 color = textColor,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                overflow = TextOverflow.Ellipsis
             )
+            val subtitle = game.genre
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textColor.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = formatPlayHours(game.totalHours),
                 style = MaterialTheme.typography.bodyMedium,
@@ -541,33 +547,10 @@ private fun MostPlayedGameRow(
                 color = textColor
             )
             Text(
-                text = "${game.sessionCount} sess",
+                text = "${game.sessionCount} sessions",
                 style = MaterialTheme.typography.bodySmall,
-                color = textColor.copy(alpha = 0.6f)
+                color = textColor.copy(alpha = 0.5f)
             )
-        } else {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = game.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = formatPlayHours(game.totalHours),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = "${game.sessionCount} sessions",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = textColor.copy(alpha = 0.5f)
-                    )
-                }
-            }
         }
     }
 }

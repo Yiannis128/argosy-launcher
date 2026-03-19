@@ -54,7 +54,8 @@ data class UserProfileUiState(
     val profile: UserProfileData? = null,
     val isLoading: Boolean = true,
     val focusIndex: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    val localIgdbIds: Set<Int> = emptySet()
 ) {
     val focusCount: Int
         get() = DISPLAY_SECTIONS + (profile?.mostPlayed?.size ?: 0)
@@ -64,6 +65,13 @@ data class UserProfileUiState(
 
     val focusedMostPlayedIndex: Int
         get() = (focusIndex - DISPLAY_SECTIONS).coerceAtLeast(0)
+
+    val focusedGameInLibrary: Boolean
+        get() {
+            if (!focusOnMostPlayed) return false
+            val game = profile?.mostPlayed?.getOrNull(focusedMostPlayedIndex) ?: return false
+            return game.igdbId in localIgdbIds
+        }
 }
 
 @HiltViewModel
@@ -83,9 +91,13 @@ class UserProfileViewModel @Inject constructor(
         viewModelScope.launch {
             socialRepository.userProfile.collect { profile ->
                 if (profile != null && profile.user.id == userId) {
+                    val igdbIds = profile.mostPlayed.map { it.igdbId }
+                        .filter { gameDao.getByIgdbId(it.toLong()) != null }
+                        .toSet()
                     _uiState.value = _uiState.value.copy(
                         profile = profile,
-                        isLoading = false
+                        isLoading = false,
+                        localIgdbIds = igdbIds
                     )
                 }
             }
@@ -298,7 +310,7 @@ fun UserProfileScreen(
 
         FooterBarWithState(
             hints = buildList {
-                add(FooterHintItem(InputButton.A, "View Game", enabled = uiState.focusOnMostPlayed))
+                add(FooterHintItem(InputButton.A, "View Game", enabled = uiState.focusedGameInLibrary))
                 if (profile != null) {
                     when (profile.relationship) {
                         "friend" -> add(FooterHintItem(

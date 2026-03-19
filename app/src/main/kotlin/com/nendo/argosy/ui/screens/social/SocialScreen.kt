@@ -344,7 +344,7 @@ fun SocialScreen(
                             add(FooterHintItem(InputButton.Y, "Read All", enabled = uiState.unreadCount > 0))
                         }
                         SocialTab.PROFILE -> {
-                            add(FooterHintItem(InputButton.A, "View Game", enabled = uiState.profileFocusOnMostPlayed))
+                            add(FooterHintItem(InputButton.A, "View Game", enabled = uiState.focusedGameInLibrary))
                             add(FooterHintItem(InputButton.SELECT, "Settings"))
                         }
                     }
