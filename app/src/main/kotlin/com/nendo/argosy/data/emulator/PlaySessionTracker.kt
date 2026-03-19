@@ -142,16 +142,11 @@ class PlaySessionTracker @Inject constructor(
     private var wasInBackground = false
     private var lastPauseTime: Instant? = null
 
-    private var screenOnDuration: Duration = Duration.ZERO
     private var lastScreenOnTime: Instant? = null
     private var isScreenOn = true
     private var lastScreenOffTime: Instant? = null
     private var marathonSegmentDuration: Duration = Duration.ZERO
     private var longestMarathonSegment: Duration = Duration.ZERO
-
-    private var emulatorFocusDuration: Duration = Duration.ZERO
-    private var lastEmulatorFocusTime: Instant? = null
-    private var isEmulatorInFocus = true
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -192,8 +187,62 @@ class PlaySessionTracker @Inject constructor(
     }
 
     suspend fun checkOrphanedSession() {
+        if (!endingSession.compareAndSet(false, true)) {
+            Logger.debug(TAG, "[SaveSync] ORPHAN | Skipping orphan check, endSession is handling recovery")
+            return
+        }
+        try {
         val orphaned = preferencesRepository.getPersistedSession() ?: return
         Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Detected orphaned session from ${orphaned.startTime}")
+
+        // Log the orphaned play session before attempting save recovery.
+        // Recover emulator foreground time from UsageStats since per-process tracking was lost.
+        val endTime = Instant.now()
+        val sessionDuration = Duration.between(orphaned.startTime, endTime)
+        if (sessionDuration.seconds >= MIN_PLAY_SECONDS_FOR_COMPLETION) {
+            try {
+                val orphanedGame = gameDao.getById(orphaned.gameId)
+                val prefs = preferencesRepository.userPreferences.first()
+                val deviceId = Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+                val totalMs = sessionDuration.toMillis()
+                val (activePlayMs, standbyMs) = resolveActivePlayTime(orphaned.emulatorPackage, orphaned.startTime, endTime, totalMs)
+
+                playSessionDao.insert(
+                    PlaySessionEntity(
+                        userId = prefs.socialUserId,
+                        gameId = orphaned.gameId,
+                        igdbId = orphanedGame?.igdbId,
+                        gameTitle = orphanedGame?.title ?: "Unknown",
+                        platformSlug = orphanedGame?.platformSlug ?: "unknown",
+                        startTime = orphaned.startTime,
+                        endTime = endTime,
+                        continued = false,
+                        deviceId = deviceId,
+                        deviceManufacturer = Build.MANUFACTURER,
+                        deviceModel = Build.MODEL,
+                        activePlayMs = activePlayMs,
+                        standbyMs = standbyMs
+                    )
+                )
+                Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Play session entity created | duration=${sessionDuration.seconds}s, activePlayMs=$activePlayMs, standbyMs=$standbyMs")
+                socialRepository.get().syncPlaySessions()
+
+                recordPlayTime(
+                    ActiveSession(
+                        gameId = orphaned.gameId,
+                        startTime = orphaned.startTime,
+                        emulatorPackage = orphaned.emulatorPackage,
+                        coreName = orphaned.coreName,
+                        isHardcore = orphaned.isHardcore
+                    ),
+                    Duration.ofMillis(activePlayMs)
+                )
+            } catch (e: Exception) {
+                Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create play session entity", e)
+            }
+        } else {
+            Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Too short for play session (${sessionDuration.seconds}s)")
+        }
 
         try {
             val game = gameDao.getById(orphaned.gameId)
@@ -286,6 +335,100 @@ class PlaySessionTracker @Inject constructor(
         } finally {
             clearSessionAndBroadcast()
         }
+        } finally {
+            endingSession.set(false)
+        }
+    }
+
+    private suspend fun recoverOrphanedPlaySession(stopService: Boolean): Boolean {
+        val orphaned = preferencesRepository.getPersistedSession() ?: return false
+        val endTime = Instant.now()
+        val sessionDuration = Duration.between(orphaned.startTime, endTime)
+
+        if (sessionDuration.seconds < MIN_PLAY_SECONDS_FOR_COMPLETION) {
+            Logger.debug(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Too short (${sessionDuration.seconds}s), skipping")
+            clearSessionAndBroadcast()
+            if (stopService) GameSessionService.stop(application)
+            return false
+        }
+
+        val totalMs = sessionDuration.toMillis()
+        val (activePlayMs, standbyMs) = resolveActivePlayTime(orphaned.emulatorPackage, orphaned.startTime, endTime, totalMs)
+
+        Logger.info(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Recovering orphaned session | startTime=${orphaned.startTime}, duration=${sessionDuration.seconds}s, activePlayMs=$activePlayMs, standbyMs=$standbyMs")
+
+        try {
+            val game = gameDao.getById(orphaned.gameId)
+            val prefs = preferencesRepository.userPreferences.first()
+            val deviceId = Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+
+            playSessionDao.insert(
+                PlaySessionEntity(
+                    userId = prefs.socialUserId,
+                    gameId = orphaned.gameId,
+                    igdbId = game?.igdbId,
+                    gameTitle = game?.title ?: "Unknown",
+                    platformSlug = game?.platformSlug ?: "unknown",
+                    startTime = orphaned.startTime,
+                    endTime = endTime,
+                    continued = false,
+                    deviceId = deviceId,
+                    deviceManufacturer = Build.MANUFACTURER,
+                    deviceModel = Build.MODEL,
+                    activePlayMs = activePlayMs,
+                    standbyMs = standbyMs
+                )
+            )
+            Logger.info(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Play session entity created | activePlayMs=$activePlayMs")
+            socialRepository.get().syncPlaySessions()
+        } catch (e: Exception) {
+            Logger.error(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Failed to create play session entity", e)
+        }
+
+        try {
+            recordPlayTime(
+                ActiveSession(
+                    gameId = orphaned.gameId,
+                    startTime = orphaned.startTime,
+                    emulatorPackage = orphaned.emulatorPackage,
+                    coreName = orphaned.coreName,
+                    isHardcore = orphaned.isHardcore
+                ),
+                Duration.ofMillis(activePlayMs)
+            )
+        } catch (e: Exception) {
+            Logger.error(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Failed to record play time", e)
+        }
+
+        clearSessionAndBroadcast()
+        if (stopService) GameSessionService.stop(application)
+        return true
+    }
+
+    private fun resolveActivePlayTime(
+        emulatorPackage: String,
+        startTime: Instant,
+        endTime: Instant,
+        totalMs: Long
+    ): Pair<Long, Long> {
+        // Built-in libretro uses a synthetic package name; query the launcher's
+        // own package for UsageStats since the activity runs in this process.
+        val statsPackage = if (emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) {
+            application.packageName
+        } else {
+            emulatorPackage
+        }
+        val durations = permissionHelper.getSessionDurations(
+            application,
+            statsPackage,
+            startTime.toEpochMilli(),
+            endTime.toEpochMilli()
+        )
+        val foregroundMs = if (durations.foregroundMs >= 0) durations.foregroundMs else totalMs
+        val screenOnMs = if (durations.screenOnMs >= 0) durations.screenOnMs else totalMs
+        val active = minOf(foregroundMs, screenOnMs).coerceAtMost(totalMs)
+        val standby = (totalMs - active).coerceAtLeast(0)
+        return active to standby
     }
 
     private fun registerScreenReceiver() {
@@ -321,7 +464,6 @@ class PlaySessionTracker @Inject constructor(
         if (isScreenOn && lastScreenOnTime != null) {
             isScreenOn = false
             val elapsed = Duration.between(lastScreenOnTime, Instant.now())
-            screenOnDuration = screenOnDuration.plus(elapsed)
             marathonSegmentDuration = marathonSegmentDuration.plus(elapsed)
             lastScreenOnTime = null
             lastScreenOffTime = Instant.now()
@@ -331,33 +473,19 @@ class PlaySessionTracker @Inject constructor(
 
     fun onEmulatorForegrounded() {
         if (_activeSession.value == null) return
-        if (!isEmulatorInFocus) {
-            isEmulatorInFocus = true
-            lastEmulatorFocusTime = Instant.now()
-            Logger.debug(TAG, "Emulator FOREGROUNDED - resuming focus tracking")
-        }
+        Logger.debug(TAG, "Emulator FOREGROUNDED")
     }
 
     fun onEmulatorBackgrounded() {
         if (_activeSession.value == null) return
-        if (isEmulatorInFocus && lastEmulatorFocusTime != null) {
-            isEmulatorInFocus = false
-            val elapsed = Duration.between(lastEmulatorFocusTime, Instant.now())
-            emulatorFocusDuration = emulatorFocusDuration.plus(elapsed)
-            lastEmulatorFocusTime = null
-            Logger.debug(TAG, "Emulator BACKGROUNDED - paused after ${elapsed.toMinutes()} minutes focused")
-        }
+        Logger.debug(TAG, "Emulator BACKGROUNDED")
     }
 
     fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false) {
         endingSession.set(false)
-        screenOnDuration = Duration.ZERO
         lastScreenOnTime = Instant.now()
         isScreenOn = true
         lastScreenOffTime = null
-        emulatorFocusDuration = Duration.ZERO
-        lastEmulatorFocusTime = Instant.now()
-        isEmulatorInFocus = true
         marathonSegmentDuration = Duration.ZERO
         longestMarathonSegment = Duration.ZERO
 
@@ -472,24 +600,24 @@ class PlaySessionTracker @Inject constructor(
 
         try {
             val session = _activeSession.value ?: run {
-                Logger.debug(TAG, "[SaveSync] SESSION | endSession called but no active session")
-                clearSessionAndBroadcast()
-                if (stopService) GameSessionService.stop(application)
-                return SessionEndResult.Skipped
+                Logger.debug(TAG, "[SaveSync] SESSION | endSession called but no active session, checking persisted session")
+                val recovered = recoverOrphanedPlaySession(stopService)
+                if (!recovered) {
+                    clearSessionAndBroadcast()
+                    if (stopService) GameSessionService.stop(application)
+                }
+                return if (recovered) SessionEndResult.Success else SessionEndResult.Skipped
             }
             _activeSession.value = null
             if (stopService) GameSessionService.stop(application)
 
-            val finalScreenOnDuration = calculateFinalScreenOnDuration()
-            val finalEmulatorFocusDuration = calculateFinalEmulatorFocusDuration()
             val endTime = Instant.now()
             val sessionDuration = Duration.between(session.startTime, endTime)
-
-            val activeDuration = minOf(finalScreenOnDuration, finalEmulatorFocusDuration)
-            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Session ended | duration=${sessionDuration.seconds}s, screenOnTime=${finalScreenOnDuration.seconds}s, emulatorFocusTime=${finalEmulatorFocusDuration.seconds}s, activePlayTime=${activeDuration.seconds}s, emulator=${session.emulatorPackage}")
-
-            val activePlayMs = activeDuration.toMillis()
-            val standbyMs = (sessionDuration.toMillis() - activePlayMs).coerceAtLeast(0)
+            val totalMs = sessionDuration.toMillis()
+            val (activePlayMs, standbyMs) = resolveActivePlayTime(
+                session.emulatorPackage, session.startTime, endTime, totalMs
+            )
+            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Session ended | duration=${sessionDuration.seconds}s, activePlayMs=$activePlayMs, standbyMs=$standbyMs, emulator=${session.emulatorPackage}")
             try {
                 val game = gameDao.getById(session.gameId)
                 val prefs = preferencesRepository.userPreferences.first()
@@ -545,7 +673,7 @@ class PlaySessionTracker @Inject constructor(
             return try {
                 val cacheResult = coroutineScope {
                     val saveJob = async {
-                        recordPlayTime(session, finalScreenOnDuration)
+                        recordPlayTime(session, Duration.ofMillis(activePlayMs))
                         markGameIncompleteIfNeeded(session, sessionDuration)
                         syncAndCacheSave(session)
                     }
@@ -577,26 +705,6 @@ class PlaySessionTracker @Inject constructor(
         } finally {
             endingSession.set(false)
         }
-    }
-
-    private fun calculateFinalScreenOnDuration(): Duration {
-        val elapsedSinceScreenOn = if (isScreenOn && lastScreenOnTime != null) {
-            Duration.between(lastScreenOnTime, Instant.now())
-        } else {
-            Duration.ZERO
-        }
-        screenOnDuration = screenOnDuration.plus(elapsedSinceScreenOn)
-        return screenOnDuration
-    }
-
-    private fun calculateFinalEmulatorFocusDuration(): Duration {
-        val elapsedSinceFocus = if (isEmulatorInFocus && lastEmulatorFocusTime != null) {
-            Duration.between(lastEmulatorFocusTime, Instant.now())
-        } else {
-            Duration.ZERO
-        }
-        emulatorFocusDuration = emulatorFocusDuration.plus(elapsedSinceFocus)
-        return emulatorFocusDuration
     }
 
     private suspend fun recordPlayTime(session: ActiveSession, screenOnDuration: Duration) {
