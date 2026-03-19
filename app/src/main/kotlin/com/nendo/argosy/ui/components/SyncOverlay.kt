@@ -325,7 +325,7 @@ private fun BlockedSyncContent(
                 }
             }
 
-            if (isSavePathNotFound && onOpenSettings != null) {
+            if ((isSavePathNotFound || (isAccessDenied && onOpenSettings != null)) && onOpenSettings != null) {
                 Button(
                     onClick = onOpenSettings,
                     modifier = Modifier.weight(1f)

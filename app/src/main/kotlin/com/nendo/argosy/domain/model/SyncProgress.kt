@@ -97,7 +97,8 @@ sealed class SyncProgress {
 
         data class AccessDenied(
             override val emulatorName: String? = null,
-            val path: String? = null
+            val path: String? = null,
+            val platformSlug: String? = null
         ) : BlockedReason()
     }
 
@@ -166,8 +167,14 @@ sealed class SyncProgress {
                 "The save folder for ${emulatorName ?: "this emulator"} was not found. " +
                     "The emulator may use a non-standard save location."
             is BlockedReason.AccessDenied ->
-                "Your device is blocking access to ${emulatorName ?: "emulator"} save data. " +
-                    "This may be due to manufacturer restrictions (Samsung, Xiaomi, etc.) or security policies."
+                if (platformSlug == "switch") {
+                    "Your device is blocking access to ${emulatorName ?: "emulator"} save data. " +
+                        "Configure an external save path in ${emulatorName ?: "the emulator"} (outside Android/data), " +
+                        "then set the same path in Argosy."
+                } else {
+                    "Your device is blocking access to ${emulatorName ?: "emulator"} save data. " +
+                        "This may be due to manufacturer restrictions (Samsung, Xiaomi, etc.) or security policies."
+                }
             else -> null
         }
 }

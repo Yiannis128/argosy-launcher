@@ -466,7 +466,8 @@ class GameLaunchDelegate @Inject constructor(
                             gameTitle = gameTitle,
                             progress = SyncProgress.BlockedReason.AccessDenied(
                                 emulatorName,
-                                validationResult.path
+                                validationResult.path,
+                                platformSlug = game?.platformSlug
                             ),
                             scope = scope,
                             onSyncComplete = onSyncComplete
@@ -521,6 +522,9 @@ class GameLaunchDelegate @Inject constructor(
         scope: CoroutineScope,
         onSyncComplete: () -> Unit
     ) {
+        val isSwitchAccessDenied = progress is SyncProgress.BlockedReason.AccessDenied &&
+            progress.platformSlug == "switch"
+
         _syncOverlayState.value = SyncOverlayState(
             gameTitle = gameTitle,
             syncProgress = progress,
@@ -528,6 +532,9 @@ class GameLaunchDelegate @Inject constructor(
                 openAllFilesAccessSettings()
                 dismissBlockedOverlay(scope, onSyncComplete)
             },
+            onOpenSettings = if (isSwitchAccessDenied) {
+                { dismissBlockedOverlay(scope, onSyncComplete) }
+            } else null,
             onDisableSync = {
                 scope.launch {
                     preferencesRepository.setSaveSyncEnabled(false)

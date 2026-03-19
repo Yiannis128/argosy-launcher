@@ -1,8 +1,10 @@
 package com.nendo.argosy.data.emulator
 
+import android.content.Context
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.AesXts
 import com.nendo.argosy.util.Logger
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.InputStream
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
@@ -10,6 +12,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SwitchKeyManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val fal: FileAccessLayer
 ) {
     private val TAG = "SwitchKeyManager"
@@ -52,7 +55,8 @@ class SwitchKeyManager @Inject constructor(
 
     fun findProdKeysPath(emulatorPackage: String): String? {
         val candidates = listOf(
-            "/storage/emulated/0/Android/data/$emulatorPackage/files/keys/prod.keys"
+            "/storage/emulated/0/Android/data/$emulatorPackage/files/keys/prod.keys",
+            "${context.filesDir.absolutePath}/bios/switch/prod.keys"
         )
         return candidates.firstOrNull { fal.exists(it) }?.also {
             Logger.debug(TAG, "Found prod.keys | pkg=$emulatorPackage, path=$it")

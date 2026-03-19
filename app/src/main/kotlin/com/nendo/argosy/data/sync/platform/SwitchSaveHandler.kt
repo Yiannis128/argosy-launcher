@@ -101,6 +101,33 @@ class SwitchSaveHandler @Inject constructor(
             ?: resolvedPaths.firstOrNull()
     }
 
+    fun resolveBasePath(config: SavePathConfig, basePathOverride: String?, emulatorPackage: String?): String? {
+        if (basePathOverride != null) {
+            return resolveOverrideSaveBase(basePathOverride)
+        }
+        return resolveBasePath(config, emulatorPackage)
+    }
+
+    private fun resolveOverrideSaveBase(overridePath: String): String {
+        val normalized = overridePath.trimEnd('/')
+        // Accept the path as-is if it already ends at the save directory level,
+        // or walk down known suffixes to find the actual save root.
+        // This handles users pointing at the NAND root, the user dir, or the save dir directly.
+        val suffixes = listOf("", "/user/save", "/nand/user/save")
+        return suffixes
+            .map { "$normalized$it" }
+            .firstOrNull { fal.exists(it) && fal.isDirectory(it) && looksLikeSaveRoot(it) }
+            ?: suffixes
+                .map { "$normalized$it" }
+                .firstOrNull { fal.exists(it) && fal.isDirectory(it) }
+            ?: normalized
+    }
+
+    private fun looksLikeSaveRoot(path: String): Boolean {
+        val children = fal.listFiles(path) ?: return false
+        return children.any { it.isDirectory && isValidUserFolderId(it.name) }
+    }
+
     fun isValidHexId(name: String): Boolean {
         return name.length == 16 && name.all { it.isDigit() || it in 'A'..'F' || it in 'a'..'f' }
     }

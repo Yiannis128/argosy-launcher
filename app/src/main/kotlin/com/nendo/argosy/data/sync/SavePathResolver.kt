@@ -233,6 +233,11 @@ class SavePathResolver @Inject constructor(
                         "$basePathOverride/sdmc/Nintendo 3DS"
                     }
                 }
+                "switch" -> switchSaveHandler.resolveBasePath(
+                    SavePathRegistry.getConfig(config.emulatorId)!!,
+                    basePathOverride,
+                    emulatorPackage
+                ) ?: basePathOverride
                 else -> basePathOverride
             }
             listOf(effectivePath)
@@ -609,6 +614,7 @@ class SavePathResolver @Inject constructor(
             "wii" -> wiiSaveHandler.resolveBasePath(config, basePathOverride)
             "wiiu" -> wiiUSaveHandler.resolveBasePath(config, basePathOverride)
             "ps2" -> ps2SaveHandler.resolveBasePath(config, basePathOverride)
+            "switch" -> switchSaveHandler.resolveBasePath(config, basePathOverride, emulatorPackage)
             else -> basePathOverride ?: config.defaultPaths.firstOrNull { directoryExists(it) }
                 ?: config.defaultPaths.firstOrNull()
         } ?: return null
@@ -636,6 +642,7 @@ class SavePathResolver @Inject constructor(
             "wii" -> wiiSaveHandler.constructSavePath(baseDir, titleId)
             "wiiu" -> wiiUSaveHandler.constructSavePath(baseDir, titleId)
             "ps2" -> ps2SaveHandler.constructSavePath(baseDir, titleId)
+            "switch" -> switchSaveHandler.constructSavePath(baseDir, titleId, emulatorPackage)
             else -> null
         }
     }
