@@ -31,6 +31,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsScreen
 import com.nendo.argosy.ui.screens.social.FeedEventDetailScreen
 import com.nendo.argosy.ui.screens.social.PostEditorScreen
 import com.nendo.argosy.ui.screens.social.SocialScreen
+import com.nendo.argosy.ui.screens.social.UserProfileScreen
 
 @Composable
 fun NavGraph(
@@ -288,6 +289,29 @@ fun NavGraph(
                 },
                 onCreatePost = {
                     navController.navigate(Screen.PostEditor.route)
+                },
+                onViewProfile = { userId ->
+                    navController.navigate(Screen.UserProfile.createRoute(userId))
+                },
+                onNavigateToGameDetail = { gameId ->
+                    navController.navigate(Screen.GameDetail.createRoute(gameId.toLong()))
+                },
+                onNavigateToSocialSettings = {
+                    navController.navigate(Screen.Settings.createRoute(section = "social"))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.UserProfile.route,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+            UserProfileScreen(
+                userId = userId,
+                onBack = { navController.popBackStack() },
+                onNavigateToGameDetail = { gameId ->
+                    navController.navigate(Screen.GameDetail.createRoute(gameId.toLong()))
                 }
             )
         }
@@ -302,6 +326,9 @@ fun NavGraph(
                 onBack = { navController.popBackStack() },
                 onNavigateToGame = { gameId ->
                     navController.navigate(Screen.GameDetail.createRoute(gameId))
+                },
+                onViewProfile = { userId ->
+                    navController.navigate(Screen.UserProfile.createRoute(userId))
                 }
             )
         }

@@ -150,6 +150,7 @@ class ArgosSocialService @Inject constructor(
         data class CommunityFollowUpdated(val follow: CommunityFollow) : IncomingMessage()
         data class UserSettingsData(val settings: UserSettings) : IncomingMessage()
         data class HiddenGames(val igdbGameIds: Set<Int>) : IncomingMessage()
+        data class UserProfileReceived(val profile: UserProfileData) : IncomingMessage()
     }
 
     fun connect(token: String) {
@@ -570,6 +571,72 @@ class ArgosSocialService @Inject constructor(
                     IncomingMessage.HiddenGames(ids)
                 }
 
+                MessageTypes.USER_PROFILE -> {
+                    if (payload != null) {
+                        try {
+                            val userObj = payload.getJSONObject("user")
+                            val user = parseUser(userObj)
+
+                            val presenceObj = payload.optJSONObject("presence")
+                            val presence = if (presenceObj != null) {
+                                ProfilePresence(
+                                    status = presenceObj.optString("status", "offline"),
+                                    gameTitle = presenceObj.optString("game_title", null),
+                                    gameIgdbId = if (presenceObj.has("game_igdb_id")) presenceObj.optInt("game_igdb_id") else null,
+                                    deviceName = presenceObj.optString("device_name", null)
+                                )
+                            } else null
+
+                            val dailyArray = payload.optJSONArray("daily_playtime")
+                            val dailyPlaytime = if (dailyArray != null) {
+                                (0 until dailyArray.length()).map { i ->
+                                    val obj = dailyArray.getJSONObject(i)
+                                    DailyPlaytime(
+                                        date = obj.getString("date"),
+                                        hours = obj.optDouble("hours", 0.0)
+                                    )
+                                }
+                            } else emptyList()
+
+                            val mostPlayedArray = payload.optJSONArray("most_played")
+                            val mostPlayed = if (mostPlayedArray != null) {
+                                (0 until mostPlayedArray.length()).map { i ->
+                                    val obj = mostPlayedArray.getJSONObject(i)
+                                    MostPlayedGame(
+                                        igdbId = obj.getInt("igdb_id"),
+                                        title = obj.getString("title"),
+                                        coverThumb = obj.optString("cover_thumb", null),
+                                        genre = obj.optString("genre", null),
+                                        totalHours = obj.optDouble("total_hours", 0.0),
+                                        sessionCount = obj.optInt("session_count", 0)
+                                    )
+                                }
+                            } else emptyList()
+
+                            val profile = UserProfileData(
+                                user = user,
+                                relationship = payload.optString("relationship", "self"),
+                                memberSince = payload.optString("member_since", ""),
+                                presence = presence,
+                                totalPlayHours = payload.optDouble("total_play_hours", 0.0),
+                                gameCount = payload.optInt("game_count", 0),
+                                friendCount = payload.optInt("friend_count", 0),
+                                topGenre = payload.optString("top_genre", null),
+                                topPlatform = payload.optString("top_platform", null),
+                                favoriteDecade = payload.optString("favorite_decade", null),
+                                dailyPlaytime = dailyPlaytime,
+                                mostPlayed = mostPlayed,
+                                isFavorite = payload.optBoolean("is_favorite", false)
+                            )
+                            Log.d(TAG, "USER_PROFILE: ${user.username}, relationship=${profile.relationship}, hours=${profile.totalPlayHours}")
+                            IncomingMessage.UserProfileReceived(profile)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to parse user profile", e)
+                            null
+                        }
+                    } else null
+                }
+
                 MessageTypes.PONG -> {
                     lastPongReceivedAt = System.currentTimeMillis()
                     missedPongs = 0
@@ -676,6 +743,10 @@ class ArgosSocialService @Inject constructor(
         send(MessageTypes.LOOKUP_FRIEND_CODE, mapOf("code" to code))
     }
 
+    fun sendFriendRequest(userId: String) {
+        send(MessageTypes.SEND_FRIEND_REQ, mapOf("user_id" to userId))
+    }
+
     fun getFeed(limit: Int? = null, beforeId: String? = null, userId: String? = null) {
         Log.d(TAG, "getFeed: limit=$limit, beforeId=$beforeId, userId=$userId")
         val payload = mutableMapOf<String, Any?>()
@@ -715,6 +786,17 @@ class ArgosSocialService @Inject constructor(
         if (before != null) payload["before"] = before
         val json = JSONObject().apply {
             put("type", MessageTypes.GET_NOTIFICATIONS)
+            if (payload.isNotEmpty()) put("payload", JSONObject(payload))
+        }
+        webSocket?.send(json.toString())
+    }
+
+    fun requestUserProfile(userId: String? = null) {
+        Log.d(TAG, "requestUserProfile: userId=$userId")
+        val payload = mutableMapOf<String, Any?>()
+        if (userId != null) payload["user_id"] = userId
+        val json = JSONObject().apply {
+            put("type", MessageTypes.GET_USER_PROFILE)
             if (payload.isNotEmpty()) put("payload", JSONObject(payload))
         }
         webSocket?.send(json.toString())

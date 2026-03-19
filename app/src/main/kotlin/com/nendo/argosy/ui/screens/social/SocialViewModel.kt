@@ -12,6 +12,7 @@ import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialNotification
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.data.social.SocialUser
+import com.nendo.argosy.data.social.UserProfileData
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.notification.NotificationManager
 import com.nendo.argosy.ui.input.InputResult
@@ -32,7 +33,7 @@ private const val TAG = "SocialViewModel"
 enum class SocialTab { FEED, FRIENDS, NOTIFICATIONS, PROFILE }
 enum class FeedMode { FRIENDS, COMMUNITY }
 
-private const val PROFILE_TOGGLE_COUNT = 5
+private const val PROFILE_DISPLAY_SECTIONS = 3
 
 data class SocialUiState(
     val connectionState: SocialConnectionState = SocialConnectionState.Disconnected,
@@ -47,6 +48,8 @@ data class SocialUiState(
     val focusedFriendIndex: Int = 0,
     val focusedNotificationIndex: Int = 0,
     val profileFocusIndex: Int = 0,
+    val userProfile: UserProfileData? = null,
+    val isLoadingProfile: Boolean = false,
     val isLoading: Boolean = false,
     val hasMore: Boolean = false,
     val isCommunityLoading: Boolean = false,
@@ -65,6 +68,16 @@ data class SocialUiState(
     val communitySearchFocusIndex: Int = 0,
     val communitySearchFieldFocused: Boolean = true
 ) {
+    val profileFocusCount: Int
+        get() = PROFILE_DISPLAY_SECTIONS + (userProfile?.mostPlayed?.size ?: 0)
+
+    val profileFocusOnMostPlayed: Boolean
+        get() = profileFocusIndex >= PROFILE_DISPLAY_SECTIONS &&
+                userProfile?.mostPlayed?.isNotEmpty() == true
+
+    val focusedMostPlayedIndex: Int
+        get() = (profileFocusIndex - PROFILE_DISPLAY_SECTIONS).coerceAtLeast(0)
+
     val isConnected: Boolean
         get() = connectionState is SocialConnectionState.Connected
 
@@ -196,6 +209,20 @@ class SocialViewModel @Inject constructor(
                     socialNotifyFriendOnline = prefs.socialNotifyFriendOnline,
                     socialNotifyFriendPlaying = prefs.socialNotifyFriendPlaying,
                     socialSuppressNotificationsInGame = prefs.socialSuppressNotificationsInGame
+                )
+            }
+        }
+
+        viewModelScope.launch {
+            combine(
+                socialRepository.userProfile,
+                socialRepository.isLoadingProfile
+            ) { profile, loading ->
+                profile to loading
+            }.collect { (profile, loading) ->
+                _uiState.value = _uiState.value.copy(
+                    userProfile = profile,
+                    isLoadingProfile = loading
                 )
             }
         }
@@ -381,7 +408,8 @@ class SocialViewModel @Inject constructor(
     private fun moveProfileFocus(delta: Int): Boolean {
         val state = _uiState.value
         val currentIndex = state.profileFocusIndex
-        val newIndex = (currentIndex + delta).coerceIn(0, PROFILE_TOGGLE_COUNT - 1)
+        val maxIndex = (state.profileFocusCount - 1).coerceAtLeast(0)
+        val newIndex = (currentIndex + delta).coerceIn(0, maxIndex)
         if (newIndex != currentIndex) {
             Log.v(TAG, "moveProfileFocus: $currentIndex -> $newIndex")
             _uiState.value = state.copy(profileFocusIndex = newIndex)
@@ -390,15 +418,8 @@ class SocialViewModel @Inject constructor(
         return false
     }
 
-    private fun toggleProfilePreference(index: Int) {
-        val state = _uiState.value
-        when (index) {
-            0 -> setSocialOnlineStatus(!state.socialOnlineStatus)
-            1 -> setSocialShowNowPlaying(!state.socialShowNowPlaying)
-            2 -> setSocialNotifyFriendOnline(!state.socialNotifyFriendOnline)
-            3 -> setSocialNotifyFriendPlaying(!state.socialNotifyFriendPlaying)
-            4 -> setSocialSuppressNotificationsInGame(!state.socialSuppressNotificationsInGame)
-        }
+    fun loadProfile(userId: String? = null) {
+        socialRepository.requestUserProfile(userId)
     }
 
     fun setSocialOnlineStatus(enabled: Boolean) {
@@ -474,7 +495,9 @@ class SocialViewModel @Inject constructor(
         onCreatePost: () -> Unit,
         onViewProfile: (String) -> Unit,
         onShareScreenshot: () -> Unit,
-        onDrawerToggle: () -> Unit
+        onDrawerToggle: () -> Unit,
+        onNavigateToGameDetail: (Int) -> Unit = {},
+        onNavigateToSocialSettings: () -> Unit = {}
     ): InputHandler = object : InputHandler {
 
         private fun focusedUserName(): String? = _uiState.value.focusedEvent?.user?.displayName
@@ -618,7 +641,20 @@ class SocialViewModel @Inject constructor(
                     InputResult.HANDLED
                 }
                 SocialTab.PROFILE -> {
-                    toggleProfilePreference(_uiState.value.profileFocusIndex)
+                    val profileState = _uiState.value
+                    if (profileState.profileFocusOnMostPlayed) {
+                        val game = profileState.userProfile?.mostPlayed?.getOrNull(profileState.focusedMostPlayedIndex)
+                        if (game != null) {
+                            viewModelScope.launch {
+                                val localGame = gameDao.getByIgdbId(game.igdbId.toLong())
+                                if (localGame != null) {
+                                    onNavigateToGameDetail(localGame.id.toInt())
+                                } else {
+                                    notificationManager.show(title = "Game not in library")
+                                }
+                            }
+                        }
+                    }
                     InputResult.HANDLED
                 }
             }
@@ -670,9 +706,17 @@ class SocialViewModel @Inject constructor(
 
         override fun onSelect(): InputResult {
             if (anyModalShowing()) return InputResult.UNHANDLED
-            if (_uiState.value.selectedTab != SocialTab.FEED) return InputResult.UNHANDLED
-            feedOptionsDelegate.showOptionsModal()
-            return InputResult.HANDLED
+            return when (_uiState.value.selectedTab) {
+                SocialTab.FEED -> {
+                    feedOptionsDelegate.showOptionsModal()
+                    InputResult.HANDLED
+                }
+                SocialTab.PROFILE -> {
+                    onNavigateToSocialSettings()
+                    InputResult.HANDLED
+                }
+                else -> InputResult.UNHANDLED
+            }
         }
 
         override fun onContextMenu(): InputResult {

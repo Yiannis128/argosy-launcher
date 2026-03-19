@@ -99,10 +99,12 @@ fun SocialScreen(
     onOpenEventDetail: (String) -> Unit = {},
     onCreatePost: () -> Unit = {},
     onViewProfile: (String) -> Unit = {},
+    onNavigateToGameDetail: (Int) -> Unit = {},
+    onNavigateToSocialSettings: () -> Unit = {},
     viewModel: SocialViewModel = hiltViewModel()
 ) {
     val inputDispatcher = LocalInputDispatcher.current
-    val inputHandler = remember(onBack, onDrawerToggle, onOpenEventDetail, onCreatePost, onViewProfile) {
+    val inputHandler = remember(onBack, onDrawerToggle, onOpenEventDetail, onCreatePost, onViewProfile, onNavigateToGameDetail, onNavigateToSocialSettings) {
         viewModel.createInputHandler(
             onBack = onBack,
             onOpenEventDetail = onOpenEventDetail,
@@ -111,7 +113,9 @@ fun SocialScreen(
             onShareScreenshot = {
                 viewModel.notificationManager.show(title = "Share screenshot coming soon")
             },
-            onDrawerToggle = onDrawerToggle
+            onDrawerToggle = onDrawerToggle,
+            onNavigateToGameDetail = onNavigateToGameDetail,
+            onNavigateToSocialSettings = onNavigateToSocialSettings
         )
     }
 
@@ -182,9 +186,16 @@ fun SocialScreen(
         }
     }
 
-    LaunchedEffect(uiState.profileFocusIndex) {
+    LaunchedEffect(uiState.selectedTab, uiState.isConnected) {
+        if (uiState.selectedTab == SocialTab.PROFILE && uiState.isConnected && uiState.userProfile == null) {
+            viewModel.loadProfile()
+        }
+    }
+
+    LaunchedEffect(uiState.profileFocusIndex, uiState.userProfile?.mostPlayed?.size) {
         if (uiState.selectedTab == SocialTab.PROFILE) {
-            val itemIndex = profileFocusToItemIndex(uiState.profileFocusIndex)
+            val mostPlayedCount = uiState.userProfile?.mostPlayed?.size ?: 0
+            val itemIndex = profileFocusToItemIndex(uiState.profileFocusIndex, mostPlayedCount)
             val layoutInfo = profileListState.layoutInfo
             val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
             val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 60
@@ -253,7 +264,8 @@ fun SocialScreen(
                                             events = feedEvents,
                                             focusedIndex = uiState.focusedEventIndex,
                                             listState = feedListState,
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier.weight(1f),
+                                            onViewProfile = onViewProfile
                                         )
                                     }
                                 }
@@ -301,18 +313,10 @@ fun SocialScreen(
                         } else {
                             ProfileTabContent(
                                 user = uiState.connectedUser,
+                                userProfile = uiState.userProfile,
+                                isLoadingProfile = uiState.isLoadingProfile,
                                 focusIndex = uiState.profileFocusIndex,
-                                listState = profileListState,
-                                onlineStatus = uiState.socialOnlineStatus,
-                                showNowPlaying = uiState.socialShowNowPlaying,
-                                notifyFriendOnline = uiState.socialNotifyFriendOnline,
-                                notifyFriendPlaying = uiState.socialNotifyFriendPlaying,
-                                suppressInGame = uiState.socialSuppressNotificationsInGame,
-                                onToggleOnlineStatus = { viewModel.setSocialOnlineStatus(it) },
-                                onToggleShowNowPlaying = { viewModel.setSocialShowNowPlaying(it) },
-                                onToggleNotifyFriendOnline = { viewModel.setSocialNotifyFriendOnline(it) },
-                                onToggleNotifyFriendPlaying = { viewModel.setSocialNotifyFriendPlaying(it) },
-                                onToggleSuppressInGame = { viewModel.setSocialSuppressNotificationsInGame(it) }
+                                listState = profileListState
                             )
                         }
                     }
@@ -340,7 +344,8 @@ fun SocialScreen(
                             add(FooterHintItem(InputButton.Y, "Read All", enabled = uiState.unreadCount > 0))
                         }
                         SocialTab.PROFILE -> {
-                            add(FooterHintItem(InputButton.A, "Toggle"))
+                            add(FooterHintItem(InputButton.A, "View Game", enabled = uiState.profileFocusOnMostPlayed))
+                            add(FooterHintItem(InputButton.SELECT, "Settings"))
                         }
                     }
                 }
@@ -559,7 +564,8 @@ private fun FeedContent(
     events: List<FeedEventDto>,
     focusedIndex: Int,
     listState: androidx.compose.foundation.lazy.LazyListState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onViewProfile: (String) -> Unit = {}
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         Row(
@@ -593,7 +599,8 @@ private fun FeedContent(
             itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
                 FeedEventCard(
                     event = event,
-                    isFocused = index == focusedIndex
+                    isFocused = index == focusedIndex,
+                    onViewProfile = onViewProfile
                 )
             }
         }
@@ -603,19 +610,21 @@ private fun FeedContent(
 @Composable
 private fun FeedEventCard(
     event: FeedEventDto,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     when (event.eventType) {
-        FeedEventType.STARTED_PLAYING -> StartedPlayingCard(event = event, isFocused = isFocused)
-        FeedEventType.DOODLE -> DoodleCard(event = event, isFocused = isFocused)
-        else -> StandardFeedEventCard(event = event, isFocused = isFocused)
+        FeedEventType.STARTED_PLAYING -> StartedPlayingCard(event = event, isFocused = isFocused, onViewProfile = onViewProfile)
+        FeedEventType.DOODLE -> DoodleCard(event = event, isFocused = isFocused, onViewProfile = onViewProfile)
+        else -> StandardFeedEventCard(event = event, isFocused = isFocused, onViewProfile = onViewProfile)
     }
 }
 
 @Composable
 private fun StartedPlayingCard(
     event: FeedEventDto,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val cornerRadius = 12.dp
     val shape = RoundedCornerShape(cornerRadius)
@@ -710,7 +719,8 @@ private fun StartedPlayingCard(
                     commentCount = event.commentCount,
                     isLikedByMe = event.isLikedByMe,
                     cornerRadius = cornerRadius,
-                    isFocused = isFocused
+                    isFocused = isFocused,
+                    onViewProfile = onViewProfile
                 )
             }
         }
@@ -724,7 +734,8 @@ private fun StartedPlayingFooter(
     commentCount: Int,
     isLikedByMe: Boolean,
     cornerRadius: Dp,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val userColor = user?.let { parseColor(it.avatarColor) } ?: MaterialTheme.colorScheme.primary
     val badgeShape = RoundedCornerShape(topEnd = cornerRadius)
@@ -789,7 +800,9 @@ private fun StartedPlayingFooter(
 
             user?.let {
                 Row(
-                    modifier = Modifier.zIndex(1f),
+                    modifier = Modifier
+                        .zIndex(1f)
+                        .clickableNoFocus { onViewProfile(it.id) },
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Box(
@@ -821,7 +834,8 @@ private fun StartedPlayingFooter(
 @Composable
 private fun DoodleCard(
     event: FeedEventDto,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val cornerRadius = 12.dp
     val shape = RoundedCornerShape(cornerRadius)
@@ -1008,7 +1022,8 @@ private fun DoodleCard(
 @Composable
 private fun StandardFeedEventCard(
     event: FeedEventDto,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val cornerRadius = 12.dp
     val shape = RoundedCornerShape(cornerRadius)
@@ -1113,7 +1128,8 @@ private fun StandardFeedEventCard(
                 commentCount = event.commentCount,
                 isLikedByMe = event.isLikedByMe,
                 cornerRadius = cornerRadius,
-                isFocused = isFocused
+                isFocused = isFocused,
+                onViewProfile = onViewProfile
             )
         }
     }
@@ -1126,7 +1142,8 @@ private fun FeedEventCardFooter(
     commentCount: Int,
     isLikedByMe: Boolean,
     cornerRadius: Dp,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val userColor = user?.let { parseColor(it.avatarColor) } ?: MaterialTheme.colorScheme.primary
     val badgeShape = RoundedCornerShape(topEnd = cornerRadius)
@@ -1191,7 +1208,9 @@ private fun FeedEventCardFooter(
 
             user?.let {
                 Row(
-                    modifier = Modifier.zIndex(1f),
+                    modifier = Modifier
+                        .zIndex(1f)
+                        .clickableNoFocus { onViewProfile(it.id) },
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Box(

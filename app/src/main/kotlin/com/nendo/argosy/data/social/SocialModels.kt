@@ -226,6 +226,10 @@ object MessageTypes {
     const val UNHIDE_GAME = "unhide_game"
     const val GET_HIDDEN_GAMES = "get_hidden_games"
     const val HIDDEN_GAMES = "hidden_games"
+
+    // User profile
+    const val GET_USER_PROFILE = "get_user_profile"
+    const val USER_PROFILE = "user_profile"
 }
 
 @JsonClass(generateAdapter = true)
@@ -382,4 +386,48 @@ data class CommunityFollow(
 
 data class UserSettings(
     @Json(name = "community_auto_share") val communityAutoShare: Boolean = true
+)
+
+@JsonClass(generateAdapter = true)
+data class DailyPlaytime(
+    val date: String,
+    val hours: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class MostPlayedGame(
+    @Json(name = "igdb_id") val igdbId: Int,
+    val title: String,
+    @Json(name = "cover_thumb") val coverThumb: String? = null,
+    val genre: String? = null,
+    @Json(name = "total_hours") val totalHours: Double,
+    @Json(name = "session_count") val sessionCount: Int
+)
+
+@JsonClass(generateAdapter = true)
+data class ProfilePresence(
+    val status: String,
+    @Json(name = "game_title") val gameTitle: String? = null,
+    @Json(name = "game_igdb_id") val gameIgdbId: Int? = null,
+    @Json(name = "device_name") val deviceName: String? = null
+) {
+    val presenceStatus: PresenceStatus
+        get() = PresenceStatus.fromValue(status)
+}
+
+@JsonClass(generateAdapter = true)
+data class UserProfileData(
+    val user: SocialUser,
+    val relationship: String,
+    @Json(name = "member_since") val memberSince: String,
+    val presence: ProfilePresence? = null,
+    @Json(name = "total_play_hours") val totalPlayHours: Double = 0.0,
+    @Json(name = "game_count") val gameCount: Int = 0,
+    @Json(name = "friend_count") val friendCount: Int = 0,
+    @Json(name = "top_genre") val topGenre: String? = null,
+    @Json(name = "top_platform") val topPlatform: String? = null,
+    @Json(name = "favorite_decade") val favoriteDecade: String? = null,
+    @Json(name = "daily_playtime") val dailyPlaytime: List<DailyPlaytime> = emptyList(),
+    @Json(name = "most_played") val mostPlayed: List<MostPlayedGame> = emptyList(),
+    @Json(name = "is_favorite") val isFavorite: Boolean = false
 )

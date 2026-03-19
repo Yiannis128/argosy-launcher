@@ -212,7 +212,8 @@ class FeedEventDetailViewModel @Inject constructor(
 
     fun createInputHandler(
         onBack: () -> Unit,
-        onNavigateToGame: (Long) -> Unit
+        onNavigateToGame: (Long) -> Unit,
+        onViewProfile: (String) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
             if (_uiState.value.isCommentInputFocused) return InputResult.UNHANDLED
@@ -250,6 +251,12 @@ class FeedEventDetailViewModel @Inject constructor(
             return InputResult.HANDLED
         }
 
+        override fun onSelect(): InputResult {
+            val userId = _uiState.value.event?.user?.id ?: return InputResult.UNHANDLED
+            onViewProfile(userId)
+            return InputResult.HANDLED
+        }
+
         override fun onContextMenu(): InputResult {
             val gameId = _uiState.value.localGameId ?: return InputResult.UNHANDLED
             onNavigateToGame(gameId)
@@ -263,11 +270,16 @@ fun FeedEventDetailScreen(
     eventId: String,
     onBack: () -> Unit,
     onNavigateToGame: (Long) -> Unit = {},
+    onViewProfile: (String) -> Unit = {},
     viewModel: FeedEventDetailViewModel = hiltViewModel()
 ) {
     val inputDispatcher = LocalInputDispatcher.current
-    val inputHandler = remember(onBack, onNavigateToGame) {
-        viewModel.createInputHandler(onBack = onBack, onNavigateToGame = onNavigateToGame)
+    val inputHandler = remember(onBack, onNavigateToGame, onViewProfile) {
+        viewModel.createInputHandler(
+            onBack = onBack,
+            onNavigateToGame = onNavigateToGame,
+            onViewProfile = onViewProfile
+        )
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -327,7 +339,8 @@ fun FeedEventDetailScreen(
                                 onCommentTextChange = viewModel::updateCommentText,
                                 onSubmitComment = viewModel::submitComment,
                                 onCommentInputScrolled = viewModel::onCommentInputScrolled,
-                                onNavigateToGame = onNavigateToGame
+                                onNavigateToGame = onNavigateToGame,
+                                onViewProfile = onViewProfile
                             )
                         } else {
                             PortraitLayout(
@@ -342,7 +355,8 @@ fun FeedEventDetailScreen(
                                 onCommentTextChange = viewModel::updateCommentText,
                                 onSubmitComment = viewModel::submitComment,
                                 onCommentInputScrolled = viewModel::onCommentInputScrolled,
-                                onNavigateToGame = onNavigateToGame
+                                onNavigateToGame = onNavigateToGame,
+                                onViewProfile = onViewProfile
                             )
                         }
                     }
@@ -358,6 +372,9 @@ fun FeedEventDetailScreen(
                 add(InputButton.A to "Comment")
                 if (uiState.localGameId != null) {
                     add(InputButton.X to "View Game")
+                }
+                if (uiState.event?.user != null) {
+                    add(InputButton.SELECT to "Profile")
                 }
             }
         )
@@ -377,7 +394,8 @@ private fun LandscapeLayout(
     onCommentTextChange: (String) -> Unit,
     onSubmitComment: () -> Unit,
     onCommentInputScrolled: () -> Unit,
-    onNavigateToGame: (Long) -> Unit
+    onNavigateToGame: (Long) -> Unit,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val isDoodle = event.eventType == FeedEventType.DOODLE
     val isDiscussion = event.eventType == FeedEventType.DISCUSSION
@@ -407,7 +425,7 @@ private fun LandscapeLayout(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            EventMetadata(event, localGameId, onNavigateToGame)
+            EventMetadata(event, localGameId, onNavigateToGame, onViewProfile)
 
             CommentsSection(
                 comments = comments,
@@ -419,7 +437,8 @@ private fun LandscapeLayout(
                 onCommentTextChange = onCommentTextChange,
                 onSubmitComment = onSubmitComment,
                 onCommentInputScrolled = onCommentInputScrolled,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onViewProfile = onViewProfile
             )
         }
     }
@@ -438,7 +457,8 @@ private fun PortraitLayout(
     onCommentTextChange: (String) -> Unit,
     onSubmitComment: () -> Unit,
     onCommentInputScrolled: () -> Unit,
-    onNavigateToGame: (Long) -> Unit
+    onNavigateToGame: (Long) -> Unit,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val headerItemCount = 4
@@ -490,7 +510,7 @@ private fun PortraitLayout(
         }
 
         item(key = "metadata") {
-            EventMetadata(event, localGameId, onNavigateToGame)
+            EventMetadata(event, localGameId, onNavigateToGame, onViewProfile)
         }
 
         item(key = "comments_header") {
@@ -523,7 +543,8 @@ private fun PortraitLayout(
             itemsIndexed(comments, key = { _, comment -> comment.id }) { index, comment ->
                 CommentCard(
                     comment = comment,
-                    isFocused = index == focusedCommentIndex
+                    isFocused = index == focusedCommentIndex,
+                    onViewProfile = onViewProfile
                 )
             }
         }
@@ -634,7 +655,8 @@ private fun EventMediaContent(event: FeedEventDto, fillWidth: Boolean = false) {
 private fun EventMetadata(
     event: FeedEventDto,
     localGameId: Long? = null,
-    onNavigateToGame: (Long) -> Unit = {}
+    onNavigateToGame: (Long) -> Unit = {},
+    onViewProfile: (String) -> Unit = {}
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
@@ -643,31 +665,39 @@ private fun EventMetadata(
         ) {
             event.user?.let { user ->
                 val userColor = parseColor(user.avatarColor)
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(userColor),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .clickableNoFocus { onViewProfile(user.id) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = user.displayName.take(2).uppercase(),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White
-                    )
-                }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(userColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = user.displayName.take(2).uppercase(),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White
+                        )
+                    }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = user.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = formatRelativeTime(event.createdAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                    Column {
+                        Text(
+                            text = user.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = formatRelativeTime(event.createdAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
 
                 Row(
@@ -880,7 +910,8 @@ private fun CommentsSection(
     onCommentTextChange: (String) -> Unit,
     onSubmitComment: () -> Unit,
     onCommentInputScrolled: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val commentInputIndex = 1
@@ -946,7 +977,8 @@ private fun CommentsSection(
             itemsIndexed(comments, key = { _, comment -> comment.id }) { index, comment ->
                 CommentCard(
                     comment = comment,
-                    isFocused = index == focusedCommentIndex
+                    isFocused = index == focusedCommentIndex,
+                    onViewProfile = onViewProfile
                 )
             }
         }
@@ -1028,7 +1060,8 @@ private fun CommentInput(
 @Composable
 private fun CommentCard(
     comment: FeedComment,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onViewProfile: (String) -> Unit = {}
 ) {
     val borderModifier = if (isFocused) {
         Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
@@ -1056,7 +1089,8 @@ private fun CommentCard(
                         text = user.displayName,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = parseColor(user.avatarColor)
+                        color = parseColor(user.avatarColor),
+                        modifier = Modifier.clickableNoFocus { onViewProfile(user.id) }
                     )
                 }
                 Text(

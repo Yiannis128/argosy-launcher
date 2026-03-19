@@ -136,6 +136,12 @@ class SocialRepository @Inject constructor(
     private var hiddenGameToggleJob: Job? = null
     private var pendingToggleGameId: Int? = null
 
+    private val _userProfile = MutableStateFlow<UserProfileData?>(null)
+    val userProfile: StateFlow<UserProfileData?> = _userProfile.asStateFlow()
+
+    private val _isLoadingProfile = MutableStateFlow(false)
+    val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
+
     private val _usersCache = mutableMapOf<String, SocialUser>()
 
     val authState: StateFlow<SocialAuthManager.AuthState> = authManager.authState
@@ -444,6 +450,11 @@ class SocialRepository @Inject constructor(
                         syncPreferencesRepository.setHiddenGameIds(merged)
                         Log.d(TAG, "HiddenGames: ${message.igdbGameIds.size} from server, pending=$pending")
                     }
+                    is ArgosSocialService.IncomingMessage.UserProfileReceived -> {
+                        _userProfile.value = message.profile
+                        _isLoadingProfile.value = false
+                        Log.d(TAG, "UserProfile: ${message.profile.user.username}, hours=${message.profile.totalPlayHours}")
+                    }
                     is ArgosSocialService.IncomingMessage.Error -> {
                         if (message.code == "unknown_type") {
                             Log.w(TAG, "Server returned unknown_type -- suppressing achievement sync for this session")
@@ -523,6 +534,8 @@ class SocialRepository @Inject constructor(
         _notificationsHasMore.value = false
         _isLoadingNotifications.value = false
         _notificationsCursor = null
+        _userProfile.value = null
+        _isLoadingProfile.value = false
         _usersCache.clear()
     }
 
@@ -535,6 +548,19 @@ class SocialRepository @Inject constructor(
 
     fun reconnectIfNeeded() {
         socialService.reconnectIfNeeded()
+    }
+
+    fun requestUserProfile(userId: String? = null) {
+        if (socialService.isConnected()) {
+            _isLoadingProfile.value = true
+            socialService.requestUserProfile(userId)
+        }
+    }
+
+    fun sendFriendRequest(userId: String) {
+        if (socialService.isConnected()) {
+            socialService.sendFriendRequest(userId)
+        }
     }
 
     fun requestDiscordTokens() {
