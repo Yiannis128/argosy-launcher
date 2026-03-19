@@ -96,7 +96,7 @@ import com.nendo.argosy.data.local.entity.StateCacheEntity
         PendingSocialSyncEntity::class,
         CoreOptionOverrideEntity::class
     ],
-    version = 87,
+    version = 88,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1321,6 +1321,12 @@ abstract class ALauncherDatabase : RoomDatabase() {
                     )
                     """
                 )
+            }
+        }
+
+        val MIGRATION_87_88 = object : Migration(87, 88) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN cheatsFetchedAt INTEGER")
             }
         }
     }

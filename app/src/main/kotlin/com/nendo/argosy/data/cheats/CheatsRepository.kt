@@ -14,6 +14,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "CheatsRepository"
+internal const val CHEATS_REFETCH_TTL_MS = 7L * 24 * 60 * 60 * 1000
 
 @Singleton
 class CheatsRepository @Inject constructor(
@@ -34,15 +35,17 @@ class CheatsRepository @Inject constructor(
             return false
         }
 
-        if (game.cheatsFetched) {
-            Logger.debug(TAG, "Cheats already fetched for game=${game.id}")
+        val now = System.currentTimeMillis()
+
+        if (!shouldFetch(game, now)) {
+            Logger.debug(TAG, "Cheats still fresh for game=${game.id}, skipping")
             return true
         }
 
         val mappedPlatform = mapPlatformSlug(game.platformSlug)
         if (mappedPlatform == null) {
             Logger.debug(TAG, "Platform ${game.platformSlug} not supported for cheats lookup")
-            gameDao.updateCheatsFetched(game.id, true)
+            gameDao.updateCheatsFetchedAt(game.id, now)
             return true
         }
 
@@ -52,17 +55,19 @@ class CheatsRepository @Inject constructor(
             val result = cheatsService.lookupByName(game.title, mappedPlatform, deviceToken)
 
             if (result != null && result.cheats.isNotEmpty()) {
+                val enabledIndices = cheatDao.getEnabledServerCheatIndices(game.id).toSet()
+                cheatDao.deleteServerCheats(game.id)
+
                 val entities = result.cheats.map { cheat ->
                     CheatEntity(
                         gameId = game.id,
                         cheatIndex = cheat.index,
                         description = Html.fromHtml(cheat.description, Html.FROM_HTML_MODE_LEGACY).toString(),
                         code = cheat.code,
-                        enabled = false
+                        enabled = cheat.index in enabledIndices
                     )
                 }
 
-                cheatDao.deleteByGameId(game.id)
                 cheatDao.insertAll(entities)
 
                 Logger.info(TAG, "Stored ${entities.size} cheats for game=${game.id} (${result.gameName})")
@@ -70,12 +75,20 @@ class CheatsRepository @Inject constructor(
                 Logger.debug(TAG, "No cheats found for game=${game.id}")
             }
 
-            gameDao.updateCheatsFetched(game.id, true)
+            gameDao.updateCheatsFetchedAt(game.id, now)
             true
         } catch (e: Exception) {
             Logger.error(TAG, "Failed to sync cheats for game=${game.id}: ${e.message}")
             false
         }
+    }
+
+    private suspend fun shouldFetch(game: GameEntity, now: Long): Boolean {
+        val fetchedAt = game.cheatsFetchedAt ?: return true
+        if (mapPlatformSlug(game.platformSlug) == null) return false
+        val serverCheatCount = cheatDao.getServerCheatCount(game.id)
+        if (serverCheatCount == 0) return true
+        return (now - fetchedAt) >= CHEATS_REFETCH_TTL_MS
     }
 
     suspend fun getCheatsForGame(gameId: Long): List<CheatEntity> {

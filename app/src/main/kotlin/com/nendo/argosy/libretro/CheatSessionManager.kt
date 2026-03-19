@@ -37,9 +37,9 @@ class CheatSessionManager(
     fun loadCheats(hardcoreMode: Boolean) {
         scope.launch {
             val game = gameDao.getById(gameId)
-            Log.d(TAG, "loadCheats: game=$game, cheatsFetched=${game?.cheatsFetched}, configured=${cheatsRepository.isConfigured()}")
+            Log.d(TAG, "loadCheats: game=$game, cheatsFetchedAt=${game?.cheatsFetchedAt}, configured=${cheatsRepository.isConfigured()}")
 
-            if (game != null && !game.cheatsFetched && cheatsRepository.isConfigured()) {
+            if (game != null && game.cheatsFetchedAt == null && cheatsRepository.isConfigured()) {
                 Log.d(TAG, "Fetching cheats from server for game $gameId (${game.title})")
                 try {
                     val success = cheatsRepository.syncCheatsForGame(game)

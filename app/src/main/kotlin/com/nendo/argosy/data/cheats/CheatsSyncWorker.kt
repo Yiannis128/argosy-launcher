@@ -70,7 +70,8 @@ class CheatsSyncWorker @AssistedInject constructor(
             var hasMore = true
 
             while (hasMore) {
-                val games = gameDao.getGamesWithoutCheats(BATCH_SIZE)
+                val staleThreshold = System.currentTimeMillis() - CHEATS_REFETCH_TTL_MS
+                val games = gameDao.getGamesNeedingCheatSync(staleThreshold, BATCH_SIZE)
 
                 if (games.isEmpty()) {
                     hasMore = false

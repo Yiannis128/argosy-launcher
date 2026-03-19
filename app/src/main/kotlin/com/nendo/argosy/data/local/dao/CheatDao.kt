@@ -40,6 +40,15 @@ interface CheatDao {
     @Query("DELETE FROM cheats WHERE gameId = :gameId")
     suspend fun deleteByGameId(gameId: Long)
 
+    @Query("DELETE FROM cheats WHERE gameId = :gameId AND isUserCreated = 0")
+    suspend fun deleteServerCheats(gameId: Long)
+
+    @Query("SELECT COUNT(*) FROM cheats WHERE gameId = :gameId AND isUserCreated = 0")
+    suspend fun getServerCheatCount(gameId: Long): Int
+
+    @Query("SELECT cheatIndex FROM cheats WHERE gameId = :gameId AND isUserCreated = 0 AND enabled = 1")
+    suspend fun getEnabledServerCheatIndices(gameId: Long): List<Int>
+
     @Query("DELETE FROM cheats WHERE id = :id")
     suspend fun deleteById(id: Long)
 

@@ -609,8 +609,19 @@ interface GameDao {
     @Query("UPDATE games SET cheatsFetched = :fetched WHERE id = :gameId")
     suspend fun updateCheatsFetched(gameId: Long, fetched: Boolean)
 
+    @Query("UPDATE games SET cheatsFetchedAt = :timestamp WHERE id = :gameId")
+    suspend fun updateCheatsFetchedAt(gameId: Long, timestamp: Long)
+
     @Query("SELECT * FROM games WHERE cheatsFetched = 0 AND localPath IS NOT NULL LIMIT :limit")
     suspend fun getGamesWithoutCheats(limit: Int = 50): List<GameEntity>
+
+    @Query("""
+        SELECT * FROM games
+        WHERE localPath IS NOT NULL
+          AND (cheatsFetchedAt IS NULL OR cheatsFetchedAt < :staleThreshold)
+        LIMIT :limit
+    """)
+    suspend fun getGamesNeedingCheatSync(staleThreshold: Long, limit: Int = 50): List<GameEntity>
 
     @Query("UPDATE games SET syncDirty = 1 WHERE platformId = :platformId AND source IN (:sources)")
     suspend fun markSyncDirty(platformId: Long, sources: List<GameSource>)

@@ -42,7 +42,7 @@ class CheatsDownloadObserver @Inject constructor(
             return
         }
 
-        if (game.cheatsFetched) {
+        if (game.cheatsFetchedAt != null) {
             Logger.debug(TAG, "Cheats already fetched for game ${event.gameId}")
             return
         }

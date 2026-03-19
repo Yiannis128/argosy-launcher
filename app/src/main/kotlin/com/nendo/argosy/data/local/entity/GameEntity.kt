@@ -101,6 +101,7 @@ data class GameEntity(
     val youtubeVideoId: String? = null,
 
     val cheatsFetched: Boolean = false,
+    val cheatsFetchedAt: Long? = null,
 
     val achievementsFetchedAt: Long? = null,
 
