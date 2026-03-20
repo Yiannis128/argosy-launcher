@@ -52,8 +52,8 @@ internal sealed class PlatformDetailItem(
 ) {
     val isFocusable: Boolean get() = this !is Header && this !is InfoItem
 
-    class Header(key: String, section: String, val title: String) : PlatformDetailItem(key, section)
-    class InfoItem(key: String, section: String) : PlatformDetailItem(key, section)
+    class Header(key: String, section: String, val title: String, visibleWhen: (PlatformDetailVisibility) -> Boolean = { true }) : PlatformDetailItem(key, section, visibleWhen)
+    class InfoItem(key: String, section: String, visibleWhen: (PlatformDetailVisibility) -> Boolean = { true }) : PlatformDetailItem(key, section, visibleWhen)
 
     data object Emulator : PlatformDetailItem("emulator", "emulator")
     data object Core : PlatformDetailItem("core", "emulator", { it.showCore })
@@ -65,9 +65,9 @@ internal sealed class PlatformDetailItem(
 
     data object ScanFiles : PlatformDetailItem("scan_files", "platform")
 
-    data object RomPath : PlatformDetailItem("rom_path", "paths")
-    data object SavePath : PlatformDetailItem("save_path", "paths", { it.showSavePath })
-    data object StatePath : PlatformDetailItem("state_path", "paths", { it.showStatePath })
+    data object RomPath : PlatformDetailItem("rom_path", "sync")
+    data object SavePath : PlatformDetailItem("save_path", "sync", { it.showSavePath && !it.isBuiltin })
+    data object StatePath : PlatformDetailItem("state_path", "sync", { it.showStatePath && !it.isBuiltin })
 
     data object SyncToggle : PlatformDetailItem("sync_toggle", "sync")
     data object PackagePath : PlatformDetailItem("package_path", "sync", { it.showSavePath })
@@ -75,6 +75,7 @@ internal sealed class PlatformDetailItem(
 
     data object BiosStatus : PlatformDetailItem("bios_status", "bios", { it.hasBios })
     data object BiosDownload : PlatformDetailItem("bios_download", "bios", { it.hasBios && it.biosMissing })
+    data object BiosInstall : PlatformDetailItem("bios_install", "bios", { it.hasBios && it.biosDownloaded && it.canDistribute })
     data object BiosCopy : PlatformDetailItem("bios_copy", "bios", { it.hasBios && it.biosDownloaded })
 
     companion object {
@@ -84,12 +85,12 @@ internal sealed class PlatformDetailItem(
             Header("header_platform", "platform", "Platform"),
             InfoItem("info_platform_stats", "platform"),
             ScanFiles,
-            Header("header_paths", "paths", "Paths"),
+            Header("header_bios", "bios", "BIOS", { it.hasBios }),
+            InfoItem("info_bios_status", "bios", { it.hasBios }), BiosDownload, BiosInstall, BiosCopy,
+            Header("header_sync", "sync", "Storage & Sync"),
+            SyncToggle, InfoItem("info_package_path", "sync", { it.showSavePath && !it.isBuiltin }),
             RomPath, SavePath, StatePath,
-            Header("header_sync", "sync", "Sync"),
-            SyncToggle, InfoItem("info_package_path", "sync"), RemoveFiles,
-            Header("header_bios", "bios", "BIOS"),
-            InfoItem("info_bios_status", "bios"), BiosDownload, BiosCopy
+            RemoveFiles
         )
     }
 }
@@ -105,7 +106,8 @@ internal data class PlatformDetailVisibility(
     val hasDownloads: Boolean = false,
     val hasBios: Boolean = false,
     val biosMissing: Boolean = false,
-    val biosDownloaded: Boolean = false
+    val biosDownloaded: Boolean = false,
+    val canDistribute: Boolean = false
 ) {
     companion object {
         fun from(config: PlatformEmulatorConfig, detail: PlatformDetailState) = PlatformDetailVisibility(
@@ -119,7 +121,9 @@ internal data class PlatformDetailVisibility(
             hasDownloads = detail.downloadedGames > 0,
             hasBios = detail.hasBiosRequirements,
             biosMissing = detail.biosDownloaded < detail.biosTotal,
-            biosDownloaded = detail.biosDownloaded > 0
+            biosDownloaded = detail.biosDownloaded > 0,
+            canDistribute = com.nendo.argosy.data.emulator.BiosPathRegistry
+                .getEmulatorsForPlatform(config.platform.slug).isNotEmpty()
         )
     }
 }
@@ -133,9 +137,8 @@ private fun createPlatformDetailLayout() = SettingsLayout<PlatformDetailItem, Pl
         when (it) {
             "emulator" -> "Emulator"
             "platform" -> "Platform"
-            "paths" -> "Paths"
-            "sync" -> "Sync"
             "bios" -> "BIOS"
+            "sync" -> "Storage & Sync"
             else -> null
         }
     }
@@ -371,6 +374,12 @@ fun PlatformDetailSection(
                     isFocused = isFocused(item),
                     icon = Icons.Default.Download,
                     onClick = { viewModel.downloadBiosForPlatform(config.platform.slug) }
+                )
+                PlatformDetailItem.BiosInstall -> ActionPreference(
+                    title = "Install to Emulator",
+                    subtitle = "Copy BIOS to ${config.effectiveEmulatorName ?: "emulator"}",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.distributeAllBios() }
                 )
                 PlatformDetailItem.BiosCopy -> ActionPreference(
                     title = "Copy to...",

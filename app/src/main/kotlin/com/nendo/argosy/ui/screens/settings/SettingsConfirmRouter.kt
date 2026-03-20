@@ -730,6 +730,7 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
         PlatformDetailItem.SyncToggle -> vm.togglePlatformSync(config.platform.id, !state.platformDetail.syncEnabled)
         PlatformDetailItem.RemoveFiles -> vm.removeLocalFilesForPlatform(config.platform.id)
         PlatformDetailItem.BiosDownload -> vm.downloadBiosForPlatform(config.platform.slug)
+        PlatformDetailItem.BiosInstall -> vm.distributeAllBios()
         PlatformDetailItem.BiosCopy -> vm.launchBiosCopyPicker(config.platform.slug)
         else -> {}
     }
