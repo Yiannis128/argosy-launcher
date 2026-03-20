@@ -433,7 +433,8 @@ class SocialViewModel @Inject constructor(
     }
 
     fun loadProfile(userId: String? = null) {
-        socialRepository.requestUserProfile(userId)
+        val effectiveUserId = userId ?: _uiState.value.connectedUser?.id
+        socialRepository.requestUserProfile(effectiveUserId)
     }
 
     private suspend fun resolveLocalIgdbIds(igdbIds: List<Int>): Set<Int> {
