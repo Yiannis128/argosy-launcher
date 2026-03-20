@@ -63,7 +63,9 @@ class GLRetroView(
     }
 
     var shader: ShaderConfig by Delegates.observable(data.shader) { _, _, value ->
-        LibretroDroid.setShaderConfig(buildShader(value))
+        runOnGLThread {
+            LibretroDroid.setShaderConfig(buildShader(value))
+        }
     }
 
     var filterMode: Int by Delegates.observable(-1) { _, _, value ->
