@@ -451,7 +451,6 @@ class RetroAchievementsRepository @Inject constructor(
         val patchData = getGamePatchData(gameRaId) ?: return null
         val rawAchievements = patchData.achievements ?: return null
 
-        // Filter out warning messages that RA returns as pseudo-achievements
         val achievements = rawAchievements.filter { ach ->
             !ach.title.contains("Unknown Emulator", ignoreCase = true) &&
             !ach.title.contains("Emulator Warning", ignoreCase = true) &&
@@ -462,9 +461,12 @@ class RetroAchievementsRepository @Inject constructor(
             Logger.debug(TAG, "Filtered out ${rawAchievements.size - achievements.size} warning pseudo-achievements")
         }
 
-        // Return achievements without unlock progress -- the Connect API only
-        // provides unlocks via startSession which registers a play session with
-        // RA. Unlock progress will be populated when the game is actually launched.
+        // Connect API has no read-only unlock endpoint. Return achievements without
+        // unlock data -- replaceForGame will preserve any local unlocks from gameplay
+        // sessions or RomM sync. Unlock state comes from:
+        // 1. In-game startSession (persists pre-unlocked to DB)
+        // 2. In-game markUnlocked (realtime unlocks)
+        // 3. RomM server-side RA sync
         return RAGameAchievements(
             achievements = achievements,
             unlockedIds = emptySet(),

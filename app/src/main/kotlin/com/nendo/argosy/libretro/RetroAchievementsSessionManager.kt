@@ -111,7 +111,21 @@ class RetroAchievementsSessionManager(
                     }
 
                     totalAchievements = validAchievements.size
-                    earnedAchievements = preUnlocked.count { it in validAchievements.map { a -> a.id }.toSet() }
+                    val validIds = validAchievements.map { a -> a.id }.toSet()
+                    earnedAchievements = preUnlocked.count { it in validIds }
+
+                    // Persist pre-unlocked achievements to local DB
+                    val now = System.currentTimeMillis()
+                    for (achId in preUnlocked) {
+                        if (achId in validIds) {
+                            if (hardcoreMode) {
+                                achievementDao.markUnlockedHardcore(gameId, achId, now)
+                            } else {
+                                achievementDao.markUnlocked(gameId, achId, now)
+                            }
+                        }
+                    }
+                    gameDao.updateAchievementCount(gameId, totalAchievements, earnedAchievements)
 
                     raConnectionInfo = RAConnectionInfo(
                         isHardcore = hardcoreMode,

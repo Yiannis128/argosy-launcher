@@ -27,11 +27,37 @@ interface AchievementDao {
     @Query("SELECT raId, socialSharedAt FROM achievements WHERE gameId = :gameId")
     suspend fun getSocialSharedState(gameId: Long): List<SocialSharedRow>
 
+    data class LocalStateRow(
+        val raId: Long,
+        val socialSharedAt: Long?,
+        val unlockedAt: Long?,
+        val unlockedHardcoreAt: Long?,
+        val cachedBadgeUrl: String?,
+        val cachedBadgeUrlLock: String?
+    )
+
+    @Query("SELECT raId, socialSharedAt, unlockedAt, unlockedHardcoreAt, cachedBadgeUrl, cachedBadgeUrlLock FROM achievements WHERE gameId = :gameId")
+    suspend fun getLocalState(gameId: Long): List<LocalStateRow>
+
     @Transaction
     suspend fun replaceForGame(gameId: Long, achievements: List<AchievementEntity>) {
-        val existing = getSocialSharedState(gameId).associate { it.raId to it.socialSharedAt }
+        val existing = getLocalState(gameId).associateBy { it.raId }
         deleteByGameId(gameId)
-        insertAll(achievements.map { it.copy(socialSharedAt = existing[it.raId]) })
+        insertAll(achievements.map { ach ->
+            val local = existing[ach.raId]
+            ach.copy(
+                socialSharedAt = local?.socialSharedAt ?: ach.socialSharedAt,
+                unlockedAt = mergeTimestamp(ach.unlockedAt, local?.unlockedAt),
+                unlockedHardcoreAt = mergeTimestamp(ach.unlockedHardcoreAt, local?.unlockedHardcoreAt),
+                cachedBadgeUrl = ach.cachedBadgeUrl ?: local?.cachedBadgeUrl,
+                cachedBadgeUrlLock = ach.cachedBadgeUrlLock ?: local?.cachedBadgeUrlLock
+            )
+        })
+    }
+
+    private fun mergeTimestamp(incoming: Long?, local: Long?): Long? = when {
+        incoming != null && local != null -> minOf(incoming, local)
+        else -> incoming ?: local
     }
 
     @Query("SELECT * FROM achievements WHERE badgeUrl IS NOT NULL AND cachedBadgeUrl IS NULL")

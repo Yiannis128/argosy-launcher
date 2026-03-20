@@ -59,19 +59,8 @@ class AchievementDelegate @Inject constructor(
     }
 
     private suspend fun fetchAndCacheAchievements(rommId: Long?, gameId: Long): List<AchievementUi> {
-        val game = gameRepository.getById(gameId)
-
-        val effectiveRaId = if (raRepository.isLoggedIn()) {
-            verifyRAGameIdUseCase(gameId) ?: game?.raId
-        } else {
-            game?.raId
-        }
-
-        if (effectiveRaId != null && raRepository.isLoggedIn()) {
-            val raResults = fetchAchievementsFromRA(effectiveRaId, gameId)
-            if (raResults.isNotEmpty()) return raResults
-        }
-
+        // Fetch RA unlock data from RomM (which has the API key server-side).
+        // Never call RA directly for UI display -- that's only for in-game sessions.
         if (rommId != null) {
             val rommResults = fetchAchievementsFromRomM(rommId, gameId)
             if (rommResults.isNotEmpty()) return rommResults
@@ -120,19 +109,25 @@ class AchievementDelegate @Inject constructor(
         achievementDao.replaceForGame(gameId, entities)
         gameRepository.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
 
-        gameRepository.updateAchievementCount(gameId, raData.totalCount, raData.earnedCount)
+        // Use merged DB state for earned count (replaceForGame preserves local unlocks)
+        val actualEarned = achievementDao.countUnlockedByGameId(gameId)
+        val earnedCount = maxOf(raData.earnedCount, actualEarned)
+        gameRepository.updateAchievementCount(gameId, raData.totalCount, earnedCount)
         achievementUpdateBus.emit(
-            AchievementUpdateBus.AchievementUpdate(gameId, raData.totalCount, raData.earnedCount)
+            AchievementUpdateBus.AchievementUpdate(gameId, raData.totalCount, earnedCount)
         )
 
+        // Rebuild UI models from merged DB state to reflect preserved local unlocks
         val savedAchievements = achievementDao.getByGameId(gameId)
+        val mergedUiModels = savedAchievements.map { it.toAchievementUi() }
+
         savedAchievements.forEach { achievement ->
             if (achievement.cachedBadgeUrl == null && achievement.badgeUrl != null) {
                 imageCacheManager.queueBadgeCache(achievement.id, achievement.badgeUrl, achievement.badgeUrlLock)
             }
         }
 
-        return uiModels
+        return mergedUiModels
     }
 
     private suspend fun fetchAchievementsFromRomM(rommId: Long, gameId: Long): List<AchievementUi> {

@@ -25,17 +25,8 @@ class FetchAchievementsUseCase @Inject constructor(
     private val imageCacheManager: ImageCacheManager
 ) {
     suspend operator fun invoke(gameId: Long, rommId: Long? = null, raId: Long? = null): AchievementCounts? {
-        val effectiveRaId = if (raRepository.isLoggedIn()) {
-            verifyRAGameIdUseCase(gameId) ?: raId
-        } else {
-            raId
-        }
-
-        if (effectiveRaId != null && raRepository.isLoggedIn()) {
-            val result = fetchFromRA(effectiveRaId, gameId)
-            if (result != null) return result
-        }
-
+        // Fetch RA data from RomM (which syncs with RA server-side using its API key).
+        // Never call RA directly for UI display -- that's only for in-game sessions.
         if (rommId != null) {
             return fetchFromRomM(rommId, gameId)
         }
@@ -65,10 +56,15 @@ class FetchAchievementsUseCase @Inject constructor(
         }
         achievementDao.replaceForGame(gameId, entities)
         gameDao.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
-        gameDao.updateAchievementCount(gameId, raData.totalCount, raData.earnedCount)
+
+        // Compute earned count from the merged DB state (replaceForGame preserves
+        // local unlocks when incoming data has none, e.g. Connect API fallback)
+        val actualEarned = achievementDao.countUnlockedByGameId(gameId)
+        val earnedCount = maxOf(raData.earnedCount, actualEarned)
+        gameDao.updateAchievementCount(gameId, raData.totalCount, earnedCount)
         queueBadgeCaching(gameId)
 
-        return AchievementCounts(total = raData.totalCount, earned = raData.earnedCount)
+        return AchievementCounts(total = raData.totalCount, earned = earnedCount)
     }
 
     private suspend fun fetchFromRomM(rommId: Long, gameId: Long): AchievementCounts? {
