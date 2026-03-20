@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.PlatformEmulatorConfig
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -36,13 +35,6 @@ internal sealed class EmulatorsItem(
     val section: String,
     val visibleWhen: (EmulatorsLayoutState) -> Boolean = { true }
 ) {
-    data object BuiltinHeader : EmulatorsItem("builtin_header", "builtin")
-    data object BuiltinVideo : EmulatorsItem("builtin_video", "builtin", visibleWhen = { it.builtinLibretroEnabled })
-    data object BuiltinControls : EmulatorsItem("builtin_controls", "builtin", visibleWhen = { it.builtinLibretroEnabled })
-    data object BuiltinCores : EmulatorsItem("builtin_cores", "builtin", visibleWhen = { it.builtinLibretroEnabled })
-    data object BuiltinCoreOptions : EmulatorsItem("builtin_core_options", "builtin", visibleWhen = { it.builtinLibretroEnabled })
-    data object BuiltinToggle : EmulatorsItem("builtin_toggle", "builtin")
-    data object PlatformsHeader : EmulatorsItem("platforms_header", "platforms")
     data object CheckForUpdates : EmulatorsItem("check_updates", "platforms")
     data object AutoAssign : EmulatorsItem("autoAssign", "platforms", visibleWhen = { it.canAutoAssign })
 
@@ -53,31 +45,22 @@ internal sealed class EmulatorsItem(
 
     companion object {
         fun buildItems(platforms: List<PlatformEmulatorConfig>): List<EmulatorsItem> =
-            listOf(BuiltinHeader, BuiltinVideo, BuiltinControls, BuiltinCores, BuiltinCoreOptions, BuiltinToggle, PlatformsHeader, CheckForUpdates, AutoAssign) +
+            listOf(CheckForUpdates, AutoAssign) +
                 platforms.mapIndexed { index, config -> PlatformItem(config, index) }
     }
 }
 
 internal fun createEmulatorsLayout(items: List<EmulatorsItem>) = SettingsLayout<EmulatorsItem, EmulatorsLayoutState>(
     allItems = items,
-    isFocusable = { item -> item !is EmulatorsItem.BuiltinHeader && item !is EmulatorsItem.PlatformsHeader },
+    isFocusable = { true },
     visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section },
-    sectionTitle = {
-        when (it) {
-            "builtin" -> "Built-in Emulator"
-            "platforms" -> "Platforms"
-            else -> null
-        }
-    }
+    sectionOf = { it.section }
 )
 
 internal fun emulatorsMaxFocusIndex(canAutoAssign: Boolean, platformCount: Int, builtinEnabled: Boolean = true): Int {
-    val toggleCount = 1
-    val builtinCount = if (builtinEnabled) 3 else 0
     val checkUpdatesCount = 1
     val autoAssignCount = if (canAutoAssign) 1 else 0
-    return (toggleCount + builtinCount + checkUpdatesCount + autoAssignCount + platformCount - 1).coerceAtLeast(0)
+    return (checkUpdatesCount + autoAssignCount + platformCount - 1).coerceAtLeast(0)
 }
 
 internal data class EmulatorsLayoutInfo(
@@ -143,72 +126,6 @@ fun EmulatorsSection(
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) { item ->
                 when (item) {
-                    EmulatorsItem.BuiltinHeader -> {
-                        Text(
-                            text = "Built-in Emulator",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(
-                                start = Dimens.spacingSm,
-                                top = Dimens.spacingMd,
-                                bottom = Dimens.spacingXs
-                            )
-                        )
-                    }
-
-                    EmulatorsItem.BuiltinToggle -> SwitchPreference(
-                        title = "Enable Built-in Emulator",
-                        subtitle = "Use LibRetro cores for supported platforms",
-                        isEnabled = emulators.builtinLibretroEnabled,
-                        isFocused = isFocused(item),
-                        onToggle = { viewModel.setBuiltinLibretroEnabled(it) }
-                    )
-
-                    EmulatorsItem.BuiltinVideo -> ActionPreference(
-                        title = "Video Settings",
-                        subtitle = "Shaders, scaling, aspect ratio",
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.navigateToBuiltinVideo() }
-                    )
-
-                    EmulatorsItem.BuiltinControls -> ActionPreference(
-                        title = "Controls",
-                        subtitle = "Rumble, input mapping, hotkeys",
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.navigateToBuiltinControls() }
-                    )
-
-                    EmulatorsItem.BuiltinCores -> {
-                        val updatesAvailable = uiState.emulators.coreUpdatesAvailable
-                        ActionPreference(
-                            title = "Manage Cores",
-                            subtitle = "${uiState.emulators.installedCoreCount} of ${uiState.emulators.totalCoreCount} cores installed",
-                            isFocused = isFocused(item),
-                            onClick = { viewModel.navigateToCoreManagement() },
-                            badge = if (updatesAvailable > 0) "$updatesAvailable update${if (updatesAvailable > 1) "s" else ""}" else null
-                        )
-                    }
-
-                    EmulatorsItem.BuiltinCoreOptions -> ActionPreference(
-                        title = "Core Options",
-                        subtitle = "Per-core settings and overrides",
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.navigateToCoreOptions() }
-                    )
-
-                    EmulatorsItem.PlatformsHeader -> {
-                        Text(
-                            text = "Platforms",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(
-                                start = Dimens.spacingSm,
-                                top = Dimens.spacingLg,
-                                bottom = Dimens.spacingXs
-                            )
-                        )
-                    }
-
                     EmulatorsItem.CheckForUpdates -> ActionPreference(
                         title = "Check for Updates",
                         subtitle = if (emulators.emulatorUpdatesAvailable > 0)

@@ -33,7 +33,7 @@ internal fun routeNavigateToSection(vm: SettingsViewModel, section: SettingsSect
     }
     vm._uiState.update { it.copy(currentSection = section, focusedIndex = 0, parentFocusIndex = parentIndex) }
     when (section) {
-        SettingsSection.EMULATORS -> vm.refreshEmulators()
+        SettingsSection.PLATFORMS -> vm.refreshEmulators()
         SettingsSection.SERVER -> {
             vm.serverDelegate.checkRommConnection(vm.viewModelScope)
             vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)

@@ -24,14 +24,15 @@ class SettingsInputHandler(
         internal const val HUE_STEP = 10f
 
         private val TOP_LEVEL_SECTIONS = listOf(
-            SettingsSection.SERVER,
-            SettingsSection.SOCIAL,
-            SettingsSection.RETRO_ACHIEVEMENTS,
+            SettingsSection.PLATFORMS,
+            SettingsSection.BUILTIN_EMULATOR,
             SettingsSection.STORAGE,
             SettingsSection.INTERFACE,
             SettingsSection.CONTROLS,
-            SettingsSection.EMULATORS,
+            SettingsSection.SERVER,
             SettingsSection.BIOS,
+            SettingsSection.RETRO_ACHIEVEMENTS,
+            SettingsSection.SOCIAL,
             SettingsSection.PERMISSIONS,
             SettingsSection.ABOUT
         )
@@ -42,7 +43,7 @@ class SettingsInputHandler(
 
     private val handlers: Map<SettingsSection, InputHandler> = buildMap {
         put(SettingsSection.BUILTIN_VIDEO, BuiltinVideoSectionInput(viewModel))
-        put(SettingsSection.EMULATORS, EmulatorsSectionInput(viewModel))
+        put(SettingsSection.PLATFORMS, EmulatorsSectionInput(viewModel))
         put(SettingsSection.PLATFORM_DETAIL, PlatformDetailSectionInput(viewModel))
         put(SettingsSection.BUILTIN_CONTROLS, BuiltinControlsSectionInput(viewModel))
         put(SettingsSection.BOX_ART, BoxArtSectionInput(viewModel))

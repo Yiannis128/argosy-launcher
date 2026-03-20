@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Gamepad
@@ -52,7 +53,8 @@ internal sealed class MainSettingsItem(
     data object Storage : MainSettingsItem("storage", Icons.Default.Storage, "Storage")
     data object Interface : MainSettingsItem("interface", Icons.Default.Palette, "Interface")
     data object Controls : MainSettingsItem("controls", Icons.Default.TouchApp, "Controls")
-    data object Emulators : MainSettingsItem("emulators", Icons.Default.Gamepad, "Emulators")
+    data object Platforms : MainSettingsItem("platforms", Icons.Default.Gamepad, "Platforms")
+    data object BuiltinEmulator : MainSettingsItem("builtin_emulator", Icons.Default.Build, "Built-in Emulator")
     data object Bios : MainSettingsItem("bios", Icons.Default.Memory, "BIOS Files")
     data object Social : MainSettingsItem("social", Icons.Default.Group, "Social")
     data object Permissions : MainSettingsItem("permissions", Icons.Default.Security, "Permissions")
@@ -60,8 +62,8 @@ internal sealed class MainSettingsItem(
 
     companion object {
         val ALL: List<MainSettingsItem> = listOf(
-            DeviceSettings, GameData, Social, RetroAchievements, Storage, Interface, Controls,
-            Emulators, Bios, Permissions, About
+            DeviceSettings, Platforms, BuiltinEmulator, Storage, Interface, Controls,
+            GameData, Bios, RetroAchievements, Social, Permissions, About
         )
     }
 }
@@ -115,7 +117,8 @@ fun MainSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
         }
         MainSettingsItem.Interface -> "Theme, colors, sounds"
         MainSettingsItem.Controls -> "Button layout, haptic feedback"
-        MainSettingsItem.Emulators -> "${uiState.emulators.installedEmulators.size} installed"
+        MainSettingsItem.Platforms -> "${uiState.emulators.platforms.size} platforms"
+        MainSettingsItem.BuiltinEmulator -> if (uiState.emulators.builtinLibretroEnabled) "Enabled" else "Disabled"
         MainSettingsItem.Bios -> uiState.bios.summaryText
         MainSettingsItem.Social -> when (uiState.social.authStatus) {
             SocialAuthStatus.CONNECTED -> "Linked as ${uiState.social.displayName ?: uiState.social.username}"
@@ -138,7 +141,8 @@ fun MainSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
             MainSettingsItem.Storage -> viewModel.navigateToSection(SettingsSection.STORAGE)
             MainSettingsItem.Interface -> viewModel.navigateToSection(SettingsSection.INTERFACE)
             MainSettingsItem.Controls -> viewModel.navigateToSection(SettingsSection.CONTROLS)
-            MainSettingsItem.Emulators -> viewModel.navigateToSection(SettingsSection.EMULATORS)
+            MainSettingsItem.Platforms -> viewModel.navigateToSection(SettingsSection.PLATFORMS)
+            MainSettingsItem.BuiltinEmulator -> viewModel.navigateToSection(SettingsSection.BUILTIN_EMULATOR)
             MainSettingsItem.Bios -> viewModel.navigateToSection(SettingsSection.BIOS)
             MainSettingsItem.Social -> viewModel.navigateToSection(SettingsSection.SOCIAL)
             MainSettingsItem.Permissions -> viewModel.navigateToSection(SettingsSection.PERMISSIONS)

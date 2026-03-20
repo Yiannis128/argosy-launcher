@@ -94,7 +94,8 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 MainSettingsItem.Storage -> vm.navigateToSection(SettingsSection.STORAGE)
                 MainSettingsItem.Interface -> vm.navigateToSection(SettingsSection.INTERFACE)
                 MainSettingsItem.Controls -> vm.navigateToSection(SettingsSection.CONTROLS)
-                MainSettingsItem.Emulators -> vm.navigateToSection(SettingsSection.EMULATORS)
+                MainSettingsItem.Platforms -> vm.navigateToSection(SettingsSection.PLATFORMS)
+                MainSettingsItem.BuiltinEmulator -> vm.navigateToSection(SettingsSection.BUILTIN_EMULATOR)
                 MainSettingsItem.Bios -> vm.navigateToSection(SettingsSection.BIOS)
                 MainSettingsItem.Permissions -> vm.navigateToSection(SettingsSection.PERMISSIONS)
                 MainSettingsItem.About -> vm.navigateToSection(SettingsSection.ABOUT)
@@ -160,7 +161,8 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
         SettingsSection.BOX_ART -> routeBoxArtConfirm(vm, state)
         SettingsSection.AMBIENT_LED -> routeAmbientLedConfirm(vm, state)
         SettingsSection.CONTROLS -> routeControlsConfirm(vm, state)
-        SettingsSection.EMULATORS -> routeEmulatorsConfirm(vm, state)
+        SettingsSection.PLATFORMS -> routeEmulatorsConfirm(vm, state)
+        SettingsSection.BUILTIN_EMULATOR -> routeBuiltinEmulatorConfirm(vm, state)
         SettingsSection.PLATFORM_DETAIL -> routePlatformDetailConfirm(vm, state)
         SettingsSection.BIOS -> routeBiosConfirm(vm, state)
         SettingsSection.PERMISSIONS -> routePermissionsConfirm(vm, state)
@@ -603,24 +605,23 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_VIDEO, focusedIndex = 2) }; true
         }
         state.currentSection == SettingsSection.BUILTIN_VIDEO -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.EMULATORS, focusedIndex = 0) }; true
+            vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 1) }; true
         }
         state.currentSection == SettingsSection.BUILTIN_CONTROLS -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.EMULATORS, focusedIndex = 1) }; true
+            vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 2) }; true
         }
         state.currentSection == SettingsSection.CORE_MANAGEMENT -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.EMULATORS, focusedIndex = 2) }; true
+            vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 3) }; true
         }
         state.currentSection == SettingsSection.CORE_OPTIONS -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.EMULATORS, focusedIndex = 3) }; true
+            vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 4) }; true
         }
         state.currentSection == SettingsSection.PLATFORM_DETAIL -> {
             val platformFocusIndex = state.platformDetail.platformIndex
-            val builtinOffset = if (state.emulators.builtinLibretroEnabled) 5 else 1
             val actionsOffset = if (state.emulators.canAutoAssign) 2 else 1
             vm._uiState.update { it.copy(
-                currentSection = SettingsSection.EMULATORS,
-                focusedIndex = builtinOffset + actionsOffset + platformFocusIndex
+                currentSection = SettingsSection.PLATFORMS,
+                focusedIndex = actionsOffset + platformFocusIndex
             ) }; true
         }
         state.currentSection != SettingsSection.MAIN -> {
@@ -671,7 +672,7 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
         }
         state.copy(focusedIndex = newIndex)
     }
-    if (vm._uiState.value.currentSection == SettingsSection.EMULATORS) {
+    if (vm._uiState.value.currentSection == SettingsSection.PLATFORMS) {
         vm.emulatorDelegate.resetPlatformSubFocus()
     }
     if (vm._uiState.value.currentSection == SettingsSection.BIOS) {
@@ -702,11 +703,12 @@ private fun computeMaxFocusIndex(
     SettingsSection.BOX_ART -> boxArtMaxFocusIndex(state.display)
     SettingsSection.AMBIENT_LED -> ambientLedMaxFocusIndex(state.display)
     SettingsSection.CONTROLS -> controlsMaxFocusIndex(state.controls)
-    SettingsSection.EMULATORS -> emulatorsMaxFocusIndex(
+    SettingsSection.PLATFORMS -> emulatorsMaxFocusIndex(
         state.emulators.canAutoAssign,
         state.emulators.platforms.size,
         state.emulators.builtinLibretroEnabled
     )
+    SettingsSection.BUILTIN_EMULATOR -> if (state.emulators.builtinLibretroEnabled) 4 else 0
     SettingsSection.PLATFORM_DETAIL -> platformDetailMaxFocusIndex(state)
     SettingsSection.BUILTIN_VIDEO -> builtinVideoMaxFocusIndex(state.builtinVideo, state.platformLibretro.platformSettings)
     SettingsSection.BUILTIN_CONTROLS -> builtinControlsMaxFocusIndex(state.builtinControls)
@@ -733,6 +735,18 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
         PlatformDetailItem.SAVE_PATH -> vm.showSavePathModal(config)
         PlatformDetailItem.BIOS_DOWNLOAD -> vm.downloadBiosForPlatform(config.platform.slug)
         PlatformDetailItem.BIOS_COPY -> vm.launchBiosCopyPicker(config.platform.slug)
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeBuiltinEmulatorConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val builtinEnabled = state.emulators.builtinLibretroEnabled
+    when (state.focusedIndex) {
+        0 -> vm.setBuiltinLibretroEnabled(!builtinEnabled)
+        1 -> if (builtinEnabled) vm.navigateToBuiltinVideo()
+        2 -> if (builtinEnabled) vm.navigateToBuiltinControls()
+        3 -> if (builtinEnabled) vm.navigateToCoreManagement()
+        4 -> if (builtinEnabled) vm.navigateToCoreOptions()
     }
     return InputResult.HANDLED
 }

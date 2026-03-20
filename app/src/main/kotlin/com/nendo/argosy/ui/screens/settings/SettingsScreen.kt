@@ -61,6 +61,7 @@ import com.nendo.argosy.ui.screens.settings.sections.BiosSection
 import com.nendo.argosy.ui.screens.settings.sections.AmbientLedSection
 import com.nendo.argosy.ui.screens.settings.sections.BoxArtSection
 import com.nendo.argosy.ui.screens.settings.sections.ControlsSection
+import com.nendo.argosy.ui.screens.settings.sections.BuiltinEmulatorSection
 import com.nendo.argosy.ui.screens.settings.sections.EmulatorsSection
 import com.nendo.argosy.ui.screens.settings.sections.PlatformDetailSection
 import com.nendo.argosy.ui.screens.settings.sections.PlatformDetailItem
@@ -326,7 +327,7 @@ fun SettingsScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.checkStoragePermission()
                 viewModel.refreshPermissions()
-                if (viewModel.uiState.value.currentSection == SettingsSection.EMULATORS) {
+                if (viewModel.uiState.value.currentSection == SettingsSection.PLATFORMS) {
                     viewModel.refreshEmulators()
                 }
             }
@@ -365,7 +366,8 @@ fun SettingsScreen(
                         SettingsSection.HOME_SCREEN -> "HOME SCREEN"
                         SettingsSection.AMBIENT_LED -> "LED CONTROL"
                         SettingsSection.CONTROLS -> "CONTROLS"
-                        SettingsSection.EMULATORS -> "EMULATORS"
+                        SettingsSection.PLATFORMS -> "PLATFORMS"
+                        SettingsSection.BUILTIN_EMULATOR -> "BUILT-IN EMULATOR"
                         SettingsSection.PLATFORM_DETAIL -> {
                             val config = uiState.emulators.platforms.getOrNull(uiState.platformDetail.platformIndex)
                             config?.platform?.name?.uppercase() ?: "PLATFORM"
@@ -423,7 +425,8 @@ fun SettingsScreen(
                     SettingsSection.HOME_SCREEN -> HomeScreenSection(uiState, viewModel)
                     SettingsSection.AMBIENT_LED -> AmbientLedSection(uiState, viewModel)
                     SettingsSection.CONTROLS -> ControlsSection(uiState, viewModel)
-                    SettingsSection.EMULATORS -> EmulatorsSection(
+                    SettingsSection.BUILTIN_EMULATOR -> BuiltinEmulatorSection(uiState, viewModel)
+                    SettingsSection.PLATFORMS -> EmulatorsSection(
                         uiState = uiState,
                         viewModel = viewModel,
                         onLaunchSavePathPicker = {
@@ -966,7 +969,7 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
                 add(InputButton.DPAD_HORIZONTAL to "Adjust")
             }
         }
-        if (uiState.currentSection == SettingsSection.EMULATORS) {
+        if (uiState.currentSection == SettingsSection.PLATFORMS) {
             val emuLayoutInfo = com.nendo.argosy.ui.screens.settings.sections.createEmulatorsLayoutInfo(
                 platforms = uiState.emulators.platforms,
                 canAutoAssign = uiState.emulators.canAutoAssign,
