@@ -750,7 +750,7 @@ fun ArgosyApp(
         LocalSwapStartSelect provides uiState.swapStartSelect
     ) {
         if (uiState.isLoading) {
-            AppSplashScreen()
+            AppSplashScreen(status = uiState.startupStatus)
             return@CompositionLocalProvider
         }
 
@@ -1474,7 +1474,7 @@ fun ArgosyApp(
 }
 
 @Composable
-private fun AppSplashScreen() {
+private fun AppSplashScreen(status: String = "") {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1497,6 +1497,13 @@ private fun AppSplashScreen() {
                 trackColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f),
                 strokeWidth = Dimens.borderMedium
             )
+            if (status.isNotEmpty()) {
+                androidx.compose.material3.Text(
+                    text = status,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }

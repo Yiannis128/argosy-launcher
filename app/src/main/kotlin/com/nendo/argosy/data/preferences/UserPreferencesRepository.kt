@@ -127,6 +127,8 @@ class UserPreferencesRepository @Inject constructor(
             screenDimmerTimeoutMinutes = display.screenDimmerTimeoutMinutes,
             screenDimmerLevel = display.screenDimmerLevel,
             customBiosPath = storage.customBiosPath,
+            weeklyIntegrityCheckEnabled = storage.weeklyIntegrityCheckEnabled,
+            lastIntegrityCheckTime = storage.lastIntegrityCheckTime,
             videoWallpaperEnabled = display.videoWallpaperEnabled,
             videoWallpaperDelaySeconds = display.videoWallpaperDelaySeconds,
             videoWallpaperMuted = display.videoWallpaperMuted,
@@ -289,6 +291,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setInstantDownloadThresholdMb(value: Int) = storagePrefs.setInstantDownloadThresholdMb(value)
     suspend fun setCustomBiosPath(path: String?) = storagePrefs.setCustomBiosPath(path)
     suspend fun setWeeklyIntegrityCheckEnabled(enabled: Boolean) = storagePrefs.setWeeklyIntegrityCheckEnabled(enabled)
+    suspend fun setLastIntegrityCheckTime(timeMs: Long) = storagePrefs.setLastIntegrityCheckTime(timeMs)
 
     // --- App delegates ---
 
@@ -566,7 +569,9 @@ data class UserPreferences(
     val socialNotifyFriendPlaying: Boolean = true,
     val socialSuppressNotificationsInGame: Boolean = false,
     val discordRichPresenceEnabled: Boolean = true,
-    val lastPlaySessionSync: Instant? = null
+    val lastPlaySessionSync: Instant? = null,
+    val weeklyIntegrityCheckEnabled: Boolean = true,
+    val lastIntegrityCheckTime: Long? = null
 ) {
     val isSocialLinked: Boolean get() = socialSessionToken != null
 }

@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -74,6 +75,7 @@ import javax.inject.Inject
 data class ArgosyUiState(
     val isFirstRun: Boolean = true,
     val isLoading: Boolean = true,
+    val startupStatus: String = "",
     val abIconsSwapped: Boolean = false,
     val xyIconsSwapped: Boolean = false,
     val swapStartSelect: Boolean = false,
@@ -183,6 +185,9 @@ class ArgosyViewModel @Inject constructor(
         override fun onInputDeviceRemoved(deviceId: Int) = refreshControllerDetection()
     }
 
+    private val _startupComplete = MutableStateFlow(false)
+    private val _startupStatus = MutableStateFlow("")
+
     init {
         downloadNotificationObserver.observe(viewModelScope)
         syncNotificationObserver.observe(viewModelScope)
@@ -287,19 +292,45 @@ class ArgosyViewModel @Inject constructor(
 
     private fun scheduleStartupTasks() {
         viewModelScope.launch {
+            _startupStatus.value = "Initializing..."
             val ready = gameRepository.awaitStorageReady(timeoutMs = 10_000L)
             if (ready) {
+                _startupStatus.value = "Loading library..."
                 gameRepository.validateLocalFiles()
                 gameRepository.discoverLocalFiles()
+
+                _startupStatus.value = "Syncing collections..."
                 syncCollectionsOnStartup()
+
+                _startupStatus.value = "Checking emulators..."
                 runBuiltinEmulatorMigration()
                 emulatorUpdateManager.checkIfNeeded()
+
+                runWeeklyIntegrityCheckIfDue()
             } else {
                 android.util.Log.w("ArgosyViewModel", "Storage not ready after timeout, scheduling retry")
+                _startupStatus.value = "Waiting for storage..."
                 kotlinx.coroutines.delay(30_000L)
                 scheduleStartupTasks()
+                return@launch
             }
+            _startupComplete.value = true
         }
+    }
+
+    private suspend fun runWeeklyIntegrityCheckIfDue() {
+        val prefs = preferencesRepository.userPreferences.first()
+        if (!prefs.weeklyIntegrityCheckEnabled) return
+
+        val lastCheck = prefs.lastIntegrityCheckTime
+        val sevenDaysMs = 7 * 24 * 60 * 60 * 1000L
+        if (lastCheck != null && (System.currentTimeMillis() - lastCheck) < sevenDaysMs) return
+
+        _startupStatus.value = "Scanning ROM files..."
+        android.util.Log.i("ArgosyViewModel", "Running weekly ROM integrity check")
+        gameRepository.validateLocalFiles()
+        gameRepository.discoverLocalFiles()
+        preferencesRepository.setLastIntegrityCheckTime(System.currentTimeMillis())
     }
 
     private suspend fun runBuiltinEmulatorMigration() {
@@ -347,8 +378,10 @@ class ArgosyViewModel @Inject constructor(
 
     val uiState: StateFlow<ArgosyUiState> = combine(
         preferencesRepository.userPreferences,
-        _detectedLayout
-    ) { prefs, detectedLayout ->
+        _detectedLayout,
+        _startupComplete,
+        _startupStatus
+    ) { prefs, detectedLayout, startupDone, status ->
         val isNintendoLayout = when (prefs.controllerLayout) {
             "nintendo" -> true
             "xbox" -> false
@@ -357,7 +390,8 @@ class ArgosyViewModel @Inject constructor(
         val hasExistingConfig = prefs.rommBaseUrl != null || prefs.romStoragePath != null
         ArgosyUiState(
             isFirstRun = !prefs.firstRunComplete && !hasExistingConfig,
-            isLoading = false,
+            isLoading = !startupDone,
+            startupStatus = status,
             abIconsSwapped = isNintendoLayout xor prefs.swapAB,
             xyIconsSwapped = isNintendoLayout xor prefs.swapXY,
             swapStartSelect = prefs.swapStartSelect,

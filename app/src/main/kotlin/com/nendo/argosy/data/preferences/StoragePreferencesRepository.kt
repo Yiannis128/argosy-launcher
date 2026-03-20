@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,7 +17,8 @@ data class StoragePreferences(
     val maxConcurrentDownloads: Int = 1,
     val instantDownloadThresholdMb: Int = 50,
     val customBiosPath: String? = null,
-    val weeklyIntegrityCheckEnabled: Boolean = true
+    val weeklyIntegrityCheckEnabled: Boolean = true,
+    val lastIntegrityCheckTime: Long? = null
 )
 
 @Singleton
@@ -29,6 +31,7 @@ class StoragePreferencesRepository @Inject constructor(
         val INSTANT_DOWNLOAD_THRESHOLD_MB = intPreferencesKey("instant_download_threshold_mb")
         val CUSTOM_BIOS_PATH = stringPreferencesKey("custom_bios_path")
         val WEEKLY_INTEGRITY_CHECK = booleanPreferencesKey("weekly_integrity_check_enabled")
+        val LAST_INTEGRITY_CHECK = longPreferencesKey("last_integrity_check_time")
     }
 
     val preferences: Flow<StoragePreferences> = dataStore.data.map { prefs ->
@@ -37,7 +40,8 @@ class StoragePreferencesRepository @Inject constructor(
             maxConcurrentDownloads = prefs[Keys.MAX_CONCURRENT_DOWNLOADS] ?: 1,
             instantDownloadThresholdMb = prefs[Keys.INSTANT_DOWNLOAD_THRESHOLD_MB] ?: 50,
             customBiosPath = prefs[Keys.CUSTOM_BIOS_PATH],
-            weeklyIntegrityCheckEnabled = prefs[Keys.WEEKLY_INTEGRITY_CHECK] ?: true
+            weeklyIntegrityCheckEnabled = prefs[Keys.WEEKLY_INTEGRITY_CHECK] ?: true,
+            lastIntegrityCheckTime = prefs[Keys.LAST_INTEGRITY_CHECK]
         )
     }
 
@@ -62,5 +66,9 @@ class StoragePreferencesRepository @Inject constructor(
 
     suspend fun setWeeklyIntegrityCheckEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.WEEKLY_INTEGRITY_CHECK] = enabled }
+    }
+
+    suspend fun setLastIntegrityCheckTime(timeMs: Long) {
+        dataStore.edit { it[Keys.LAST_INTEGRITY_CHECK] = timeMs }
     }
 }
