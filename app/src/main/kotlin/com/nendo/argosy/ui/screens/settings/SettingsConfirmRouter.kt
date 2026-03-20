@@ -597,10 +597,26 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_VIDEO, focusedIndex = 2) }; true
         }
         state.currentSection == SettingsSection.BUILTIN_VIDEO -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 1) }; true
+            if (state.platformDetail.builtinEnteredFromPlatform) {
+                vm._uiState.update { it.copy(
+                    currentSection = SettingsSection.PLATFORM_DETAIL,
+                    focusedIndex = 0,
+                    platformDetail = it.platformDetail.copy(builtinEnteredFromPlatform = false)
+                ) }
+            } else {
+                vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 1) }
+            }; true
         }
         state.currentSection == SettingsSection.BUILTIN_CONTROLS -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 2) }; true
+            if (state.platformDetail.builtinEnteredFromPlatform) {
+                vm._uiState.update { it.copy(
+                    currentSection = SettingsSection.PLATFORM_DETAIL,
+                    focusedIndex = 0,
+                    platformDetail = it.platformDetail.copy(builtinEnteredFromPlatform = false)
+                ) }
+            } else {
+                vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 2) }
+            }; true
         }
         state.currentSection == SettingsSection.CORE_MANAGEMENT -> {
             vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_EMULATOR, focusedIndex = 3) }; true

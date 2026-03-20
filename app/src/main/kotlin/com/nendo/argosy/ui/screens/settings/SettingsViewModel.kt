@@ -283,7 +283,10 @@ class SettingsViewModel @Inject constructor(
         val ctxIndex = _uiState.value.builtinVideo.availablePlatforms
             .indexOfFirst { it.platformId == config.platform.id }
         if (ctxIndex >= 0) {
-            _uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(platformContextIndex = ctxIndex + 1)) }
+            _uiState.update { it.copy(
+                builtinVideo = it.builtinVideo.copy(platformContextIndex = ctxIndex + 1),
+                platformDetail = it.platformDetail.copy(builtinEnteredFromPlatform = true)
+            ) }
         }
         emulatorDelegate.navigateToBuiltinVideo(viewModelScope)
     }
@@ -293,7 +296,10 @@ class SettingsViewModel @Inject constructor(
         val ctxIndex = _uiState.value.builtinVideo.availablePlatforms
             .indexOfFirst { it.platformId == config.platform.id }
         if (ctxIndex >= 0) {
-            _uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(platformContextIndex = ctxIndex + 1)) }
+            _uiState.update { it.copy(
+                builtinVideo = it.builtinVideo.copy(platformContextIndex = ctxIndex + 1),
+                platformDetail = it.platformDetail.copy(builtinEnteredFromPlatform = true)
+            ) }
         }
         emulatorDelegate.navigateToBuiltinControls(viewModelScope)
     }

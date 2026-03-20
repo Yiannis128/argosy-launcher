@@ -286,7 +286,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             val autoResolvedEmulator = vm.emulatorDetector.getPreferredEmulator(platform.slug, prefs.builtinLibretroEnabled)?.def
             val effectiveEmulatorDef = selectedEmulatorDef ?: autoResolvedEmulator
             val isRetroArch = effectiveEmulatorDef?.launchConfig is LaunchConfig.RetroArch
-            val availableCores = if (isRetroArch) {
+            val isBuiltin = effectiveEmulatorDef?.launchConfig is LaunchConfig.BuiltIn
+            val hasCoreSelection = isRetroArch || isBuiltin
+            val availableCores = if (hasCoreSelection) {
                 EmulatorRegistry.getCoresForPlatform(platform.slug)
             } else {
                 emptyList()
@@ -295,7 +297,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             val storedCore = defaultConfig?.coreName
             val defaultCore = EmulatorRegistry.getDefaultCore(platform.slug)?.id
             val selectedCore = when {
-                !isRetroArch -> null
+                !hasCoreSelection -> null
                 storedCore != null && availableCores.any { it.id == storedCore } -> storedCore
                 else -> defaultCore ?: availableCores.firstOrNull()?.id
             }
@@ -486,9 +488,12 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             shuffle = prefs.ambientAudioShuffle
         ))
 
+        val excludedSlugs = setOf("android", "steam")
+        val filteredPlatformConfigs = platformConfigs.filter { it.platform.slug !in excludedSlugs }
+
         val currentEmulatorState = vm.emulatorDelegate.state.value
         vm.emulatorDelegate.updateState(EmulatorState(
-            platforms = platformConfigs,
+            platforms = filteredPlatformConfigs,
             installedEmulators = installedEmulators,
             canAutoAssign = canAutoAssign,
             platformSubFocusIndex = currentEmulatorState.platformSubFocusIndex,

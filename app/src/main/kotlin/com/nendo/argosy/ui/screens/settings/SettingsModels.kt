@@ -100,7 +100,7 @@ data class PlatformEmulatorConfig(
 ) {
     val hasInstalledEmulators: Boolean get() = availableEmulators.isNotEmpty()
     val isRetroArchSelected: Boolean get() = selectedEmulatorPackage?.startsWith("com.retroarch") == true
-    val showCoreSelection: Boolean get() = effectiveEmulatorIsRetroArch && availableCores.isNotEmpty()
+    val showCoreSelection: Boolean get() = (effectiveEmulatorIsRetroArch || effectiveEmulatorId == "builtin") && availableCores.isNotEmpty()
     val showExtensionSelection: Boolean get() = extensionOptions.isNotEmpty()
     val showLegacyModeOption: Boolean get() = effectiveEmulatorId == "drastic"
     val showDisplayTargetOption: Boolean get() = hasSecondaryDisplay
@@ -289,6 +289,7 @@ data class PlatformContext(
 
 data class PlatformDetailState(
     val platformIndex: Int = 0,
+    val builtinEnteredFromPlatform: Boolean = false,
     val totalGames: Int = 0,
     val downloadedGames: Int = 0,
     val favorites: Int = 0,
