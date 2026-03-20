@@ -269,12 +269,26 @@ class SettingsViewModel @Inject constructor(
 
     fun scanFilesForPlatform(platformId: Long) {
         val platformIndex = _uiState.value.platformDetail.platformIndex
+        val config = _uiState.value.emulators.platforms.getOrNull(platformIndex)
+        val platformName = config?.platform?.name ?: "Platform"
         _uiState.update { it.copy(platformDetail = it.platformDetail.copy(isScanning = true)) }
         viewModelScope.launch {
-            gameRepository.validateLocalFilesForPlatform(platformId)
-            gameRepository.discoverLocalFilesForPlatform(platformId)
+            val invalidated = gameRepository.validateLocalFilesForPlatform(platformId)
+            val discovered = gameRepository.discoverLocalFilesForPlatform(platformId)
             _uiState.update { it.copy(platformDetail = it.platformDetail.copy(isScanning = false)) }
             loadPlatformDetailStats(platformIndex)
+
+            val parts = mutableListOf<String>()
+            if (discovered > 0) parts.add("$discovered found")
+            if (invalidated > 0) parts.add("$invalidated removed")
+            if (parts.isEmpty()) parts.add("No changes")
+
+            notificationManager.show(
+                title = "Scan Complete",
+                subtitle = "$platformName: ${parts.joinToString(", ")}",
+                type = com.nendo.argosy.ui.notification.NotificationType.SUCCESS,
+                duration = com.nendo.argosy.ui.notification.NotificationDuration.MEDIUM
+            )
         }
     }
 
