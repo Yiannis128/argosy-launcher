@@ -192,7 +192,8 @@ void Video::updateProgram() {
 }
 
 void Video::renderFrame() {
-    if (skipDuplicateFrames && !bfiEnabled && !isDirty) {
+    bool shaderPending = !loadedShaderType.has_value() || !(loadedShaderType.value() == requestedShaderConfig);
+    if (skipDuplicateFrames && !bfiEnabled && !isDirty && !shaderPending) {
         return;
     }
     isDirty = false;
@@ -440,6 +441,7 @@ Video::Video(
 
 void Video::updateShaderType(ShaderManager::Config shaderConfig) {
     requestedShaderConfig = std::move(shaderConfig);
+    loadedShaderType = std::nullopt;  // Force shader rebuild on next frame
 }
 
 void Video::setFilterMode(int mode) {

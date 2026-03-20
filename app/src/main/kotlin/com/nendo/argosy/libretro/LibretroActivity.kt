@@ -652,6 +652,12 @@ class LibretroActivity : ComponentActivity() {
                 if (!isAnyMenuOpen) {
                     activeMenuHandler = null
                 }
+                androidx.compose.runtime.LaunchedEffect(isAnyMenuOpen) {
+                    if (!isAnyMenuOpen) {
+                        retroView.suppressAutoResume = false
+                        retroView.resumeEmulation()
+                    }
+                }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     AchievementPopup(
@@ -1019,9 +1025,8 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun openInGameShaderChainEditor() {
-        retroView.onResume()
         capturedGameFrame = retroView.captureRawFrame()
-        retroView.onPause()
+        retroView.pauseEmulation()
 
         val registry = ShaderRegistry(this)
         val manager = ShaderChainManager(
@@ -1052,6 +1057,7 @@ class LibretroActivity : ComponentActivity() {
         val manager = inGameShaderChainManager ?: return
         val config = manager.getChainConfig()
         val shaderConfig = ShaderRegistry(this).resolveChain(config)
+        Log.d(TAG, "closeInGameShaderChainEditor: resolved shader type=${shaderConfig::class.simpleName}")
         videoSettings.resolvedCustomShader = shaderConfig
         retroView.shader = shaderConfig
         videoSettings.persistShaderChain(config.toJson())
@@ -1061,6 +1067,7 @@ class LibretroActivity : ComponentActivity() {
         capturedGameFrame = null
         shaderChainEditorVisible = false
         settingsVisible = true
+        Log.d(TAG, "closeInGameShaderChainEditor: done, settingsVisible=true")
     }
 
     private fun openInGameFrameEditor() {
@@ -1154,12 +1161,14 @@ class LibretroActivity : ComponentActivity() {
 
     private fun showMenu() {
         retroView.pauseEmulation()
+        retroView.suppressAutoResume = true
         menuFocusIndex = 0
         menuVisible = true
     }
 
     private fun hideMenu() {
         menuVisible = false
+        retroView.suppressAutoResume = false
         retroView.resumeEmulation()
     }
 
@@ -1243,9 +1252,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         enterImmersiveMode()
-        if (!isAnyMenuOpen) {
-            retroView.onResume()
-        }
+        retroView.onResume()
     }
 
     override fun onUserLeaveHint() {

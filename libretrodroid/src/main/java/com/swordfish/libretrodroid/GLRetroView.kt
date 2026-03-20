@@ -63,7 +63,7 @@ class GLRetroView(
     }
 
     var shader: ShaderConfig by Delegates.observable(data.shader) { _, _, value ->
-        runOnGLThread {
+        queueEvent {
             LibretroDroid.setShaderConfig(buildShader(value))
         }
     }
@@ -111,7 +111,9 @@ class GLRetroView(
     private val openGLESVersion: Int
 
     private var isGameLoaded = false
-    private var isEmulationReady = false
+    @Volatile private var isEmulationReady = false
+    private var isNativeResumed = false
+    var suppressAutoResume = false
     private var isAborted = false
     private var previewModeEnabled = false
 
@@ -440,15 +442,19 @@ class GLRetroView(
 
         @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
         private fun resume() = catchExceptions {
-            if (!isEmulationReady) {
+            if (!isNativeResumed) {
+                isNativeResumed = true
                 LibretroDroid.resume()
                 onResume()
-                isEmulationReady = true
+                if (!suppressAutoResume) {
+                    isEmulationReady = true
+                }
             }
         }
 
         @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         private fun pause() = catchExceptions {
+            isNativeResumed = false
             isEmulationReady = false
             onPause()
             LibretroDroid.pause()
