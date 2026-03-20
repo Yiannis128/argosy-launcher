@@ -296,9 +296,18 @@ data class PlatformDetailState(
     val packagePathAccessible: Boolean? = null,
     val biosTotal: Int = 0,
     val biosDownloaded: Int = 0,
-    val hasBiosRequirements: Boolean = false
+    val hasBiosRequirements: Boolean = false,
+    val effectiveRomPath: String? = null,
+    val customRomPath: String? = null,
+    val effectiveSavePath: String? = null,
+    val isUserSavePathOverride: Boolean = false,
+    val effectiveStatePath: String? = null,
+    val isUserStatePathOverride: Boolean = false,
+    val supportsStatePath: Boolean = false,
+    val syncEnabled: Boolean = true,
+    val isScanning: Boolean = false,
+    val downloadedSizeBytes: Long = 0
 ) {
-    val platformConfig: PlatformEmulatorConfig? get() = null // resolved externally
     val playTimeFormatted: String get() {
         if (totalPlayTimeMs <= 0) return "--"
         val totalMinutes = totalPlayTimeMs / 60_000

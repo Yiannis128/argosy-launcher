@@ -462,6 +462,26 @@ class GameRepository @Inject constructor(
         invalidated
     }
 
+    suspend fun deleteLocalFilesForPlatform(platformId: Long): Int = withContext(Dispatchers.IO) {
+        val games = gameDao.getDownloadedByPlatform(platformId)
+        var deleted = 0
+        for (game in games) {
+            val path = game.localPath ?: continue
+            try {
+                val file = java.io.File(path)
+                if (file.exists()) {
+                    if (file.isDirectory) file.deleteRecursively() else file.delete()
+                }
+                gameDao.clearLocalPath(game.id)
+                deleted++
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete ${game.title}: ${e.message}")
+            }
+        }
+        Log.i(TAG, "Deleted $deleted local files for platform $platformId")
+        deleted
+    }
+
     suspend fun discoverLocalFilesForPlatform(platformId: Long): Int = withContext(Dispatchers.IO) {
         if (!isStorageReady()) return@withContext 0
 

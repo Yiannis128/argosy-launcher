@@ -238,6 +238,9 @@ class SettingsViewModel @Inject constructor(
                 titleIdDetector.validateSavePathAccess(emulatorId, pkg) is com.nendo.argosy.data.emulator.TitleIdDetector.ValidationResult.Valid
             }
 
+            val storageConfig = _uiState.value.storage.platformConfigs
+                .find { it.platformId == platformId }
+
             _uiState.update { it.copy(
                 platformDetail = it.platformDetail.copy(
                     totalGames = config.platform.gameCount,
@@ -247,10 +250,50 @@ class SettingsViewModel @Inject constructor(
                     packagePathAccessible = packagePathAccessible,
                     biosTotal = biosStatus?.totalFiles ?: 0,
                     biosDownloaded = biosStatus?.downloadedFiles ?: 0,
-                    hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0
+                    hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0,
+                    effectiveRomPath = storageConfig?.effectivePath,
+                    customRomPath = storageConfig?.customRomPath,
+                    effectiveSavePath = config.effectiveSavePath,
+                    isUserSavePathOverride = config.isUserSavePathOverride,
+                    effectiveStatePath = storageConfig?.effectiveStatePath,
+                    isUserStatePathOverride = storageConfig?.isUserStatePathOverride ?: false,
+                    supportsStatePath = storageConfig?.supportsStatePath ?: false,
+                    syncEnabled = storageConfig?.syncEnabled ?: true,
+                    downloadedSizeBytes = 0
                 )
             ) }
         }
+    }
+
+    fun scanFilesForPlatform(platformId: Long) {
+        val platformIndex = _uiState.value.platformDetail.platformIndex
+        _uiState.update { it.copy(platformDetail = it.platformDetail.copy(isScanning = true)) }
+        viewModelScope.launch {
+            gameRepository.validateLocalFilesForPlatform(platformId)
+            gameRepository.discoverLocalFilesForPlatform(platformId)
+            _uiState.update { it.copy(platformDetail = it.platformDetail.copy(isScanning = false)) }
+            loadPlatformDetailStats(platformIndex)
+        }
+    }
+
+    fun navigateToBuiltinVideoForPlatform(platformIndex: Int) {
+        val config = _uiState.value.emulators.platforms.getOrNull(platformIndex) ?: return
+        val ctxIndex = _uiState.value.builtinVideo.availablePlatforms
+            .indexOfFirst { it.platformId == config.platform.id }
+        if (ctxIndex >= 0) {
+            _uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(platformContextIndex = ctxIndex + 1)) }
+        }
+        emulatorDelegate.navigateToBuiltinVideo(viewModelScope)
+    }
+
+    fun navigateToBuiltinControlsForPlatform(platformIndex: Int) {
+        val config = _uiState.value.emulators.platforms.getOrNull(platformIndex) ?: return
+        val ctxIndex = _uiState.value.builtinVideo.availablePlatforms
+            .indexOfFirst { it.platformId == config.platform.id }
+        if (ctxIndex >= 0) {
+            _uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(platformContextIndex = ctxIndex + 1)) }
+        }
+        emulatorDelegate.navigateToBuiltinControls(viewModelScope)
     }
 
     fun getInstalledCoreIds(): Set<String> =
@@ -762,7 +805,38 @@ class SettingsViewModel @Inject constructor(
     fun onBiosFolderSelected(path: String) = biosDelegate.onBiosFolderSelected(path, viewModelScope)
 
     private var pendingBiosCopyPlatformSlug: String? = null
+    private var pendingStatePathPlatformId: Long? = null
     val hasPendingBiosCopy: Boolean get() = pendingBiosCopyPlatformSlug != null
+    val hasPendingStatePath: Boolean get() = pendingStatePathPlatformId != null
+
+    fun removeLocalFilesForPlatform(platformId: Long) {
+        val platformIndex = _uiState.value.platformDetail.platformIndex
+        val config = _uiState.value.emulators.platforms.getOrNull(platformIndex) ?: return
+        viewModelScope.launch {
+            val deleted = gameRepository.deleteLocalFilesForPlatform(platformId)
+            if (deleted > 0) {
+                notificationManager.show(
+                    title = "Files Removed",
+                    subtitle = "$deleted file${if (deleted > 1) "s" else ""} removed from ${config.platform.name}",
+                    type = com.nendo.argosy.ui.notification.NotificationType.SUCCESS,
+                    duration = com.nendo.argosy.ui.notification.NotificationDuration.MEDIUM
+                )
+            }
+            loadPlatformDetailStats(platformIndex)
+        }
+    }
+
+    fun launchStatePathPicker(platformId: Long) {
+        pendingStatePathPlatformId = platformId
+        _uiState.update { it.copy(launchFolderPicker = true) }
+    }
+
+    fun onStatePathFolderSelected(path: String) {
+        val id = pendingStatePathPlatformId ?: return
+        pendingStatePathPlatformId = null
+        setPlatformStatePath(id, path)
+        loadPlatformDetailStats(_uiState.value.platformDetail.platformIndex)
+    }
 
     fun launchBiosCopyPicker(platformSlug: String) {
         pendingBiosCopyPlatformSlug = platformSlug

@@ -15,6 +15,7 @@ import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.InfoPreference
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.EmulatorPickerPopup
@@ -104,6 +105,29 @@ fun PlatformDetailSection(
             }
         }
 
+        // -- Built-in settings links (conditional) --
+        val isBuiltin = config.effectiveEmulatorIsRetroArch || config.effectiveEmulatorId == "builtin"
+        if (isBuiltin) {
+            item(key = "builtin_video_link") {
+                val idx = focusItems.indexOf(PlatformDetailItem.BUILTIN_VIDEO)
+                ActionPreference(
+                    title = "Built-in Video",
+                    subtitle = "Shader, filter, aspect ratio overrides",
+                    isFocused = uiState.focusedIndex == idx,
+                    onClick = { viewModel.navigateToBuiltinVideoForPlatform(detail.platformIndex) }
+                )
+            }
+            item(key = "builtin_controls_link") {
+                val idx = focusItems.indexOf(PlatformDetailItem.BUILTIN_CONTROLS)
+                ActionPreference(
+                    title = "Built-in Controls",
+                    subtitle = "Rumble, stick mapping overrides",
+                    isFocused = uiState.focusedIndex == idx,
+                    onClick = { viewModel.navigateToBuiltinControlsForPlatform(detail.platformIndex) }
+                )
+            }
+        }
+
         // -- PLATFORM section --
         item(key = "header_platform") {
             Spacer(modifier = Modifier.height(Dimens.spacingLg))
@@ -137,13 +161,77 @@ fun PlatformDetailSection(
                 isFocused = false
             )
         }
+        item(key = "scan_files") {
+            val idx = focusItems.indexOf(PlatformDetailItem.SCAN_FILES)
+            ActionPreference(
+                title = if (detail.isScanning) "Scanning..." else "Scan for Files",
+                subtitle = "Check for new or missing ROM files",
+                isFocused = uiState.focusedIndex == idx,
+                isEnabled = !detail.isScanning,
+                onClick = { viewModel.scanFilesForPlatform(config.platform.id) }
+            )
+        }
 
-        // -- SAVE SYNC section --
+        // -- PATHS section --
+        item(key = "header_paths") {
+            Spacer(modifier = Modifier.height(Dimens.spacingLg))
+            SectionHeader(title = "Paths")
+        }
+        item(key = "rom_path") {
+            val idx = focusItems.indexOf(PlatformDetailItem.ROM_PATH)
+            val pathDisplay = formatPath(detail.effectiveRomPath)
+            CyclePreference(
+                title = "ROM Path",
+                value = pathDisplay,
+                subtitle = if (detail.customRomPath != null) "(custom)" else null,
+                isFocused = uiState.focusedIndex == idx,
+                onClick = { viewModel.openPlatformFolderPicker(config.platform.id) }
+            )
+        }
         if (config.showSavePath) {
-            item(key = "header_savesync") {
-                Spacer(modifier = Modifier.height(Dimens.spacingLg))
-                SectionHeader(title = "Save Sync")
+            item(key = "save_path_in_paths") {
+                val idx = focusItems.indexOf(PlatformDetailItem.SAVE_PATH)
+                val pathDisplay = formatPath(detail.effectiveSavePath)
+                CyclePreference(
+                    title = "Save Path",
+                    value = pathDisplay,
+                    subtitle = if (detail.isUserSavePathOverride) "(custom)" else null,
+                    isFocused = uiState.focusedIndex == idx,
+                    onClick = { viewModel.showSavePathModal(config) }
+                )
             }
+        }
+        if (detail.supportsStatePath) {
+            item(key = "state_path") {
+                val idx = focusItems.indexOf(PlatformDetailItem.STATE_PATH)
+                val pathDisplay = formatPath(detail.effectiveStatePath)
+                CyclePreference(
+                    title = "State Path",
+                    value = pathDisplay,
+                    subtitle = if (detail.isUserStatePathOverride) "(custom)" else null,
+                    isFocused = uiState.focusedIndex == idx,
+                    onClick = { viewModel.launchStatePathPicker(config.platform.id) }
+                )
+            }
+        }
+
+        // -- SYNC section --
+        item(key = "header_sync") {
+            Spacer(modifier = Modifier.height(Dimens.spacingLg))
+            SectionHeader(title = "Sync")
+        }
+        item(key = "sync_toggle") {
+            val idx = focusItems.indexOf(PlatformDetailItem.SYNC_TOGGLE)
+            SwitchPreference(
+                title = "Sync Enabled",
+                subtitle = "Include this platform in library sync",
+                isEnabled = detail.syncEnabled,
+                isFocused = uiState.focusedIndex == idx,
+                onToggle = { viewModel.togglePlatformSync(config.platform.id, it) }
+            )
+        }
+
+        if (config.showSavePath) {
             item(key = "package_path") {
                 val status = when (detail.packagePathAccessible) {
                     true -> "Accessible"
@@ -156,24 +244,16 @@ fun PlatformDetailSection(
                     isFocused = false
                 )
             }
-            item(key = "save_path") {
-                val idx = focusItems.indexOf(PlatformDetailItem.SAVE_PATH)
-                val pathDisplay = config.effectiveSavePath?.let { path ->
-                    val maxLen = 40
-                    if (path.length > maxLen) "...${path.takeLast(maxLen)}" else path
-                } ?: "Not configured"
-                val subtitle = when {
-                    detail.packagePathAccessible == false && !config.isUserSavePathOverride ->
-                        "Access blocked -- set a custom save path"
-                    config.isUserSavePathOverride -> "(custom)"
-                    else -> null
-                }
-                CyclePreference(
-                    title = "Save Path",
-                    value = pathDisplay,
-                    subtitle = subtitle,
+        }
+        if (detail.downloadedGames > 0) {
+            item(key = "remove_files") {
+                val idx = focusItems.indexOf(PlatformDetailItem.REMOVE_FILES)
+                ActionPreference(
+                    title = "Remove Local Files",
+                    subtitle = "${detail.downloadedGames} downloaded files",
                     isFocused = uiState.focusedIndex == idx,
-                    onClick = { viewModel.showSavePathModal(config) }
+                    isDangerous = true,
+                    onClick = { viewModel.removeLocalFilesForPlatform(config.platform.id) }
                 )
             }
         }
@@ -259,9 +339,18 @@ fun PlatformDetailSection(
     } // Box
 }
 
+private fun formatPath(path: String?): String {
+    if (path == null) return "Not configured"
+    val maxLen = 40
+    return if (path.length > maxLen) "...${path.takeLast(maxLen)}" else path
+}
+
 internal enum class PlatformDetailItem {
     EMULATOR, CORE, EXTENSION, DISPLAY_TARGET, LEGACY_MODE,
-    SAVE_PATH,
+    BUILTIN_VIDEO, BUILTIN_CONTROLS,
+    SCAN_FILES,
+    ROM_PATH, SAVE_PATH, STATE_PATH,
+    SYNC_TOGGLE, REMOVE_FILES,
     BIOS_DOWNLOAD, BIOS_COPY
 }
 
@@ -274,7 +363,17 @@ internal fun buildPlatformDetailFocusItems(
     if (config.showExtensionSelection) add(PlatformDetailItem.EXTENSION)
     if (config.showDisplayTargetOption) add(PlatformDetailItem.DISPLAY_TARGET)
     if (config.showLegacyModeOption) add(PlatformDetailItem.LEGACY_MODE)
+    val isBuiltin = config.effectiveEmulatorIsRetroArch || config.effectiveEmulatorId == "builtin"
+    if (isBuiltin) {
+        add(PlatformDetailItem.BUILTIN_VIDEO)
+        add(PlatformDetailItem.BUILTIN_CONTROLS)
+    }
+    add(PlatformDetailItem.SCAN_FILES)
+    add(PlatformDetailItem.ROM_PATH)
     if (config.showSavePath) add(PlatformDetailItem.SAVE_PATH)
+    if (detail.supportsStatePath) add(PlatformDetailItem.STATE_PATH)
+    add(PlatformDetailItem.SYNC_TOGGLE)
+    if (detail.downloadedGames > 0) add(PlatformDetailItem.REMOVE_FILES)
     if (detail.hasBiosRequirements && detail.biosDownloaded < detail.biosTotal) add(PlatformDetailItem.BIOS_DOWNLOAD)
     if (detail.hasBiosRequirements && detail.biosDownloaded > 0) add(PlatformDetailItem.BIOS_COPY)
 }

@@ -180,10 +180,10 @@ fun SettingsScreen(
 
     LaunchedEffect(uiState.launchFolderPicker) {
         if (uiState.launchFolderPicker) {
-            fileBrowserCallback = if (viewModel.hasPendingBiosCopy) {
-                { path -> viewModel.onBiosCopyFolderSelected(path) }
-            } else {
-                { path -> viewModel.setStoragePath(path) }
+            fileBrowserCallback = when {
+                viewModel.hasPendingBiosCopy -> { path: String -> viewModel.onBiosCopyFolderSelected(path) }
+                viewModel.hasPendingStatePath -> { path: String -> viewModel.onStatePathFolderSelected(path) }
+                else -> { path: String -> viewModel.setStoragePath(path) }
             }
             showFileBrowser = true
             viewModel.clearFolderPickerFlag()
