@@ -105,6 +105,13 @@ internal fun routeSetBuiltinVSync(vm: SettingsViewModel, enabled: Boolean) {
     }
 }
 
+internal fun routeSetBuiltinFastForwardEnabled(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(fastForwardEnabled = enabled)) }
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setBuiltinFastForwardEnabled(enabled)
+    }
+}
+
 internal fun routeSetBuiltinRewindEnabled(vm: SettingsViewModel, enabled: Boolean) {
     vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(rewindEnabled = enabled)) }
     vm.viewModelScope.launch {
@@ -333,6 +340,7 @@ internal fun routeUpdatePlatformLibretroSetting(vm: SettingsViewModel, setting: 
                 current.copy(frame = value)
             }
             LibretroSettingDef.BlackFrameInsertion -> current.copy(blackFrameInsertion = value?.toBooleanStrictOrNull())
+            LibretroSettingDef.FastForwardEnabled -> current.copy(fastForwardEnabled = value?.toBooleanStrictOrNull())
             LibretroSettingDef.FastForwardSpeed -> current.copy(fastForwardSpeed = routeParseFastForwardValue(value))
             LibretroSettingDef.RewindEnabled -> current.copy(rewindEnabled = value?.toBooleanStrictOrNull())
             LibretroSettingDef.SkipDuplicateFrames -> current.copy(skipDuplicateFrames = value?.toBooleanStrictOrNull())
@@ -356,7 +364,7 @@ internal fun routeResetAllPlatformLibretroSettings(vm: SettingsViewModel) {
         val current = vm.platformLibretroSettingsDao.getByPlatformId(platformContext.platformId) ?: return@launch
         val updated = current.copy(
             shader = null, filter = null, aspectRatio = null, rotation = null,
-            overscanCrop = null, frame = null, blackFrameInsertion = null, fastForwardSpeed = null,
+            overscanCrop = null, frame = null, blackFrameInsertion = null, fastForwardEnabled = null, fastForwardSpeed = null,
             rewindEnabled = null, rewindSpeed = null, rewindBufferDuration = null,
             skipDuplicateFrames = null, lowLatencyAudio = null, vsync = null
         )

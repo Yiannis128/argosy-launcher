@@ -507,7 +507,7 @@ class LibretroActivity : ComponentActivity() {
             isHardcoreMode = { hardcoreMode },
             onShowMenu = ::showMenu,
             onFastForwardChanged = { ff ->
-                if (ff && !isFastForwarding) {
+                if (ff && !isFastForwarding && videoSettings.fastForwardEnabled) {
                     isFastForwarding = true
                     retroView.frameSpeed = videoSettings.fastForwardSpeed
                 }

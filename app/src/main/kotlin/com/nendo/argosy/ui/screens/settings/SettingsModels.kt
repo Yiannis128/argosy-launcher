@@ -327,6 +327,7 @@ data class BuiltinVideoState(
     val skipDuplicateFrames: Boolean = false,
     val blackFrameInsertion: Boolean = false,
     val displayRefreshRate: Float = 60f,
+    val fastForwardEnabled: Boolean = true,
     val fastForwardSpeed: String = "4x",
     val rotation: String = "Auto",
     val overscanCrop: String = "Off",

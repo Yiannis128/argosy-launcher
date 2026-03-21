@@ -65,6 +65,7 @@ fun BuiltinVideoSection(
                     when (setting) {
                         LibretroSettingDef.Frame -> viewModel.setBuiltinFramesEnabled(enabled)
                         LibretroSettingDef.BlackFrameInsertion -> viewModel.setBuiltinBlackFrameInsertion(enabled)
+                        LibretroSettingDef.FastForwardEnabled -> viewModel.setBuiltinFastForwardEnabled(enabled)
                         LibretroSettingDef.RewindEnabled -> viewModel.setBuiltinRewindEnabled(enabled)
                         LibretroSettingDef.SkipDuplicateFrames -> viewModel.setBuiltinSkipDuplicateFrames(enabled)
                         LibretroSettingDef.LowLatencyAudio -> viewModel.setBuiltinLowLatencyAudio(enabled)

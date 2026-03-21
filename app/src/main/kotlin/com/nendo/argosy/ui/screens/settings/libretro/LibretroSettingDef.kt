@@ -63,6 +63,13 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
+    data object FastForwardEnabled : LibretroSettingDef(
+        key = "fastForwardEnabled",
+        section = "performance",
+        title = "Enable Fast Forward",
+        type = SettingType.Switch
+    )
+
     data object FastForwardSpeed : LibretroSettingDef(
         key = "fastForwardSpeed",
         section = "performance",
@@ -127,6 +134,7 @@ sealed class LibretroSettingDef(
             OverscanCrop,
             BlackFrameInsertion,
             VSync,
+            FastForwardEnabled,
             FastForwardSpeed,
             RewindEnabled,
             RewindSpeed,

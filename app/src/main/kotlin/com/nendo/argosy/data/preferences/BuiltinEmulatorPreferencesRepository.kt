@@ -30,6 +30,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_ANALOG_AS_DPAD = booleanPreferencesKey("builtin_analog_as_dpad")
         val BUILTIN_DPAD_AS_ANALOG = booleanPreferencesKey("builtin_dpad_as_analog")
         val BUILTIN_CORE_SELECTIONS = stringPreferencesKey("builtin_core_selections")
+        val BUILTIN_FAST_FORWARD_ENABLED = booleanPreferencesKey("builtin_fast_forward_enabled")
         val BUILTIN_FAST_FORWARD_SPEED = intPreferencesKey("builtin_fast_forward_speed")
         val BUILTIN_ROTATION = intPreferencesKey("builtin_rotation")
         val BUILTIN_OVERSCAN_CROP = intPreferencesKey("builtin_overscan_crop")
@@ -60,6 +61,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             limitHotkeysToPlayer1 = prefs[Keys.BUILTIN_LIMIT_HOTKEYS_TO_PLAYER1] ?: true,
             analogAsDpad = prefs[Keys.BUILTIN_ANALOG_AS_DPAD] ?: false,
             dpadAsAnalog = prefs[Keys.BUILTIN_DPAD_AS_ANALOG] ?: false,
+            fastForwardEnabled = prefs[Keys.BUILTIN_FAST_FORWARD_ENABLED] ?: true,
             fastForwardSpeed = prefs[Keys.BUILTIN_FAST_FORWARD_SPEED] ?: 4,
             rotation = prefs[Keys.BUILTIN_ROTATION] ?: -1,
             overscanCrop = prefs[Keys.BUILTIN_OVERSCAN_CROP] ?: 0,
@@ -154,6 +156,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             prefs[Keys.BUILTIN_CORE_SELECTIONS] = current.entries
                 .joinToString(",") { "${it.key}:${it.value}" }
         }
+    }
+
+    suspend fun setBuiltinFastForwardEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_ENABLED] = enabled }
     }
 
     suspend fun setBuiltinFastForwardSpeed(speed: Int) {

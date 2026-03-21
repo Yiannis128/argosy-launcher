@@ -337,6 +337,7 @@ class SettingsViewModel @Inject constructor(
     fun setBuiltinSkipDuplicateFrames(enabled: Boolean) = routeSetBuiltinSkipDuplicateFrames(this, enabled)
     fun setBuiltinLowLatencyAudio(enabled: Boolean) = routeSetBuiltinLowLatencyAudio(this, enabled)
     fun setBuiltinVSync(enabled: Boolean) = routeSetBuiltinVSync(this, enabled)
+    fun setBuiltinFastForwardEnabled(enabled: Boolean) = routeSetBuiltinFastForwardEnabled(this, enabled)
     fun setBuiltinRewindEnabled(enabled: Boolean) = routeSetBuiltinRewindEnabled(this, enabled)
     fun setBuiltinRumbleEnabled(enabled: Boolean) = routeSetBuiltinRumbleEnabled(this, enabled)
     fun setBuiltinLimitHotkeysToPlayer1(enabled: Boolean) = routeSetBuiltinLimitHotkeysToPlayer1(this, enabled)

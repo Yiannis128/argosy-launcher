@@ -576,6 +576,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     skipDuplicateFrames = builtinSettings.skipDuplicateFrames,
                     blackFrameInsertion = builtinSettings.blackFrameInsertion,
                     displayRefreshRate = refreshRate,
+                    fastForwardEnabled = builtinSettings.fastForwardEnabled,
                     fastForwardSpeed = builtinSettings.fastForwardSpeedDisplay,
                     rotation = builtinSettings.rotationDisplay,
                     overscanCrop = builtinSettings.overscanCropDisplay,

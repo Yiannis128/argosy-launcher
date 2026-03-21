@@ -40,6 +40,7 @@ class GlobalLibretroSettingsAccessor(
         LibretroSettingDef.OverscanCrop -> state.overscanCrop
         LibretroSettingDef.Frame -> state.framesEnabled.toString()
         LibretroSettingDef.BlackFrameInsertion -> state.blackFrameInsertion.toString()
+        LibretroSettingDef.FastForwardEnabled -> state.fastForwardEnabled.toString()
         LibretroSettingDef.FastForwardSpeed -> state.fastForwardSpeed
         LibretroSettingDef.RewindEnabled -> state.rewindEnabled.toString()
         LibretroSettingDef.SkipDuplicateFrames -> state.skipDuplicateFrames.toString()
@@ -128,6 +129,7 @@ class PlatformLibretroSettingsAccessor(
         LibretroSettingDef.OverscanCrop -> globalState.overscanCrop
         LibretroSettingDef.Frame -> "Auto"
         LibretroSettingDef.BlackFrameInsertion -> globalState.blackFrameInsertion.toString()
+        LibretroSettingDef.FastForwardEnabled -> globalState.fastForwardEnabled.toString()
         LibretroSettingDef.FastForwardSpeed -> globalState.fastForwardSpeed
         LibretroSettingDef.RewindEnabled -> globalState.rewindEnabled.toString()
         LibretroSettingDef.SkipDuplicateFrames -> globalState.skipDuplicateFrames.toString()
@@ -180,6 +182,7 @@ class PlatformLibretroSettingsAccessor(
             LibretroSettingDef.OverscanCrop -> ps.overscanCrop?.toOverscanString()
             LibretroSettingDef.Frame -> ps.frame
             LibretroSettingDef.BlackFrameInsertion -> ps.blackFrameInsertion?.toString()
+            LibretroSettingDef.FastForwardEnabled -> ps.fastForwardEnabled?.toString()
             LibretroSettingDef.FastForwardSpeed -> ps.fastForwardSpeed?.let { "${it}x" }
             LibretroSettingDef.RewindEnabled -> ps.rewindEnabled?.toString()
             LibretroSettingDef.SkipDuplicateFrames -> ps.skipDuplicateFrames?.toString()

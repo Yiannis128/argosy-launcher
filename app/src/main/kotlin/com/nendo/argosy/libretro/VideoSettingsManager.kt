@@ -37,6 +37,7 @@ class VideoSettingsManager(
     var currentRotation by mutableStateOf("Auto")
     var currentOverscanCrop by mutableStateOf("Off")
     var currentBFI by mutableStateOf(false)
+    var currentFastForwardEnabled by mutableStateOf(true)
     var currentFastForwardSpeed by mutableStateOf("4x")
     var currentRewindEnabled by mutableStateOf(true)
     var currentSkipDupFrames by mutableStateOf(false)
@@ -50,6 +51,7 @@ class VideoSettingsManager(
     var currentFrame by mutableStateOf<String?>(null)
 
     var aspectRatioMode: String = "Auto"
+    var fastForwardEnabled: Boolean = true
     var fastForwardSpeed: Int = 4
     var overscanCrop: Int = 0
     var rotationDegrees: Int = -1
@@ -63,6 +65,7 @@ class VideoSettingsManager(
 
     fun applySettings(settings: BuiltinEmulatorSettings) {
         aspectRatioMode = settings.aspectRatio
+        fastForwardEnabled = settings.fastForwardEnabled
         fastForwardSpeed = settings.fastForwardSpeed
         overscanCrop = settings.overscanCrop
         rotationDegrees = settings.rotation
@@ -73,6 +76,7 @@ class VideoSettingsManager(
         currentRotation = settings.rotationDisplay
         currentOverscanCrop = settings.overscanCropDisplay
         currentBFI = settings.blackFrameInsertion
+        currentFastForwardEnabled = settings.fastForwardEnabled
         currentFastForwardSpeed = settings.fastForwardSpeedDisplay
         currentRewindEnabled = settings.rewindEnabled
         currentSkipDupFrames = settings.skipDuplicateFrames
@@ -107,6 +111,7 @@ class VideoSettingsManager(
             frameRegistry.findById(it)?.displayName
         } ?: "None"
         LibretroSettingDef.BlackFrameInsertion -> currentBFI.toString()
+        LibretroSettingDef.FastForwardEnabled -> currentFastForwardEnabled.toString()
         LibretroSettingDef.FastForwardSpeed -> currentFastForwardSpeed
         LibretroSettingDef.RewindEnabled -> currentRewindEnabled.toString()
         LibretroSettingDef.SkipDuplicateFrames -> currentSkipDupFrames.toString()
@@ -126,6 +131,7 @@ class VideoSettingsManager(
             frameRegistry.findById(it)?.displayName
         } ?: "None"
         LibretroSettingDef.BlackFrameInsertion -> globalSettings.blackFrameInsertion.toString()
+        LibretroSettingDef.FastForwardEnabled -> globalSettings.fastForwardEnabled.toString()
         LibretroSettingDef.FastForwardSpeed -> globalSettings.fastForwardSpeedDisplay
         LibretroSettingDef.RewindEnabled -> globalSettings.rewindEnabled.toString()
         LibretroSettingDef.SkipDuplicateFrames -> globalSettings.skipDuplicateFrames.toString()
@@ -148,6 +154,7 @@ class VideoSettingsManager(
             LibretroSettingDef.AspectRatio -> currentAspectRatio = globalValue
             LibretroSettingDef.Rotation -> currentRotation = globalValue
             LibretroSettingDef.OverscanCrop -> currentOverscanCrop = globalValue
+            LibretroSettingDef.FastForwardEnabled -> currentFastForwardEnabled = globalValue.toBooleanStrictOrNull() ?: true
             LibretroSettingDef.FastForwardSpeed -> currentFastForwardSpeed = globalValue
             LibretroSettingDef.Frame -> currentFrame = getGlobalFrameForPlatform()
             else -> {}
@@ -196,6 +203,7 @@ class VideoSettingsManager(
                 LibretroSettingDef.OverscanCrop -> current.copy(overscanCrop = null)
                 LibretroSettingDef.Frame -> current.copy(frame = null)
                 LibretroSettingDef.BlackFrameInsertion -> current.copy(blackFrameInsertion = null)
+                LibretroSettingDef.FastForwardEnabled -> current.copy(fastForwardEnabled = null)
                 LibretroSettingDef.FastForwardSpeed -> current.copy(fastForwardSpeed = null)
                 LibretroSettingDef.RewindEnabled -> current.copy(rewindEnabled = null)
                 LibretroSettingDef.SkipDuplicateFrames -> current.copy(skipDuplicateFrames = null)
@@ -227,6 +235,7 @@ class VideoSettingsManager(
             LibretroSettingDef.AspectRatio -> currentAspectRatio = newValue
             LibretroSettingDef.Rotation -> currentRotation = newValue
             LibretroSettingDef.OverscanCrop -> currentOverscanCrop = newValue
+            LibretroSettingDef.FastForwardEnabled -> currentFastForwardEnabled = newValue.toBooleanStrictOrNull() ?: true
             LibretroSettingDef.FastForwardSpeed -> currentFastForwardSpeed = newValue
             LibretroSettingDef.RewindSpeed -> currentRewindSpeed = newValue
             LibretroSettingDef.RewindBufferDuration -> currentRewindBufferDuration = newValue
@@ -311,6 +320,9 @@ class VideoSettingsManager(
             }
             LibretroSettingDef.BlackFrameInsertion -> {
                 retroView.blackFrameInsertion = value.toBooleanStrictOrNull() ?: false
+            }
+            LibretroSettingDef.FastForwardEnabled -> {
+                fastForwardEnabled = value.toBooleanStrictOrNull() ?: true
             }
             LibretroSettingDef.FastForwardSpeed -> {
                 val speed = value.removeSuffix("x").toIntOrNull() ?: 4
@@ -417,6 +429,7 @@ class VideoSettingsManager(
                 LibretroSettingDef.OverscanCrop -> current.copy(overscanCrop = parseOverscan(value))
                 LibretroSettingDef.Frame -> current.copy(frame = if (value == "None") null else currentFrame)
                 LibretroSettingDef.BlackFrameInsertion -> current.copy(blackFrameInsertion = value.toBooleanStrictOrNull())
+                LibretroSettingDef.FastForwardEnabled -> current.copy(fastForwardEnabled = value.toBooleanStrictOrNull())
                 LibretroSettingDef.FastForwardSpeed -> current.copy(fastForwardSpeed = value.removeSuffix("x").toIntOrNull())
                 LibretroSettingDef.RewindEnabled -> current.copy(rewindEnabled = value.toBooleanStrictOrNull())
                 LibretroSettingDef.SkipDuplicateFrames -> current.copy(skipDuplicateFrames = value.toBooleanStrictOrNull())
