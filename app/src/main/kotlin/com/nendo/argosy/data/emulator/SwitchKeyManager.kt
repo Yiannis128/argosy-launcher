@@ -58,7 +58,7 @@ class SwitchKeyManager @Inject constructor(
             "/storage/emulated/0/Android/data/$emulatorPackage/files/keys/prod.keys",
             "${context.filesDir.absolutePath}/bios/switch/prod.keys"
         )
-        return candidates.firstOrNull { fal.exists(it) }?.also {
+        return candidates.firstOrNull { fal.exists(it) && fal.canRead(it) }?.also {
             Logger.debug(TAG, "Found prod.keys | pkg=$emulatorPackage, path=$it")
         }
     }

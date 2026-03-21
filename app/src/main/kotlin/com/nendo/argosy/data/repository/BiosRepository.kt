@@ -671,6 +671,12 @@ class BiosRepository @Inject constructor(
             File(prodKeysPath).copyTo(targetProdKeys, overwrite = true)
             Logger.info(TAG, "Copied prod.keys to ${targetProdKeys.absolutePath}")
 
+            val internalKeysDir = File(context.filesDir, "bios/switch")
+            internalKeysDir.mkdirs()
+            val internalProdKeys = File(internalKeysDir, "prod.keys")
+            File(prodKeysPath).copyTo(internalProdKeys, overwrite = true)
+            Logger.info(TAG, "Copied prod.keys to internal fallback | path=${internalProdKeys.absolutePath}")
+
             val registeredDir = File(edenBasePath, "nand/system/Contents/registered")
             registeredDir.mkdirs()
 

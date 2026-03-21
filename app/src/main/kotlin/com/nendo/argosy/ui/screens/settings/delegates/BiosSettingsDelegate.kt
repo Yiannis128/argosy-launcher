@@ -103,6 +103,7 @@ class BiosSettingsDelegate @Inject constructor(
     }
 
     fun downloadAllBios(scope: CoroutineScope) {
+        if (_state.value.isDownloading) return
         scope.launch {
             _state.update { it.copy(isDownloading = true, downloadProgress = 0f) }
 
@@ -135,6 +136,7 @@ class BiosSettingsDelegate @Inject constructor(
     }
 
     fun downloadBiosForPlatform(platformSlug: String, scope: CoroutineScope) {
+        if (_state.value.isDownloading) return
         scope.launch {
             _state.update { it.copy(isDownloading = true, downloadProgress = 0f) }
 
@@ -172,6 +174,7 @@ class BiosSettingsDelegate @Inject constructor(
     }
 
     fun downloadSingleBios(rommId: Long, scope: CoroutineScope) {
+        if (_state.value.isDownloading) return
         scope.launch {
             val firmware = firmwareDao.getByRommId(rommId) ?: return@launch
 
@@ -200,6 +203,7 @@ class BiosSettingsDelegate @Inject constructor(
     }
 
     fun distributeAllBios(scope: CoroutineScope) {
+        if (_state.value.isDistributing) return
         scope.launch {
             _state.update { it.copy(isDistributing = true) }
 
