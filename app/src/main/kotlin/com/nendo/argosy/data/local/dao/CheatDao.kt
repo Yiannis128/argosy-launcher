@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.nendo.argosy.data.local.entity.CheatEntity
+import com.nendo.argosy.data.local.entity.CheatVariantTuple
+import com.nendo.argosy.data.local.entity.EnabledCheatKey
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -49,6 +51,9 @@ interface CheatDao {
     @Query("SELECT cheatIndex FROM cheats WHERE gameId = :gameId AND isUserCreated = 0 AND enabled = 1")
     suspend fun getEnabledServerCheatIndices(gameId: Long): List<Int>
 
+    @Query("SELECT variantRegion, variantVersion, cheatIndex FROM cheats WHERE gameId = :gameId AND isUserCreated = 0 AND enabled = 1")
+    suspend fun getEnabledServerCheatKeys(gameId: Long): List<EnabledCheatKey>
+
     @Query("DELETE FROM cheats WHERE id = :id")
     suspend fun deleteById(id: Long)
 
@@ -60,4 +65,21 @@ interface CheatDao {
 
     @Query("UPDATE cheats SET description = :description, code = :code WHERE id = :id")
     suspend fun updateCheat(id: Long, description: String, code: String)
+
+    @Query("""
+        SELECT DISTINCT variantRegion, variantVersion, COUNT(*) as cheatCount
+        FROM cheats
+        WHERE gameId = :gameId AND isUserCreated = 0 AND variantRegion IS NOT NULL
+        GROUP BY variantRegion, variantVersion
+        ORDER BY cheatCount DESC
+    """)
+    suspend fun getVariantsForGame(gameId: Long): List<CheatVariantTuple>
+
+    @Query("""
+        SELECT * FROM cheats
+        WHERE gameId = :gameId
+          AND ((variantRegion = :region AND variantVersion = :version) OR isUserCreated = 1)
+        ORDER BY isUserCreated ASC, cheatIndex ASC
+    """)
+    suspend fun getCheatsForVariant(gameId: Long, region: String, version: String): List<CheatEntity>
 }

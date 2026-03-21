@@ -28,5 +28,7 @@ data class CheatEntity(
     val code: String,
     val enabled: Boolean = false,
     val isUserCreated: Boolean = false,
-    val lastUsedAt: Long? = null
+    val lastUsedAt: Long? = null,
+    val variantRegion: String? = null,
+    val variantVersion: String? = null
 )

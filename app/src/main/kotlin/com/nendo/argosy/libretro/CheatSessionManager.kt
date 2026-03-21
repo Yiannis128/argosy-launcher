@@ -8,6 +8,7 @@ import com.nendo.argosy.data.cheats.CheatsRepository
 import com.nendo.argosy.data.local.dao.CheatDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.CheatEntity
+import com.nendo.argosy.data.local.entity.CheatVariantTuple
 import com.nendo.argosy.libretro.scanner.MemoryScanner
 import com.swordfish.libretrodroid.GLRetroView
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,10 @@ class CheatSessionManager(
     val memoryScanner = MemoryScanner()
 
     var cheats by mutableStateOf<List<CheatEntity>>(emptyList())
+        private set
+    var variants by mutableStateOf<List<CheatVariantTuple>>(emptyList())
+        private set
+    var selectedVariant by mutableStateOf<Pair<String, String>?>(null)
         private set
     var sessionTainted: Boolean = false
         private set
@@ -49,9 +54,26 @@ class CheatSessionManager(
                 }
             }
 
-            cheats = cheatDao.getCheatsForGame(gameId)
-            Log.d(TAG, "Loaded ${cheats.size} cheats for game $gameId")
+            variants = cheatsRepository.getVariantsForGame(gameId)
+            selectedVariant = cheatsRepository.getSelectedVariant(gameId)
+            cheats = cheatsRepository.getCheatsForGame(gameId)
+            Log.d(TAG, "Loaded ${cheats.size} cheats for game $gameId, ${variants.size} variants, selected=$selectedVariant")
             if (cheats.any { it.enabled }) {
+                applyAllEnabledCheats(hardcoreMode)
+            }
+        }
+    }
+
+    fun selectVariant(region: String, version: String, hardcoreMode: Boolean) {
+        scope.launch {
+            cheatsRepository.selectVariant(gameId, region, version)
+            selectedVariant = region to version
+            cheats = cheatsRepository.getCheatsForGame(gameId)
+            Log.d(TAG, "Selected variant: region=$region, version=$version, cheats=${cheats.size}")
+
+            val view = retroView
+            if (view != null) {
+                view.resetCheat()
                 applyAllEnabledCheats(hardcoreMode)
             }
         }
@@ -64,7 +86,7 @@ class CheatSessionManager(
                 Log.d(TAG, "Session marked as tainted (cheats enabled)")
             }
             cheatDao.setEnabled(cheatId, enabled, System.currentTimeMillis())
-            cheats = cheatDao.getCheatsForGame(gameId)
+            cheats = cheatsRepository.getCheatsForGame(gameId)
             applyCheat(cheatId, enabled)
         }
     }
@@ -83,7 +105,7 @@ class CheatSessionManager(
                 lastUsedAt = System.currentTimeMillis()
             )
             val newId = cheatDao.insert(newCheat)
-            cheats = cheatDao.getCheatsForGame(gameId)
+            cheats = cheatsRepository.getCheatsForGame(gameId)
             applyCheat(newId, true)
             Log.d(TAG, "Created custom cheat: $description -> $code")
         }
@@ -94,7 +116,7 @@ class CheatSessionManager(
             cheatDao.updateDescription(cheatId, description)
             cheatDao.updateCode(cheatId, code)
             val cheat = cheats.find { it.id == cheatId }
-            cheats = cheatDao.getCheatsForGame(gameId)
+            cheats = cheatsRepository.getCheatsForGame(gameId)
             if (cheat?.enabled == true) {
                 val updatedCheat = cheats.find { it.id == cheatId }
                 if (updatedCheat != null) {
@@ -112,7 +134,7 @@ class CheatSessionManager(
                 retroView?.setCheat(cheat.cheatIndex, false, cheat.code)
             }
             cheatDao.deleteById(cheatId)
-            cheats = cheatDao.getCheatsForGame(gameId)
+            cheats = cheatsRepository.getCheatsForGame(gameId)
             Log.d(TAG, "Deleted cheat $cheatId")
         }
     }

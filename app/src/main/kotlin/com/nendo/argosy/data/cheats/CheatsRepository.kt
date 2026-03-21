@@ -6,6 +6,7 @@ import android.text.Html
 import com.nendo.argosy.data.local.dao.CheatDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.CheatEntity
+import com.nendo.argosy.data.local.entity.CheatVariantTuple
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.util.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,26 +52,50 @@ class CheatsRepository @Inject constructor(
 
         Logger.debug(TAG, "Fetching cheats for game=${game.id}, name='${game.title}', platform=$mappedPlatform")
 
-        return try {
-            val result = cheatsService.lookupByName(game.title, mappedPlatform, deviceToken)
+        val fileName = game.rommFileName ?: game.localPath?.substringAfterLast("/")
+        val parsed = if (fileName != null) RomFileNameParser.parse(fileName) else null
 
-            if (result != null && result.cheats.isNotEmpty()) {
-                val enabledIndices = cheatDao.getEnabledServerCheatIndices(game.id).toSet()
+        return try {
+            val result = cheatsService.lookupByName(
+                game.title,
+                mappedPlatform,
+                deviceToken,
+                region = parsed?.region,
+                version = parsed?.version
+            )
+
+            if (result != null && result.variants.isNotEmpty()) {
+                val enabledKeys = cheatDao.getEnabledServerCheatKeys(game.id).map {
+                    Triple(it.variantRegion, it.variantVersion, it.cheatIndex)
+                }.toSet()
                 cheatDao.deleteServerCheats(game.id)
 
-                val entities = result.cheats.map { cheat ->
-                    CheatEntity(
-                        gameId = game.id,
-                        cheatIndex = cheat.index,
-                        description = Html.fromHtml(cheat.description, Html.FROM_HTML_MODE_LEGACY).toString(),
-                        code = cheat.code,
-                        enabled = cheat.index in enabledIndices
-                    )
+                val entities = result.variants.flatMap { variant ->
+                    variant.cheats.map { cheat ->
+                        val key = Triple(variant.region, variant.version, cheat.index)
+                        CheatEntity(
+                            gameId = game.id,
+                            cheatIndex = cheat.index,
+                            description = Html.fromHtml(
+                                cheat.description,
+                                Html.FROM_HTML_MODE_LEGACY
+                            ).toString(),
+                            code = cheat.code,
+                            enabled = key in enabledKeys,
+                            variantRegion = variant.region,
+                            variantVersion = variant.version
+                        )
+                    }
                 }
 
                 cheatDao.insertAll(entities)
 
-                Logger.info(TAG, "Stored ${entities.size} cheats for game=${game.id} (${result.gameName})")
+                if (result.variants.size == 1) {
+                    val only = result.variants.first()
+                    gameDao.updateCheatsSelectedVariant(game.id, only.region, only.version)
+                }
+
+                Logger.info(TAG, "Stored ${entities.size} cheats across ${result.variants.size} variants for game=${game.id} (${result.gameName})")
             } else {
                 Logger.debug(TAG, "No cheats found for game=${game.id}")
             }
@@ -92,7 +117,15 @@ class CheatsRepository @Inject constructor(
     }
 
     suspend fun getCheatsForGame(gameId: Long): List<CheatEntity> {
-        return cheatDao.getCheatsForGame(gameId)
+        val game = gameDao.getById(gameId) ?: return emptyList()
+        val region = game.cheatsSelectedRegion
+        val version = game.cheatsSelectedVersion
+
+        return if (region != null && version != null) {
+            cheatDao.getCheatsForVariant(gameId, region, version)
+        } else {
+            cheatDao.getCheatsForGame(gameId)
+        }
     }
 
     suspend fun getEnabledCheats(gameId: Long): List<CheatEntity> {
@@ -109,6 +142,21 @@ class CheatsRepository @Inject constructor(
 
     suspend fun getCheatCount(gameId: Long): Int {
         return cheatDao.getCheatCount(gameId)
+    }
+
+    suspend fun getVariantsForGame(gameId: Long): List<CheatVariantTuple> {
+        return cheatDao.getVariantsForGame(gameId)
+    }
+
+    suspend fun selectVariant(gameId: Long, region: String, version: String) {
+        gameDao.updateCheatsSelectedVariant(gameId, region, version)
+    }
+
+    suspend fun getSelectedVariant(gameId: Long): Pair<String, String>? {
+        val game = gameDao.getById(gameId) ?: return null
+        val region = game.cheatsSelectedRegion ?: return null
+        val version = game.cheatsSelectedVersion ?: return null
+        return region to version
     }
 
     private fun mapPlatformSlug(platform: String): String? {

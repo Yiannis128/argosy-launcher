@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -45,6 +47,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.touchOnly
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,15 +71,24 @@ data class CheatDisplayItem(
     }
 }
 
+data class CheatVariantInfo(
+    val region: String,
+    val version: String,
+    val cheatCount: Int
+)
+
 @Composable
 fun CheatsScreen(
     cheats: List<CheatDisplayItem>,
+    variants: List<CheatVariantInfo>,
+    selectedVariant: Pair<String, String>?,
     scanner: MemoryScanner,
     initialTab: CheatsTab = CheatsTab.CHEATS,
     onToggleCheat: (Long, Boolean) -> Unit,
     onCreateCheat: (address: Int, value: Int, description: String) -> Unit,
     onUpdateCheat: (id: Long, description: String, code: String) -> Unit,
     onDeleteCheat: (Long) -> Unit,
+    onSelectVariant: (region: String, version: String) -> Unit,
     onGetRam: () -> ByteArray?,
     onTabChange: (CheatsTab) -> Unit = {},
     onDismiss: () -> Unit
@@ -95,6 +107,10 @@ fun CheatsScreen(
 
     val scope = rememberCoroutineScope()
     var showSearchDialog by remember { mutableStateOf(false) }
+    var showVariantModal by remember { mutableStateOf(false) }
+    var variantFocusIndex by remember { mutableIntStateOf(0) }
+    val hasMultipleVariants = variants.size > 1
+    val needsVariantSelection = hasMultipleVariants && selectedVariant == null
     val isDarkTheme = isSystemInDarkTheme()
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
@@ -290,7 +306,9 @@ fun CheatsScreen(
     fun buildFooterHints(): List<Pair<InputButton, String>> = buildList {
         when (currentTab) {
             CheatsTab.CHEATS -> {
-                if (contentFocusIndex == 0) {
+                if (needsVariantSelection) {
+                    add(InputButton.A to "Select")
+                } else if (contentFocusIndex == 0) {
                     add(InputButton.A to "Search")
                     if (searchQuery.isNotEmpty()) {
                         add(InputButton.X to "Clear")
@@ -300,6 +318,9 @@ fun CheatsScreen(
                     if (filteredCheats.getOrNull(contentFocusIndex - 1) != null) {
                         add(InputButton.X to "Edit")
                     }
+                }
+                if (hasMultipleVariants && !needsVariantSelection) {
+                    add(InputButton.Y to "Version")
                 }
             }
             CheatsTab.DISCOVER -> {
@@ -356,11 +377,27 @@ fun CheatsScreen(
         object : InputHandler {
             override fun onUp(): InputResult {
                 if (isLoading) return InputResult.HANDLED
+                if (showVariantModal) {
+                    variantFocusIndex = (variantFocusIndex - 1).coerceAtLeast(0)
+                    return InputResult.HANDLED
+                }
+                if (needsVariantSelection && currentTab == CheatsTab.CHEATS) {
+                    contentFocusIndex = (contentFocusIndex - 1).coerceAtLeast(0)
+                    return InputResult.HANDLED
+                }
                 contentFocusIndex = getNextFocusIndex(contentFocusIndex, -1)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
                 if (isLoading) return InputResult.HANDLED
+                if (showVariantModal) {
+                    variantFocusIndex = (variantFocusIndex + 1).coerceAtMost(variants.lastIndex)
+                    return InputResult.HANDLED
+                }
+                if (needsVariantSelection && currentTab == CheatsTab.CHEATS) {
+                    contentFocusIndex = (contentFocusIndex + 1).coerceAtMost(variants.lastIndex)
+                    return InputResult.HANDLED
+                }
                 contentFocusIndex = getNextFocusIndex(contentFocusIndex, 1)
                 return InputResult.HANDLED
             }
@@ -388,9 +425,20 @@ fun CheatsScreen(
             }
             override fun onConfirm(): InputResult {
                 if (isLoading) return InputResult.HANDLED
+                if (showVariantModal) {
+                    variants.getOrNull(variantFocusIndex)?.let { v ->
+                        onSelectVariant(v.region, v.version)
+                        showVariantModal = false
+                    }
+                    return InputResult.HANDLED
+                }
                 when (currentTab) {
                     CheatsTab.CHEATS -> {
-                        if (contentFocusIndex == 0) {
+                        if (needsVariantSelection) {
+                            variants.getOrNull(contentFocusIndex)?.let { v ->
+                                onSelectVariant(v.region, v.version)
+                            }
+                        } else if (contentFocusIndex == 0) {
                             showSearchDialog = true
                         } else {
                             currentFilteredCheats.getOrNull(contentFocusIndex - 1)?.let { cheat ->
@@ -404,6 +452,10 @@ fun CheatsScreen(
             }
             override fun onBack(): InputResult {
                 if (isLoading) return InputResult.HANDLED
+                if (showVariantModal) {
+                    showVariantModal = false
+                    return InputResult.HANDLED
+                }
                 if (currentTab == CheatsTab.DISCOVER && showingResults) {
                     showingResults = false
                     contentFocusIndex = if (scanResults.isNotEmpty()) 2 else 0
@@ -436,6 +488,17 @@ fun CheatsScreen(
                     }
                 }
                 return InputResult.HANDLED
+            }
+            override fun onContextMenu(): InputResult {
+                if (isLoading) return InputResult.HANDLED
+                if (currentTab == CheatsTab.CHEATS && hasMultipleVariants && !needsVariantSelection) {
+                    variantFocusIndex = variants.indexOfFirst {
+                        it.region == selectedVariant?.first && it.version == selectedVariant?.second
+                    }.coerceAtLeast(0)
+                    showVariantModal = true
+                    return InputResult.HANDLED
+                }
+                return InputResult.UNHANDLED
             }
             override fun onPrevSection(): InputResult {
                 if (isLoading) return InputResult.HANDLED
@@ -478,8 +541,12 @@ fun CheatsScreen(
                         tab = currentTab,
                         filteredCheats = filteredCheats,
                         allCheats = cheats,
+                        variants = variants,
+                        selectedVariant = selectedVariant,
+                        needsVariantSelection = needsVariantSelection,
                         searchQuery = searchQuery,
                         onSearchClick = { showSearchDialog = true },
+                        onSelectVariant = onSelectVariant,
                         valueSearchText = valueSearchText,
                         onValueSearchChange = { valueSearchText = it },
                         hasSnapshot = hasSnapshot,
@@ -539,13 +606,25 @@ fun CheatsScreen(
                             InputButton.A -> {
                                 when (currentTab) {
                                     CheatsTab.CHEATS -> {
-                                        if (contentFocusIndex > 0) {
+                                        if (needsVariantSelection) {
+                                            variants.getOrNull(contentFocusIndex)?.let { v ->
+                                                onSelectVariant(v.region, v.version)
+                                            }
+                                        } else if (contentFocusIndex > 0) {
                                             filteredCheats.getOrNull(contentFocusIndex - 1)?.let { cheat ->
                                                 onToggleCheat(cheat.id, !cheat.enabled)
                                             }
                                         }
                                     }
                                     CheatsTab.DISCOVER -> handleDiscoverAction(contentFocusIndex)
+                                }
+                            }
+                            InputButton.Y -> {
+                                if (currentTab == CheatsTab.CHEATS && hasMultipleVariants && !needsVariantSelection) {
+                                    variantFocusIndex = variants.indexOfFirst {
+                                        it.region == selectedVariant?.first && it.version == selectedVariant?.second
+                                    }.coerceAtLeast(0)
+                                    showVariantModal = true
                                 }
                             }
                             else -> {}
@@ -604,6 +683,20 @@ fun CheatsScreen(
                 searchQuery = query
                 showSearchDialog = false
             }
+        )
+    }
+
+    if (showVariantModal) {
+        VariantSelectorModal(
+            variants = variants,
+            selectedRegion = selectedVariant?.first,
+            selectedVersion = selectedVariant?.second,
+            focusedIndex = variantFocusIndex,
+            onSelect = { v ->
+                onSelectVariant(v.region, v.version)
+                showVariantModal = false
+            },
+            onDismiss = { showVariantModal = false }
         )
     }
 
@@ -698,8 +791,12 @@ private fun TabContent(
     tab: CheatsTab,
     filteredCheats: List<CheatDisplayItem>,
     allCheats: List<CheatDisplayItem>,
+    variants: List<CheatVariantInfo>,
+    selectedVariant: Pair<String, String>?,
+    needsVariantSelection: Boolean,
     searchQuery: String,
     onSearchClick: () -> Unit,
+    onSelectVariant: (String, String) -> Unit,
     valueSearchText: String,
     onValueSearchChange: (String) -> Unit,
     hasSnapshot: Boolean,
@@ -717,15 +814,26 @@ private fun TabContent(
     modifier: Modifier = Modifier
 ) {
     when (tab) {
-        CheatsTab.CHEATS -> AvailableTab(
-            cheats = filteredCheats,
-            allCheats = allCheats,
-            searchQuery = searchQuery,
-            focusedIndex = contentFocusIndex,
-            onSearchClick = onSearchClick,
-            onToggleCheat = onToggleCheat,
-            modifier = modifier
-        )
+        CheatsTab.CHEATS -> {
+            if (needsVariantSelection) {
+                VariantPicker(
+                    variants = variants,
+                    focusedIndex = contentFocusIndex,
+                    onSelect = { v -> onSelectVariant(v.region, v.version) },
+                    modifier = modifier
+                )
+            } else {
+                AvailableTab(
+                    cheats = filteredCheats,
+                    allCheats = allCheats,
+                    searchQuery = searchQuery,
+                    focusedIndex = contentFocusIndex,
+                    onSearchClick = onSearchClick,
+                    onToggleCheat = onToggleCheat,
+                    modifier = modifier
+                )
+            }
+        }
         CheatsTab.DISCOVER -> DiscoverTab(
             hasSnapshot = hasSnapshot,
             canCompare = canCompare,
@@ -741,5 +849,166 @@ private fun TabContent(
             narrowError = narrowError,
             modifier = modifier
         )
+    }
+}
+
+@Composable
+private fun VariantPicker(
+    variants: List<CheatVariantInfo>,
+    focusedIndex: Int,
+    onSelect: (CheatVariantInfo) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(Dimens.spacingSm)
+    ) {
+        Text(
+            text = "Multiple versions available",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = Dimens.spacingXs)
+        )
+        Text(
+            text = "Select the version that matches your ROM",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Dimens.spacingMd)
+        )
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+            modifier = Modifier.focusProperties { canFocus = false }
+        ) {
+            itemsIndexed(variants, key = { _, v -> "${v.region}|${v.version}" }) { index, variant ->
+                VariantRow(
+                    variant = variant,
+                    isFocused = index == focusedIndex,
+                    isSelected = false,
+                    onSelect = { onSelect(variant) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VariantSelectorModal(
+    variants: List<CheatVariantInfo>,
+    selectedRegion: String?,
+    selectedVersion: String?,
+    focusedIndex: Int,
+    onSelect: (CheatVariantInfo) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(overlayColor)
+            .clickableNoFocus(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .widthIn(max = 400.dp)
+                .padding(Dimens.spacingLg)
+                .clickableNoFocus { },
+            shape = RoundedCornerShape(Dimens.radiusLg),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp
+        ) {
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "Select Version",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    modifier = Modifier
+                        .heightIn(max = 300.dp)
+                        .focusProperties { canFocus = false }
+                ) {
+                    itemsIndexed(variants, key = { _, v -> "${v.region}|${v.version}" }) { index, variant ->
+                        val isSelected = variant.region == selectedRegion && variant.version == selectedVersion
+                        VariantRow(
+                            variant = variant,
+                            isFocused = index == focusedIndex,
+                            isSelected = isSelected,
+                            onSelect = { onSelect(variant) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VariantRow(
+    variant: CheatVariantInfo,
+    isFocused: Boolean,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    val backgroundColor = when {
+        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isSelected -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+    }
+    val contentColor = if (isFocused) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val secondaryColor = if (isFocused) {
+        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Dimens.radiusMd))
+            .background(backgroundColor)
+            .clickableNoFocus(onClick = onSelect)
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = variant.region.ifBlank { "Unknown Region" },
+                style = MaterialTheme.typography.bodyLarge,
+                color = contentColor
+            )
+            if (variant.version.isNotBlank()) {
+                Text(
+                    text = variant.version,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryColor
+                )
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${variant.cheatCount} cheats",
+                style = MaterialTheme.typography.labelMedium,
+                color = secondaryColor
+            )
+            if (isSelected) {
+                Text(
+                    text = "*",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }

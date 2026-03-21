@@ -102,6 +102,8 @@ data class GameEntity(
 
     val cheatsFetched: Boolean = false,
     val cheatsFetchedAt: Long? = null,
+    val cheatsSelectedRegion: String? = null,
+    val cheatsSelectedVersion: String? = null,
 
     val achievementsFetchedAt: Long? = null,
 

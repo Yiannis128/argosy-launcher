@@ -65,6 +65,7 @@ import com.nendo.argosy.data.repository.RetroAchievementsRepository
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.ui.screens.common.AchievementUpdateBus
 import com.nendo.argosy.libretro.ui.cheats.CheatDisplayItem
+import com.nendo.argosy.libretro.ui.cheats.CheatVariantInfo
 import com.nendo.argosy.libretro.ui.cheats.CheatsScreen
 import com.nendo.argosy.libretro.ui.cheats.CheatsTab
 import com.nendo.argosy.libretro.ui.AchievementPopup
@@ -572,12 +573,17 @@ class LibretroActivity : ComponentActivity() {
                 if (cheatsMenuVisible) {
                     activeMenuHandler = CheatsScreen(
                         cheats = cheatManager.cheats.map { CheatDisplayItem(it.id, it.description, it.code, it.enabled, it.isUserCreated, it.lastUsedAt) },
+                        variants = cheatManager.variants.map { CheatVariantInfo(it.variantRegion, it.variantVersion, it.cheatCount) },
+                        selectedVariant = cheatManager.selectedVariant,
                         scanner = cheatManager.memoryScanner,
                         initialTab = lastCheatsTab,
                         onToggleCheat = cheatManager::handleToggleCheat,
                         onCreateCheat = cheatManager::handleCreateCheat,
                         onUpdateCheat = cheatManager::handleUpdateCheat,
                         onDeleteCheat = cheatManager::handleDeleteCheat,
+                        onSelectVariant = { region, version ->
+                            cheatManager.selectVariant(region, version, hardcoreMode)
+                        },
                         onGetRam = { retroView.getSystemRam() },
                         onTabChange = { lastCheatsTab = it },
                         onDismiss = {

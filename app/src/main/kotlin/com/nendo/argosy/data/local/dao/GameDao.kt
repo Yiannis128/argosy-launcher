@@ -615,6 +615,9 @@ interface GameDao {
     @Query("UPDATE games SET cheatsFetchedAt = :timestamp WHERE id = :gameId")
     suspend fun updateCheatsFetchedAt(gameId: Long, timestamp: Long)
 
+    @Query("UPDATE games SET cheatsSelectedRegion = :region, cheatsSelectedVersion = :version WHERE id = :gameId")
+    suspend fun updateCheatsSelectedVariant(gameId: Long, region: String, version: String)
+
     @Query("SELECT * FROM games WHERE cheatsFetched = 0 AND localPath IS NOT NULL LIMIT :limit")
     suspend fun getGamesWithoutCheats(limit: Int = 50): List<GameEntity>
 

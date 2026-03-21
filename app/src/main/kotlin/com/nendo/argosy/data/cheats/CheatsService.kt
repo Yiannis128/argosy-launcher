@@ -37,7 +37,9 @@ class CheatsService @Inject constructor(
     suspend fun lookupByName(
         name: String,
         platform: String,
-        deviceToken: String
+        deviceToken: String,
+        region: String? = null,
+        version: String? = null
     ): CheatsLookupResult? = withContext(Dispatchers.IO) {
         if (!isConfigured()) {
             Logger.debug(TAG, "CheatsDB not configured, skipping lookup")
@@ -51,10 +53,16 @@ class CheatsService @Inject constructor(
         }
 
         val encodedName = URLEncoder.encode(name, "UTF-8")
-        val url = "$baseUrl/api/cheats/lookup?name=$encodedName&platform=$platform"
+        val urlBuilder = StringBuilder("$baseUrl/api/v2/cheats/lookup?name=$encodedName&platform=$platform")
+        if (!region.isNullOrBlank()) {
+            urlBuilder.append("&region=").append(URLEncoder.encode(region, "UTF-8"))
+        }
+        if (!version.isNullOrBlank()) {
+            urlBuilder.append("&version=").append(URLEncoder.encode(version, "UTF-8"))
+        }
 
         val request = Request.Builder()
-            .url(url)
+            .url(urlBuilder.toString())
             .header("X-Device-Token", signed.deviceToken)
             .header("X-Timestamp", signed.timestamp.toString())
             .header("X-Signature", signed.signature)
@@ -80,7 +88,8 @@ class CheatsService @Inject constructor(
                 }
 
                 val result = resultAdapter.fromJson(body)
-                Logger.debug(TAG, "Cheats lookup: game=${result?.gameName}, cheats=${result?.cheats?.size}, score=${result?.score}")
+                val totalCheats = result?.variants?.sumOf { it.cheatCount } ?: 0
+                Logger.debug(TAG, "Cheats lookup: game=${result?.gameName}, variants=${result?.variants?.size}, totalCheats=$totalCheats, score=${result?.score}")
                 result
             }
         } catch (e: Exception) {

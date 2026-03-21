@@ -5,11 +5,18 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class CheatsLookupResult(
-    @Json(name = "game_id") val gameId: Int,
     @Json(name = "game_name") val gameName: String,
     @Json(name = "platform") val platform: String,
-    @Json(name = "cheats") val cheats: List<CheatItem>,
+    @Json(name = "variants") val variants: List<CheatsVariant>,
     @Json(name = "score") val score: Double? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class CheatsVariant(
+    @Json(name = "region") val region: String,
+    @Json(name = "version") val version: String,
+    @Json(name = "cheat_count") val cheatCount: Int,
+    @Json(name = "cheats") val cheats: List<CheatItem>
 )
 
 @JsonClass(generateAdapter = true)

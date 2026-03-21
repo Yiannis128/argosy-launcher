@@ -96,7 +96,7 @@ import com.nendo.argosy.data.local.entity.StateCacheEntity
         PendingSocialSyncEntity::class,
         CoreOptionOverrideEntity::class
     ],
-    version = 89,
+    version = 90,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1335,6 +1335,15 @@ abstract class ALauncherDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN rewindSpeed INTEGER DEFAULT NULL")
                 db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN rewindBufferDuration INTEGER DEFAULT NULL")
                 db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN vsync INTEGER DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_89_90 = object : Migration(89, 90) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cheats ADD COLUMN variantRegion TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE cheats ADD COLUMN variantVersion TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE games ADD COLUMN cheatsSelectedRegion TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE games ADD COLUMN cheatsSelectedVersion TEXT DEFAULT NULL")
             }
         }
     }
