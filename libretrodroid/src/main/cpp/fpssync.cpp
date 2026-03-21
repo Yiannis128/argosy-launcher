@@ -39,7 +39,6 @@ FPSSync::FPSSync(double contentRefreshRate, double screenRefreshRate, bool force
     this->contentRefreshRate = contentRefreshRate;
     this->screenRefreshRate = screenRefreshRate;
     this->forceSoftwareTiming = forceSoftwareTiming;
-    // If force software timing is enabled, never use VSync
     this->useVSync = !forceSoftwareTiming && std::abs(contentRefreshRate - screenRefreshRate) < FPS_TOLERANCE;
     this->sampleInterval = std::chrono::microseconds((long) ((1000000L / contentRefreshRate)));
     reset();

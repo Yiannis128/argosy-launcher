@@ -168,11 +168,11 @@ class GLRetroView(
     }
 
     fun sendKeyEvent(action: Int, keyCode: Int, port: Int = 0) {
-        queueEvent { LibretroDroid.onKeyEvent(port, action, keyCode) }
+        LibretroDroid.onKeyEvent(port, action, keyCode)
     }
 
     fun sendMotionEvent(source: Int, xAxis: Float, yAxis: Float, port: Int = 0) {
-        queueEvent { LibretroDroid.onMotionEvent(port, source, xAxis, yAxis) }
+        LibretroDroid.onMotionEvent(port, source, xAxis, yAxis)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {

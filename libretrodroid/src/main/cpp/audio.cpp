@@ -105,6 +105,14 @@ void Audio::setPlaybackSpeed(const double newPlaybackSpeed) {
     playbackSpeed = newPlaybackSpeed;
 }
 
+void Audio::resetBufferState() {
+    errorIntegral = 0.0;
+    framesToSubmit = 0.0;
+    if (fifoBuffer) {
+        fifoBuffer->setReadCounter(fifoBuffer->getWriteCounter());
+    }
+}
+
 void Audio::updateTiming(int32_t newSampleRate, double newRefreshRate) {
     LOGI("Audio timing update: sampleRate %d -> %d, refreshRate %f -> %f",
          inputSampleRate, newSampleRate, contentRefreshRate, newRefreshRate);

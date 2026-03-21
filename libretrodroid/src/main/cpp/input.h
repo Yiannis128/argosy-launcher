@@ -19,6 +19,7 @@
 #define LIBRETRODROID_INPUT_H
 
 #include <cstdint>
+#include <mutex>
 #include <unordered_set>
 #include <array>
 
@@ -27,6 +28,7 @@ namespace libretrodroid {
 class Input {
 
 private:
+    mutable std::mutex inputMutex;
     struct GamePadState {
         std::unordered_set<int> pressedKeys;
 

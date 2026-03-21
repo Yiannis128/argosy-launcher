@@ -862,18 +862,17 @@ class LibretroActivity : ComponentActivity() {
                         cheatManager.applyAllEnabledCheats(hardcoreMode)
                     }
                     is GLRetroView.GLRetroEvents.FrameRendered -> {
-                        if (!menuVisible) {
+                        if (!menuVisible && videoSettings.rewindEnabled) {
                             val now = System.currentTimeMillis()
                             if (isRewinding) {
                                 if (now - lastRewindTime >= frameIntervalMs) {
                                     lastRewindTime = now
                                     repeat(rewindSpeed) { performRewind() }
                                 }
-                            } else {
+                            } else if (!isFastForwarding) {
                                 if (now - lastCaptureTime >= frameIntervalMs) {
                                     lastCaptureTime = now
-                                    val captureCount = if (isFastForwarding) videoSettings.fastForwardSpeed else 1
-                                    repeat(captureCount) { retroView.captureRewindState() }
+                                    retroView.captureRewindState()
                                 }
                             }
                         }

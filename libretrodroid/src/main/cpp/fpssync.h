@@ -54,5 +54,4 @@ private:
 
 }
 
-
 #endif //LIBRETRODROID_FPSSYNC_H

@@ -55,6 +55,7 @@ public:
 public:
     void write(const int16_t *data, size_t frames);
     void setPlaybackSpeed(const double newPlaybackSpeed);
+    void resetBufferState();
     void updateTiming(int32_t newSampleRate, double newRefreshRate);
 
 private:

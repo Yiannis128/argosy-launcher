@@ -487,19 +487,22 @@ void LibretroDroid::pause() {
 }
 
 void LibretroDroid::step() {
-    unsigned frames = 1;
-    if (fpsSync) {
-        unsigned requestedFrames = fpsSync->advanceFrames();
-
-        // If the application runs too slow it's better to just skip those frames.
-        frames = std::min(requestedFrames, 2u);
+    unsigned frames;
+    if (frameSpeed > 1) {
+        frames = frameSpeed;
+    } else {
+        frames = 1;
+        if (fpsSync) {
+            unsigned requestedFrames = fpsSync->advanceFrames();
+            frames = std::min(requestedFrames, 2u);
+        }
     }
 
     if (video && video->isHWAccelerated()) {
         video->bindHWContext();
     }
 
-    for (size_t i = 0; i < frames * frameSpeed; i++) {
+    for (size_t i = 0; i < frames; i++) {
         core->retro_run();
     }
 
@@ -515,7 +518,7 @@ void LibretroDroid::step() {
         video->renderFrame();
     }
 
-    if (fpsSync) {
+    if (fpsSync && frameSpeed <= 1) {
         fpsSync->wait();
     }
 
@@ -590,7 +593,14 @@ bool LibretroDroid::isRumbleEnabled() const {
 }
 
 void LibretroDroid::setFrameSpeed(unsigned int speed) {
+    unsigned int oldSpeed = frameSpeed;
     frameSpeed = speed;
+    if (fpsSync && speed <= 1) {
+        fpsSync->reset();
+    }
+    if (audio && oldSpeed != speed) {
+        audio->resetBufferState();
+    }
     updateAudioSampleRateMultiplier();
 }
 
