@@ -357,7 +357,8 @@ internal fun routeResetAllPlatformLibretroSettings(vm: SettingsViewModel) {
         val updated = current.copy(
             shader = null, filter = null, aspectRatio = null, rotation = null,
             overscanCrop = null, frame = null, blackFrameInsertion = null, fastForwardSpeed = null,
-            rewindEnabled = null, skipDuplicateFrames = null, lowLatencyAudio = null
+            rewindEnabled = null, rewindSpeed = null, rewindBufferDuration = null,
+            skipDuplicateFrames = null, lowLatencyAudio = null, vsync = null
         )
         if (updated.hasAnyOverrides()) {
             vm.platformLibretroSettingsDao.upsert(updated)

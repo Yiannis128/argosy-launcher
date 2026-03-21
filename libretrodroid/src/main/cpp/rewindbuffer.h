@@ -31,6 +31,7 @@ public:
 
     bool push(const uint8_t* data, size_t size);
     bool pop(uint8_t* outData, size_t* outSize);
+    bool discard();
     void clear();
 
     size_t getValidCount() const { return validCount; }

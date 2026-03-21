@@ -64,6 +64,15 @@ bool RewindBuffer::pop(uint8_t* outData, size_t* outSize) {
     return true;
 }
 
+bool RewindBuffer::discard() {
+    if (validCount == 0) {
+        return false;
+    }
+    writeIndex = (writeIndex + capacity - 1) % capacity;
+    validCount--;
+    return true;
+}
+
 void RewindBuffer::clear() {
     for (auto& slot : slots) {
         slot.clear();

@@ -491,20 +491,16 @@ void LibretroDroid::step() {
         bool hadAudio = audioEnabled;
         audioEnabled = false;
 
-        int8_t* lastData = nullptr;
-        size_t lastSize = 0;
         unsigned speed = rewindSpeed.load();
-        for (unsigned i = 0; i < speed; i++) {
-            size_t sz = 0;
-            if (rewindBuffer->pop(rewindTempBuffer.data(), &sz)) {
-                lastData = reinterpret_cast<int8_t*>(rewindTempBuffer.data());
-                lastSize = sz;
-            } else {
-                break;
-            }
+        for (unsigned i = 1; i < speed; i++) {
+            if (!rewindBuffer->discard()) break;
         }
 
-        if (lastData && lastSize > 0) {
+        size_t lastSize = 0;
+        bool hasState = rewindBuffer->pop(rewindTempBuffer.data(), &lastSize);
+
+        if (hasState && lastSize > 0) {
+            int8_t* lastData = reinterpret_cast<int8_t*>(rewindTempBuffer.data());
             core->retro_unserialize(lastData, lastSize);
             if (video && video->isHWAccelerated()) {
                 video->bindHWContext();
@@ -538,13 +534,13 @@ void LibretroDroid::step() {
             if (input) {
                 input->flushPendingReleases();
             }
+        }
 
-            if (rewindEnabled && rewindBuffer) {
-                size_t sz = core->retro_serialize_size();
-                if (sz > 0 && sz <= rewindBuffer->getMaxStateSize()) {
-                    if (core->retro_serialize(rewindTempBuffer.data(), sz)) {
-                        rewindBuffer->push(rewindTempBuffer.data(), sz);
-                    }
+        if (rewindEnabled && rewindBuffer) {
+            size_t sz = core->retro_serialize_size();
+            if (sz > 0 && sz <= rewindBuffer->getMaxStateSize()) {
+                if (core->retro_serialize(rewindTempBuffer.data(), sz)) {
+                    rewindBuffer->push(rewindTempBuffer.data(), sz);
                 }
             }
         }

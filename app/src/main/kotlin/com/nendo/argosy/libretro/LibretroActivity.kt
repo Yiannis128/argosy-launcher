@@ -366,6 +366,13 @@ class LibretroActivity : ComponentActivity() {
                 retroView.destroyRewindBuffer()
             }
         }
+        videoSettings.onRewindConfigChanged = {
+            if (videoSettings.rewindEnabled && !hardcoreMode) {
+                retroView.rewindEnabled = false
+                retroView.destroyRewindBuffer()
+                setupRewind(settings)
+            }
+        }
     }
 
     private fun detectBFICapability() {

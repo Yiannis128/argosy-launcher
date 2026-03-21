@@ -335,7 +335,6 @@ class VideoSettingsManager(
                 }
             }
             LibretroSettingDef.RewindSpeed -> {
-                val speed = value.removeSuffix("x").toIntOrNull() ?: 1
                 onRewindConfigChanged?.invoke()
             }
             LibretroSettingDef.RewindBufferDuration -> {

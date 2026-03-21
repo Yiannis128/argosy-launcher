@@ -173,11 +173,13 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
     }
 
     suspend fun setBuiltinRewindSpeed(speed: Int) {
-        dataStore.edit { it[Keys.BUILTIN_REWIND_SPEED] = speed.coerceIn(1, 4) }
+        val valid = listOf(1, 2, 4)
+        dataStore.edit { it[Keys.BUILTIN_REWIND_SPEED] = valid.minByOrNull { v -> kotlin.math.abs(v - speed) } ?: 1 }
     }
 
     suspend fun setBuiltinRewindBufferDuration(duration: Int) {
-        dataStore.edit { it[Keys.BUILTIN_REWIND_BUFFER_DURATION] = duration }
+        val valid = listOf(5, 15, 30, 60)
+        dataStore.edit { it[Keys.BUILTIN_REWIND_BUFFER_DURATION] = valid.minByOrNull { v -> kotlin.math.abs(v - duration) } ?: 15 }
     }
 
     suspend fun setBuiltinFramesEnabled(enabled: Boolean) {
