@@ -78,6 +78,21 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
+    data object RewindSpeed : LibretroSettingDef(
+        key = "rewindSpeed",
+        section = "performance",
+        title = "Rewind Speed",
+        type = SettingType.Cycle(listOf("1x", "2x", "4x"))
+    )
+
+    data object RewindBufferDuration : LibretroSettingDef(
+        key = "rewindBufferDuration",
+        section = "performance",
+        title = "Rewind Buffer",
+        subtitle = "Seconds of gameplay kept in memory",
+        type = SettingType.Cycle(listOf("5s", "15s", "30s", "60s"))
+    )
+
     data object SkipDuplicateFrames : LibretroSettingDef(
         key = "skipDuplicateFrames",
         section = "performance",
@@ -94,11 +109,11 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
-    data object ForceSoftwareTiming : LibretroSettingDef(
-        key = "forceSoftwareTiming",
+    data object VSync : LibretroSettingDef(
+        key = "vsync",
         section = "display",
-        title = "Force Software Timing",
-        subtitle = "Use CPU timing instead of VSync (fixes speed issues on some devices)",
+        title = "VSync",
+        subtitle = "Sync to display refresh rate",
         type = SettingType.Switch
     )
 
@@ -111,9 +126,11 @@ sealed class LibretroSettingDef(
             Rotation,
             OverscanCrop,
             BlackFrameInsertion,
-            ForceSoftwareTiming,
+            VSync,
             FastForwardSpeed,
             RewindEnabled,
+            RewindSpeed,
+            RewindBufferDuration,
             SkipDuplicateFrames,
             LowLatencyAudio
         )

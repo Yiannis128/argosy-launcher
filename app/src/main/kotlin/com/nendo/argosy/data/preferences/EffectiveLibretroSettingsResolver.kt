@@ -34,13 +34,15 @@ class EffectiveLibretroSettingsResolver @Inject constructor(
             overscanCrop = perPlatform?.overscanCrop ?: global.overscanCrop,
             skipDuplicateFrames = perPlatform?.skipDuplicateFrames ?: global.skipDuplicateFrames,
             lowLatencyAudio = perPlatform?.lowLatencyAudio ?: global.lowLatencyAudio,
-            forceSoftwareTiming = global.forceSoftwareTiming,
             blackFrameInsertion = perPlatform?.blackFrameInsertion ?: global.blackFrameInsertion,
             framesEnabled = global.framesEnabled,
             frame = resolveEffectiveFrame(global.framesEnabled, platformSlug, perPlatform?.frame),
             fastForwardSpeed = perPlatform?.fastForwardSpeed ?: global.fastForwardSpeed,
             rewindEnabled = if (isHeavyPlatform) false
                            else (perPlatform?.rewindEnabled ?: global.rewindEnabled),
+            rewindSpeed = perPlatform?.rewindSpeed ?: global.rewindSpeed,
+            rewindBufferDuration = perPlatform?.rewindBufferDuration ?: global.rewindBufferDuration,
+            forceSoftwareTiming = perPlatform?.vsync?.let { !it } ?: global.forceSoftwareTiming,
             rumbleEnabled = perPlatform?.rumbleEnabled ?: global.rumbleEnabled,
             limitHotkeysToPlayer1 = global.limitHotkeysToPlayer1,
             analogAsDpad = perPlatform?.analogAsDpad

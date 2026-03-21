@@ -34,6 +34,8 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_ROTATION = intPreferencesKey("builtin_rotation")
         val BUILTIN_OVERSCAN_CROP = intPreferencesKey("builtin_overscan_crop")
         val BUILTIN_REWIND_ENABLED = booleanPreferencesKey("builtin_rewind_enabled")
+        val BUILTIN_REWIND_SPEED = intPreferencesKey("builtin_rewind_speed")
+        val BUILTIN_REWIND_BUFFER_DURATION = intPreferencesKey("builtin_rewind_buffer_duration")
         val BUILTIN_FRAMES_ENABLED = booleanPreferencesKey("builtin_frames_enabled")
         val BUILTIN_AUTO_RESTORE_STATE_MODE = stringPreferencesKey("builtin_auto_restore_state_mode")
         val BUILTIN_MIGRATION_V1 = booleanPreferencesKey("builtin_migration_v2")
@@ -62,6 +64,8 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             rotation = prefs[Keys.BUILTIN_ROTATION] ?: -1,
             overscanCrop = prefs[Keys.BUILTIN_OVERSCAN_CROP] ?: 0,
             rewindEnabled = prefs[Keys.BUILTIN_REWIND_ENABLED] ?: true,
+            rewindSpeed = prefs[Keys.BUILTIN_REWIND_SPEED] ?: 1,
+            rewindBufferDuration = prefs[Keys.BUILTIN_REWIND_BUFFER_DURATION] ?: 15,
             autoRestoreStateMode = prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] ?: "restore"
         )
     }
@@ -166,6 +170,14 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinRewindEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.BUILTIN_REWIND_ENABLED] = enabled }
+    }
+
+    suspend fun setBuiltinRewindSpeed(speed: Int) {
+        dataStore.edit { it[Keys.BUILTIN_REWIND_SPEED] = speed.coerceIn(1, 4) }
+    }
+
+    suspend fun setBuiltinRewindBufferDuration(duration: Int) {
+        dataStore.edit { it[Keys.BUILTIN_REWIND_BUFFER_DURATION] = duration }
     }
 
     suspend fun setBuiltinFramesEnabled(enabled: Boolean) {

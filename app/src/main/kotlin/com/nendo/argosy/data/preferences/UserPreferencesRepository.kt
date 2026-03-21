@@ -331,6 +331,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBuiltinRotation(rotation: Int) = builtinPrefs.setBuiltinRotation(rotation)
     suspend fun setBuiltinOverscanCrop(crop: Int) = builtinPrefs.setBuiltinOverscanCrop(crop)
     suspend fun setBuiltinRewindEnabled(enabled: Boolean) = builtinPrefs.setBuiltinRewindEnabled(enabled)
+    suspend fun setBuiltinRewindSpeed(speed: Int) = builtinPrefs.setBuiltinRewindSpeed(speed)
+    suspend fun setBuiltinRewindBufferDuration(duration: Int) = builtinPrefs.setBuiltinRewindBufferDuration(duration)
     suspend fun setBuiltinFramesEnabled(enabled: Boolean) = builtinPrefs.setBuiltinFramesEnabled(enabled)
     suspend fun setBuiltinAutoRestoreStateMode(mode: String) = builtinPrefs.setBuiltinAutoRestoreStateMode(mode)
     suspend fun setBuiltinMigrationComplete() = builtinPrefs.setBuiltinMigrationComplete()
@@ -405,6 +407,8 @@ data class BuiltinEmulatorSettings(
     val rotation: Int = -1,
     val overscanCrop: Int = 0,
     val rewindEnabled: Boolean = true,
+    val rewindSpeed: Int = 1,
+    val rewindBufferDuration: Int = 15,
     val autoRestoreStateMode: String = "restore"
 ) {
     val shaderConfig: com.swordfish.libretrodroid.ShaderConfig
@@ -434,6 +438,12 @@ data class BuiltinEmulatorSettings(
 
     val fastForwardSpeedDisplay: String
         get() = "${fastForwardSpeed}x"
+
+    val rewindSpeedDisplay: String
+        get() = "${rewindSpeed}x"
+
+    val rewindBufferDurationDisplay: String
+        get() = "${rewindBufferDuration}s"
 
     val rotationDisplay: String
         get() = when (rotation) {

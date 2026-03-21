@@ -96,12 +96,12 @@ internal fun routeSetBuiltinLowLatencyAudio(vm: SettingsViewModel, enabled: Bool
     }
 }
 
-internal fun routeSetBuiltinForceSoftwareTiming(vm: SettingsViewModel, enabled: Boolean) {
+internal fun routeSetBuiltinVSync(vm: SettingsViewModel, enabled: Boolean) {
     vm._uiState.update {
-        it.copy(builtinVideo = it.builtinVideo.copy(forceSoftwareTiming = enabled))
+        it.copy(builtinVideo = it.builtinVideo.copy(vsync = enabled))
     }
     vm.viewModelScope.launch {
-        vm.preferencesRepository.setBuiltinForceSoftwareTiming(enabled)
+        vm.preferencesRepository.setBuiltinForceSoftwareTiming(!enabled)
     }
 }
 
@@ -265,6 +265,32 @@ private fun routeSetBuiltinFastForwardSpeed(vm: SettingsViewModel, speed: Int) {
     }
 }
 
+internal fun routeCycleBuiltinRewindSpeed(vm: SettingsViewModel, direction: Int) {
+    val options = listOf(1, 2, 4)
+    val currentDisplay = vm._uiState.value.builtinVideo.rewindSpeed
+    val current = currentDisplay.removeSuffix("x").toIntOrNull() ?: 1
+    val currentIndex = options.indexOf(current).coerceAtLeast(0)
+    val nextIndex = (currentIndex + direction + options.size) % options.size
+    val next = options[nextIndex]
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(rewindSpeed = "${next}x")) }
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setBuiltinRewindSpeed(next)
+    }
+}
+
+internal fun routeCycleBuiltinRewindBufferDuration(vm: SettingsViewModel, direction: Int) {
+    val options = listOf(5, 15, 30, 60)
+    val currentDisplay = vm._uiState.value.builtinVideo.rewindBufferDuration
+    val current = currentDisplay.removeSuffix("s").toIntOrNull() ?: 15
+    val currentIndex = options.indexOf(current).coerceAtLeast(0)
+    val nextIndex = (currentIndex + direction + options.size) % options.size
+    val next = options[nextIndex]
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(rewindBufferDuration = "${next}s")) }
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setBuiltinRewindBufferDuration(next)
+    }
+}
+
 private fun routeSetBuiltinRotation(vm: SettingsViewModel, rotation: Int) {
     val display = when (rotation) {
         -1 -> "Auto"
@@ -311,7 +337,9 @@ internal fun routeUpdatePlatformLibretroSetting(vm: SettingsViewModel, setting: 
             LibretroSettingDef.RewindEnabled -> current.copy(rewindEnabled = value?.toBooleanStrictOrNull())
             LibretroSettingDef.SkipDuplicateFrames -> current.copy(skipDuplicateFrames = value?.toBooleanStrictOrNull())
             LibretroSettingDef.LowLatencyAudio -> current.copy(lowLatencyAudio = value?.toBooleanStrictOrNull())
-            LibretroSettingDef.ForceSoftwareTiming -> return@launch
+            LibretroSettingDef.VSync -> current.copy(vsync = value?.toBooleanStrictOrNull())
+            LibretroSettingDef.RewindSpeed -> current.copy(rewindSpeed = value?.removeSuffix("x")?.toIntOrNull())
+            LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value?.removeSuffix("s")?.toIntOrNull())
         }
 
         if (updated.hasAnyOverrides()) {

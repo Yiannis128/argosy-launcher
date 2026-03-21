@@ -487,27 +487,67 @@ void LibretroDroid::pause() {
 }
 
 void LibretroDroid::step() {
-    unsigned frames;
-    if (frameSpeed > 1) {
-        frames = frameSpeed;
-    } else {
-        frames = 1;
-        if (fpsSync) {
-            unsigned requestedFrames = fpsSync->advanceFrames();
-            frames = std::min(requestedFrames, 2u);
+    if (rewinding && rewindBuffer) {
+        bool hadAudio = audioEnabled;
+        audioEnabled = false;
+
+        int8_t* lastData = nullptr;
+        size_t lastSize = 0;
+        unsigned speed = rewindSpeed.load();
+        for (unsigned i = 0; i < speed; i++) {
+            size_t sz = 0;
+            if (rewindBuffer->pop(rewindTempBuffer.data(), &sz)) {
+                lastData = reinterpret_cast<int8_t*>(rewindTempBuffer.data());
+                lastSize = sz;
+            } else {
+                break;
+            }
         }
-    }
 
-    if (video && video->isHWAccelerated()) {
-        video->bindHWContext();
-    }
+        if (lastData && lastSize > 0) {
+            core->retro_unserialize(lastData, lastSize);
+            if (video && video->isHWAccelerated()) {
+                video->bindHWContext();
+            }
+            core->retro_run();
+            if (video && video->isHWAccelerated()) {
+                video->bindMainContext();
+            }
+        }
 
-    for (size_t i = 0; i < frames; i++) {
-        core->retro_run();
-    }
+        audioEnabled = hadAudio;
+    } else {
+        unsigned frames;
+        if (frameSpeed > 1) {
+            frames = frameSpeed;
+        } else {
+            frames = 1;
+            if (fpsSync) {
+                unsigned requestedFrames = fpsSync->advanceFrames();
+                frames = std::min(requestedFrames, 2u);
+            }
+        }
 
-    if (video && video->isHWAccelerated()) {
-        video->bindMainContext();
+        if (video && video->isHWAccelerated()) {
+            video->bindHWContext();
+        }
+
+        for (size_t i = 0; i < frames; i++) {
+            core->retro_run();
+
+            if (rewindEnabled && rewindBuffer) {
+                size_t sz = core->retro_serialize_size();
+                if (sz > 0 && sz <= rewindBuffer->getMaxStateSize()) {
+                    if (core->retro_serialize(rewindTempBuffer.data(), sz)) {
+                        rewindBuffer->push(rewindTempBuffer.data(), sz);
+                    }
+                }
+            }
+        }
+
+        if (video && video->isHWAccelerated()) {
+            video->bindMainContext();
+        }
     }
 
     if (achievements.isActive()) {
@@ -562,6 +602,49 @@ void LibretroDroid::step() {
         audio->updateTiming((int32_t) std::lround(effectiveSampleRate), newFps);
         updateAudioSampleRateMultiplier();
     }
+}
+
+void LibretroDroid::setRewindEnabled(bool enabled) {
+    rewindEnabled = enabled;
+}
+
+void LibretroDroid::setRewinding(bool active) {
+    rewinding = active;
+}
+
+void LibretroDroid::setRewindSpeed(unsigned int speed) {
+    rewindSpeed = speed;
+}
+
+void LibretroDroid::initRewindBuffer(int slotCount, int maxStateSize) {
+    rewindBuffer = std::make_unique<RewindBuffer>(slotCount, maxStateSize);
+    rewindTempBuffer.resize(maxStateSize);
+}
+
+void LibretroDroid::destroyRewindBuffer() {
+    rewindEnabled = false;
+    rewinding = false;
+    rewindBuffer.reset();
+    rewindTempBuffer.clear();
+    rewindTempBuffer.shrink_to_fit();
+}
+
+void LibretroDroid::clearRewindBuffer() {
+    if (rewindBuffer) {
+        rewindBuffer->clear();
+    }
+}
+
+float LibretroDroid::getRewindBufferUsage() const {
+    return rewindBuffer ? rewindBuffer->getUsage() : 0.0f;
+}
+
+int LibretroDroid::getRewindBufferValidCount() const {
+    return rewindBuffer ? static_cast<int>(rewindBuffer->getValidCount()) : 0;
+}
+
+double LibretroDroid::getContentFps() const {
+    return contentFps;
 }
 
 void LibretroDroid::renderFrameOnly() {
@@ -741,6 +824,7 @@ void LibretroDroid::afterGameLoad() {
     struct retro_system_av_info system_av_info {};
     core->retro_get_system_av_info(&system_av_info);
 
+    contentFps = system_av_info.timing.fps;
     fpsSync = std::make_unique<FPSSync>(system_av_info.timing.fps, screenRefreshRate, forceSoftwareTiming);
 
     if (bfiEnabled) {

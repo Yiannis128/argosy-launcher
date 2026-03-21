@@ -43,7 +43,6 @@
 #include "renderers/es2/imagerendereres2.h"
 #include "renderers/es3/imagerendereres3.h"
 #include "utils/jnistring.h"
-#include "rewindbuffer.h"
 #include "achievements_test.h"
 #include <rc_hash.h>
 
@@ -767,102 +766,72 @@ JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setRotatio
     Environment::getInstance().setManualRotation(degrees);
 }
 
-static std::unique_ptr<RewindBuffer> rewindBuffer = nullptr;
-static std::vector<uint8_t> rewindTempBuffer;
-
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_initRewindBuffer(
     JNIEnv* env,
     jclass obj,
     jint slotCount,
     jint maxStateSize
 ) {
-    rewindBuffer = std::make_unique<RewindBuffer>(slotCount, maxStateSize);
-    rewindTempBuffer.resize(maxStateSize);
-}
-
-JNIEXPORT jboolean JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_captureRewindState(
-    JNIEnv* env,
-    jclass obj
-) {
-    if (!rewindBuffer) {
-        return JNI_FALSE;
-    }
-
-    try {
-        auto [data, size] = LibretroDroid::getInstance().serializeState();
-        bool pushed = rewindBuffer->push(reinterpret_cast<uint8_t*>(data), size);
-        delete[] data;
-        if (!pushed) {
-            LOGW("Rewind state too large (%zu bytes), skipping capture", size);
-        }
-        return pushed ? JNI_TRUE : JNI_FALSE;
-    } catch (std::exception &exception) {
-        LOGE("Error in captureRewindState: %s", exception.what());
-        return JNI_FALSE;
-    }
-}
-
-JNIEXPORT jboolean JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_rewindFrame(
-    JNIEnv* env,
-    jclass obj
-) {
-    if (!rewindBuffer) {
-        return JNI_FALSE;
-    }
-
-    try {
-        size_t size = 0;
-        if (!rewindBuffer->pop(rewindTempBuffer.data(), &size)) {
-            return JNI_FALSE;
-        }
-
-        bool result = LibretroDroid::getInstance().unserializeState(
-            reinterpret_cast<int8_t*>(rewindTempBuffer.data()),
-            size
-        );
-        return result ? JNI_TRUE : JNI_FALSE;
-    } catch (std::exception &exception) {
-        LOGE("Error in rewindFrame: %s", exception.what());
-        return JNI_FALSE;
-    }
+    LibretroDroid::getInstance().initRewindBuffer(slotCount, maxStateSize);
 }
 
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_clearRewindBuffer(
     JNIEnv* env,
     jclass obj
 ) {
-    if (rewindBuffer) {
-        rewindBuffer->clear();
-    }
+    LibretroDroid::getInstance().clearRewindBuffer();
 }
 
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_destroyRewindBuffer(
     JNIEnv* env,
     jclass obj
 ) {
-    rewindBuffer.reset();
-    rewindTempBuffer.clear();
-    rewindTempBuffer.shrink_to_fit();
+    LibretroDroid::getInstance().destroyRewindBuffer();
 }
 
 JNIEXPORT jfloat JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_getRewindBufferUsage(
     JNIEnv* env,
     jclass obj
 ) {
-    if (!rewindBuffer) {
-        return 0.0f;
-    }
-    return rewindBuffer->getUsage();
+    return LibretroDroid::getInstance().getRewindBufferUsage();
 }
 
 JNIEXPORT jint JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_getRewindBufferValidCount(
     JNIEnv* env,
     jclass obj
 ) {
-    if (!rewindBuffer) {
-        return 0;
-    }
-    return static_cast<jint>(rewindBuffer->getValidCount());
+    return static_cast<jint>(LibretroDroid::getInstance().getRewindBufferValidCount());
+}
+
+JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setRewindEnabled(
+    JNIEnv* env,
+    jclass obj,
+    jboolean enabled
+) {
+    LibretroDroid::getInstance().setRewindEnabled(enabled);
+}
+
+JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setRewinding(
+    JNIEnv* env,
+    jclass obj,
+    jboolean active
+) {
+    LibretroDroid::getInstance().setRewinding(active);
+}
+
+JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setRewindSpeed(
+    JNIEnv* env,
+    jclass obj,
+    jint speed
+) {
+    LibretroDroid::getInstance().setRewindSpeed(speed);
+}
+
+JNIEXPORT jdouble JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_getContentFps(
+    JNIEnv* env,
+    jclass obj
+) {
+    return LibretroDroid::getInstance().getContentFps();
 }
 
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_initAchievements(

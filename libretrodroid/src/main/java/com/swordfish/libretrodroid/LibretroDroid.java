@@ -165,12 +165,15 @@ public class LibretroDroid {
     public static native void setControllerType(int port, int type);
 
     public static native void initRewindBuffer(int slotCount, int maxStateSize);
-    public static native boolean captureRewindState();
-    public static native boolean rewindFrame();
     public static native void clearRewindBuffer();
     public static native void destroyRewindBuffer();
     public static native float getRewindBufferUsage();
     public static native int getRewindBufferValidCount();
+
+    public static native void setRewindEnabled(boolean enabled);
+    public static native void setRewinding(boolean active);
+    public static native void setRewindSpeed(int speed);
+    public static native double getContentFps();
 
     public static native void initAchievements(AchievementDef[] achievements, int consoleId);
     public static native void clearAchievements();

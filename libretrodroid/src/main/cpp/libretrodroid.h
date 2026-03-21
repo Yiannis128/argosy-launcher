@@ -28,6 +28,7 @@
 #include <mutex>
 #include <memory>
 #include <optional>
+#include <atomic>
 
 #include "log.h"
 #include "core.h"
@@ -46,6 +47,7 @@
 #include "renderers/es2/imagerendereres2.h"
 #include "renderers/es3/imagerendereres3.h"
 #include "utils/rect.h"
+#include "rewindbuffer.h"
 
 namespace libretrodroid {
 
@@ -143,6 +145,16 @@ public:
 
     void setFrameSpeed(unsigned int speed);
 
+    void setRewindEnabled(bool enabled);
+    void setRewinding(bool rewinding);
+    void setRewindSpeed(unsigned int speed);
+    void initRewindBuffer(int slotCount, int maxStateSize);
+    void destroyRewindBuffer();
+    void clearRewindBuffer();
+    float getRewindBufferUsage() const;
+    int getRewindBufferValidCount() const;
+    double getContentFps() const;
+
     void setAudioEnabled(bool enabled);
 
     void setShaderConfig(ShaderManager::Config shaderConfig);
@@ -182,6 +194,13 @@ private:
     bool preferLowLatencyAudio = false;
     bool forceSoftwareTiming = false;
     bool rumbleEnabled = false;
+
+    std::unique_ptr<RewindBuffer> rewindBuffer;
+    std::vector<uint8_t> rewindTempBuffer;
+    std::atomic<bool> rewindEnabled{false};
+    std::atomic<bool> rewinding{false};
+    std::atomic<unsigned int> rewindSpeed{1};
+    double contentFps = 60.0;
 
     ShaderManager::Config fragmentShaderConfig = ShaderManager::Config {
         ShaderManager::Type::SHADER_DEFAULT, { }

@@ -92,6 +92,7 @@ import com.nendo.argosy.libretro.shader.ShaderDownloader
 import com.nendo.argosy.libretro.shader.ShaderPreviewRenderer
 import com.nendo.argosy.libretro.shader.ShaderRegistry
 import com.nendo.argosy.ui.theme.ALauncherTheme
+import com.nendo.argosy.data.preferences.BuiltinEmulatorSettings
 import com.swordfish.libretrodroid.GLRetroView
 import com.swordfish.libretrodroid.GLRetroViewData
 import com.swordfish.libretrodroid.LibretroDroid
@@ -156,11 +157,7 @@ class LibretroActivity : ComponentActivity() {
     private var isRewinding = false
     private var canEnableBFI = false
 
-    private var lastCaptureTime = 0L
-    private var lastRewindTime = 0L
     private var limitHotkeysToPlayer1 by mutableStateOf(true)
-    private val frameIntervalMs = 16L
-    private val rewindSpeed = 2
     private var firstFrameRendered = false
     private var audioFocusRequest: AudioFocusRequest? = null
     private var swapAB by mutableStateOf(false)
@@ -248,7 +245,7 @@ class LibretroActivity : ComponentActivity() {
             setupRumble()
         }
         if (videoSettings.rewindEnabled && !hardcoreMode) {
-            setupRewind()
+            setupRewind(settings)
         }
 
         initializeCheatManager()
@@ -363,8 +360,9 @@ class LibretroActivity : ComponentActivity() {
         limitHotkeysToPlayer1 = settings.limitHotkeysToPlayer1
         videoSettings.onRewindToggled = { enabled ->
             if (enabled && !hardcoreMode) {
-                setupRewind()
+                setupRewind(settings)
             } else if (!enabled) {
+                retroView.rewindEnabled = false
                 retroView.destroyRewindBuffer()
             }
         }
@@ -509,7 +507,7 @@ class LibretroActivity : ComponentActivity() {
             onRewindChanged = { rw ->
                 if (rw && !isRewinding) {
                     isRewinding = true
-                    lastRewindTime = 0L
+                    retroView.isRewinding = true
                     retroView.frameSpeed = 1
                 }
             },
@@ -850,41 +848,21 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun setupRewind() {
+    private fun setupRewind(settings: BuiltinEmulatorSettings) {
         lifecycleScope.launch {
             retroView.getGLRetroEvents().collect { event ->
-                when (event) {
-                    is GLRetroView.GLRetroEvents.SurfaceCreated -> {
-                        val slotCount = 900
-                        val maxStateSize = 4 * 1024 * 1024
-                        retroView.initRewindBuffer(slotCount, maxStateSize)
-                        Log.d(TAG, "Rewind buffer initialized: $slotCount slots, ${maxStateSize / 1024}KB max state")
-                        cheatManager.applyAllEnabledCheats(hardcoreMode)
-                    }
-                    is GLRetroView.GLRetroEvents.FrameRendered -> {
-                        if (!menuVisible && videoSettings.rewindEnabled) {
-                            val now = System.currentTimeMillis()
-                            if (isRewinding) {
-                                if (now - lastRewindTime >= frameIntervalMs) {
-                                    lastRewindTime = now
-                                    repeat(rewindSpeed) { performRewind() }
-                                }
-                            } else if (!isFastForwarding) {
-                                if (now - lastCaptureTime >= frameIntervalMs) {
-                                    lastCaptureTime = now
-                                    retroView.captureRewindState()
-                                }
-                            }
-                        }
-                    }
+                if (event is GLRetroView.GLRetroEvents.SurfaceCreated) {
+                    val fps = LibretroDroid.getContentFps()
+                    val slotCount = (settings.rewindBufferDuration * fps).toInt()
+                    val maxStateSize = 4 * 1024 * 1024
+                    retroView.initRewindBuffer(slotCount, maxStateSize)
+                    retroView.rewindEnabled = true
+                    retroView.rewindSpeed = settings.rewindSpeed
+                    Log.d(TAG, "Rewind buffer initialized: $slotCount slots (${settings.rewindBufferDuration}s), speed=${settings.rewindSpeed}x")
+                    cheatManager.applyAllEnabledCheats(hardcoreMode)
                 }
             }
         }
-    }
-
-    private fun performRewind(): Boolean {
-        if (!videoSettings.rewindEnabled) return false
-        return retroView.rewindFrame()
     }
 
     private fun handleMenuAction(action: InGameMenuAction) {
@@ -1230,6 +1208,7 @@ class LibretroActivity : ComponentActivity() {
         }
         if (!inputConfig.hotkeyManager.isHotkeyActive(HotkeyAction.REWIND) && isRewinding) {
             isRewinding = false
+            retroView.isRewinding = false
         }
 
         if (shouldFilterShoulderButton(keyCode)) return true

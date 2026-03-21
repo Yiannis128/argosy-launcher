@@ -580,8 +580,10 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     rotation = builtinSettings.rotationDisplay,
                     overscanCrop = builtinSettings.overscanCropDisplay,
                     lowLatencyAudio = builtinSettings.lowLatencyAudio,
-                    forceSoftwareTiming = builtinSettings.forceSoftwareTiming,
-                    rewindEnabled = builtinSettings.rewindEnabled
+                    vsync = !builtinSettings.forceSoftwareTiming,
+                    rewindEnabled = builtinSettings.rewindEnabled,
+                    rewindSpeed = builtinSettings.rewindSpeedDisplay,
+                    rewindBufferDuration = builtinSettings.rewindBufferDurationDisplay
                 ),
                 builtinControls = BuiltinControlsState(
                     rumbleEnabled = builtinSettings.rumbleEnabled,

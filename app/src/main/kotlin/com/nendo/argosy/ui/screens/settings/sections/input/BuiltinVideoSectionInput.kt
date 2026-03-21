@@ -57,6 +57,8 @@ internal class BuiltinVideoSectionInput(
         LibretroSettingDef.Rotation -> { viewModel.cycleBuiltinRotation(1); InputResult.HANDLED }
         LibretroSettingDef.OverscanCrop -> { viewModel.cycleBuiltinOverscanCrop(1); InputResult.HANDLED }
         LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(1); InputResult.HANDLED }
+        LibretroSettingDef.RewindSpeed -> { viewModel.cycleBuiltinRewindSpeed(1); InputResult.HANDLED }
+        LibretroSettingDef.RewindBufferDuration -> { viewModel.cycleBuiltinRewindBufferDuration(1); InputResult.HANDLED }
         LibretroSettingDef.BlackFrameInsertion -> {
             viewModel.setBuiltinBlackFrameInsertion(!videoState.blackFrameInsertion)
             InputResult.handled(SoundType.TOGGLE)
@@ -73,8 +75,8 @@ internal class BuiltinVideoSectionInput(
             viewModel.setBuiltinLowLatencyAudio(!videoState.lowLatencyAudio)
             InputResult.handled(SoundType.TOGGLE)
         }
-        LibretroSettingDef.ForceSoftwareTiming -> {
-            viewModel.setBuiltinForceSoftwareTiming(!videoState.forceSoftwareTiming)
+        LibretroSettingDef.VSync -> {
+            viewModel.setBuiltinVSync(!videoState.vsync)
             InputResult.handled(SoundType.TOGGLE)
         }
         LibretroSettingDef.Frame -> {
