@@ -484,7 +484,10 @@ class DownloadManager @Inject constructor(
 
         val platformDir = getDownloadDir(platformSlug)
         val gameFolder = getGameFolder(platformSlug, gameTitle)
-        val categoryFolder = File(gameFolder, category).apply { mkdirs() }
+        val useExtcontent = ZipExtractor.isNswPlatform(platformSlug) &&
+            isEdenEmulator(gameId, platformSlug)
+        val categoryFolder = File(gameFolder, if (useExtcontent) "extcontent" else category)
+            .apply { mkdirs() }
         val tempFilePath = File(categoryFolder, "${fileName}.tmp").absolutePath
 
         val entity = DownloadQueueEntity(
@@ -646,7 +649,10 @@ class DownloadManager @Inject constructor(
                 // Game file downloads (DLC/updates) go to category subfolders
                 val downloadDir = if (progress.isGameFileDownload && progress.fileCategory != null) {
                     val gameFolder = getGameFolder(progress.platformSlug, progress.gameTitle)
-                    File(gameFolder, progress.fileCategory).apply { mkdirs() }
+                    val useExtcontent = ZipExtractor.isNswPlatform(progress.platformSlug) &&
+                        isEdenEmulator(progress.gameId, progress.platformSlug)
+                    File(gameFolder, if (useExtcontent) "extcontent" else progress.fileCategory)
+                        .apply { mkdirs() }
                 } else {
                     platformDir
                 }
@@ -1281,10 +1287,23 @@ class DownloadManager @Inject constructor(
             )
             if (emulatorId != "eden") return
 
+            // extcontent is auto-discovered by Eden -- no config.ini registration needed
+            if (ZipExtractor.isNswPlatform(progress.platformSlug)) return
+
             val gameDir = File(finalPath).parentFile?.parent ?: return
             edenContentManager.registerDirectory(gameDir)
         } catch (e: Exception) {
             Log.w(TAG, "Auto-apply to Eden failed: ${e.message}")
+        }
+    }
+
+    private suspend fun isEdenEmulator(gameId: Long, platformSlug: String): Boolean {
+        if (!ZipExtractor.isNswPlatform(platformSlug)) return false
+        return try {
+            val game = gameDao.getById(gameId) ?: return false
+            emulatorResolver.getEmulatorIdForGame(gameId, game.platformId, platformSlug) == "eden"
+        } catch (e: Exception) {
+            false
         }
     }
 

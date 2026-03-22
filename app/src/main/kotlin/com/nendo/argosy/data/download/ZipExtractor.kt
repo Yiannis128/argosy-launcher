@@ -402,6 +402,10 @@ object ZipExtractor {
         results.addAll(listUpdateFiles(localPath, platformSlug))
 
         val updateExtensions = config?.updateExtensions
+
+        // extcontent/ files are matched by extension only (no filename patterns)
+        listExtcontentFiles(gameFolder, updateExtensions)?.let { results.addAll(it) }
+
         gameFolder.listFiles()
             ?.filter { file ->
                 file.isFile &&
@@ -422,6 +426,10 @@ object ZipExtractor {
         results.addAll(listDlcFiles(localPath, platformSlug))
 
         val dlcExtensions = config?.dlcExtensions
+
+        // extcontent/ files are matched by extension only (no filename patterns)
+        listExtcontentFiles(gameFolder, dlcExtensions)?.let { results.addAll(it) }
+
         gameFolder.listFiles()
             ?.filter { file ->
                 file.isFile &&
@@ -432,6 +440,15 @@ object ZipExtractor {
             ?.let { results.addAll(it) }
 
         return results.sortedBy { it.name }
+    }
+
+    private fun listExtcontentFiles(gameFolder: File, extensions: Set<String>?): List<File>? {
+        val extcontent = File(gameFolder, "extcontent")
+        if (!extcontent.isDirectory) return null
+        return extcontent.listFiles()?.filter { file ->
+            file.isFile && !file.name.startsWith("._") &&
+                (extensions == null || file.extension.lowercase() in extensions)
+        }
     }
 
     fun extractFolderRom(

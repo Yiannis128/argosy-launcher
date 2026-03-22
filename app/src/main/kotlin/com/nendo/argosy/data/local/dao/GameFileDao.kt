@@ -92,4 +92,7 @@ interface GameFileDao {
 
     @Query("UPDATE game_files SET localPath = NULL, downloadedAt = NULL WHERE id = :fileId")
     suspend fun clearLocalPath(fileId: Long)
+
+    @Query("UPDATE game_files SET localPath = :newPath WHERE localPath = :oldPath")
+    suspend fun updateLocalPathByOldPath(oldPath: String, newPath: String)
 }

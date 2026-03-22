@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import com.nendo.argosy.data.download.ZipExtractor
+import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.storage.StoragePathUtils
 import com.nendo.argosy.data.launcher.SteamLaunchers
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
@@ -65,7 +66,8 @@ class GameLauncher @Inject constructor(
     private val biosRepository: BiosRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val coreOptionResolver: CoreOptionResolver,
-    private val coreSystemDataManager: CoreSystemDataManager
+    private val coreSystemDataManager: CoreSystemDataManager,
+    private val gameFileDao: GameFileDao
 ) {
     suspend fun launch(
         gameId: Long,
@@ -114,6 +116,10 @@ class GameLauncher @Inject constructor(
             }
 
         Logger.debug(TAG, "Emulator resolved: ${emulator.displayName} (${emulator.packageName})")
+
+        if (emulator.id == "eden" && ZipExtractor.isNswPlatform(game.platformSlug)) {
+            migrateToExtcontent(game)
+        }
 
         // Extract ZIP/7z archives only for built-in emulator (RetroArch handles archives natively)
         if (emulator.launchConfig is LaunchConfig.BuiltIn) {
@@ -221,6 +227,10 @@ class GameLauncher @Inject constructor(
             }
 
         Logger.debug(TAG, "Emulator resolved: ${emulator.displayName}")
+
+        if (emulator.id == "eden" && ZipExtractor.isNswPlatform(game.platformSlug)) {
+            migrateToExtcontent(game)
+        }
 
         val launchFile = if (M3uManager.supportsM3u(game.platformSlug)) {
             when (val m3uResult = m3uManager.ensureM3u(game)) {
@@ -1204,5 +1214,47 @@ class GameLauncher @Inject constructor(
                 }
             }
         throw IllegalStateException("No valid files found in 7z archive")
+    }
+
+    private companion object {
+        val EXTCONTENT_SOURCE_NAMES = setOf(
+            "update", "updates", "dlc", "dlcs"
+        )
+    }
+
+    private suspend fun migrateToExtcontent(game: GameEntity) {
+        val romPath = game.localPath ?: return
+        val gameFolder = File(romPath).parentFile ?: return
+        if (!gameFolder.isDirectory) return
+
+        val sourceFolders = gameFolder.listFiles { file ->
+            file.isDirectory && file.name.lowercase() in EXTCONTENT_SOURCE_NAMES
+        } ?: return
+
+        if (sourceFolders.isEmpty()) return
+
+        val extcontent = File(gameFolder, "extcontent").apply { mkdirs() }
+        var movedCount = 0
+
+        for (folder in sourceFolders) {
+            val files = folder.listFiles() ?: continue
+            for (file in files) {
+                if (!file.isFile) continue
+                val target = File(extcontent, file.name)
+                if (file.renameTo(target)) {
+                    gameFileDao.updateLocalPathByOldPath(file.absolutePath, target.absolutePath)
+                    movedCount++
+                } else {
+                    Logger.warn(TAG, "migrateToExtcontent: failed to move ${file.name}")
+                }
+            }
+            if (folder.listFiles().isNullOrEmpty()) {
+                folder.delete()
+            }
+        }
+
+        if (movedCount > 0) {
+            Logger.info(TAG, "migrateToExtcontent: moved $movedCount files to extcontent/ for ${game.title}")
+        }
     }
 }
