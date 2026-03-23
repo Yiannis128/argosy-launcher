@@ -131,13 +131,7 @@ class SteamContentManager @Inject constructor(
         Log.d(TAG, "SteamContentManager initialized with ContentDownloader")
     }
 
-    init {
-        scope.launch {
-            restorePausedDownloads()
-        }
-    }
-
-    private suspend fun restorePausedDownloads() = withContext(Dispatchers.IO) {
+    suspend fun restorePausedDownloads() = withContext(Dispatchers.IO) {
         // Scan GN path and fallback path for .download_in_progress markers
         val candidates = mutableListOf<File>()
 
@@ -162,11 +156,15 @@ class SteamContentManager @Inject constructor(
             }
         }
 
-        // Check fallback storage path
+        // Check fallback storage paths
         val prefs = preferencesRepository.userPreferences.first()
-        val basePath = prefs.romStoragePath
-        if (basePath != null) {
-            val steamDir = File(basePath, "steam")
+        val fallbackPaths = listOfNotNull(
+            prefs.romStoragePath,
+            context.getExternalFilesDir(null)?.absolutePath,
+            context.filesDir.absolutePath
+        )
+        for (base in fallbackPaths) {
+            val steamDir = File(base, "steam")
             if (steamDir.exists()) {
                 steamDir.listFiles()?.forEach { appDir ->
                     if (File(appDir, ".download_in_progress").exists()) {
@@ -178,11 +176,15 @@ class SteamContentManager @Inject constructor(
 
         for (dir in candidates) {
             val size = getDirectorySize(dir)
+            // Match by localPath, dir name as game title, or dir name as appId
+            val dirAppId = dir.name.toLongOrNull()
             val game = gameDao.getBySource(GameSource.STEAM).find {
-                it.localPath == dir.absolutePath || sanitizeGameName(it.title) == dir.name
+                it.localPath == dir.absolutePath ||
+                    sanitizeGameName(it.title) == dir.name ||
+                    (dirAppId != null && it.steamAppId == dirAppId)
             }
             val gameName = game?.title ?: dir.name
-            val appId = game?.steamAppId ?: continue
+            val appId = game?.steamAppId ?: dirAppId ?: continue
 
             Log.d(TAG, "Restored paused download: $gameName (${size / 1024 / 1024}MB)")
 
@@ -191,7 +193,7 @@ class SteamContentManager @Inject constructor(
             _activeDownload.value = SteamDownloadProgress(
                 appId = appId,
                 gameName = gameName,
-                coverPath = game.coverPath,
+                coverPath = game?.coverPath,
                 progress = 0f,
                 totalBytes = 0L,
                 bytesDownloaded = size,
