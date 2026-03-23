@@ -1,8 +1,11 @@
 package com.nendo.argosy.ui.screens.settings.delegates
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.os.IBinder
 import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.repository.SteamResult
 import com.nendo.argosy.data.steam.LibrarySyncState
@@ -52,6 +55,20 @@ class SteamSettingsDelegate @Inject constructor(
 
     private var serviceRef: SteamService? = null
     private var observingService = false
+    private var bound = false
+    private var bindScope: CoroutineScope? = null
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            val service = (binder as? SteamService.LocalBinder)?.getService() ?: return
+            bindService(service, bindScope ?: return)
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            serviceRef = null
+            observingService = false
+        }
+    }
 
     fun updateState(newState: SteamSettingsState) {
         _state.value = newState
@@ -68,6 +85,7 @@ class SteamSettingsDelegate @Inject constructor(
     }
 
     fun loadSteamSettings(context: Context, scope: CoroutineScope) {
+        bindScope = scope
         scope.launch {
             val gnInstalled = isGnInstalled(context)
             val gnStoragePath = withContext(Dispatchers.IO) { findGnStoragePath() }
@@ -78,6 +96,11 @@ class SteamSettingsDelegate @Inject constructor(
                     gnStoragePath = gnStoragePath
                 )
             }
+
+            // Auto-bind if service is already running (e.g. auto-connect from saved account)
+            if (!bound) {
+                tryBindService(context)
+            }
         }
     }
 
@@ -86,6 +109,21 @@ class SteamSettingsDelegate @Inject constructor(
             putExtra(SteamService.EXTRA_AUTO_CONNECT, true)
         }
         context.startService(intent)
+        tryBindService(context)
+    }
+
+    private fun tryBindService(context: Context) {
+        if (bound) return
+        val intent = Intent(context, SteamService::class.java)
+        context.startService(intent)
+        bound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    fun unbindService(context: Context) {
+        if (bound) {
+            context.unbindService(serviceConnection)
+            bound = false
+        }
     }
 
     fun startQrAuth() {

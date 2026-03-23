@@ -119,6 +119,10 @@
             android:exported="false" />
 
         <service
+            android:name=".data.steam.SteamService"
+            android:exported="false" />
+
+        <service
             android:name=".hardware.ScreenCaptureService"
             android:foregroundServiceType="mediaProjection"
             android:exported="false" />
