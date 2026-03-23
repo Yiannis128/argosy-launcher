@@ -207,6 +207,9 @@ dependencies {
     implementation(libs.xz)
     implementation(libs.zstd.jni)
 
+    // Steam (JavaSteam)
+    implementation(libs.bundles.steam)
+
     // Libretro (built-in emulation) - local module for customization
     implementation(project(":libchdr"))
     implementation(project(":libretrodroid"))

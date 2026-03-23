@@ -8,6 +8,7 @@ import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.data.remote.steam.SteamAppData
 import com.nendo.argosy.data.remote.steam.SteamStoreApi
 import com.squareup.moshi.Moshi
@@ -24,7 +25,6 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.nendo.argosy.data.platform.LocalPlatformIds
 
 private const val TAG = "SteamRepository"
 private const val STEAM_PLATFORM_SLUG = "steam"
@@ -72,19 +72,9 @@ class SteamRepository @Inject constructor(
 
             val existing = gameDao.getBySteamAppId(steamAppId)
             if (existing != null) {
-                val needsMetadata = existing.description == null || existing.coverPath == null
-                if (!existing.launcherSetManually && existing.steamLauncher != launcherPackage) {
-                    Log.d(TAG, "Updating launcher for ${existing.title} to $launcherPackage")
-                    gameDao.updateSteamLauncher(existing.id, launcherPackage, false)
-                }
-                if (needsMetadata) {
-                    Log.d(TAG, "Existing game ${existing.title} missing metadata, fetching...")
-                    refreshGameMetadata(existing)
-                }
                 Log.d(TAG, "Game already exists: ${existing.title}")
                 updatePlatformGameCount()
-                val refreshed = gameDao.getBySteamAppId(steamAppId) ?: existing
-                return@withContext SteamResult.Success(refreshed)
+                return@withContext SteamResult.Success(existing)
             }
 
             Log.d(TAG, "Fetching Steam app details for $steamAppId")
@@ -106,7 +96,8 @@ class SteamRepository @Inject constructor(
             }
 
             val appData = appResponse.data
-            val coverPath = cacheHeaderImage(steamAppId, appData.headerImage)
+            val libraryCapsuleUrl = "https://steamcdn-a.akamaihd.net/steam/apps/$steamAppId/library_600x900.jpg"
+            val coverPath = cacheCoverImage(steamAppId, libraryCapsuleUrl)
 
             val screenshotUrls = appData.screenshots?.mapNotNull { it.pathFull } ?: emptyList()
             val firstScreenshot = screenshotUrls.firstOrNull()
@@ -139,7 +130,6 @@ class SteamRepository @Inject constructor(
 
             val insertedId = gameDao.insert(game)
             val savedGame = gameDao.getById(insertedId)
-                ?: return@withContext SteamResult.Error("Failed to save game")
 
             if (backgroundUrl != null) {
                 imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, appData.name)
@@ -148,9 +138,52 @@ class SteamRepository @Inject constructor(
             updatePlatformGameCount()
 
             Log.d(TAG, "Added Steam game: ${appData.name}")
-            SteamResult.Success(savedGame)
+            SteamResult.Success(savedGame!!)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add Steam game", e)
+            SteamResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun enrichWithStoreData(steamAppId: Long): SteamResult<GameEntity> = withContext(Dispatchers.IO) {
+        try {
+            val game = gameDao.getBySteamAppId(steamAppId)
+                ?: return@withContext SteamResult.Error("Game not found")
+
+            Log.d(TAG, "Enriching Steam game with store data: ${game.title}")
+            val response = api.getAppDetails(steamAppId)
+
+            if (!response.isSuccessful) {
+                return@withContext SteamResult.Error("Steam API error: ${response.code()}")
+            }
+
+            val appResponse = response.body()?.get(steamAppId.toString())
+            if (appResponse?.success != true || appResponse.data == null) {
+                return@withContext SteamResult.Error("App not found in Steam Store")
+            }
+
+            val appData = appResponse.data
+            val screenshotUrls = appData.screenshots?.mapNotNull { it.pathFull } ?: emptyList()
+            val firstScreenshot = screenshotUrls.firstOrNull()
+            val backgroundUrl = firstScreenshot ?: appData.background ?: appData.backgroundRaw
+
+            val updatedGame = game.copy(
+                description = appData.shortDescription ?: game.description,
+                screenshotPaths = if (screenshotUrls.isNotEmpty()) screenshotUrls.joinToString(",") else game.screenshotPaths,
+                backgroundPath = backgroundUrl ?: game.backgroundPath,
+                rating = appData.metacritic?.score?.toFloat() ?: game.rating
+            )
+
+            gameDao.update(updatedGame)
+
+            if (backgroundUrl != null && game.backgroundPath != backgroundUrl) {
+                imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, game.title)
+            }
+
+            Log.d(TAG, "Enriched ${game.title} with store data")
+            SteamResult.Success(updatedGame)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to enrich Steam game", e)
             SteamResult.Error(e.message ?: "Unknown error")
         }
     }
@@ -191,8 +224,48 @@ class SteamRepository @Inject constructor(
             var refreshedCount = 0
 
             for (game in steamGames) {
-                if (refreshGameMetadata(game)) {
+                val steamAppId = game.steamAppId ?: continue
+                try {
+                    val response = api.getAppDetails(steamAppId)
+                    if (!response.isSuccessful) continue
+
+                    val appResponse = response.body()?.get(steamAppId.toString())
+                    if (appResponse?.success != true || appResponse.data == null) continue
+
+                    val appData = appResponse.data
+                    val screenshotUrls = appData.screenshots?.mapNotNull { it.pathFull } ?: emptyList()
+                    val firstScreenshot = screenshotUrls.firstOrNull()
+                    val backgroundUrl = firstScreenshot
+                        ?: appData.background
+                        ?: appData.backgroundRaw
+
+                    val libraryCapsuleUrl = "https://steamcdn-a.akamaihd.net/steam/apps/$steamAppId/library_600x900.jpg"
+                    val coverPath = cacheCoverImage(steamAppId, libraryCapsuleUrl)
+
+                    gameDao.update(
+                        game.copy(
+                            title = appData.name,
+                            sortTitle = createSortTitle(appData.name),
+                            coverPath = coverPath ?: game.coverPath,
+                            backgroundPath = backgroundUrl,
+                            screenshotPaths = screenshotUrls.joinToString(","),
+                            developer = appData.developers?.firstOrNull() ?: game.developer,
+                            publisher = appData.publishers?.firstOrNull() ?: game.publisher,
+                            releaseYear = parseReleaseYear(appData.releaseDate?.date) ?: game.releaseYear,
+                            genre = appData.genres?.mapNotNull { it.description }?.joinToString(", ") ?: game.genre,
+                            description = appData.shortDescription ?: game.description,
+                            rating = appData.metacritic?.score?.toFloat() ?: game.rating
+                        )
+                    )
+
+                    if (backgroundUrl != null) {
+                        imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, appData.name)
+                    }
+
                     refreshedCount++
+                    Log.d(TAG, "Refreshed metadata for: ${appData.name}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to refresh ${game.title}", e)
                 }
             }
 
@@ -204,53 +277,7 @@ class SteamRepository @Inject constructor(
         }
     }
 
-    private suspend fun refreshGameMetadata(game: GameEntity): Boolean {
-        val steamAppId = game.steamAppId ?: return false
-        return try {
-            val response = api.getAppDetails(steamAppId)
-            if (!response.isSuccessful) return false
-
-            val appResponse = response.body()?.get(steamAppId.toString())
-            if (appResponse?.success != true || appResponse.data == null) return false
-
-            val appData = appResponse.data
-            val screenshotUrls = appData.screenshots?.mapNotNull { it.pathFull } ?: emptyList()
-            val firstScreenshot = screenshotUrls.firstOrNull()
-            val backgroundUrl = firstScreenshot
-                ?: appData.background
-                ?: appData.backgroundRaw
-
-            val coverPath = cacheHeaderImage(steamAppId, appData.headerImage)
-
-            gameDao.update(
-                game.copy(
-                    title = appData.name,
-                    sortTitle = createSortTitle(appData.name),
-                    coverPath = coverPath ?: game.coverPath,
-                    backgroundPath = backgroundUrl,
-                    screenshotPaths = screenshotUrls.joinToString(","),
-                    developer = appData.developers?.firstOrNull() ?: game.developer,
-                    publisher = appData.publishers?.firstOrNull() ?: game.publisher,
-                    releaseYear = parseReleaseYear(appData.releaseDate?.date) ?: game.releaseYear,
-                    genre = appData.genres?.mapNotNull { it.description }?.joinToString(", ") ?: game.genre,
-                    description = appData.shortDescription ?: game.description,
-                    rating = appData.metacritic?.score?.toFloat() ?: game.rating
-                )
-            )
-
-            if (backgroundUrl != null) {
-                imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, appData.name)
-            }
-
-            Log.d(TAG, "Refreshed metadata for: ${appData.name}")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to refresh ${game.title}", e)
-            false
-        }
-    }
-
-    private suspend fun cacheHeaderImage(steamAppId: Long, imageUrl: String?): String? {
+    private suspend fun cacheCoverImage(steamAppId: Long, imageUrl: String?): String? {
         if (imageUrl.isNullOrBlank()) return null
 
         return try {
@@ -266,7 +293,7 @@ class SteamRepository @Inject constructor(
             }
             file.absolutePath
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to cache header image", e)
+            Log.e(TAG, "Failed to cache cover image", e)
             imageUrl
         }
     }
@@ -310,7 +337,7 @@ class SteamRepository @Inject constructor(
                     slug = STEAM_PLATFORM_SLUG,
                     name = "Steam",
                     shortName = "Steam",
-                    sortOrder = 10,
+                    sortOrder = 130,
                     isVisible = true,
                     romExtensions = "",
                     gameCount = 0

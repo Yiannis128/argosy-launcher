@@ -44,39 +44,63 @@ class AndroidDataAccessor @Inject constructor(
                 altPathSupported?.let { return it }
             }
 
-            val extStorage = Environment.getExternalStorageDirectory().absolutePath
-            val altAndroidPath = extStorage + ALT_PATH.dropLast(1)
-
-            val supported = try {
-                val dir = File(altAndroidPath)
-                val dataLink = File(dir, "data")
-
-                if (hasStoragePermission && !dataLink.exists()) {
-                    setupAltAccess(extStorage, dir, dataLink)
-                }
-
-                dir.exists() && dataLink.canRead()
-            } catch (e: Exception) {
-                Logger.warn(TAG, "[AltAccess] Path check failed: ${e.message}")
-                false
+            var anySupported = false
+            for (root in getAllStorageRoots()) {
+                val supported = setupAndVerifyAltAccess(root, hasStoragePermission)
+                if (supported) anySupported = true
             }
 
             if (hasStoragePermission) {
-                altPathSupported = supported
+                altPathSupported = anySupported
             }
-            return supported
+            return anySupported
         }
     }
 
-    private fun setupAltAccess(extStorage: String, altDir: File, dataLink: File) {
+    private fun getAllStorageRoots(): List<String> {
+        val roots = mutableListOf(Environment.getExternalStorageDirectory().absolutePath)
+        try {
+            File("/storage").listFiles()?.forEach { vol ->
+                if (vol.isDirectory && vol.name != "emulated" && vol.name != "self") {
+                    if (File(vol, "Android/data").exists()) {
+                        roots.add(vol.absolutePath)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Logger.warn(TAG, "[AltAccess] Failed to enumerate storage volumes: ${e.message}")
+        }
+        return roots
+    }
+
+    private fun setupAndVerifyAltAccess(storageRoot: String, hasStoragePermission: Boolean): Boolean {
+        val altPath = ALT_PATH ?: return false
+        val altAndroidPath = storageRoot + altPath.dropLast(1)
+        return try {
+            val dir = File(altAndroidPath)
+            val dataLink = File(dir, "data")
+
+            if (hasStoragePermission && !dataLink.exists()) {
+                setupAltAccess(storageRoot, dir, dataLink)
+            }
+
+            dir.exists() && dataLink.canRead()
+        } catch (e: Exception) {
+            Logger.warn(TAG, "[AltAccess] Path check failed for $storageRoot: ${e.message}")
+            false
+        }
+    }
+
+    private fun setupAltAccess(storageRoot: String, altDir: File, dataLink: File) {
         try {
             if (!altDir.exists()) altDir.mkdirs()
-            if (!dataLink.exists()) Os.symlink("$extStorage/Android/data", dataLink.absolutePath)
+            if (!dataLink.exists()) Os.symlink("$storageRoot/Android/data", dataLink.absolutePath)
 
             val obbLink = File(altDir, "obb")
-            if (!obbLink.exists()) Os.symlink("$extStorage/Android/obb", obbLink.absolutePath)
+            if (!obbLink.exists()) Os.symlink("$storageRoot/Android/obb", obbLink.absolutePath)
+            Logger.info(TAG, "[AltAccess] Symlinks created for $storageRoot")
         } catch (e: Exception) {
-            Logger.warn(TAG, "[AltAccess] Setup failed: ${e.message}")
+            Logger.warn(TAG, "[AltAccess] Setup failed for $storageRoot: ${e.message}")
         }
     }
 

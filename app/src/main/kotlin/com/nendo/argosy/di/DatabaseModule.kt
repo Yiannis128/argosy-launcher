@@ -31,6 +31,8 @@ import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.dao.SocialGameCacheDao
 import com.nendo.argosy.data.local.dao.StateCacheDao
+import com.nendo.argosy.data.local.dao.SteamAccountDao
+import com.nendo.argosy.data.local.dao.SteamLicenseDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -140,7 +142,8 @@ object DatabaseModule {
                 ALauncherDatabase.MIGRATION_87_88,
                 ALauncherDatabase.MIGRATION_88_89,
                 ALauncherDatabase.MIGRATION_89_90,
-                ALauncherDatabase.MIGRATION_90_91
+                ALauncherDatabase.MIGRATION_90_91,
+                ALauncherDatabase.MIGRATION_91_92
             )
             .enableMultiInstanceInvalidation()
             .build()
@@ -254,4 +257,12 @@ object DatabaseModule {
     @Provides
     fun provideCoreOptionOverrideDao(database: ALauncherDatabase): CoreOptionOverrideDao =
         database.coreOptionOverrideDao()
+
+    @Provides
+    fun provideSteamAccountDao(database: ALauncherDatabase): SteamAccountDao =
+        database.steamAccountDao()
+
+    @Provides
+    fun provideSteamLicenseDao(database: ALauncherDatabase): SteamLicenseDao =
+        database.steamLicenseDao()
 }
