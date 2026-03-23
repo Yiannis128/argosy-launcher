@@ -6,7 +6,10 @@ import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.data.download.DownloadProgress
 import com.nendo.argosy.data.download.DownloadQueueState
 import com.nendo.argosy.data.download.DownloadState
+import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.steam.SteamContentManager
+import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -89,7 +92,9 @@ data class DownloadsUiState(
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
     private val downloadManager: DownloadManager,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
+    private val steamContentManager: SteamContentManager,
+    private val gameDao: GameDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DownloadsUiState())
@@ -97,19 +102,31 @@ class DownloadsViewModel @Inject constructor(
 
     val state: StateFlow<DownloadQueueState> = downloadManager.state
 
+    private val _steamDownloads = MutableStateFlow<List<DownloadProgress>>(emptyList())
+
     init {
         viewModelScope.launch {
             combine(
                 downloadManager.state,
-                preferencesRepository.preferences.map { it.maxConcurrentDownloads }
-            ) { downloadState, maxActive ->
-                downloadState to maxActive
-            }.collect { (downloadState, maxActive) ->
+                preferencesRepository.preferences.map { it.maxConcurrentDownloads },
+                _steamDownloads
+            ) { downloadState, maxActive, steamItems ->
+                Triple(downloadState, maxActive, steamItems)
+            }.collect { (downloadState, maxActive, steamItems) ->
+                val merged = downloadState.copy(
+                    activeDownloads = downloadState.activeDownloads + steamItems.filter {
+                        it.state == DownloadState.DOWNLOADING
+                    },
+                    queue = downloadState.queue + steamItems.filter {
+                        it.state == DownloadState.QUEUED
+                    }
+                )
+
                 val currentFocusedId = _uiState.value.focusedDownloadId
                 val allItems = buildList {
-                    addAll(downloadState.activeDownloads)
-                    addAll(downloadState.queue)
-                    addAll(downloadState.completed)
+                    addAll(merged.activeDownloads)
+                    addAll(merged.queue)
+                    addAll(merged.completed)
                 }
 
                 val newFocusedId = when {
@@ -119,9 +136,46 @@ class DownloadsViewModel @Inject constructor(
                 }
 
                 _uiState.value = _uiState.value.copy(
-                    downloadState = downloadState,
+                    downloadState = merged,
                     focusedDownloadId = newFocusedId,
                     maxActiveSlots = maxActive
+                )
+            }
+        }
+
+        // Convert Steam downloads to DownloadProgress entries
+        viewModelScope.launch {
+            steamContentManager.activeDownload.collect { steamDl ->
+                if (steamDl == null) {
+                    _steamDownloads.value = emptyList()
+                    return@collect
+                }
+                val game = gameDao.getBySteamAppId(steamDl.appId)
+                val dlState = when (steamDl.state) {
+                    is SteamDownloadState.Downloading -> DownloadState.DOWNLOADING
+                    is SteamDownloadState.Preparing -> DownloadState.QUEUED
+                    is SteamDownloadState.Moving -> DownloadState.EXTRACTING
+                    is SteamDownloadState.Paused -> DownloadState.PAUSED
+                    is SteamDownloadState.Completed -> DownloadState.COMPLETED
+                    is SteamDownloadState.Failed -> DownloadState.FAILED
+                    is SteamDownloadState.Idle -> {
+                        _steamDownloads.value = emptyList()
+                        return@collect
+                    }
+                }
+                _steamDownloads.value = listOf(
+                    DownloadProgress(
+                        id = -steamDl.appId,
+                        gameId = game?.id ?: 0L,
+                        rommId = 0L,
+                        platformSlug = "steam",
+                        gameTitle = steamDl.gameName,
+                        fileName = "",
+                        totalBytes = steamDl.totalBytes,
+                        bytesDownloaded = steamDl.bytesDownloaded,
+                        state = dlState,
+                        coverPath = steamDl.coverPath
+                    )
                 )
             }
         }

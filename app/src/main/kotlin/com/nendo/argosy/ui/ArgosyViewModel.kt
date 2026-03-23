@@ -158,7 +158,8 @@ class ArgosyViewModel @Inject constructor(
     private val brightnessController: BrightnessController,
     private val volumeController: VolumeController,
     private val syncLibraryUseCase: com.nendo.argosy.domain.usecase.sync.SyncLibraryUseCase,
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
 ) : ViewModel() {
 
     private val contentResolver get() = application.contentResolver
@@ -433,7 +434,10 @@ class ArgosyViewModel @Inject constructor(
         val modal = values[8] as DrawerModal
         val socialConnection = values[9] as SocialConnectionState
 
-        val downloadCount = downloads.activeDownloads.size + downloads.queue.size
+        val steamActive = steamContentManager.activeDownload.value != null
+        val steamQueued = steamContentManager.downloadQueue.value.size
+        val downloadCount = downloads.activeDownloads.size + downloads.queue.size +
+            (if (steamActive) 1 else 0) + steamQueued
         val sortedFriends = friends
             .filter { it.friendshipStatus.value == "accepted" }
             .sortedWith(

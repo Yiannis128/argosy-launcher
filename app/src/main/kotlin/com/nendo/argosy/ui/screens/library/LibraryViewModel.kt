@@ -1017,6 +1017,7 @@ class LibraryViewModel @Inject constructor(
                 when {
                     needsInstall -> installApk(game.id)
                     isDownloaded -> launchGame(game.id)
+                    game.source == com.nendo.argosy.data.model.GameSource.STEAM -> downloadSteamGame(game.id)
                     else -> downloadGame(game.id)
                 }
                 toggleQuickMenu()
