@@ -149,20 +149,13 @@ internal fun routeConfirmSavePathModalSelection(vm: SettingsViewModel) {
 
 internal fun routeHandlePlatformItemTap(vm: SettingsViewModel, index: Int) {
     val state = vm._uiState.value
-    val focusOffset = if (state.emulators.canAutoAssign) 1 else 0
-    val actualIndex = index + focusOffset
-
-    if (state.focusedIndex == actualIndex) {
-        if (index == -1 && state.emulators.canAutoAssign) {
-            vm.autoAssignAllEmulators()
-        } else {
-            val config = state.emulators.platforms.getOrNull(index)
-            if (config != null) {
-                vm.showEmulatorPicker(config)
-            }
+    if (state.focusedIndex == index) {
+        val config = state.emulators.platforms.getOrNull(index)
+        if (config != null) {
+            vm.showEmulatorPicker(config)
         }
     } else {
-        vm._uiState.update { it.copy(focusedIndex = actualIndex) }
+        vm._uiState.update { it.copy(focusedIndex = index) }
     }
 }
 
@@ -198,7 +191,7 @@ internal fun routeCycleGridDensity(vm: SettingsViewModel, direction: Int) {
 
 internal fun routeAdjustUiScale(vm: SettingsViewModel, delta: Int) {
     val current = vm.uiState.value.display.uiScale
-    val wouldBe = (current + delta).coerceIn(75, 150)
+    val wouldBe = (current + delta).coerceIn(50, 150)
     if (wouldBe == current && delta != 0) {
         vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
     }

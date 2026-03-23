@@ -182,7 +182,7 @@ fun DisplaySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 DisplayItem.UiScale -> SliderPreference(
                     title = "UI Scale",
                     value = display.uiScale,
-                    minValue = 75,
+                    minValue = 50,
                     maxValue = 150,
                     isFocused = isFocused(item),
                     step = 5,

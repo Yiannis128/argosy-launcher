@@ -264,23 +264,7 @@ class EmulatorSettingsDelegate @Inject constructor(
         }
     }
 
-    fun autoAssignAllEmulators(
-        scope: CoroutineScope,
-        onLoadSettings: suspend () -> Unit
-    ) {
-        scope.launch {
-            val platforms = _state.value.platforms
-            for (config in platforms) {
-                if (!config.isUserConfigured && config.availableEmulators.isNotEmpty()) {
-                    val preferred = emulatorDetector.getPreferredEmulator(config.platform.slug)
-                    if (preferred != null) {
-                        configureEmulatorUseCase.setForPlatform(config.platform.id, config.platform.slug, preferred)
-                    }
-                }
-            }
-            onLoadSettings()
-        }
-    }
+
 
     fun refreshEmulators() {
         // EmulatorDetector will refresh on next detectEmulators() call

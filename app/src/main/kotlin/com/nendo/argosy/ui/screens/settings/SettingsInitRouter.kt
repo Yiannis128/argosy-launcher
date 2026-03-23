@@ -259,7 +259,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
     vm.viewModelScope.launch {
         val prefs = vm.preferencesRepository.preferences.first()
         val installedEmulators = vm.emulatorDetector.detectEmulators()
-        val platforms = vm.platformRepository.observePlatformsWithGames().first()
+        val platforms = vm.platformRepository.observeAllPlatforms().first()
 
         val installedPackages = installedEmulators.map { it.def.packageName }.toSet()
 
@@ -360,8 +360,6 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 hasSecondaryDisplay = vm.displayAffinityHelper.hasSecondaryDisplay
             )
         }
-
-        val canAutoAssign = platformConfigs.any { !it.isUserConfigured && it.availableEmulators.isNotEmpty() }
 
         val connectionState = vm.romMRepository.connectionState.value
         val connectionStatus = when {
@@ -487,13 +485,14 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         ))
 
         val excludedSlugs = setOf("android", "steam")
-        val filteredPlatformConfigs = platformConfigs.filter { it.platform.slug !in excludedSlugs }
+        val filteredPlatformConfigs = platformConfigs
+            .filter { it.platform.slug !in excludedSlugs }
+            .sortedByDescending { it.platform.syncEnabled }
 
         val currentEmulatorState = vm.emulatorDelegate.state.value
         vm.emulatorDelegate.updateState(EmulatorState(
             platforms = filteredPlatformConfigs,
             installedEmulators = installedEmulators,
-            canAutoAssign = canAutoAssign,
             platformSubFocusIndex = currentEmulatorState.platformSubFocusIndex,
             builtinLibretroEnabled = prefs.builtinLibretroEnabled,
             emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions

@@ -175,6 +175,8 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(uiState.currentSection) {
+        showFileBrowser = false
+        fileBrowserCallback = null
         inputDispatcher.blockInputFor(Motion.transitionDebounceMs)
     }
 
@@ -986,9 +988,7 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
         }
         if (uiState.currentSection == SettingsSection.PLATFORMS) {
             val emuLayoutInfo = com.nendo.argosy.ui.screens.settings.sections.createEmulatorsLayoutInfo(
-                platforms = uiState.emulators.platforms,
-                canAutoAssign = uiState.emulators.canAutoAssign,
-                builtinLibretroEnabled = uiState.emulators.builtinLibretroEnabled
+                platforms = uiState.emulators.platforms
             )
             val focusedItem = com.nendo.argosy.ui.screens.settings.sections.emulatorsItemAtFocusIndex(
                 uiState.focusedIndex, emuLayoutInfo
@@ -999,9 +999,13 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
                 add(InputButton.LB_RB to "Display")
             }
             if (focusedItem is com.nendo.argosy.ui.screens.settings.sections.EmulatorsItem.PlatformItem) {
-                val emulatorId = focusedItem.config.effectiveEmulatorId
-                if (emulatorId != null && emulatorId in uiState.emulators.emulatorUpdateVersions) {
-                    add(InputButton.X to "Update")
+                if (!focusedItem.config.platform.syncEnabled) {
+                    add(InputButton.Y to "Enable")
+                } else {
+                    val emulatorId = focusedItem.config.effectiveEmulatorId
+                    if (emulatorId != null && emulatorId in uiState.emulators.emulatorUpdateVersions) {
+                        add(InputButton.X to "Update")
+                    }
                 }
             }
         }

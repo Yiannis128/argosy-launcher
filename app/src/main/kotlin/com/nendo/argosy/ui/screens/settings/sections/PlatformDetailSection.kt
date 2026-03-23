@@ -218,7 +218,7 @@ fun PlatformDetailSection(
                     val hasUpdate = config.effectiveEmulatorId != null &&
                         config.effectiveEmulatorId in emulators.emulatorUpdateVersions
                     CyclePreference(
-                        title = "Emulator",
+                        title = "Change Emulator",
                         value = config.effectiveEmulatorName ?: "Not installed",
                         subtitle = if (hasUpdate) "Update available" else null,
                         isFocused = isFocused(item),

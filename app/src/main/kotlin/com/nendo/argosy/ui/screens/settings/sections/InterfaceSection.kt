@@ -287,7 +287,7 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 InterfaceItem.UiScale -> SliderPreference(
                     title = "UI Scale",
                     value = display.uiScale,
-                    minValue = 75,
+                    minValue = 50,
                     maxValue = 150,
                     isFocused = isFocused(item),
                     step = 5,

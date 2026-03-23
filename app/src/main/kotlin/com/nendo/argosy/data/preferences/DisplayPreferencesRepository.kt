@@ -196,7 +196,7 @@ class DisplayPreferencesRepository @Inject constructor(
     }
 
     suspend fun setUiScale(scale: Int) {
-        dataStore.edit { it[Keys.UI_SCALE] = scale.coerceIn(75, 150) }
+        dataStore.edit { it[Keys.UI_SCALE] = scale.coerceIn(50, 150) }
     }
 
     suspend fun setBackgroundBlur(blur: Int) {

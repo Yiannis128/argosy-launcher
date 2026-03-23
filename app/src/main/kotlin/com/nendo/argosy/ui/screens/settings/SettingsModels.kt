@@ -260,7 +260,6 @@ data class AmbientAudioState(
 data class EmulatorState(
     val platforms: List<PlatformEmulatorConfig> = emptyList(),
     val installedEmulators: List<InstalledEmulator> = emptyList(),
-    val canAutoAssign: Boolean = false,
     val platformSubFocusIndex: Int = 0,
     val showEmulatorPicker: Boolean = false,
     val emulatorPickerInfo: EmulatorPickerInfo? = null,

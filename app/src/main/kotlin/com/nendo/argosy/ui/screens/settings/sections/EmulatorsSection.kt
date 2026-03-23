@@ -25,61 +25,75 @@ import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.Motion
 
-internal data class EmulatorsLayoutState(
-    val canAutoAssign: Boolean,
-    val builtinLibretroEnabled: Boolean = true
-)
-
 internal sealed class EmulatorsItem(
     val key: String,
     val section: String,
-    val visibleWhen: (EmulatorsLayoutState) -> Boolean = { true }
+    open val isFocusable: Boolean = true
 ) {
     data object CheckForUpdates : EmulatorsItem("check_updates", "platforms")
-    data object AutoAssign : EmulatorsItem("autoAssign", "platforms", visibleWhen = { it.canAutoAssign })
+
+    class SectionHeader(key: String, section: String, val title: String) : EmulatorsItem(
+        key = key, section = section
+    ) { override val isFocusable = false }
 
     class PlatformItem(val config: PlatformEmulatorConfig, val index: Int) : EmulatorsItem(
         key = "platform_${config.platform.id}",
-        section = "platforms"
+        section = if (config.platform.syncEnabled) "platforms" else "disabled"
     )
 
     companion object {
-        fun buildItems(platforms: List<PlatformEmulatorConfig>): List<EmulatorsItem> =
-            listOf(CheckForUpdates, AutoAssign) +
-                platforms.mapIndexed { index, config -> PlatformItem(config, index) }
+        fun buildItems(platforms: List<PlatformEmulatorConfig>): List<EmulatorsItem> {
+            val active = platforms.filter { it.platform.syncEnabled }
+            val disabled = platforms.filter { !it.platform.syncEnabled }
+            return buildList {
+                add(SectionHeader("header_active", "platforms", "Active Platforms"))
+                add(CheckForUpdates)
+                active.forEach { config ->
+                    add(PlatformItem(config, platforms.indexOf(config)))
+                }
+                if (disabled.isNotEmpty()) {
+                    add(SectionHeader("header_disabled", "disabled", "Disabled Platforms"))
+                    disabled.forEach { config ->
+                        add(PlatformItem(config, platforms.indexOf(config)))
+                    }
+                }
+            }
+        }
     }
 }
 
-internal fun createEmulatorsLayout(items: List<EmulatorsItem>) = SettingsLayout<EmulatorsItem, EmulatorsLayoutState>(
+internal fun createEmulatorsLayout(items: List<EmulatorsItem>) = SettingsLayout<EmulatorsItem, Unit>(
     allItems = items,
-    isFocusable = { true },
-    visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
+    isFocusable = { it.isFocusable },
+    visibleWhen = { _, _ -> true },
+    sectionOf = { it.section },
+    sectionTitle = {
+        when (it) {
+            "platforms" -> "Platforms"
+            "disabled" -> "Disabled Platforms"
+            else -> null
+        }
+    }
 )
 
-internal fun emulatorsMaxFocusIndex(canAutoAssign: Boolean, platformCount: Int, builtinEnabled: Boolean = true): Int {
-    val checkUpdatesCount = 1
-    val autoAssignCount = if (canAutoAssign) 1 else 0
-    return (checkUpdatesCount + autoAssignCount + platformCount - 1).coerceAtLeast(0)
+internal fun emulatorsMaxFocusIndex(platformCount: Int): Int {
+    return platformCount.coerceAtLeast(0)
 }
 
 internal data class EmulatorsLayoutInfo(
-    val layout: SettingsLayout<EmulatorsItem, EmulatorsLayoutState>,
-    val state: EmulatorsLayoutState
+    val layout: SettingsLayout<EmulatorsItem, Unit>,
+    val state: Unit = Unit
 )
 
 internal fun createEmulatorsLayoutInfo(
-    platforms: List<PlatformEmulatorConfig>,
-    canAutoAssign: Boolean,
-    builtinLibretroEnabled: Boolean = true
+    platforms: List<PlatformEmulatorConfig>
 ): EmulatorsLayoutInfo {
     val items = EmulatorsItem.buildItems(platforms)
     val layout = createEmulatorsLayout(items)
-    val state = EmulatorsLayoutState(canAutoAssign, builtinLibretroEnabled)
-    return EmulatorsLayoutInfo(layout, state)
+    return EmulatorsLayoutInfo(layout)
 }
 
-internal fun emulatorsSections(info: EmulatorsLayoutInfo) = info.layout.buildSections(info.state)
+internal fun emulatorsSections(info: EmulatorsLayoutInfo) = info.layout.buildSections(Unit)
 
 internal fun emulatorsItemAtFocusIndex(index: Int, info: EmulatorsLayoutInfo): EmulatorsItem? =
     info.layout.itemAtFocusIndex(index, info.state)
@@ -92,20 +106,16 @@ fun EmulatorsSection(
 ) {
     val emulators = uiState.emulators
 
-    val layoutState = remember(emulators.canAutoAssign, emulators.builtinLibretroEnabled) {
-        EmulatorsLayoutState(emulators.canAutoAssign, emulators.builtinLibretroEnabled)
-    }
-
     val allItems = remember(emulators.platforms) {
         EmulatorsItem.buildItems(emulators.platforms)
     }
 
     val layout = remember(allItems) { createEmulatorsLayout(allItems) }
-    val visibleItems = remember(layoutState, allItems) { layout.visibleItems(layoutState) }
-    val sections = remember(layoutState, allItems) { layout.buildSections(layoutState) }
+    val visibleItems = remember(allItems) { layout.visibleItems(Unit) }
+    val sections = remember(allItems) { layout.buildSections(Unit) }
 
     fun isFocused(item: EmulatorsItem): Boolean =
-        uiState.focusedIndex == layout.focusIndexOf(item, layoutState)
+        uiState.focusedIndex == layout.focusIndexOf(item, Unit)
 
     val modalBlur by animateDpAsState(
         targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker || emulators.updateModal != null) Motion.blurRadiusModal else 0.dp,
@@ -118,7 +128,7 @@ fun EmulatorsSection(
             items = visibleItems,
             sections = sections,
             focusedIndex = uiState.focusedIndex,
-            focusToListIndex = { layout.focusToListIndex(it, layoutState) },
+            focusToListIndex = { layout.focusToListIndex(it, Unit) },
             itemKey = { it.key },
             isNavItem = { false },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
@@ -126,6 +136,8 @@ fun EmulatorsSection(
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) { item ->
                 when (item) {
+                    is EmulatorsItem.SectionHeader -> com.nendo.argosy.ui.screens.settings.components.SectionHeader(item.title)
+
                     EmulatorsItem.CheckForUpdates -> ActionPreference(
                         title = "Check for Updates",
                         subtitle = if (emulators.assignedUpdatesAvailable > 0)
@@ -135,26 +147,22 @@ fun EmulatorsSection(
                         onClick = { viewModel.forceCheckEmulatorUpdates() }
                     )
 
-                    EmulatorsItem.AutoAssign -> ActionPreference(
-                        title = "Auto-assign Emulators",
-                        subtitle = "Set recommended emulators for all platforms",
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.handlePlatformItemTap(-1) }
-                    )
-
                     is EmulatorsItem.PlatformItem -> {
                         val config = item.config
+                        val isDisabled = !config.platform.syncEnabled
                         val gameCount = config.platform.gameCount
                         val emulatorName = config.effectiveEmulatorName ?: "Not configured"
-                        val subtitle = if (gameCount > 0) "$gameCount games" else "No games"
-                        val hasUpdate = config.effectiveEmulatorId != null &&
+                        val subtitle = if (isDisabled) "Disabled"
+                            else if (gameCount > 0) "$gameCount games" else "No games"
+                        val hasUpdate = !isDisabled && config.effectiveEmulatorId != null &&
                             config.effectiveEmulatorId in emulators.emulatorUpdateVersions
                         ActionPreference(
                             title = config.platform.name,
                             subtitle = subtitle,
                             isFocused = isFocused(item),
-                            trailingText = emulatorName,
+                            trailingText = if (isDisabled) null else emulatorName,
                             badge = if (hasUpdate) "Update" else null,
+                            isEnabled = !isDisabled,
                             onClick = { viewModel.navigateToPlatformDetail(item.index) }
                         )
                     }

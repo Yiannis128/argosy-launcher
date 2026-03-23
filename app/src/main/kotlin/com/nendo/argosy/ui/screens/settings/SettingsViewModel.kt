@@ -175,9 +175,6 @@ class SettingsViewModel @Inject constructor(
 
     internal fun loadSettings() = routeLoadSettings(this)
 
-    fun autoAssignAllEmulators() =
-        emulatorDelegate.autoAssignAllEmulators(viewModelScope) { loadSettings() }
-
     fun refreshEmulators() {
         emulatorDelegate.refreshEmulators()
         loadSettings()
@@ -759,6 +756,13 @@ class SettingsViewModel @Inject constructor(
     fun cancelMigration() = storageDelegate.cancelMigration()
     fun skipMigration() = storageDelegate.skipMigration()
     fun togglePlatformSync(platformId: Long, enabled: Boolean) = storageDelegate.togglePlatformSync(viewModelScope, platformId, enabled)
+    fun enablePlatformAndReload(platformId: Long) {
+        storageDelegate.togglePlatformSync(viewModelScope, platformId, true)
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(100)
+            loadSettings()
+        }
+    }
     fun openPlatformFolderPicker(platformId: Long) = storageDelegate.openPlatformFolderPicker(viewModelScope, platformId)
     fun setPlatformPath(platformId: Long, path: String) = storageDelegate.setPlatformPath(viewModelScope, platformId, path)
     fun resetPlatformToGlobal(platformId: Long) = storageDelegate.resetPlatformToGlobal(viewModelScope, platformId)

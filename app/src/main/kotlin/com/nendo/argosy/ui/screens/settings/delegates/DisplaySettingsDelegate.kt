@@ -196,7 +196,7 @@ class DisplaySettingsDelegate @Inject constructor(
     }
 
     fun setUiScale(scope: CoroutineScope, scale: Int) {
-        val newValue = scale.coerceIn(75, 150)
+        val newValue = scale.coerceIn(50, 150)
         scope.launch {
             preferencesRepository.setUiScale(newValue)
             _state.update { it.copy(uiScale = newValue) }
@@ -205,7 +205,7 @@ class DisplaySettingsDelegate @Inject constructor(
 
     fun adjustUiScale(scope: CoroutineScope, delta: Int) {
         val current = _state.value.uiScale
-        val newValue = (current + delta).coerceIn(75, 150)
+        val newValue = (current + delta).coerceIn(50, 150)
         if (newValue != current) {
             setUiScale(scope, newValue)
         }

@@ -413,14 +413,10 @@ private fun routeControlsConfirm(vm: SettingsViewModel, state: SettingsUiState):
 }
 
 private fun routeEmulatorsConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
-    val autoAssignOffset = if (state.emulators.canAutoAssign) 1 else 0
-    val platformStartIndex = 1 + autoAssignOffset // CheckForUpdates + optional AutoAssign
-
     when {
         state.focusedIndex == 0 -> vm.forceCheckEmulatorUpdates()
-        state.emulators.canAutoAssign && state.focusedIndex == 1 -> vm.autoAssignAllEmulators()
-        state.focusedIndex >= platformStartIndex -> {
-            val platformIndex = state.focusedIndex - platformStartIndex
+        state.focusedIndex >= 1 -> {
+            val platformIndex = state.focusedIndex - 1
             if (platformIndex < state.emulators.platforms.size) {
                 vm.navigateToPlatformDetail(platformIndex)
             }
@@ -637,10 +633,9 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
         }
         state.currentSection == SettingsSection.PLATFORM_DETAIL -> {
             val platformFocusIndex = state.platformDetail.platformIndex
-            val actionsOffset = if (state.emulators.canAutoAssign) 2 else 1
             vm._uiState.update { it.copy(
                 currentSection = SettingsSection.PLATFORMS,
-                focusedIndex = actionsOffset + platformFocusIndex
+                focusedIndex = 1 + platformFocusIndex
             ) }; true
         }
         state.currentSection != SettingsSection.MAIN -> {
@@ -722,7 +717,6 @@ private fun computeMaxFocusIndex(
     SettingsSection.AMBIENT_LED -> ambientLedMaxFocusIndex(state.display)
     SettingsSection.CONTROLS -> controlsMaxFocusIndex(state.controls)
     SettingsSection.PLATFORMS -> emulatorsMaxFocusIndex(
-        state.emulators.canAutoAssign,
         state.emulators.platforms.size
     )
     SettingsSection.BUILTIN_EMULATOR -> if (state.emulators.builtinLibretroEnabled) 4 else 0
