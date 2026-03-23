@@ -141,7 +141,9 @@ class SteamContentManager @Inject constructor(
 
     fun onDisconnected() {
         Log.d(TAG, "Steam disconnected, clearing handlers")
-        cancelDownload()
+        if (_downloadState.value !is SteamDownloadState.Paused) {
+            cancelDownload()
+        }
         steamClient = null
         steamApps = null
         callbackManager = null
