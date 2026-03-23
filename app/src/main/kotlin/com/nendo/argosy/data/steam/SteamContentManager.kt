@@ -936,18 +936,17 @@ class SteamContentManager @Inject constructor(
         val currentProgress = active.progress
         val currentState = _downloadState.value
 
+        // Set paused state BEFORE cancelling job to prevent finally block from clearing it
+        val needsVerification = currentState is SteamDownloadState.Preparing
+        val pausedState = SteamDownloadState.Paused(active.appId, active.gameName, currentProgress, needsVerification)
+        _downloadState.value = pausedState
+        _activeDownload.value = active.copy(state = pausedState)
+
         isCancelled = true
         currentDepotDeferred?.cancel()
         currentDepotDeferred = null
         currentDownloadJob?.cancel()
         currentDownloadJob = null
-
-        // If paused during preparation, mark as needing verification on resume
-        val needsVerification = currentState is SteamDownloadState.Preparing
-        val pausedState = SteamDownloadState.Paused(active.appId, active.gameName, currentProgress, needsVerification)
-
-        _downloadState.value = pausedState
-        _activeDownload.value = active.copy(state = pausedState)
 
         Log.d(TAG, "Download paused at ${(currentProgress * 100).toInt()}% (needsVerification=$needsVerification)")
     }
