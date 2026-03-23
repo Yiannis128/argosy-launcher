@@ -628,25 +628,20 @@ class SteamContentManager @Inject constructor(
 
                 Log.d(TAG, "Download complete: $gameName -> ${installDir.absolutePath}")
 
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                val current = _downloadState.value
-                if (current is SteamDownloadState.Downloading) {
-                    _downloadState.value = SteamDownloadState.Paused(
-                        appId, gameName, current.progress
-                    )
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                // Check if this was a pause (state already set by pauseDownload)
+                // or a real cancellation
+                val wasPaused = _downloadState.value is SteamDownloadState.Paused
+                Log.d(TAG, "Download coroutine cancelled, wasPaused=$wasPaused")
+                if (!wasPaused) {
+                    _activeDownload.value = null
+                    processNextInQueue()
                 }
-                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed: ${e.message}", e)
                 _downloadState.value = SteamDownloadState.Failed(appId, gameName, e.message ?: "Unknown error")
-            } finally {
-                val finalState = _downloadState.value
-                if (finalState !is SteamDownloadState.Paused) {
-                    _activeDownload.value = null
-                }
-                if (finalState !is SteamDownloadState.Paused) {
-                    processNextInQueue()
-                }
+                _activeDownload.value = null
+                processNextInQueue()
             }
         }
     }
