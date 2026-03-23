@@ -117,6 +117,11 @@ class SteamAuthManager @Inject constructor(
     fun onLoginFailed(result: EResult) {
         scope.launch {
             _authEvents.emit(SteamAuthEvent.LoginFailed(result.name))
+            if (result == EResult.AccessDenied || result == EResult.Expired ||
+                result == EResult.InvalidLoginAuthCode || result == EResult.AccountLogonDenied) {
+                Log.w(TAG, "Token rejected ($result), clearing saved account")
+                steamAccountDao.deactivateAll()
+            }
         }
         _qrAuthState.value = QrAuthState.Error("Login failed: ${result.name}")
     }
