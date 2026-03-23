@@ -39,6 +39,7 @@ import javax.inject.Singleton
 
 private const val TAG = "SteamContentManager"
 private const val STEAM_PLATFORM_DIR = "steam"
+private const val GN_PACKAGE = "app.gamenative"
 private const val WINDOWS_OS = "windows"
 private const val ARCH_64 = "64"
 private const val MAX_PARALLEL_DOWNLOADS = 4
@@ -92,7 +93,8 @@ class SteamContentManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
     private val preferencesRepository: UserPreferencesRepository,
-    private val steamAuthManager: SteamAuthManager
+    private val steamAuthManager: SteamAuthManager,
+    private val androidDataAccessor: com.nendo.argosy.data.storage.AndroidDataAccessor
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -583,6 +585,11 @@ class SteamContentManager @Inject constructor(
                 installDir.deleteRecursively()
                 Log.d(TAG, "Moved download to: ${finalInstallDir.absolutePath}")
 
+                // Create GameNative markers if targeting GN path
+                if (finalInstallDir.absolutePath.contains(GN_PACKAGE)) {
+                    createGnMarkers(finalInstallDir)
+                }
+
                 // Update game with local path
                 gameDao.getBySteamAppId(appId)?.let { game ->
                     gameDao.update(game.copy(
@@ -749,12 +756,59 @@ class SteamContentManager @Inject constructor(
     }
 
     suspend fun getInstallDir(appId: Long): File {
+        // Prefer GameNative path for GN-compatible installs
+        val gnPath = findGnInstallPath(appId)
+        if (gnPath != null) return gnPath
+
         val prefs = preferencesRepository.userPreferences.first()
         val basePath = prefs.romStoragePath
             ?: context.getExternalFilesDir(null)?.absolutePath
             ?: context.filesDir.absolutePath
 
         return File(basePath, "$STEAM_PLATFORM_DIR/$appId")
+    }
+
+    private fun findGnInstallPath(appId: Long): File? {
+        val gameName = kotlinx.coroutines.runBlocking {
+            gameDao.getBySteamAppId(appId)?.title
+        } ?: return null
+
+        val gnBasePath = findGnStoragePath() ?: return null
+        val sanitized = sanitizeGameName(gameName)
+        return File("$gnBasePath/Steam/steamapps/common/$sanitized")
+    }
+
+    private fun findGnStoragePath(): String? {
+        val volumes = mutableListOf(android.os.Environment.getExternalStorageDirectory().absolutePath)
+        try {
+            File("/storage").listFiles()?.forEach { vol ->
+                if (vol.isDirectory && vol.name != "emulated" && vol.name != "self") {
+                    volumes.add(vol.absolutePath)
+                }
+            }
+        } catch (_: Exception) {}
+
+        for (root in volumes) {
+            val path = "$root/Android/data/$GN_PACKAGE/files/Steam/steamapps"
+            if (androidDataAccessor.exists(path) || File(path).exists()) {
+                return "$root/Android/data/$GN_PACKAGE/files"
+            }
+        }
+        return null
+    }
+
+    private fun sanitizeGameName(name: String): String {
+        return name.replace(Regex("[<>:\"/\\\\|?*]"), "_").trim()
+    }
+
+    private fun createGnMarkers(installDir: File) {
+        try {
+            File(installDir, ".download_complete").createNewFile()
+            File(installDir, ".DownloadInfo").mkdirs()
+            Log.d(TAG, "Created GN markers at ${installDir.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create GN markers", e)
+        }
     }
 
     fun isGameInstalled(appId: Long): Boolean {
