@@ -5,6 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.data.download.DownloadState
+import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.steam.SteamContentManager
+import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.data.remote.playstore.PlayStoreService
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
@@ -56,7 +59,9 @@ class DownloadDelegate @Inject constructor(
     private val apkInstallManager: ApkInstallManager,
     private val playStoreService: PlayStoreService,
     private val imageCacheManager: com.nendo.argosy.data.cache.ImageCacheManager,
-    private val gameRepository: com.nendo.argosy.data.repository.GameRepository
+    private val gameRepository: com.nendo.argosy.data.repository.GameRepository,
+    private val steamContentManager: SteamContentManager,
+    private val gameDao: GameDao
 ) {
     private val _state = MutableStateFlow(DownloadUiState())
     val state: StateFlow<DownloadUiState> = _state.asStateFlow()
@@ -77,6 +82,7 @@ class DownloadDelegate @Inject constructor(
     }
 
     fun observeDownloads(scope: CoroutineScope, gameIdProvider: () -> Long, onCompleted: (Long) -> Unit) {
+        // RomM downloads
         scope.launch {
             downloadManager.state.collect { queueState ->
                 val gameId = gameIdProvider()
@@ -126,6 +132,34 @@ class DownloadDelegate @Inject constructor(
                     val (status, progress) = result
                     _state.update { it.copy(downloadStatus = status, downloadProgress = progress) }
                 }
+            }
+        }
+
+        // Steam downloads
+        scope.launch {
+            steamContentManager.activeDownload.collect { steamDownload ->
+                val gameId = gameIdProvider()
+                if (gameId == 0L || steamDownload == null) return@collect
+
+                val game = gameDao.getById(gameId) ?: return@collect
+                val steamAppId = game.steamAppId ?: return@collect
+                if (steamDownload.appId != steamAppId) return@collect
+
+                val result: Pair<GameDownloadStatus, Float> = when (steamDownload.state) {
+                    is SteamDownloadState.Preparing -> GameDownloadStatus.QUEUED to 0f
+                    is SteamDownloadState.Downloading -> GameDownloadStatus.DOWNLOADING to steamDownload.progress
+                    is SteamDownloadState.Moving -> GameDownloadStatus.EXTRACTING to 1f
+                    is SteamDownloadState.Paused -> GameDownloadStatus.PAUSED to steamDownload.progress
+                    is SteamDownloadState.Completed -> {
+                        onCompleted(gameId)
+                        GameDownloadStatus.DOWNLOADED to 1f
+                    }
+                    is SteamDownloadState.Failed -> GameDownloadStatus.NOT_DOWNLOADED to 0f
+                    is SteamDownloadState.Idle -> return@collect
+                }
+
+                val (status, progress) = result
+                _state.update { it.copy(downloadStatus = status, downloadProgress = progress) }
             }
         }
     }

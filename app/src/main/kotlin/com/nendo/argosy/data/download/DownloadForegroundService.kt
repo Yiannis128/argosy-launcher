@@ -23,6 +23,9 @@ class DownloadForegroundService : Service() {
     @Inject
     lateinit var downloadManager: DownloadManager
 
+    @Inject
+    lateinit var steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
+
     private val serviceScope = SafeCoroutineScope(Dispatchers.Main, "DownloadForegroundService")
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -72,7 +75,13 @@ class DownloadForegroundService : Service() {
                 val active = state.activeDownloads
                 val queued = state.queue.filter { it.state == DownloadState.QUEUED }
 
-                if (active.isEmpty() && queued.isEmpty()) {
+                // Don't stop if Steam has active work
+                val steamActive = steamContentManager.downloadState.value
+                val steamBusy = steamActive !is com.nendo.argosy.data.steam.SteamDownloadState.Idle &&
+                    steamActive !is com.nendo.argosy.data.steam.SteamDownloadState.Completed &&
+                    steamActive !is com.nendo.argosy.data.steam.SteamDownloadState.Failed
+
+                if (active.isEmpty() && queued.isEmpty() && !steamBusy) {
                     stopSelf()
                     return@collectLatest
                 }
@@ -90,11 +99,29 @@ class DownloadForegroundService : Service() {
                         val progressPercent = (currentDownload.progressPercent * 100).toInt()
                         updateNotification(title, progressPercent, 100)
                     }
-                } else {
+                } else if (!steamBusy) {
                     val nextQueued = queued.firstOrNull()
                     val message = nextQueued?.let { "Queued: ${it.displayTitle}" }
                         ?: "Download pending..."
                     updateNotification(message, 0, 0)
+                }
+            }
+        }
+
+        // Steam download notifications
+        serviceScope.launch {
+            steamContentManager.activeDownload.collect { steamDownload ->
+                if (steamDownload == null) return@collect
+                when (steamDownload.state) {
+                    is com.nendo.argosy.data.steam.SteamDownloadState.Preparing ->
+                        updateNotification("Preparing: ${steamDownload.gameName}", 0, 0)
+                    is com.nendo.argosy.data.steam.SteamDownloadState.Downloading -> {
+                        val pct = (steamDownload.progress * 100).toInt()
+                        updateNotification("Downloading: ${steamDownload.gameName}", pct, 100)
+                    }
+                    is com.nendo.argosy.data.steam.SteamDownloadState.Moving ->
+                        updateNotification("Moving: ${steamDownload.gameName}", 0, 0)
+                    else -> {}
                 }
             }
         }

@@ -2,6 +2,9 @@ package com.nendo.argosy.ui.screens.home.delegates
 
 import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.data.download.DownloadState
+import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.steam.SteamContentManager
+import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.data.update.ApkInstallManager
 import com.nendo.argosy.domain.usecase.download.DownloadResult
 import com.nendo.argosy.ui.notification.NotificationManager
@@ -20,7 +23,9 @@ class HomeDownloadDelegate @Inject constructor(
     private val downloadManager: DownloadManager,
     private val gameActions: GameActionsDelegate,
     private val apkInstallManager: ApkInstallManager,
-    private val notificationManager: NotificationManager
+    private val notificationManager: NotificationManager,
+    private val steamContentManager: SteamContentManager,
+    private val gameDao: GameDao
 ) {
     private val _downloadIndicators = MutableStateFlow<Map<Long, GameDownloadIndicator>>(emptyMap())
     val downloadIndicators: StateFlow<Map<Long, GameDownloadIndicator>> = _downloadIndicators.asStateFlow()
@@ -68,6 +73,39 @@ class HomeDownloadDelegate @Inject constructor(
                 }
 
                 _downloadIndicators.value = indicators
+            }
+        }
+
+        // Steam downloads
+        scope.launch {
+            steamContentManager.activeDownload.collect { steamDownload ->
+                if (steamDownload == null) return@collect
+                val game = gameDao.getBySteamAppId(steamDownload.appId) ?: return@collect
+                val indicator = when (steamDownload.state) {
+                    is SteamDownloadState.Preparing -> GameDownloadIndicator(isQueued = true)
+                    is SteamDownloadState.Downloading -> GameDownloadIndicator(
+                        isDownloading = true,
+                        progress = steamDownload.progress
+                    )
+                    is SteamDownloadState.Moving -> GameDownloadIndicator(
+                        isExtracting = true,
+                        progress = 1f
+                    )
+                    is SteamDownloadState.Paused -> GameDownloadIndicator(
+                        isPaused = true,
+                        progress = steamDownload.progress
+                    )
+                    is SteamDownloadState.Completed -> {
+                        onNewlyCompleted()
+                        null
+                    }
+                    is SteamDownloadState.Failed, is SteamDownloadState.Idle -> null
+                }
+                if (indicator != null) {
+                    _downloadIndicators.value = _downloadIndicators.value + (game.id to indicator)
+                } else {
+                    _downloadIndicators.value = _downloadIndicators.value - game.id
+                }
             }
         }
     }
