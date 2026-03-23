@@ -345,7 +345,6 @@ class DualHomeViewModel(
     private fun filterPlayable(games: List<GameEntity>): List<GameEntity> {
         return games.filter { game ->
             when {
-                game.source == GameSource.STEAM -> true
                 game.source == GameSource.ANDROID_APP -> true
                 game.localPath != null -> File(game.localPath).exists()
                 else -> false
@@ -1177,7 +1176,7 @@ class DualHomeViewModel(
     private fun GameEntity.toUi(): HomeGameUi {
         val firstScreenshot = screenshotPaths?.split(",")?.firstOrNull()?.takeIf { it.isNotBlank() }
         val effectiveBackground = backgroundPath ?: firstScreenshot ?: coverPath
-        val isPlayable = localPath != null || source == GameSource.STEAM || source == GameSource.ANDROID_APP
+        val isPlayable = localPath != null || source == GameSource.ANDROID_APP
         return HomeGameUi(
             id = id,
             title = title,

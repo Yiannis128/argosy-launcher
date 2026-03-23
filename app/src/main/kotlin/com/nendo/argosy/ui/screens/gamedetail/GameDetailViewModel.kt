@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.gamedetail
 
+import java.io.File
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.cache.ImageCacheManager
@@ -103,7 +104,8 @@ class GameDetailViewModel @Inject constructor(
     private val ratingsStatus: RatingsStatusDelegate,
     private val playOptionsDelegate: PlayOptionsDelegate,
     private val moreOptionsDelegate: MoreOptionsDelegate,
-    private val socialRepository: com.nendo.argosy.data.social.SocialRepository
+    private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
 ) : ViewModel() {
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
@@ -412,9 +414,11 @@ class GameDetailViewModel @Inject constructor(
                 game.source == GameSource.ANDROID_APP -> true
                 isAndroidApp -> game.packageName != null
                 isSteamGame -> {
-                    val launcher = game.steamLauncher?.let { SteamLaunchers.getByPackage(it) }
-                        ?: SteamLaunchers.getPreferred(context)
-                    launcher?.isInstalled(context) == true
+                    game.localPath != null && File(game.localPath).exists() && run {
+                        val launcher = game.steamLauncher?.let { SteamLaunchers.getByPackage(it) }
+                            ?: SteamLaunchers.getPreferred(context)
+                        launcher?.isInstalled(context) == true
+                    }
                 }
                 game.isMultiDisc -> {
                     val downloadedCount = gameDiscDao.getDownloadedDiscCount(gameId)
@@ -426,7 +430,8 @@ class GameDetailViewModel @Inject constructor(
             val downloadStatus = when {
                 game.source == GameSource.ANDROID_APP -> GameDownloadStatus.DOWNLOADED
                 isAndroidApp && fileExists && game.packageName == null -> GameDownloadStatus.NEEDS_INSTALL
-                isSteamGame || fileExists -> GameDownloadStatus.DOWNLOADED
+                isSteamGame && game.localPath != null && fileExists -> GameDownloadStatus.DOWNLOADED
+                fileExists -> GameDownloadStatus.DOWNLOADED
                 game.isMultiDisc -> {
                     val downloadedCount = gameDiscDao.getDownloadedDiscCount(gameId)
                     if (downloadedCount > 0) GameDownloadStatus.DOWNLOADED else GameDownloadStatus.NOT_DOWNLOADED
@@ -700,6 +705,19 @@ class GameDetailViewModel @Inject constructor(
 
     fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
 
+    fun downloadSteamGame() {
+        viewModelScope.launch {
+            val game = gameRepository.getById(currentGameId) ?: return@launch
+            val steamAppId = game.steamAppId ?: return@launch
+            try {
+                val appInfo = steamContentManager.fetchAppInfo(steamAppId.toInt())
+                steamContentManager.queueDownload(steamAppId, game.title, appInfo, game.coverPath)
+            } catch (e: Exception) {
+                notificationManager.showError("Failed to start Steam download: ${e.message}")
+            }
+        }
+    }
+
     fun downloadUpdateFile(file: UpdateFileUi) {
         val game = _uiState.value.game ?: return
         downloadDelegate.downloadUpdateFile(viewModelScope, currentGameId, file, game.title, game.platformSlug, game.coverPath)
@@ -737,7 +755,14 @@ class GameDetailViewModel @Inject constructor(
         when (state.downloadStatus) {
             GameDownloadStatus.DOWNLOADED -> playGame()
             GameDownloadStatus.NEEDS_INSTALL -> downloadDelegate.installApk(viewModelScope, currentGameId)
-            GameDownloadStatus.NOT_DOWNLOADED -> downloadGame()
+            GameDownloadStatus.NOT_DOWNLOADED -> {
+                val game = state.game
+                if (game != null && game.isSteamGame) {
+                    downloadSteamGame()
+                } else {
+                    downloadGame()
+                }
+            }
             GameDownloadStatus.QUEUED, GameDownloadStatus.WAITING_FOR_STORAGE,
             GameDownloadStatus.DOWNLOADING, GameDownloadStatus.EXTRACTING,
             GameDownloadStatus.PAUSED -> { }

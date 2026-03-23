@@ -589,7 +589,6 @@ class HomeLibraryDelegate @Inject constructor(
     private fun filterPlayable(candidates: List<GameEntity>): List<GameEntity> {
         return candidates.filter { game ->
             when {
-                game.source == GameSource.STEAM -> true
                 game.source == GameSource.ANDROID_APP -> true
                 game.localPath != null -> File(game.localPath).exists()
                 else -> false
@@ -634,8 +633,8 @@ class HomeLibraryDelegate @Inject constructor(
             releaseYear = releaseYear,
             genre = genre,
             isFavorite = isFavorite,
-            isDownloaded = localPath != null || source == GameSource.STEAM || source == GameSource.ANDROID_APP,
-            isRommGame = rommId != null,
+            isDownloaded = localPath != null || source == GameSource.ANDROID_APP,
+            isRommGame = rommId != null || source == GameSource.STEAM,
             rating = rating,
             userRating = userRating,
             userDifficulty = userDifficulty,

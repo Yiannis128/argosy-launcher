@@ -282,7 +282,6 @@ class DualGameDetailViewModel(
             }
 
             val isPlayable = game.localPath != null ||
-                game.source == GameSource.STEAM ||
                 game.source == GameSource.ANDROID_APP
 
             val gameSpecificConfig = emulatorConfigDao.getByGameId(game.id)
@@ -368,7 +367,6 @@ class DualGameDetailViewModel(
                 if (wasActive && entity == null) {
                     val game = gameDao.getById(gameId) ?: return@collect
                     val isNowPlayable = game.localPath != null ||
-                        game.source == GameSource.STEAM ||
                         game.source == GameSource.ANDROID_APP
                     _uiState.update {
                         it.copy(

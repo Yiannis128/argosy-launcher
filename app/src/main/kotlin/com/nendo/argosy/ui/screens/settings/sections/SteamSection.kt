@@ -104,7 +104,7 @@ internal sealed class SteamItem(
         val ALL: List<SteamItem> = listOf(
             SetupHeader, GnStatus, GnInstall, GnStorageWarning,
             LibrarySpacer, AccountHeader, AccountInfo,
-            LibrarySpacer, LibraryHeader, SyncLibrary, AddManual,
+            LibrarySpacer, LibraryHeader, SyncLibrary,
             DangerSpacer, DangerHeader, Disconnect, ResetLibrary
         )
     }

@@ -3,6 +3,7 @@ package com.nendo.argosy.data.steam
 import android.util.Log
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.dao.SteamAccountDao
 import com.nendo.argosy.data.local.dao.SteamLicenseDao
@@ -57,7 +58,8 @@ class SteamLibraryManager @Inject constructor(
     private val steamAccountDao: SteamAccountDao,
     private val steamLicenseDao: SteamLicenseDao,
     private val imageCacheManager: ImageCacheManager,
-    private val drmHazardManager: DrmHazardManager
+    private val drmHazardManager: DrmHazardManager,
+    private val steamRepository: dagger.Lazy<SteamRepository>
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
@@ -281,7 +283,29 @@ class SteamLibraryManager @Inject constructor(
             syncPhase = SyncPhase.IDLE
             _syncState.value = LibrarySyncState.Complete(gamesAdded, gamesUpdated)
             Log.d(TAG, "Library sync complete: $gamesAdded added, $gamesUpdated updated")
+
+            // Enrich new games with Store API data (descriptions, screenshots) in background
+            if (gamesAdded > 0) {
+                scope.launch { enrichNewGames() }
+            }
         }
+    }
+
+    private suspend fun enrichNewGames() {
+        val steamGames = gameDao.getBySource(GameSource.STEAM)
+            .filter { it.description == null }
+        Log.d(TAG, "Enriching ${steamGames.size} games with Store API data")
+
+        for (game in steamGames) {
+            val steamAppId = game.steamAppId ?: continue
+            try {
+                steamRepository.get().enrichWithStoreData(steamAppId)
+                kotlinx.coroutines.delay(300)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to enrich ${game.title}", e)
+            }
+        }
+        Log.d(TAG, "Enrichment complete")
     }
 
     private suspend fun createNewGame(appId: Int, name: String, kv: KeyValue) {
