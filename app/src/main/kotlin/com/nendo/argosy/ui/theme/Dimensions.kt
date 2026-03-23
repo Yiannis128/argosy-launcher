@@ -8,13 +8,13 @@ object Dimens {
     private val scale: Float
         @Composable get() = LocalUiScale.current.scale
 
-    // Spacing - SCALED
-    val spacingXs: Dp @Composable get() = 4.dp * scale
-    val spacingSm: Dp @Composable get() = 8.dp * scale
-    val spacingMd: Dp @Composable get() = 16.dp * scale
-    val spacingLg: Dp @Composable get() = 24.dp * scale
-    val spacingXl: Dp @Composable get() = 32.dp * scale
-    val spacingXxl: Dp @Composable get() = 48.dp * scale
+    // Spacing - SCALED (with minimum floors for usability)
+    val spacingXs: Dp @Composable get() = maxOf(4.dp * scale, 2.dp)
+    val spacingSm: Dp @Composable get() = maxOf(8.dp * scale, 4.dp)
+    val spacingMd: Dp @Composable get() = maxOf(16.dp * scale, 8.dp)
+    val spacingLg: Dp @Composable get() = maxOf(24.dp * scale, 12.dp)
+    val spacingXl: Dp @Composable get() = maxOf(32.dp * scale, 16.dp)
+    val spacingXxl: Dp @Composable get() = maxOf(48.dp * scale, 24.dp)
 
     // Radius - SCALED
     val radiusSm: Dp @Composable get() = 4.dp * scale
@@ -28,6 +28,8 @@ object Dimens {
     val settingsItemMinHeight: Dp @Composable get() = 56.dp * scale
 
     // Icons - SCALED
+    val dotSm: Dp @Composable get() = 10.dp * scale
+    val dotLg: Dp @Composable get() = 14.dp * scale
     val iconXs: Dp @Composable get() = 14.dp * scale
     val iconSm: Dp @Composable get() = 18.dp * scale
     val iconMd: Dp @Composable get() = 24.dp * scale

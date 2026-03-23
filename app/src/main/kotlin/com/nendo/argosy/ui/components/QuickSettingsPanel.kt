@@ -48,6 +48,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -528,10 +529,13 @@ private fun QuickSettingToggle(
             color = contentColor,
             modifier = Modifier.weight(1f)
         )
+        val uiScale = com.nendo.argosy.ui.theme.LocalUiScale.current.scale
         Switch(
             checked = isEnabled,
             onCheckedChange = null,
-            modifier = Modifier.focusProperties { canFocus = false },
+            modifier = Modifier
+                .focusProperties { canFocus = false }
+                .scale(uiScale),
             interactionSource = remember { MutableInteractionSource() },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.primary,

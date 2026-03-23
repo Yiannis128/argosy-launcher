@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.scale
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.focusBackground
 import androidx.compose.foundation.layout.Arrangement
@@ -234,7 +235,7 @@ fun SliderPreference(
                 }
                 Box(
                     modifier = Modifier
-                        .size(if (i == value) 14.dp else 10.dp)
+                        .size(if (i == value) Dimens.dotLg else Dimens.dotSm)
                         .clip(CircleShape)
                         .background(dotColor)
                 )
@@ -422,10 +423,13 @@ fun SwitchPreference(
             }
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
         }
+        val uiScale = com.nendo.argosy.ui.theme.LocalUiScale.current.scale
         Switch(
             checked = isEnabled,
             onCheckedChange = onToggle,
-            modifier = Modifier.focusProperties { canFocus = false },
+            modifier = Modifier
+                .focusProperties { canFocus = false }
+                .scale(uiScale),
             interactionSource = remember { MutableInteractionSource() }
         )
     }
