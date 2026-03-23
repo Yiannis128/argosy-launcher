@@ -68,7 +68,8 @@ class HomeViewModel @Inject constructor(
     val downloadDelegate: HomeDownloadDelegate,
     val syncDelegate: HomeSyncDelegate,
     val videoPreviewDelegate: HomeVideoPreviewDelegate,
-    val gameMenuDelegate: HomeGameMenuDelegate
+    val gameMenuDelegate: HomeGameMenuDelegate,
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
 ) : ViewModel(), HomeInputActions {
 
     private val _uiState = MutableStateFlow(restoreInitialState())
@@ -490,6 +491,7 @@ class HomeViewModel @Inject constructor(
                     game.needsInstall -> downloadDelegate.installApk(viewModelScope, game.id)
                     game.isDownloaded -> launchGame(game.id)
                     indicator.isPaused || indicator.isQueued -> downloadDelegate.resumeDownload(game.id)
+                    game.isSteamGame -> queueSteamDownload(game.id)
                     else -> downloadDelegate.queueDownload(viewModelScope, game.id)
                 }
             }
@@ -547,6 +549,20 @@ class HomeViewModel @Inject constructor(
 
     override fun queueDownload(gameId: Long) {
         downloadDelegate.queueDownload(viewModelScope, gameId)
+    }
+
+    override fun queueSteamDownload(gameId: Long) {
+        viewModelScope.launch {
+            val game = gameRepository.getById(gameId) ?: return@launch
+            val steamAppId = game.steamAppId ?: return@launch
+            try {
+                notificationManager.show("Preparing Steam download: ${game.title}")
+                val appInfo = steamContentManager.fetchAppInfo(steamAppId.toInt())
+                steamContentManager.queueDownload(steamAppId, game.title, appInfo, game.coverPath)
+            } catch (e: Exception) {
+                notificationManager.showError("Steam download failed: ${e.message}")
+            }
+        }
     }
 
     override fun installApk(gameId: Long) {

@@ -684,6 +684,7 @@ fun HomeScreen(
                                     when {
                                         focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
                                         focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
+                                        focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
                                         else -> viewModel.queueDownload(focusedGame.id)
                                     }
                                 }
@@ -771,6 +772,7 @@ fun HomeScreen(
                         when {
                             focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
                             focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
+                            focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
                             else -> viewModel.queueDownload(focusedGame.id)
                         }
                     },

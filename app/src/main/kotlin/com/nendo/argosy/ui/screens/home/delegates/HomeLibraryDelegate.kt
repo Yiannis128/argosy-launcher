@@ -635,6 +635,7 @@ class HomeLibraryDelegate @Inject constructor(
             isFavorite = isFavorite,
             isDownloaded = localPath != null || source == GameSource.ANDROID_APP,
             isRommGame = rommId != null || source == GameSource.STEAM,
+            isSteamGame = source == GameSource.STEAM,
             rating = rating,
             userRating = userRating,
             userDifficulty = userDifficulty,

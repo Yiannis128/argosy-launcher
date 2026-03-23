@@ -25,6 +25,7 @@ interface HomeInputActions {
     fun launchGame(gameId: Long, channelName: String? = null)
     fun resumeDownload(gameId: Long)
     fun queueDownload(gameId: Long)
+    fun queueSteamDownload(gameId: Long)
     fun navigateToLibrary(platformId: Long?, sourceFilter: String?)
     fun toggleFavorite(gameId: Long)
     fun setNavigationContext(gameIds: List<Long>)
@@ -102,6 +103,7 @@ class HomeInputHandler(
                             game.needsInstall -> actions.installApk(game.id)
                             game.isDownloaded -> actions.launchGame(game.id)
                             indicator.isPaused || indicator.isQueued -> actions.resumeDownload(game.id)
+                            game.isSteamGame -> actions.queueSteamDownload(game.id)
                             else -> actions.queueDownload(game.id)
                         }
                     }

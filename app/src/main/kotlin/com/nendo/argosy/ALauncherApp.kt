@@ -12,7 +12,10 @@ import com.nendo.argosy.data.cheats.CheatsDownloadObserver
 import com.nendo.argosy.data.emulator.TitleIdDownloadObserver
 import com.nendo.argosy.data.sync.SaveSyncDownloadObserver
 import com.nendo.argosy.data.update.ApkInstallManager
+import android.content.Intent
 import com.nendo.argosy.data.download.DownloadServiceController
+import com.nendo.argosy.data.steam.SteamAuthManager
+import com.nendo.argosy.data.steam.SteamService
 import com.nendo.argosy.data.sync.SaveSyncWorker
 import com.nendo.argosy.data.sync.SocialSyncWorker
 import com.nendo.argosy.data.sync.SyncServiceController
@@ -67,6 +70,9 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject
     lateinit var playSessionTracker: PlaySessionTracker
 
+    @Inject
+    lateinit var steamAuthManager: SteamAuthManager
+
     override fun onCreate() {
         super.onCreate()
         UpdateCheckWorker.schedule(this)
@@ -81,7 +87,16 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         appScope.launch { coreManager.migrateAbiIfNeeded() }
         appScope.launch { playSessionTracker.checkOrphanedSession() }
         appScope.launch { gameDao.resetAllActiveSaveApplied() }
+        appScope.launch { autoConnectSteam() }
         syncPlatformSortOrders()
+    }
+
+    private suspend fun autoConnectSteam() {
+        val account = steamAuthManager.getActiveAccount() ?: return
+        val intent = Intent(this, SteamService::class.java).apply {
+            putExtra(SteamService.EXTRA_AUTO_CONNECT, true)
+        }
+        startService(intent)
     }
 
     private fun syncPlatformSortOrders() {
