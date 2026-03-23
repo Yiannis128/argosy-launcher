@@ -1,6 +1,8 @@
 package com.nendo.argosy.ui.screens.library
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -428,6 +430,7 @@ fun LibraryScreen(
                 LibraryHeader(
                     platformName = uiState.currentPlatform?.displayName ?: "All Platforms",
                     gameCount = uiState.games.size,
+                    focusedGameTitle = uiState.focusedGame?.title,
                     onPreviousPlatform = { viewModel.previousPlatform() },
                     onNextPlatform = { viewModel.nextPlatform() }
                 )
@@ -653,6 +656,7 @@ fun LibraryScreen(
 private fun LibraryHeader(
     platformName: String,
     gameCount: Int,
+    focusedGameTitle: String? = null,
     onPreviousPlatform: () -> Unit = {},
     onNextPlatform: () -> Unit = {}
 ) {
@@ -667,6 +671,8 @@ private fun LibraryHeader(
     } else {
         platformName
     }
+
+    val showLibraryLabel = aspectRatioClass != com.nendo.argosy.ui.theme.AspectRatioClass.ULTRA_TALL
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     Box(
@@ -684,18 +690,67 @@ private fun LibraryHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd)
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "LIBRARY",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                if (showLibraryLabel) {
+                    Text(
+                        text = "LIBRARY",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = if (showLibraryLabel) Modifier else Modifier.weight(1f)
+                ) {
+                    val navIconTint = MaterialTheme.colorScheme.onSurfaceVariant
+
+                    Row(
+                        modifier = Modifier
+                            .clickableNoFocus(onClick = onPreviousPlatform)
+                            .padding(Dimens.spacingSm),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = InputIcons.BumperLeft,
+                            contentDescription = "Previous platform",
+                            tint = navIconTint,
+                            modifier = Modifier.size(Dimens.iconSm)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
+
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
+
+                    Row(
+                        modifier = Modifier
+                            .clickableNoFocus(onClick = onNextPlatform)
+                            .padding(Dimens.spacingSm),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = InputIcons.BumperRight,
+                            contentDescription = "Next platform",
+                            tint = navIconTint,
+                            modifier = Modifier.size(Dimens.iconSm)
+                        )
+                    }
+                }
 
                 Text(
                     text = "$gameCount games",
@@ -704,50 +759,27 @@ private fun LibraryHeader(
                 )
             }
 
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            if (focusedGameTitle != null) {
+                Spacer(modifier = Modifier.height(Dimens.spacingXs))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val navIconTint = MaterialTheme.colorScheme.onSurfaceVariant
-
-                Row(
-                    modifier = Modifier
-                        .clickableNoFocus(onClick = onPreviousPlatform)
-                        .padding(Dimens.spacingSm),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = InputIcons.BumperLeft,
-                        contentDescription = "Previous platform",
-                        tint = navIconTint,
-                        modifier = Modifier.size(Dimens.iconSm)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(Dimens.spacingMd))
-
-                Text(
-                    text = displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.width(Dimens.spacingMd))
-
-                Row(
-                    modifier = Modifier
-                        .clickableNoFocus(onClick = onNextPlatform)
-                        .padding(Dimens.spacingSm),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = InputIcons.BumperRight,
-                        contentDescription = "Next platform",
-                        tint = navIconTint,
-                        modifier = Modifier.size(Dimens.iconSm)
+                AnimatedContent(
+                    targetState = focusedGameTitle,
+                    transitionSpec = {
+                        ContentTransform(
+                            targetContentEnter = fadeIn(tween(150)),
+                            initialContentExit = fadeOut(tween(100))
+                        )
+                    },
+                    label = "focusedGameTitle"
+                ) { title ->
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }

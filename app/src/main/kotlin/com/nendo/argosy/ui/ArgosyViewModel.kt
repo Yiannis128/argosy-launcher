@@ -412,7 +412,7 @@ class ArgosyViewModel @Inject constructor(
     val drawerUiState: StateFlow<DrawerState> = combine(
         romMRepository.connectionState,
         downloadManager.state,
-        emulatorUpdateManager.updateCount,
+        emulatorUpdateManager.assignedUpdateCount,
         _drawerTab,
         _navFocusIndex,
         _friendsFocusIndex,
@@ -423,7 +423,7 @@ class ArgosyViewModel @Inject constructor(
     ) { values ->
         val connection = values[0] as ConnectionState
         val downloads = values[1] as DownloadQueueState
-        val emulatorUpdates = values[2] as Int
+        val emulatorUpdateCount = values[2] as Int
         val tab = values[3] as DrawerTab
         val navIndex = values[4] as Int
         val friendsIndex = values[5] as Int
@@ -447,7 +447,7 @@ class ArgosyViewModel @Inject constructor(
             rommConnecting = connection is ConnectionState.Connecting,
             socialConnected = socialConnection is SocialConnectionState.Connected,
             downloadCount = downloadCount,
-            emulatorUpdatesAvailable = emulatorUpdates,
+            emulatorUpdatesAvailable = emulatorUpdateCount,
             currentTab = tab,
             navFocusIndex = navIndex,
             friendsFocusIndex = friendsIndex,
@@ -552,6 +552,7 @@ class ArgosyViewModel @Inject constructor(
         _drawerModal.value = DrawerModal.AddFriend
     }
 
+
     fun dismissDrawerModal() {
         _drawerModal.value = DrawerModal.None
     }
@@ -568,18 +569,11 @@ class ArgosyViewModel @Inject constructor(
         onNavigate: (String) -> Unit,
         onDismiss: () -> Unit
     ): InputHandler = object : InputHandler {
-        private val hasUpdateFooter: Boolean
-            get() = drawerUiState.value.emulatorUpdatesAvailable > 0
-
-        private val footerIndex: Int
-            get() = drawerItems.size
-
         override fun onUp(): InputResult {
             val wrapMode = uiState.value.menuWrapMode
             return when (_drawerTab.value) {
                 DrawerTab.NAVIGATION -> {
-                    val maxIndex = if (hasUpdateFooter) footerIndex else drawerItems.lastIndex
-                    _navFocusIndex.update { computeWrappedIndex(it, -1, maxIndex, wrapMode) }
+                    _navFocusIndex.update { computeWrappedIndex(it, -1, drawerItems.lastIndex, wrapMode) }
                     InputResult.HANDLED
                 }
                 DrawerTab.FRIENDS -> {
@@ -595,8 +589,7 @@ class ArgosyViewModel @Inject constructor(
             val wrapMode = uiState.value.menuWrapMode
             return when (_drawerTab.value) {
                 DrawerTab.NAVIGATION -> {
-                    val maxIndex = if (hasUpdateFooter) footerIndex else drawerItems.lastIndex
-                    _navFocusIndex.update { computeWrappedIndex(it, 1, maxIndex, wrapMode) }
+                    _navFocusIndex.update { computeWrappedIndex(it, 1, drawerItems.lastIndex, wrapMode) }
                     InputResult.HANDLED
                 }
                 DrawerTab.FRIENDS -> {
@@ -628,11 +621,7 @@ class ArgosyViewModel @Inject constructor(
             return when (_drawerTab.value) {
                 DrawerTab.NAVIGATION -> {
                     val currentIndex = _navFocusIndex.value
-                    Log.d("ArgosyViewModel", "Drawer onConfirm: index=$currentIndex, footerIndex=$footerIndex, hasUpdateFooter=$hasUpdateFooter")
-                    if (hasUpdateFooter && currentIndex == footerIndex) {
-                        Log.d("ArgosyViewModel", "Navigating to emulators section via footer")
-                        onNavigate(Screen.Settings.createRoute(section = "emulators"))
-                    } else if (currentIndex < drawerItems.size) {
+                    if (currentIndex < drawerItems.size) {
                         Log.d("ArgosyViewModel", "Navigating to drawer item: ${drawerItems[currentIndex].route}")
                         onNavigate(drawerItems[currentIndex].route)
                     }

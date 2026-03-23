@@ -193,7 +193,7 @@ fun PlatformDetailSection(
         uiState.focusedIndex == layout.focusIndexOf(item, visibility)
 
     val modalBlur by animateDpAsState(
-        targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker) Motion.blurRadiusModal else 0.dp,
+        targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker || emulators.updateModal != null) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
         label = "platformDetailBlur"
     )
@@ -214,12 +214,17 @@ fun PlatformDetailSection(
                 is PlatformDetailItem.Header -> com.nendo.argosy.ui.screens.settings.components.SectionHeader(item.title)
 
                 // -- EMULATOR section --
-                PlatformDetailItem.Emulator -> CyclePreference(
-                    title = "Emulator",
-                    value = config.effectiveEmulatorName ?: "Not installed",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.showEmulatorPicker(config) }
-                )
+                PlatformDetailItem.Emulator -> {
+                    val hasUpdate = config.effectiveEmulatorId != null &&
+                        config.effectiveEmulatorId in emulators.emulatorUpdateVersions
+                    CyclePreference(
+                        title = "Emulator",
+                        value = config.effectiveEmulatorName ?: "Not installed",
+                        subtitle = if (hasUpdate) "Update available" else null,
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.showEmulatorPicker(config) }
+                    )
+                }
                 PlatformDetailItem.Core -> CyclePreference(
                     title = "Core",
                     value = config.selectedCore ?: "Default",
@@ -453,6 +458,16 @@ fun PlatformDetailSection(
                 onItemTap = { index -> viewModel.handleVariantPickerItemTap(index) },
                 onConfirm = { viewModel.confirmVariantSelection() },
                 onDismiss = { viewModel.dismissVariantPicker() }
+            )
+        }
+
+        if (emulators.updateModal != null) {
+            com.nendo.argosy.ui.screens.settings.components.EmulatorUpdateModal(
+                modal = emulators.updateModal,
+                focusIndex = emulators.updateModalFocusIndex,
+                onVariantTap = { index -> viewModel.moveUpdateModalFocus(index - emulators.updateModalFocusIndex) },
+                onConfirmVariant = { viewModel.selectUpdateModalVariant() },
+                onDismiss = { viewModel.dismissUpdateModal() }
             )
         }
     }

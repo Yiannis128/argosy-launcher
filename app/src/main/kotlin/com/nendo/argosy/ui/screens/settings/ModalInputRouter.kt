@@ -28,6 +28,7 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         interceptPlatformFiltersModal(state, method)?.let { return it }
         interceptSyncFiltersModal(state, method)?.let { return it }
         interceptForceSyncConfirm(state, method)?.let { return it }
+        interceptUpdateModal(state, method)?.let { return it }
         interceptVariantPicker(state, method)?.let { return it }
         interceptSteamVariantPicker(state, method)?.let { return it }
         interceptEmulatorPicker(state, method)?.let { return it }
@@ -148,6 +149,28 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
                 InputResult.HANDLED
             }
             InputMethod.BACK -> { viewModel.cancelSyncSaves(); InputResult.HANDLED }
+            else -> InputResult.HANDLED
+        }
+    }
+
+    private fun interceptUpdateModal(state: SettingsUiState, method: InputMethod): InputResult? {
+        val modal = state.emulators.updateModal ?: return null
+        return when (modal.state) {
+            is UpdateModalState.SelectVariant -> when (method) {
+                InputMethod.UP -> { viewModel.moveUpdateModalFocus(-1); InputResult.HANDLED }
+                InputMethod.DOWN -> { viewModel.moveUpdateModalFocus(1); InputResult.HANDLED }
+                InputMethod.CONFIRM -> { viewModel.selectUpdateModalVariant(); InputResult.HANDLED }
+                InputMethod.BACK -> { viewModel.dismissUpdateModal(); InputResult.HANDLED }
+                else -> InputResult.HANDLED
+            }
+            is UpdateModalState.Installed -> when (method) {
+                InputMethod.CONFIRM, InputMethod.BACK -> { viewModel.dismissUpdateModal(); InputResult.HANDLED }
+                else -> InputResult.HANDLED
+            }
+            is UpdateModalState.Failed -> when (method) {
+                InputMethod.BACK, InputMethod.CONFIRM -> { viewModel.dismissUpdateModal(); InputResult.HANDLED }
+                else -> InputResult.HANDLED
+            }
             else -> InputResult.HANDLED
         }
     }

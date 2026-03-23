@@ -191,7 +191,9 @@ class EmulatorDownloadManager @Inject constructor(
 
         scope.launch {
             try {
-                val installedVersion = getInstalledVersion(packageName)
+                val cachedUpdate = emulatorUpdateManager.getUpdateForEmulator(pending.emulatorId)
+                val installedVersion = cachedUpdate?.latestVersion
+                    ?: getInstalledVersion(packageName)
                 if (installedVersion != null) {
                     emulatorUpdateManager.markAsInstalled(
                         emulatorId = pending.emulatorId,

@@ -108,7 +108,7 @@ fun EmulatorsSection(
         uiState.focusedIndex == layout.focusIndexOf(item, layoutState)
 
     val modalBlur by animateDpAsState(
-        targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker) Motion.blurRadiusModal else 0.dp,
+        targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker || emulators.updateModal != null) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
         label = "emulatorPickerBlur"
     )
@@ -128,8 +128,8 @@ fun EmulatorsSection(
                 when (item) {
                     EmulatorsItem.CheckForUpdates -> ActionPreference(
                         title = "Check for Updates",
-                        subtitle = if (emulators.emulatorUpdatesAvailable > 0)
-                            "${emulators.emulatorUpdatesAvailable} update${if (emulators.emulatorUpdatesAvailable > 1) "s" else ""} available"
+                        subtitle = if (emulators.assignedUpdatesAvailable > 0)
+                            "${emulators.assignedUpdatesAvailable} update${if (emulators.assignedUpdatesAvailable > 1) "s" else ""} available"
                         else "Check for emulator updates",
                         isFocused = isFocused(item),
                         onClick = { viewModel.forceCheckEmulatorUpdates() }
@@ -147,13 +147,14 @@ fun EmulatorsSection(
                         val gameCount = config.platform.gameCount
                         val emulatorName = config.effectiveEmulatorName ?: "Not configured"
                         val subtitle = if (gameCount > 0) "$gameCount games" else "No games"
-                        val updateCount = emulators.platformUpdatesAvailable[config.platform.slug] ?: 0
+                        val hasUpdate = config.effectiveEmulatorId != null &&
+                            config.effectiveEmulatorId in emulators.emulatorUpdateVersions
                         ActionPreference(
                             title = config.platform.name,
                             subtitle = subtitle,
                             isFocused = isFocused(item),
                             trailingText = emulatorName,
-                            badge = if (updateCount > 0) "$updateCount" else null,
+                            badge = if (hasUpdate) "Update" else null,
                             onClick = { viewModel.navigateToPlatformDetail(item.index) }
                         )
                     }
@@ -191,6 +192,16 @@ fun EmulatorsSection(
                 onItemTap = { index -> viewModel.handleVariantPickerItemTap(index) },
                 onConfirm = { viewModel.confirmVariantSelection() },
                 onDismiss = { viewModel.dismissVariantPicker() }
+            )
+        }
+
+        if (emulators.updateModal != null) {
+            com.nendo.argosy.ui.screens.settings.components.EmulatorUpdateModal(
+                modal = emulators.updateModal,
+                focusIndex = emulators.updateModalFocusIndex,
+                onVariantTap = { index -> viewModel.moveUpdateModalFocus(index - emulators.updateModalFocusIndex) },
+                onConfirmVariant = { viewModel.selectUpdateModalVariant() },
+                onDismiss = { viewModel.dismissUpdateModal() }
             )
         }
     }

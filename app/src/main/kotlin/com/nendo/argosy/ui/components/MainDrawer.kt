@@ -211,8 +211,6 @@ private fun NavigationContent(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val footerIndex = items.size
-    val isFooterFocused = focusedIndex == footerIndex && emulatorUpdatesAvailable > 0
 
     LaunchedEffect(focusedIndex) {
         if (items.isNotEmpty() && focusedIndex in items.indices) {
@@ -252,14 +250,7 @@ private fun NavigationContent(
         }
 
         if (emulatorUpdatesAvailable > 0) {
-            EmulatorUpdateFooter(
-                updateCount = emulatorUpdatesAvailable,
-                isFocused = isFooterFocused,
-                onClick = {
-                    android.util.Log.d("MainDrawer", "Footer clicked, navigating to emulators section")
-                    onNavigate(Screen.Settings.createRoute(section = "emulators"))
-                }
-            )
+            EmulatorUpdateNotice(updateCount = emulatorUpdatesAvailable)
         }
     }
 }
@@ -503,54 +494,25 @@ private fun DrawerStatusBar(isRommConnected: Boolean) {
 }
 
 @Composable
-private fun EmulatorUpdateFooter(
-    updateCount: Int,
-    isFocused: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
-
-    val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-    }
-
-    val indicatorWidth = if (isFocused) Dimens.spacingXs else 0.dp
-    val shape = RoundedCornerShape(topEnd = Dimens.radiusMd, bottomEnd = Dimens.radiusMd)
-
+private fun EmulatorUpdateNotice(updateCount: Int) {
+    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(end = Dimens.spacingMd)
-            .clip(shape)
-            .background(backgroundColor)
-            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
     ) {
-        Box(
-            modifier = Modifier
-                .width(indicatorWidth)
-                .height(Dimens.spacingXxl)
-                .background(MaterialTheme.colorScheme.primary)
-        )
-        Spacer(modifier = Modifier.width(if (isFocused) (Dimens.spacingLg - Dimens.spacingXs) else Dimens.spacingLg))
         Icon(
             imageVector = Icons.Default.SystemUpdate,
-            contentDescription = "Emulator updates",
-            tint = contentColor
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(Dimens.iconSm)
         )
-        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        Spacer(modifier = Modifier.width(Dimens.spacingSm))
         Text(
-            text = "$updateCount emulator update${if (updateCount != 1) "s" else ""}",
-            style = MaterialTheme.typography.titleMedium,
-            color = contentColor,
-            modifier = Modifier.weight(1f)
+            text = "$updateCount emulator update${if (updateCount != 1) "s" else ""} available",
+            style = MaterialTheme.typography.bodySmall,
+            color = contentColor
         )
     }
 }

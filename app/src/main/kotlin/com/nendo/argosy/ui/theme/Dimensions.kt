@@ -38,9 +38,9 @@ object Dimens {
     val headerHeight: Dp @Composable get() = 72.dp * scale
     val headerHeightLg: Dp @Composable get() = 140.dp * scale
     val footerHeight: Dp @Composable get() = 50.dp * scale
-    val modalWidth: Dp @Composable get() = 350.dp * scale
-    val modalWidthLg: Dp @Composable get() = 450.dp * scale
-    val modalWidthXl: Dp @Composable get() = 500.dp * scale
+    val modalWidth: Dp @Composable get() = 400.dp * scale
+    val modalWidthLg: Dp @Composable get() = 520.dp * scale
+    val modalWidthXl: Dp @Composable get() = 575.dp * scale
 
     // Borders - FIXED (too thin to scale)
     val borderThin = 1.dp

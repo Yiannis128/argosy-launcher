@@ -271,6 +271,8 @@ class EmulatorUpdateRepository @Inject constructor(
                 resolvedInstalledVersion == null -> false
                 // Both have valid semver - use semver comparison
                 currentVersionInfo != null && latestVersion != null -> latestVersion > currentVersionInfo
+                // Installed version is an unresolved commit hash -- assume release is newer
+                currentVersionInfo == null && isCommitHash(resolvedInstalledVersion) && latestVersion != null -> true
                 // If GitHub version couldn't be parsed but installed can, try extracting semver from installed
                 latestVersion != null && currentVersionInfo == null -> {
                     val extractedInstalled = VERSION_PATTERN.find(resolvedInstalledVersion)?.groupValues?.get(1)

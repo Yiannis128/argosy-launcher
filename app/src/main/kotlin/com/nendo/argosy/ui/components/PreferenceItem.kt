@@ -498,16 +498,30 @@ fun ActionPreference(
             Spacer(modifier = Modifier.width(Dimens.spacingMd))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isEnabled) preferenceContentColor(isFocused, isDangerous)
-                            else preferenceContentColor(isFocused, isDangerous).copy(alpha = 0.5f)
-                )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (isEnabled) preferenceContentColor(isFocused, isDangerous)
+                        else preferenceContentColor(isFocused, isDangerous).copy(alpha = 0.5f)
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isEnabled) preferenceSecondaryColor(isFocused)
+                        else preferenceSecondaryColor(isFocused).copy(alpha = 0.5f)
+            )
+        }
+        if (trailingText != null || badge != null) {
+            Spacer(modifier = Modifier.width(Dimens.spacingMd))
+            Column(horizontalAlignment = Alignment.End) {
+                if (trailingText != null) {
+                    Text(
+                        text = trailingText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isEnabled) preferenceSecondaryColor(isFocused)
+                                else preferenceSecondaryColor(isFocused).copy(alpha = 0.5f)
+                    )
+                }
                 if (badge != null) {
                     Box(
                         modifier = Modifier
@@ -525,21 +539,6 @@ fun ActionPreference(
                     }
                 }
             }
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isEnabled) preferenceSecondaryColor(isFocused)
-                        else preferenceSecondaryColor(isFocused).copy(alpha = 0.5f)
-            )
-        }
-        if (trailingText != null) {
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-            Text(
-                text = trailingText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isEnabled) preferenceSecondaryColor(isFocused)
-                        else preferenceSecondaryColor(isFocused).copy(alpha = 0.5f)
-            )
         }
     }
 }

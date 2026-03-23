@@ -16,9 +16,11 @@ import com.nendo.argosy.data.local.dao.PlatformDao
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
@@ -33,7 +35,8 @@ data class ImageCacheRequest(
     val id: Long,
     val type: ImageType,
     val gameTitle: String = "",
-    val isSteam: Boolean = false
+    val isSteam: Boolean = false,
+    val gameId: Long? = null
 )
 
 enum class ImageType { BACKGROUND, SCREENSHOT, COVER }
@@ -125,7 +128,13 @@ class ImageCacheManager @Inject constructor(
     private val logoQueue = Channel<PlatformLogoCacheRequest>(256)
     private val coverQueue = Channel<ImageCacheRequest>(256)
 
-    private val scope = SafeCoroutineScope(Dispatchers.IO, "ImageCacheManager")
+    private val cacheExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "ImageCacheWorker").apply {
+            priority = Thread.MIN_PRIORITY
+        }
+    }
+    private val cacheDispatcher = cacheExecutor.asCoroutineDispatcher()
+    private val scope = SafeCoroutineScope(cacheDispatcher, "ImageCacheManager")
     private val queue = Channel<ImageCacheRequest>(256)
     private val screenshotQueue = Channel<ScreenshotCacheRequest>(256)
     private var isProcessing = false
@@ -186,6 +195,7 @@ class ImageCacheManager @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process ${request.id}: ${e.message}")
                 }
+                yield()
 
                 if (queue.isEmpty) {
                     _progress.value = ImageCacheProgress()
@@ -585,6 +595,7 @@ class ImageCacheManager @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process screenshots for ${request.rommId}: ${e.message}")
                 }
+                yield()
 
                 if (screenshotQueue.isEmpty) {
                     _screenshotProgress.value = ImageCacheProgress()
@@ -683,6 +694,7 @@ class ImageCacheManager @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process logo for ${request.platformId}: ${e.message}")
                 }
+                yield()
 
                 if (logoQueue.isEmpty) break
             }
@@ -783,34 +795,8 @@ class ImageCacheManager @Inject constructor(
 
     fun queueCoverCacheByGameId(url: String, gameId: Long) {
         scope.launch {
-            val fileName = "cover_g${gameId}_${url.md5Hash()}.jpg"
-            val cachedFile = File(cacheDir, fileName)
-
-            if (cachedFile.exists()) {
-                if (isValidImageFile(cachedFile)) {
-                    gameDao.updateCoverPath(gameId, cachedFile.absolutePath)
-                    return@launch
-                } else {
-                    cachedFile.delete()
-                    Log.w(TAG, "Deleted invalid cached cover: ${cachedFile.name}")
-                }
-            }
-
-            val bitmap = downloadAndResize(url, 400) ?: return@launch
-
-            FileOutputStream(cachedFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            }
-            bitmap.recycle()
-
-            if (!isValidImageFile(cachedFile)) {
-                cachedFile.delete()
-                Log.w(TAG, "Deleted newly cached invalid cover: ${cachedFile.name}")
-                return@launch
-            }
-
-            Log.d(TAG, "Cached cover for gameId $gameId: ${cachedFile.length() / 1024}KB")
-            gameDao.updateCoverPath(gameId, cachedFile.absolutePath)
+            coverQueue.send(ImageCacheRequest(url, gameId, ImageType.COVER, gameId = gameId))
+            startCoverProcessingIfNeeded()
         }
     }
 
@@ -834,6 +820,7 @@ class ImageCacheManager @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process cover for ${request.id}: ${e.message}")
                 }
+                yield()
 
                 if (coverQueue.isEmpty) break
             }
@@ -842,12 +829,18 @@ class ImageCacheManager @Inject constructor(
     }
 
     private suspend fun processCoverRequest(request: ImageCacheRequest) {
-        val fileName = "cover_${request.id}_${request.url.md5Hash()}.jpg"
+        val isGameIdRequest = request.gameId != null
+        val prefix = if (isGameIdRequest) "cover_g${request.gameId}" else "cover_${request.id}"
+        val fileName = "${prefix}_${request.url.md5Hash()}.jpg"
         val cachedFile = File(cacheDir, fileName)
 
         if (cachedFile.exists()) {
             if (isValidImageFile(cachedFile)) {
-                updateGameCover(request.id, cachedFile.absolutePath)
+                if (isGameIdRequest) {
+                    gameDao.updateCoverPath(request.gameId!!, cachedFile.absolutePath)
+                } else {
+                    updateGameCover(request.id, cachedFile.absolutePath)
+                }
                 return
             } else {
                 cachedFile.delete()
@@ -868,8 +861,13 @@ class ImageCacheManager @Inject constructor(
             return
         }
 
-        Log.d(TAG, "Cached cover for rommId ${request.id}: ${cachedFile.length() / 1024}KB")
-        updateGameCover(request.id, cachedFile.absolutePath)
+        val idLabel = if (isGameIdRequest) "gameId ${request.gameId}" else "rommId ${request.id}"
+        Log.d(TAG, "Cached cover for $idLabel: ${cachedFile.length() / 1024}KB")
+        if (isGameIdRequest) {
+            gameDao.updateCoverPath(request.gameId!!, cachedFile.absolutePath)
+        } else {
+            updateGameCover(request.id, cachedFile.absolutePath)
+        }
     }
 
     private suspend fun updateGameCover(rommId: Long, localPath: String) {
@@ -918,6 +916,7 @@ class ImageCacheManager @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process badge for achievement ${request.achievementId}: ${e.message}")
                 }
+                yield()
 
                 if (badgeQueue.isEmpty) break
             }

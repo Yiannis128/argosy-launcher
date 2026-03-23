@@ -208,7 +208,6 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(
             currentSection = SettingsSection.PLATFORM_DETAIL,
             focusedIndex = 0,
-            parentFocusIndex = it.focusedIndex,
             platformDetail = it.platformDetail.copy(platformIndex = platformIndex)
         ) }
         loadPlatformDetailStats(platformIndex)
@@ -484,6 +483,10 @@ class SettingsViewModel @Inject constructor(
 
     fun confirmSavePathModalSelection() = routeConfirmSavePathModalSelection(this)
     fun forceCheckEmulatorUpdates() = routeForceCheckEmulatorUpdates(this)
+    fun triggerEmulatorUpdate(emulatorId: String) = emulatorDelegate.triggerUpdateForEmulator(emulatorId, viewModelScope)
+    fun selectUpdateModalVariant() = emulatorDelegate.selectUpdateModalVariant()
+    fun moveUpdateModalFocus(delta: Int) = emulatorDelegate.moveUpdateModalFocus(delta)
+    fun dismissUpdateModal() = emulatorDelegate.dismissUpdateModal()
     fun handlePlatformItemTap(index: Int) = routeHandlePlatformItemTap(this, index)
 
     fun navigateToSection(section: SettingsSection) = routeNavigateToSection(this, section)

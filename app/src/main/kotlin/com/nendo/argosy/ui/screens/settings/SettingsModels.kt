@@ -274,12 +274,33 @@ data class EmulatorState(
     val totalCoreCount: Int = 0,
     val coreUpdatesAvailable: Int = 0,
     val builtinLibretroEnabled: Boolean = true,
-    val emulatorUpdatesAvailable: Int = 0,
-    val platformUpdatesAvailable: Map<String, Int> = emptyMap(),
+    val emulatorUpdateVersions: Map<String, String> = emptyMap(),
     val showVariantPicker: Boolean = false,
     val variantPickerInfo: VariantPickerInfo? = null,
-    val variantPickerFocusIndex: Int = 0
+    val variantPickerFocusIndex: Int = 0,
+    val updateModal: EmulatorUpdateModal? = null,
+    val updateModalFocusIndex: Int = 0
+) {
+    val assignedUpdatesAvailable: Int
+        get() = platforms.count { config ->
+            config.effectiveEmulatorId != null && config.effectiveEmulatorId in emulatorUpdateVersions
+        }
+}
+
+data class EmulatorUpdateModal(
+    val emulatorId: String,
+    val emulatorName: String,
+    val state: UpdateModalState = UpdateModalState.Fetching
 )
+
+sealed class UpdateModalState {
+    data object Fetching : UpdateModalState()
+    data class SelectVariant(val variants: List<VariantOption>) : UpdateModalState()
+    data class Downloading(val progress: Float) : UpdateModalState()
+    data object WaitingForInstall : UpdateModalState()
+    data object Installed : UpdateModalState()
+    data class Failed(val message: String) : UpdateModalState()
+}
 
 data class PlatformContext(
     val platformId: Long,

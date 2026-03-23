@@ -655,9 +655,10 @@ fun ArgosyApp(
         inputDispatcher.blockInputFor(Motion.transitionDebounceMs)
     }
 
-    // Reset dim timer on any gamepad key press (including raw-intercepted events)
+    // Reset dim timer on any gamepad key press and activity lifecycle events
     LaunchedEffect(Unit) {
         viewModel.gamepadInputHandler.onActivity = { screenDimmerState.recordActivity() }
+        (context as? com.nendo.argosy.MainActivity)?.onDimmerActivity = { screenDimmerState.recordActivity() }
     }
 
     // Collect gamepad events (Menu toggles drawer, L3 toggles quick menu, R3 toggles quick settings)

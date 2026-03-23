@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.Flow
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.ui.input.SoundType
 import com.nendo.argosy.ui.screens.settings.EmulatorDownloadState
+import com.nendo.argosy.ui.screens.settings.EmulatorUpdateModal
+import com.nendo.argosy.ui.screens.settings.UpdateModalState
 import com.nendo.argosy.ui.screens.settings.EmulatorPickerInfo
 import com.nendo.argosy.ui.screens.settings.EmulatorSavePathInfo
 import com.nendo.argosy.ui.screens.settings.EmulatorState
@@ -498,9 +500,9 @@ class EmulatorSettingsDelegate @Inject constructor(
         }
     }
 
-    fun observeEmulatorUpdateCount(): Flow<Int> = emulatorUpdateManager.updateCount
+    fun observeAvailableUpdates(): Flow<List<com.nendo.argosy.data.local.entity.EmulatorUpdateEntity>> =
+        emulatorUpdateManager.availableUpdates
 
-    fun observePlatformUpdateCounts(): Flow<Map<String, Int>> = emulatorUpdateManager.platformUpdateCounts
 
     fun observeDownloadProgress() = emulatorDownloadManager.downloadProgress
 
@@ -508,17 +510,133 @@ class EmulatorSettingsDelegate @Inject constructor(
         emulatorUpdateManager.forceCheck()
     }
 
-    fun updateEmulatorUpdatesAvailable(count: Int) {
-        _state.update { it.copy(emulatorUpdatesAvailable = count) }
-    }
-
-    fun updatePlatformUpdatesAvailable(platformUpdates: Map<String, Int>) {
-        _state.update { it.copy(platformUpdatesAvailable = platformUpdates) }
+    fun updateEmulatorUpdateVersions(versions: Map<String, String>) {
+        _state.update { it.copy(emulatorUpdateVersions = versions) }
     }
 
     fun checkForEmulatorUpdates(scope: CoroutineScope) {
         scope.launch {
             emulatorUpdateManager.checkForUpdates()
+        }
+    }
+
+    fun triggerUpdateForEmulator(emulatorId: String, scope: CoroutineScope) {
+        val emulatorDef = com.nendo.argosy.data.emulator.EmulatorRegistry.getById(emulatorId) ?: return
+
+        _state.update {
+            it.copy(updateModal = EmulatorUpdateModal(
+                emulatorId = emulatorId,
+                emulatorName = emulatorDef.displayName
+            ), updateModalFocusIndex = 0)
+        }
+
+        scope.launch {
+            val update = emulatorUpdateManager.getUpdateForEmulator(emulatorId)
+            if (update?.installedVariant != null) {
+                startUpdateModalDownload(
+                    emulatorId = update.emulatorId,
+                    downloadUrl = update.downloadUrl,
+                    assetName = update.assetName,
+                    variant = update.installedVariant
+                )
+            } else {
+                when (val result = emulatorUpdateRepository.fetchLatestRelease(emulatorDef)) {
+                    is FetchReleaseResult.Success -> {
+                        startUpdateModalDownload(
+                            emulatorId = emulatorDef.id,
+                            downloadUrl = result.downloadUrl,
+                            assetName = result.assetName,
+                            variant = result.variant
+                        )
+                    }
+                    is FetchReleaseResult.MultipleVariants -> {
+                        _state.update { state ->
+                            val modal = state.updateModal ?: return@update state
+                            state.copy(updateModal = modal.copy(
+                                state = UpdateModalState.SelectVariant(result.variants.map { v ->
+                                    VariantOption(
+                                        variant = v.variant,
+                                        downloadUrl = v.downloadUrl,
+                                        assetName = v.assetName,
+                                        fileSize = v.assetSize
+                                    )
+                                })
+                            ), updateModalFocusIndex = 0)
+                        }
+                    }
+                    is FetchReleaseResult.Error -> {
+                        _state.update { state ->
+                            val modal = state.updateModal ?: return@update state
+                            state.copy(updateModal = modal.copy(state = UpdateModalState.Failed(result.message)))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startUpdateModalDownload(
+        emulatorId: String,
+        downloadUrl: String,
+        assetName: String,
+        variant: String?
+    ) {
+        if (!emulatorDownloadManager.canInstallPackages()) {
+            emulatorDownloadManager.openInstallPermissionSettings()
+            dismissUpdateModal()
+            return
+        }
+        _state.update { state ->
+            val modal = state.updateModal ?: return@update state
+            state.copy(updateModal = modal.copy(state = UpdateModalState.Downloading(0f)))
+        }
+        emulatorDownloadManager.downloadAndInstall(
+            emulatorId = emulatorId,
+            downloadUrl = downloadUrl,
+            assetName = assetName,
+            variant = variant
+        )
+    }
+
+    fun selectUpdateModalVariant() {
+        val state = _state.value
+        val modal = state.updateModal ?: return
+        val variants = (modal.state as? UpdateModalState.SelectVariant)?.variants ?: return
+        val variant = variants.getOrNull(state.updateModalFocusIndex) ?: return
+        startUpdateModalDownload(
+            emulatorId = modal.emulatorId,
+            downloadUrl = variant.downloadUrl,
+            assetName = variant.assetName,
+            variant = variant.variant
+        )
+    }
+
+    fun moveUpdateModalFocus(delta: Int) {
+        _state.update { state ->
+            val modal = state.updateModal ?: return@update state
+            val variants = (modal.state as? UpdateModalState.SelectVariant)?.variants ?: return@update state
+            val maxIndex = (variants.size - 1).coerceAtLeast(0)
+            val newIndex = (state.updateModalFocusIndex + delta).coerceIn(0, maxIndex)
+            state.copy(updateModalFocusIndex = newIndex)
+        }
+    }
+
+    fun dismissUpdateModal() {
+        _state.update { it.copy(updateModal = null, updateModalFocusIndex = 0) }
+    }
+
+    fun updateUpdateModalProgress(emulatorId: String, downloadState: EmulatorDownloadState) {
+        _state.update { state ->
+            val modal = state.updateModal ?: return@update state
+            if (modal.emulatorId != emulatorId) return@update state
+            val newState = when (downloadState) {
+                is EmulatorDownloadState.Downloading -> UpdateModalState.Downloading(downloadState.progress)
+                is EmulatorDownloadState.WaitingForInstall -> UpdateModalState.WaitingForInstall
+                is EmulatorDownloadState.Installed -> UpdateModalState.Installed
+                is EmulatorDownloadState.Failed -> UpdateModalState.Failed(downloadState.message)
+                is EmulatorDownloadState.Idle -> return@update state
+            }
+            state.copy(updateModal = modal.copy(state = newState))
         }
     }
 

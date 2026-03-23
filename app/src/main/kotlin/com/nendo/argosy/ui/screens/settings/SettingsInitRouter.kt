@@ -63,17 +63,15 @@ internal fun routeObserveDelegateStates(vm: SettingsViewModel) {
         vm.emulatorDelegate.updateCoreUpdatesAvailable(count)
     }.launchIn(vm.viewModelScope)
 
-    vm.emulatorDelegate.observeEmulatorUpdateCount().onEach { count ->
-        vm.emulatorDelegate.updateEmulatorUpdatesAvailable(count)
-    }.launchIn(vm.viewModelScope)
-
-    vm.emulatorDelegate.observePlatformUpdateCounts().onEach { platformCounts ->
-        vm.emulatorDelegate.updatePlatformUpdatesAvailable(platformCounts)
+    vm.emulatorDelegate.observeAvailableUpdates().onEach { updates ->
+        val versions = updates.associate { it.emulatorId to it.latestVersion }
+        vm.emulatorDelegate.updateEmulatorUpdateVersions(versions)
     }.launchIn(vm.viewModelScope)
 
     vm.emulatorDelegate.observeDownloadProgress().onEach { progress ->
         if (progress != null) {
             vm.emulatorDelegate.updatePickerDownloadState(progress.emulatorId, progress.state)
+            vm.emulatorDelegate.updateUpdateModalProgress(progress.emulatorId, progress.state)
         } else {
             vm.emulatorDelegate.updatePickerDownloadState(null, EmulatorDownloadState.Idle)
         }
@@ -497,7 +495,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             installedEmulators = installedEmulators,
             canAutoAssign = canAutoAssign,
             platformSubFocusIndex = currentEmulatorState.platformSubFocusIndex,
-            builtinLibretroEnabled = prefs.builtinLibretroEnabled
+            builtinLibretroEnabled = prefs.builtinLibretroEnabled,
+            emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions
         ))
         vm.emulatorDelegate.updateCoreCounts()
 

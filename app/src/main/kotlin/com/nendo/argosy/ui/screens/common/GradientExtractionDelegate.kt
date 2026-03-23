@@ -9,8 +9,6 @@ import com.nendo.argosy.ui.common.GradientColorExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,8 +33,6 @@ class GradientExtractionDelegate @Inject constructor(
     private val persistedPresets = mutableMapOf<Long, Map<GradientPreset, Pair<Color, Color>>>()
 
     private val pendingExtractions = mutableSetOf<Long>()
-    private var extractionJob: Job? = null
-    private var loadJob: Job? = null
     private var currentPreset: GradientPreset = GradientPreset.BALANCED
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -130,19 +126,12 @@ class GradientExtractionDelegate @Inject constructor(
 
         val gameIds = gamesToLoad.map { it.gameId }
 
-        loadJob?.cancel()
-        loadJob = scope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             loadPersistedGradientsImmediate(gameIds)
         }
 
-        extractionJob?.cancel()
-        extractionJob = scope.launch(extractionDispatcher) {
-            delay(150)
-            for (request in gamesToLoad) {
-                if (hasGradient(request.gameId)) continue
-                val coverPath = request.coverPath ?: continue
-                extractAndPersist(request.gameId, coverPath)
-            }
+        for (request in gamesToLoad) {
+            extractForGame(scope, request.gameId, request.coverPath)
         }
     }
 
@@ -206,7 +195,6 @@ class GradientExtractionDelegate @Inject constructor(
     }
 
     fun clear() {
-        extractionJob?.cancel()
         backgroundProcessor.cancel()
         _gradients.value = emptyMap()
         persistedPresets.clear()

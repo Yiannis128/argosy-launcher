@@ -147,6 +147,122 @@ private fun VariantPickerItem(
     }
 }
 
+@Composable
+fun EmulatorUpdateModal(
+    modal: com.nendo.argosy.ui.screens.settings.EmulatorUpdateModal,
+    focusIndex: Int,
+    onVariantTap: (Int) -> Unit,
+    onConfirmVariant: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val listState = rememberLazyListState()
+    val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
+    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
+
+    if (modal.state is com.nendo.argosy.ui.screens.settings.UpdateModalState.SelectVariant) {
+        FocusedScroll(listState = listState, focusedIndex = focusIndex)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(overlayColor)
+            .clickableNoFocus(onClick = {
+                val dismissable = modal.state is com.nendo.argosy.ui.screens.settings.UpdateModalState.SelectVariant ||
+                    modal.state is com.nendo.argosy.ui.screens.settings.UpdateModalState.Installed ||
+                    modal.state is com.nendo.argosy.ui.screens.settings.UpdateModalState.Failed
+                if (dismissable) onDismiss()
+            }),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .width(Dimens.modalWidthLg)
+                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .background(MaterialTheme.colorScheme.surface)
+                .clickableNoFocus(enabled = false) {}
+                .padding(Dimens.spacingLg),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+        ) {
+            Text(
+                text = "Update ${modal.emulatorName}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            when (val state = modal.state) {
+                is com.nendo.argosy.ui.screens.settings.UpdateModalState.Fetching -> {
+                    Text(
+                        text = "Checking for updates...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                is com.nendo.argosy.ui.screens.settings.UpdateModalState.SelectVariant -> {
+                    Text(
+                        text = "Select version",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                    ) {
+                        itemsIndexed(state.variants, key = { _, v -> v.assetName }) { index, variant ->
+                            VariantPickerItem(
+                                variant = variant,
+                                isFocused = index == focusIndex,
+                                onClick = { onVariantTap(index) }
+                            )
+                        }
+                    }
+                }
+                is com.nendo.argosy.ui.screens.settings.UpdateModalState.Downloading -> {
+                    val percent = (state.progress * 100).toInt()
+                    Text(
+                        text = "Downloading... $percent%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { state.progress },
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Dimens.radiusSm)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+                is com.nendo.argosy.ui.screens.settings.UpdateModalState.WaitingForInstall -> {
+                    Text(
+                        text = "Installing...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    androidx.compose.material3.LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Dimens.radiusSm)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+                is com.nendo.argosy.ui.screens.settings.UpdateModalState.Installed -> {
+                    Text(
+                        text = "Update installed successfully",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                is com.nendo.argosy.ui.screens.settings.UpdateModalState.Failed -> {
+                    Text(
+                        text = "Update failed: ${state.message}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun formatFileSize(bytes: Long): String {
     return when {
         bytes < 1024 -> "$bytes B"

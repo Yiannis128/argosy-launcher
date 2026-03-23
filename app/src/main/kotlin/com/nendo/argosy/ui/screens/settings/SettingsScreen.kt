@@ -900,7 +900,7 @@ private fun getFilePathFromUri(context: Context, uri: Uri): String? {
 
 @Composable
 private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackState) {
-    if (uiState.emulators.showSavePathModal || uiState.emulators.showEmulatorPicker) {
+    if (uiState.emulators.showSavePathModal || uiState.emulators.showEmulatorPicker || uiState.emulators.updateModal != null) {
         return
     }
     if (shaderStack.showShaderPicker) {
@@ -967,6 +967,13 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
                 focusedItem is PlatformDetailItem.Emulator) {
                 add(InputButton.DPAD_HORIZONTAL to "Adjust")
             }
+            // X button -- update emulator if available
+            if (config != null) {
+                val emulatorId = config.effectiveEmulatorId
+                if (emulatorId != null && emulatorId in uiState.emulators.emulatorUpdateVersions) {
+                    add(InputButton.X to "Update Emulator")
+                }
+            }
             // A button -- context-specific label
             val aLabel = when (focusedItem) {
                 is PlatformDetailItem.SyncToggle, is PlatformDetailItem.LegacyMode -> "Toggle"
@@ -991,7 +998,12 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
             ) {
                 add(InputButton.LB_RB to "Display")
             }
-            add(InputButton.X to "Saves")
+            if (focusedItem is com.nendo.argosy.ui.screens.settings.sections.EmulatorsItem.PlatformItem) {
+                val emulatorId = focusedItem.config.effectiveEmulatorId
+                if (emulatorId != null && emulatorId in uiState.emulators.emulatorUpdateVersions) {
+                    add(InputButton.X to "Update")
+                }
+            }
         }
         if (uiState.currentSection == SettingsSection.BUILTIN_VIDEO && !uiState.builtinVideo.isGlobalContext) {
             val platformContext = uiState.builtinVideo.currentPlatformContext

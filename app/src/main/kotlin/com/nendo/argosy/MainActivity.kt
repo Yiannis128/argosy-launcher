@@ -123,6 +123,8 @@ class MainActivity : ComponentActivity() {
             updateWindowFocusability()
         }
 
+    var onDimmerActivity: (() -> Unit)? = null
+
     val dualScreenShowcase get() = dualScreenManager.dualScreenShowcase
     val dualGameDetailState get() = dualScreenManager.dualGameDetailState
     val isCompanionActive get() = dualScreenManager.isCompanionActive
@@ -331,6 +333,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("NewApi")
     override fun onResume() {
         super.onResume()
+        onDimmerActivity?.invoke()
         Log.d(TAG, "onResume: swapped=$isRolesSwapped gameActive=${if (::dualScreenManager.isInitialized) dualScreenManager.swappedIsGameActive.value else "N/A"} hasResumedBefore=$hasResumedBefore")
 
         dualScreenManager.broadcastForegroundState(true)
@@ -417,6 +420,7 @@ class MainActivity : ComponentActivity() {
         ) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 Log.d(TAG, "dispatchKeyEvent: FORWARDING key=${event.keyCode} to companion")
+                onDimmerActivity?.invoke()
                 dualScreenManager.companionHost?.onForwardKey(
                     event.keyCode,
                     sessionStateStore.getSwapAB(),
@@ -511,6 +515,7 @@ class MainActivity : ComponentActivity() {
             }
             hadFocusBefore = true
             focusLostTime = 0L
+            onDimmerActivity?.invoke()
             hideSystemUI()
             window.decorView.requestFocus()
             ambientAudioManager.fadeIn()

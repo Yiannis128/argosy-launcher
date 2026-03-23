@@ -39,6 +39,7 @@ class EmulatorUpdateManager @Inject constructor(
     private val emulatorUpdateRepository: EmulatorUpdateRepository,
     private val emulatorDetector: EmulatorDetector,
     private val emulatorUpdateDao: EmulatorUpdateDao,
+    private val emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao,
     private val dataStore: DataStore<Preferences>,
     @ApplicationContext private val context: Context
 ) {
@@ -59,6 +60,16 @@ class EmulatorUpdateManager @Inject constructor(
 
     val availableUpdates: Flow<List<EmulatorUpdateEntity>> =
         emulatorUpdateDao.observeAvailableUpdates()
+
+    val assignedUpdateCount: Flow<Int> = kotlinx.coroutines.flow.combine(
+        availableUpdates,
+        emulatorConfigDao.observeAssignedPackageNames()
+    ) { updates, assignedPackages ->
+        val assignedIds = assignedPackages.mapNotNull { pkg ->
+            EmulatorRegistry.getByPackage(pkg)?.id
+        }.toSet()
+        updates.count { it.emulatorId in assignedIds }
+    }
 
     val platformUpdateCounts: Flow<Map<String, Int>> = availableUpdates.map { updates ->
         val platformCounts = mutableMapOf<String, Int>()
@@ -139,9 +150,20 @@ class EmulatorUpdateManager @Inject constructor(
                     }
                 }
 
+                val effectiveVersion = if (installedVersion != null &&
+                    com.nendo.argosy.data.remote.github.EmulatorUpdateRepository.isCommitHash(installedVersion) &&
+                    cached?.installedVersion != null &&
+                    !com.nendo.argosy.data.remote.github.EmulatorUpdateRepository.isCommitHash(cached.installedVersion)
+                ) {
+                    Log.d(TAG, "${emulatorDef.id}: APK version is hash ($installedVersion), using stored version (${cached.installedVersion})")
+                    cached.installedVersion
+                } else {
+                    installedVersion
+                }
+
                 val result = emulatorUpdateRepository.checkForUpdate(
                     emulator = emulatorDef,
-                    installedVersion = installedVersion,
+                    installedVersion = effectiveVersion,
                     storedVariant = cached?.installedVariant
                 )
 

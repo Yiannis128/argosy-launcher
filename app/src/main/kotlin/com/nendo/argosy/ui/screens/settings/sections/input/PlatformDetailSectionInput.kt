@@ -15,6 +15,18 @@ internal class PlatformDetailSectionInput(
     override fun onLeft(): InputResult = cycleItem(-1)
     override fun onRight(): InputResult = cycleItem(1)
 
+    override fun onContextMenu(): InputResult {
+        val state = viewModel.uiState.value
+        val config = state.emulators.platforms.getOrNull(state.platformDetail.platformIndex)
+            ?: return InputResult.UNHANDLED
+        val emulatorId = config.effectiveEmulatorId ?: return InputResult.UNHANDLED
+        if (emulatorId in state.emulators.emulatorUpdateVersions) {
+            viewModel.triggerEmulatorUpdate(emulatorId)
+            return InputResult.HANDLED
+        }
+        return InputResult.UNHANDLED
+    }
+
     // L1/R1: jump sections within the detail page
     override fun onPrevSection(): InputResult = jumpSection(-1)
     override fun onNextSection(): InputResult = jumpSection(1)

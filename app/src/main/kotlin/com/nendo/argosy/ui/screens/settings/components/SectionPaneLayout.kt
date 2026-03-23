@@ -138,15 +138,10 @@ private fun NavItem(
     isActive: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isActive) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
     val textColor = if (isActive) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     }
 
     Text(
@@ -156,7 +151,6 @@ private fun NavItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
-            .background(backgroundColor, RoundedCornerShape(Dimens.radiusMd))
             .clickableNoFocus(onClick = onClick)
             .padding(
                 horizontal = Dimens.spacingSm,
