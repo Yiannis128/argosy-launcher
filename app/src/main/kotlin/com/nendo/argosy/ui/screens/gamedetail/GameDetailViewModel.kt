@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.gamedetail
 
 import java.io.File
+import com.nendo.argosy.data.steam.SteamDownloadState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.cache.ImageCacheManager
@@ -433,7 +434,10 @@ class GameDetailViewModel @Inject constructor(
             val downloadStatus = when {
                 game.source == GameSource.ANDROID_APP -> GameDownloadStatus.DOWNLOADED
                 isAndroidApp && fileExists && game.packageName == null -> GameDownloadStatus.NEEDS_INSTALL
-                isSteamGame && game.localPath != null && fileExists -> GameDownloadStatus.DOWNLOADED
+                isSteamGame && game.localPath != null &&
+                    File(game.localPath, ".download_complete").exists() -> GameDownloadStatus.DOWNLOADED
+                isSteamGame && game.localPath != null &&
+                    File(game.localPath, ".download_in_progress").exists() -> GameDownloadStatus.DOWNLOADING
                 isSteamDownloading -> GameDownloadStatus.DOWNLOADING
                 fileExists -> GameDownloadStatus.DOWNLOADED
                 game.isMultiDisc -> {
@@ -710,6 +714,15 @@ class GameDetailViewModel @Inject constructor(
     fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
 
     fun downloadSteamGame() {
+        val currentState = steamContentManager.downloadState.value
+        if (currentState !is SteamDownloadState.Idle &&
+            currentState !is SteamDownloadState.Completed &&
+            currentState !is SteamDownloadState.Failed) {
+            return
+        }
+
+        _uiState.update { it.copy(downloadStatus = GameDownloadStatus.QUEUED, downloadProgress = 0f) }
+
         viewModelScope.launch {
             val game = gameRepository.getById(currentGameId) ?: return@launch
             val steamAppId = game.steamAppId ?: return@launch
@@ -717,6 +730,7 @@ class GameDetailViewModel @Inject constructor(
                 val appInfo = steamContentManager.fetchAppInfo(steamAppId.toInt())
                 steamContentManager.queueDownload(steamAppId, game.title, appInfo, game.coverPath)
             } catch (e: Exception) {
+                _uiState.update { it.copy(downloadStatus = GameDownloadStatus.NOT_DOWNLOADED) }
                 notificationManager.showError("Failed to start Steam download: ${e.message}")
             }
         }

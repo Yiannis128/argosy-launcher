@@ -471,25 +471,22 @@ class SteamContentManager @Inject constructor(
             try {
                 _downloadState.value = SteamDownloadState.Preparing(appId, gameName)
 
-                // Download to internal storage first (no permission issues)
-                // Then move to final location after completion
-                val internalDownloadDir = File(context.filesDir, "steam_downloads/$appId")
-                val internalStagingDir = File(context.filesDir, "steam_downloads/${appId}_staging")
-                val finalInstallDir = getInstallDir(appId)
+                // Download directly to final destination (GN path or fallback)
+                // Staging dir stays on internal storage (temporary compressed chunks)
+                val installDir = getInstallDir(appId)
+                val stagingDir = File(context.filesDir, "steam_staging/${appId}")
 
                 Log.d(TAG, "Download paths for $appId:")
-                Log.d(TAG, "  Internal download: ${internalDownloadDir.absolutePath}")
-                Log.d(TAG, "  Internal staging: ${internalStagingDir.absolutePath}")
-                Log.d(TAG, "  Final destination: ${finalInstallDir.absolutePath}")
+                Log.d(TAG, "  Install (final): ${installDir.absolutePath}")
+                Log.d(TAG, "  Staging (temp): ${stagingDir.absolutePath}")
 
-                // Use internal paths for download
-                val installDir = internalDownloadDir
-                val stagingDir = internalStagingDir
-
-                // Pre-create directories
                 installDir.mkdirs()
                 stagingDir.mkdirs()
                 Log.d(TAG, "Created download directories: install=${installDir.exists()}, staging=${stagingDir.exists()}")
+
+                // Mark download in progress (GN pattern)
+                File(installDir, ".download_complete").delete()
+                File(installDir, ".download_in_progress").createNewFile()
 
                 _activeDownload.value = SteamDownloadProgress(
                     appId = appId,
@@ -595,48 +592,29 @@ class SteamContentManager @Inject constructor(
                     return@launch
                 }
 
-                // Move from internal storage to final destination
-                Log.d(TAG, "Download complete, moving to final location...")
-                Log.d(TAG, "  From: ${installDir.absolutePath}")
-                Log.d(TAG, "  To: ${finalInstallDir.absolutePath}")
+                // Clean up staging dir (compressed chunks already extracted to installDir)
+                stagingDir.deleteRecursively()
+                Log.d(TAG, "Download complete at: ${installDir.absolutePath}")
 
-                _downloadState.value = SteamDownloadState.Moving(appId, gameName)
-                _activeDownload.value = _activeDownload.value?.copy(
-                    progress = 1f,
-                    state = SteamDownloadState.Moving(appId, gameName)
-                )
-
-                finalInstallDir.parentFile?.mkdirs()
-                val moveSuccess = moveDirectory(installDir, finalInstallDir)
-
-                if (!moveSuccess) {
-                    Log.e(TAG, "Failed to move download to final location")
-                    _downloadState.value = SteamDownloadState.Failed(appId, gameName, "Failed to move to storage location")
-                    return@launch
-                }
-
-                // Clean up internal download directory
-                installDir.deleteRecursively()
-                Log.d(TAG, "Moved download to: ${finalInstallDir.absolutePath}")
-
-                // Create GameNative markers if targeting GN path
-                if (finalInstallDir.absolutePath.contains(GN_PACKAGE)) {
-                    createGnMarkers(finalInstallDir)
-                }
+                // Replace in-progress marker with completion marker
+                File(installDir, ".download_in_progress").delete()
+                File(installDir, ".download_complete").createNewFile()
+                File(installDir, ".DownloadInfo").mkdirs()
+                Log.d(TAG, "Created GN markers at ${installDir.absolutePath}")
 
                 // Update game with local path
                 gameDao.getBySteamAppId(appId)?.let { game ->
                     gameDao.update(game.copy(
-                        localPath = finalInstallDir.absolutePath,
+                        localPath = installDir.absolutePath,
                         source = GameSource.STEAM
                     ))
                 }
 
-                val completedState = SteamDownloadState.Completed(appId, gameName, finalInstallDir.absolutePath)
+                val completedState = SteamDownloadState.Completed(appId, gameName, installDir.absolutePath)
                 _downloadState.value = completedState
 
                 // Add to completed list
-                val finalSize = getDirectorySize(finalInstallDir)
+                val finalSize = getDirectorySize(installDir)
                 val completedProgress = SteamDownloadProgress(
                     appId = appId,
                     gameName = gameName,
@@ -835,19 +813,17 @@ class SteamContentManager @Inject constructor(
         return name.replace(Regex("[<>:\"/\\\\|?*]"), "_").trim()
     }
 
-    private fun createGnMarkers(installDir: File) {
-        try {
-            File(installDir, ".download_complete").createNewFile()
-            File(installDir, ".DownloadInfo").mkdirs()
-            Log.d(TAG, "Created GN markers at ${installDir.absolutePath}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create GN markers", e)
-        }
-    }
 
     fun isGameInstalled(appId: Long): Boolean {
         val game = kotlinx.coroutines.runBlocking { gameDao.getBySteamAppId(appId) }
-        return game?.localPath != null && File(game.localPath!!).exists()
+        val path = game?.localPath ?: return false
+        return File(path, ".download_complete").exists()
+    }
+
+    fun isGameDownloading(appId: Long): Boolean {
+        val game = kotlinx.coroutines.runBlocking { gameDao.getBySteamAppId(appId) }
+        val path = game?.localPath ?: return false
+        return File(path, ".download_in_progress").exists()
     }
 
     private fun getDirectorySize(dir: File): Long {
