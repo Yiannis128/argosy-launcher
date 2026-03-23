@@ -77,6 +77,7 @@ class HomeDownloadDelegate @Inject constructor(
         }
 
         // Steam downloads -- observe downloadState for pause persistence
+        var lastSteamGameId: Long? = null
         scope.launch {
             steamContentManager.downloadState.collect { steamState ->
                 val appId = when (steamState) {
@@ -86,10 +87,15 @@ class HomeDownloadDelegate @Inject constructor(
                     is SteamDownloadState.Paused -> steamState.appId
                     is SteamDownloadState.Completed -> steamState.appId
                     is SteamDownloadState.Failed -> steamState.appId
-                    is SteamDownloadState.Idle -> null
+                    is SteamDownloadState.Idle -> {
+                        lastSteamGameId?.let { _downloadIndicators.value = _downloadIndicators.value - it }
+                        lastSteamGameId = null
+                        return@collect
+                    }
                 }
                 if (appId == null) return@collect
                 val game = gameDao.getBySteamAppId(appId) ?: return@collect
+                lastSteamGameId = game.id
                 val activeDl = steamContentManager.activeDownload.value
                 val progress = activeDl?.progress ?: when (steamState) {
                     is SteamDownloadState.Paused -> steamState.progress
