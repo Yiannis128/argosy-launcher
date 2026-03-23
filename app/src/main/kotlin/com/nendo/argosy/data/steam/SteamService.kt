@@ -166,9 +166,13 @@ class SteamService : Service() {
             if (!callback.isUserInitiated && isRunning) {
                 scope.launch {
                     kotlinx.coroutines.delay(5000)
-                    if (isRunning) {
+                    val hasAccount = steamAuthManager.getActiveAccount() != null
+                    if (isRunning && hasAccount) {
                         Log.d(TAG, "Attempting reconnect...")
                         connect()
+                    } else {
+                        Log.d(TAG, "No active account, stopping reconnect")
+                        isRunning = false
                     }
                 }
             }
