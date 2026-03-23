@@ -635,6 +635,31 @@ data class NotInstalledSteamLauncher(
 )
 
 data class SteamSettingsState(
+    // GameNative
+    val gnInstalled: Boolean = false,
+    val gnStoragePath: String? = null,
+
+    // Steam connection
+    val connectionState: com.nendo.argosy.data.steam.SteamConnectionState =
+        com.nendo.argosy.data.steam.SteamConnectionState.DISCONNECTED,
+    val username: String? = null,
+    val error: String? = null,
+
+    // QR auth
+    val qrUrl: String? = null,
+    val authPolling: Boolean = false,
+
+    // Library sync
+    val syncState: com.nendo.argosy.data.steam.LibrarySyncState =
+        com.nendo.argosy.data.steam.LibrarySyncState.Idle,
+
+    // Manual add
+    val showAddGameDialog: Boolean = false,
+    val addGameAppId: String = "",
+    val addGameError: String? = null,
+    val isAddingGame: Boolean = false,
+
+    // Legacy fields (used by GameDataSection/routers -- remove when those are reworked)
     val hasStoragePermission: Boolean = false,
     val installedLaunchers: List<InstalledSteamLauncher> = emptyList(),
     val notInstalledLaunchers: List<NotInstalledSteamLauncher> = emptyList(),
@@ -642,10 +667,6 @@ data class SteamSettingsState(
     val downloadProgress: Float? = null,
     val isSyncing: Boolean = false,
     val syncingLauncher: String? = null,
-    val showAddGameDialog: Boolean = false,
-    val addGameAppId: String = "",
-    val addGameError: String? = null,
-    val isAddingGame: Boolean = false,
     val selectedLauncherPackage: String? = null,
     val launcherActionIndex: Int = 0,
     val variantPickerInfo: VariantPickerInfo? = null,

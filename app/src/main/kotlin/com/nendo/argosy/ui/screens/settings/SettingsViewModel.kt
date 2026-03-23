@@ -503,20 +503,33 @@ class SettingsViewModel @Inject constructor(
     fun moveLauncherActionFocus(delta: Int) = routeMoveLauncherActionFocus(this, delta)
     fun confirmLauncherAction() = routeConfirmLauncherAction(this)
 
-    fun scanSteamLauncher(packageName: String) = steamDelegate.scanSteamLauncher(context, viewModelScope, packageName)
-
     fun scanForAndroidGames() = routeScanForAndroidGames(this)
 
-    fun installSteamLauncher(emulatorId: String) = steamDelegate.installSteamLauncher(emulatorId, viewModelScope)
-    fun moveSteamVariantFocus(delta: Int) = steamDelegate.moveVariantPickerFocus(delta)
-    fun confirmSteamVariantSelection() = steamDelegate.confirmVariantSelection()
-    fun dismissSteamVariantPicker() = steamDelegate.dismissVariantPicker()
-    fun handleSteamVariantItemTap(index: Int) = steamDelegate.handleVariantPickerItemTap(index)
-    fun refreshSteamMetadata() = steamDelegate.refreshSteamMetadata(context, viewModelScope)
-    fun showAddSteamGameDialog(launcherPackage: String? = null) = steamDelegate.showAddSteamGameDialog(launcherPackage)
+    // Steam integration (new flow)
+    fun connectToSteam() = steamDelegate.connectToSteam(context)
+    fun startSteamQrAuth() = steamDelegate.startQrAuth()
+    fun cancelSteamQrAuth() = steamDelegate.cancelQrAuth()
+    fun syncSteamLibrary() = steamDelegate.syncLibrary()
+    fun disconnectSteam() = steamDelegate.disconnectSteam(viewModelScope)
+    fun resetSteamLibrary() = steamDelegate.resetLibrary(viewModelScope)
+    fun showAddSteamGameDialog() = steamDelegate.showAddSteamGameDialog()
+    @Suppress("UNUSED_PARAMETER")
+    fun showAddSteamGameDialog(launcherPackage: String?) = steamDelegate.showAddSteamGameDialog()
     fun dismissAddSteamGameDialog() = steamDelegate.dismissAddSteamGameDialog()
     fun setAddGameAppId(appId: String) = steamDelegate.setAddGameAppId(appId)
     fun confirmAddSteamGame() = steamDelegate.confirmAddSteamGame(context, viewModelScope)
+
+    // Legacy Steam methods (used by GameDataSection/routers)
+    @Suppress("UNUSED_PARAMETER")
+    fun scanSteamLauncher(packageName: String) {}
+    @Suppress("UNUSED_PARAMETER")
+    fun installSteamLauncher(emulatorId: String) {}
+    fun refreshSteamMetadata() {}
+    fun moveSteamVariantFocus(delta: Int) {}
+    fun confirmSteamVariantSelection() {}
+    fun dismissSteamVariantPicker() {}
+    @Suppress("UNUSED_PARAMETER")
+    fun handleSteamVariantItemTap(index: Int) {}
     fun checkRommConnection() = serverDelegate.checkRommConnection(viewModelScope)
 
     fun navigateBack(): Boolean = routeNavigateBack(this)

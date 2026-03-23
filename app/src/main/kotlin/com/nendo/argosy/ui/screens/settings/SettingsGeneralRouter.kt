@@ -719,13 +719,11 @@ internal fun routeGetLauncherIndexFromFocus(state: SettingsUiState): Int {
 }
 
 internal fun routeMoveLauncherActionFocus(vm: SettingsViewModel, delta: Int) {
-    val launcherIndex = routeGetLauncherIndexFromFocus(vm._uiState.value)
-    vm.steamDelegate.moveLauncherActionFocus(delta, launcherIndex)
+    // Legacy: launcher action focus was for old Steam launcher scan UI
 }
 
 internal fun routeConfirmLauncherAction(vm: SettingsViewModel) {
-    val launcherIndex = routeGetLauncherIndexFromFocus(vm._uiState.value)
-    vm.steamDelegate.confirmLauncherAction(vm.context, vm.viewModelScope, launcherIndex)
+    // Legacy: launcher action confirm was for old Steam launcher scan UI
 }
 
 // --- Bios focus helpers ---
