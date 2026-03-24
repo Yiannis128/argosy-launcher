@@ -206,7 +206,7 @@ class SteamSettingsDelegate @Inject constructor(
             notificationManager.show("Scanning ${launcher.displayName}...")
 
             val scannedGames = if (steamLauncher?.supportsScanning == true) {
-                withContext(Dispatchers.IO) { steamLauncher.scan(context) }
+                withContext(Dispatchers.IO) { steamLauncher.scan(context, androidDataAccessor) }
             } else {
                 emptyList()
             }

@@ -188,7 +188,10 @@ class SteamService : Service() {
                 )
                 steamAuthManager.onLoggedOn(callback)
                 steamContentManager.notifyConnected()
-                scope.launch { steamContentManager.restorePausedDownloads() }
+                scope.launch {
+                    steamContentManager.discoverLocalSteamGames()
+                    steamContentManager.restorePausedDownloads()
+                }
             } else {
                 Log.e(TAG, "Login failed: ${callback.result}")
                 _state.value = _state.value.copy(

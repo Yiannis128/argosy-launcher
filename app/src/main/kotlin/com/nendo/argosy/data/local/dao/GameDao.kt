@@ -226,6 +226,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE steamAppId = :steamAppId")
     suspend fun getBySteamAppId(steamAppId: Long): GameEntity?
 
+    @Query("SELECT * FROM games WHERE steamAppId IS NOT NULL")
+    suspend fun getAllWithSteamAppId(): List<GameEntity>
+
     @Query("UPDATE games SET igdbId = :igdbId WHERE id = :gameId")
     suspend fun updateIgdbId(gameId: Long, igdbId: Long)
 

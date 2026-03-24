@@ -3,6 +3,7 @@ package com.nendo.argosy.data.launcher
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import com.nendo.argosy.data.storage.AndroidDataAccessor
 
 object GameNativeLauncher : SteamLauncher {
     override val packageName = "app.gamenative"
@@ -15,6 +16,6 @@ object GameNativeLauncher : SteamLauncher {
         putExtra("app_id", steamAppId.toInt())
     }
 
-    override suspend fun scan(context: Context): List<ScannedSteamGame> =
-        GameNativeScanner.scan(context)
+    override suspend fun scan(context: Context, androidDataAccessor: AndroidDataAccessor?): List<ScannedSteamGame> =
+        GameNativeScanner.scan(context, androidDataAccessor)
 }

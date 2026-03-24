@@ -3,6 +3,7 @@ package com.nendo.argosy.data.launcher
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import com.nendo.argosy.data.storage.AndroidDataAccessor
 
 object GameHubLiteAntutuLauncher : SteamLauncher {
     override val packageName = "com.antutu.ABenchMark"
@@ -20,6 +21,6 @@ object GameHubLiteAntutuLauncher : SteamLauncher {
         putExtra("autoStartGame", true)
     }
 
-    override suspend fun scan(context: Context): List<ScannedSteamGame> =
+    override suspend fun scan(context: Context, androidDataAccessor: AndroidDataAccessor?): List<ScannedSteamGame> =
         GameHubLogScanner.scan(packageName)
 }

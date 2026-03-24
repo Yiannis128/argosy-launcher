@@ -144,71 +144,81 @@ class DownloadsViewModel @Inject constructor(
         }
 
         // Convert Steam downloads to DownloadProgress entries
-        // Observe both activeDownload (for progress) and downloadState (for paused persistence)
+        // Observe active download, state, and queue
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 steamContentManager.activeDownload,
-                steamContentManager.downloadState
-            ) { activeDl, dlState -> activeDl to dlState }.collect { (activeDl, steamState) ->
-                android.util.Log.d("DownloadsVM", "Steam combine: activeDl=${activeDl?.state?.javaClass?.simpleName}, dlState=${steamState.javaClass.simpleName}")
-                val appId: Long
-                val gameName: String
-                val coverPath: String?
-                val totalBytes: Long
-                val bytesDownloaded: Long
-                val progress: Float
+                steamContentManager.downloadState,
+                steamContentManager.downloadQueue
+            ) { activeDl, dlState, queue -> Triple(activeDl, dlState, queue) }.collect { (activeDl, steamState, queue) ->
+                val items = mutableListOf<DownloadProgress>()
 
+                // Active/paused download
+                val activeAppId: Long?
                 when {
                     activeDl != null -> {
-                        appId = activeDl.appId
-                        gameName = activeDl.gameName
-                        coverPath = activeDl.coverPath
-                        totalBytes = activeDl.totalBytes
-                        bytesDownloaded = activeDl.bytesDownloaded
-                        progress = activeDl.progress
+                        activeAppId = activeDl.appId
+                        val mappedState = when (steamState) {
+                            is SteamDownloadState.Downloading -> DownloadState.DOWNLOADING
+                            is SteamDownloadState.Preparing -> DownloadState.QUEUED
+                            is SteamDownloadState.Moving -> DownloadState.EXTRACTING
+                            is SteamDownloadState.Paused -> DownloadState.PAUSED
+                            is SteamDownloadState.Completed -> DownloadState.COMPLETED
+                            is SteamDownloadState.Failed -> DownloadState.FAILED
+                            is SteamDownloadState.Idle -> DownloadState.QUEUED
+                        }
+                        val game = gameDao.getBySteamAppId(activeDl.appId)
+                        items.add(DownloadProgress(
+                            id = -activeDl.appId,
+                            gameId = game?.id ?: 0L,
+                            rommId = 0L,
+                            platformSlug = "steam",
+                            gameTitle = activeDl.gameName,
+                            fileName = "",
+                            totalBytes = activeDl.totalBytes,
+                            bytesDownloaded = activeDl.bytesDownloaded,
+                            state = mappedState,
+                            coverPath = activeDl.coverPath
+                        ))
                     }
                     steamState is SteamDownloadState.Paused -> {
-                        appId = steamState.appId
-                        gameName = steamState.gameName
-                        coverPath = null
-                        totalBytes = 0L
-                        bytesDownloaded = 0L
-                        progress = steamState.progress
+                        activeAppId = steamState.appId
+                        val game = gameDao.getBySteamAppId(steamState.appId)
+                        items.add(DownloadProgress(
+                            id = -steamState.appId,
+                            gameId = game?.id ?: 0L,
+                            rommId = 0L,
+                            platformSlug = "steam",
+                            gameTitle = steamState.gameName,
+                            fileName = "",
+                            totalBytes = 0L,
+                            bytesDownloaded = 0L,
+                            state = DownloadState.PAUSED,
+                            coverPath = game?.coverPath
+                        ))
                     }
-                    else -> {
-                        _steamDownloads.value = emptyList()
-                        return@collect
-                    }
+                    else -> activeAppId = null
                 }
 
-                val mappedState = when (steamState) {
-                    is SteamDownloadState.Downloading -> DownloadState.DOWNLOADING
-                    is SteamDownloadState.Preparing -> DownloadState.QUEUED
-                    is SteamDownloadState.Moving -> DownloadState.EXTRACTING
-                    is SteamDownloadState.Paused -> DownloadState.PAUSED
-                    is SteamDownloadState.Completed -> DownloadState.COMPLETED
-                    is SteamDownloadState.Failed -> DownloadState.FAILED
-                    is SteamDownloadState.Idle -> {
-                        _steamDownloads.value = emptyList()
-                        return@collect
-                    }
-                }
-
-                val game = gameDao.getBySteamAppId(appId)
-                _steamDownloads.value = listOf(
-                    DownloadProgress(
-                        id = -appId,
+                // Queued paused downloads (restored items waiting for resume)
+                for (queued in queue) {
+                    if (queued.appId == activeAppId) continue
+                    val game = gameDao.getBySteamAppId(queued.appId)
+                    items.add(DownloadProgress(
+                        id = -queued.appId,
                         gameId = game?.id ?: 0L,
                         rommId = 0L,
                         platformSlug = "steam",
-                        gameTitle = gameName,
+                        gameTitle = queued.gameName,
                         fileName = "",
-                        totalBytes = totalBytes,
-                        bytesDownloaded = bytesDownloaded,
-                        state = mappedState,
-                        coverPath = coverPath
-                    )
-                )
+                        totalBytes = 0L,
+                        bytesDownloaded = 0L,
+                        state = DownloadState.PAUSED,
+                        coverPath = queued.coverPath
+                    ))
+                }
+
+                _steamDownloads.value = items
             }
         }
     }
@@ -232,11 +242,12 @@ class DownloadsViewModel @Inject constructor(
 
     fun toggleFocusedItem() {
         val item = _uiState.value.focusedItem ?: return
+        android.util.Log.d("DownloadsVM", "toggleFocusedItem: id=${item.id}, state=${item.state}, isSteam=${isSteamItem(item)}")
         if (isSteamItem(item)) {
             when (item.state) {
                 DownloadState.DOWNLOADING -> steamContentManager.pauseDownload()
-                DownloadState.PAUSED -> {} // Resume handled by re-triggering download from game detail
-                else -> {}
+                DownloadState.PAUSED -> resumeSteamDownload(item)
+                else -> android.util.Log.d("DownloadsVM", "Steam item in unhandled state: ${item.state}")
             }
             return
         }
@@ -246,6 +257,23 @@ class DownloadsViewModel @Inject constructor(
                 downloadManager.resumeDownload(item.gameId)
             DownloadState.QUEUED -> downloadManager.pauseDownload(item.rommId)
             else -> {}
+        }
+    }
+
+    private fun resumeSteamDownload(item: DownloadProgress) {
+        val steamAppId = -item.id // Steam items use negative appId as id
+        android.util.Log.d("DownloadsVM", "resumeSteamDownload: steamAppId=$steamAppId")
+        viewModelScope.launch {
+            val game = gameDao.getBySteamAppId(steamAppId)
+            android.util.Log.d("DownloadsVM", "resumeSteamDownload: game=${game?.title}, connected=${steamContentManager.isConnected()}")
+            if (game == null) return@launch
+            try {
+                val appInfo = steamContentManager.fetchAppInfo(steamAppId.toInt())
+                android.util.Log.d("DownloadsVM", "resumeSteamDownload: got appInfo, queueing")
+                steamContentManager.queueDownload(steamAppId, game.title, appInfo, game.coverPath)
+            } catch (e: Exception) {
+                android.util.Log.e("DownloadsVM", "Failed to resume Steam download: ${e.message}", e)
+            }
         }
     }
 

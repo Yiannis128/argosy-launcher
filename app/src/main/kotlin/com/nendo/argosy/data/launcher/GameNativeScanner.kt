@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Environment
 import android.util.Log
 import com.nendo.argosy.data.remote.steam.SteamStoreSearchApi
+import com.nendo.argosy.data.storage.AndroidDataAccessor
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,16 +38,19 @@ object GameNativeScanner {
             .create(SteamStoreSearchApi::class.java)
     }
 
-    suspend fun scan(context: Context): List<ScannedSteamGame> = withContext(Dispatchers.IO) {
+    suspend fun scan(context: Context, androidDataAccessor: AndroidDataAccessor? = null): List<ScannedSteamGame> = withContext(Dispatchers.IO) {
         val games = mutableListOf<ScannedSteamGame>()
 
         val storagePaths = getStoragePaths(context)
         Log.d(TAG, "Scanning ${storagePaths.size} storage paths")
 
         for (storagePath in storagePaths) {
-            val commonDir = File(storagePath, "Android/data/$PACKAGE_NAME/$STEAM_COMMON_PATH")
-            if (!commonDir.exists() || !commonDir.canRead()) {
-                Log.d(TAG, "Skipping inaccessible path: ${commonDir.absolutePath}")
+            val gnCommonPath = "${storagePath.absolutePath}/Android/data/$PACKAGE_NAME/$STEAM_COMMON_PATH"
+            // Try raw path first (SD card), then alt-access (internal)
+            val commonDir = File(gnCommonPath).takeIf { it.exists() && it.canRead() }
+                ?: androidDataAccessor?.getFile(gnCommonPath)?.takeIf { it.exists() && it.canRead() }
+            if (commonDir == null) {
+                Log.d(TAG, "Skipping inaccessible path: $gnCommonPath")
                 continue
             }
 

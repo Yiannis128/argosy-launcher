@@ -59,7 +59,7 @@ fun GameEntity.toGameDetailUi(
         hasMultipleCores = hasMultipleCores,
         selectedCoreName = selectedCoreName,
         canManageSaves = canManageSaves,
-        isSteamGame = source == GameSource.STEAM,
+        isSteamGame = source == GameSource.STEAM || steamAppId != null,
         steamLauncherName = steamLauncherName,
         isAndroidApp = source == GameSource.ANDROID_APP || platformSlug == "android",
         packageName = packageName,

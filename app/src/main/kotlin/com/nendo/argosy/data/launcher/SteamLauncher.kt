@@ -3,6 +3,7 @@ package com.nendo.argosy.data.launcher
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import com.nendo.argosy.data.storage.AndroidDataAccessor
 
 interface SteamLauncher {
     val packageName: String
@@ -21,5 +22,5 @@ interface SteamLauncher {
 
     fun createLaunchIntent(steamAppId: Long): Intent
 
-    suspend fun scan(context: Context): List<ScannedSteamGame> = emptyList()
+    suspend fun scan(context: Context, androidDataAccessor: AndroidDataAccessor? = null): List<ScannedSteamGame> = emptyList()
 }
