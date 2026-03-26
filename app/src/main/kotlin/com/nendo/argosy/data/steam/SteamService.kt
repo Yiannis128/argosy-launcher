@@ -276,8 +276,7 @@ class SteamService : Service() {
                 steamId = null
             )
             if (callback.result == `in`.dragonbra.javasteam.enums.EResult.LogonSessionReplaced) {
-                Log.d(TAG, "Session replaced externally, stopping service (tokens preserved)")
-                isRunning = false
+                Log.d(TAG, "Session replaced externally, tokens preserved -- will reconnect with unique loginID")
             }
         }
     }

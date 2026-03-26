@@ -52,8 +52,13 @@ sealed class SteamAuthEvent {
 @Singleton
 class SteamAuthManager @Inject constructor(
     private val steamAccountDao: SteamAccountDao,
-    private val notificationManager: NotificationManager
+    private val notificationManager: NotificationManager,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) {
+    private val loginID: Int by lazy {
+        val raw = "${android.os.Build.MANUFACTURER}_${android.os.Build.MODEL}_${android.os.Build.SERIAL}_argosy"
+        raw.hashCode() and 0x7FFFFFFF
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var steamClient: SteamClient? = null
@@ -180,7 +185,7 @@ class SteamAuthManager @Inject constructor(
                     Log.w(TAG, "Steam rate limiting ($result), keeping account")
                     notificationManager.show(
                         title = "Steam temporarily unavailable",
-                        subtitle = "Try again in a few minutes",
+                        subtitle = "Too many login attempts. Wait about an hour and try again",
                         type = NotificationType.INFO,
                         key = "steam_rate_limited"
                     )
@@ -267,11 +272,12 @@ class SteamAuthManager @Inject constructor(
             return
         }
 
-        Log.d(TAG, "Logging in with auth result for ${result.accountName} (client connected: ${client.isConnected})")
+        Log.d(TAG, "Logging in with auth result for ${result.accountName} (client connected: ${client.isConnected}, loginID=$loginID)")
         val logonDetails = LogOnDetails()
         logonDetails.username = result.accountName
         logonDetails.accessToken = result.refreshToken
         logonDetails.shouldRememberPassword = true
+        logonDetails.loginID = loginID
 
         user.logOn(logonDetails)
     }
@@ -283,11 +289,12 @@ class SteamAuthManager @Inject constructor(
             return
         }
 
-        Log.d(TAG, "Auto-login with saved token for ${account.username}")
+        Log.d(TAG, "Auto-login with saved token for ${account.username} (loginID=$loginID)")
         val logonDetails = LogOnDetails()
         logonDetails.username = account.username
         logonDetails.accessToken = account.refreshToken
         logonDetails.shouldRememberPassword = true
+        logonDetails.loginID = loginID
 
         user.logOn(logonDetails)
     }
