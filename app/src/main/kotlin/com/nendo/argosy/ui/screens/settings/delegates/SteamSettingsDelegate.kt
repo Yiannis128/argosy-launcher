@@ -244,6 +244,15 @@ class SteamSettingsDelegate @Inject constructor(
 
     fun connectToSteam(context: Context) {
         pendingQrAuth = true
+        // Optimistically move to CONNECTING so the UI shows a spinner
+        // immediately rather than flickering back to the connect button
+        // while the service starts up.
+        _state.update {
+            it.copy(
+                connectionState = SteamConnectionState.CONNECTING,
+                error = null
+            )
+        }
         val intent = Intent(context, SteamService::class.java).apply {
             putExtra(SteamService.EXTRA_CONNECT_FOR_AUTH, true)
         }
@@ -266,10 +275,17 @@ class SteamSettingsDelegate @Inject constructor(
     }
 
     fun startQrAuth() {
+        // If connectToSteam was called, pendingQrAuth is already set and
+        // observeServiceState will trigger startQrAuth once the client is
+        // CONNECTED.  Calling steamAuthManager.startQrAuth() before the
+        // client exists produces QrAuthState.Error which flashes the error
+        // screen during a normal connect flow.
+        if (pendingQrAuth) return
         steamAuthManager.startQrAuth()
     }
 
     fun cancelQrAuth() {
+        pendingQrAuth = false
         steamAuthManager.cancelQrAuth()
     }
 
@@ -354,11 +370,23 @@ class SteamSettingsDelegate @Inject constructor(
         scope.launch {
             serviceRef?.state?.collect { serviceState ->
                 _state.update {
-                    // Only show errors during active user-initiated auth flows
-                    val showError = serviceState.error != null &&
+                    // While a connect-for-auth is in flight, suppress transient
+                    // DISCONNECTED states (old client teardown) and errors so the
+                    // UI stays on the spinner instead of flashing error/connect.
+                    val suppressing = pendingQrAuth &&
+                        serviceState.connectionState == SteamConnectionState.DISCONNECTED
+
+                    val effectiveConnection = if (suppressing)
+                        SteamConnectionState.CONNECTING
+                    else
+                        serviceState.connectionState
+
+                    val showError = !suppressing &&
+                        serviceState.error != null &&
                         (it.authPolling || it.qrUrl != null)
+
                     it.copy(
-                        connectionState = serviceState.connectionState,
+                        connectionState = effectiveConnection,
                         username = serviceState.username ?: it.username,
                         error = if (showError) serviceState.error else null
                     )

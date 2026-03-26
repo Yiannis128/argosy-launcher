@@ -114,9 +114,9 @@ class SteamLibraryManager @Inject constructor(
         syncMutex.withLock {
             _syncState.value = LibrarySyncState.SyncingLicenses
 
-            val account = steamAccountDao.getActiveAccount()
+            val account = steamAccountDao.getAnyAccount()
             if (account == null) {
-                Log.e(TAG, "No active account for license storage")
+                Log.e(TAG, "No saved account for license storage")
                 _syncState.value = LibrarySyncState.Error("No active account")
                 return
             }

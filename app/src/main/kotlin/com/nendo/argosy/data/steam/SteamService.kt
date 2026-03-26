@@ -114,6 +114,11 @@ class SteamService : Service() {
                 kotlinx.coroutines.delay(500)
                 connectForAuth()
             }
+        } else if (intent?.getBooleanExtra(EXTRA_FORCE_CONNECT, false) == true) {
+            scope.launch {
+                Log.d(TAG, "Force connecting to Steam (on-demand)")
+                connect()
+            }
         } else if (intent?.getBooleanExtra(EXTRA_AUTO_CONNECT, false) == true) {
             scope.launch {
                 kotlinx.coroutines.delay(100)
@@ -122,7 +127,6 @@ class SteamService : Service() {
                     Log.d(TAG, "No saved account, skipping connect")
                     return@launch
                 }
-                // Only auto-connect if there are paused downloads waiting
                 val hasPausedDownloads = steamContentManager.downloadState.value is SteamDownloadState.Paused
                 if (hasPausedDownloads) {
                     Log.d(TAG, "Paused downloads found, auto-connecting for ${account.username}")
@@ -138,6 +142,7 @@ class SteamService : Service() {
 
     companion object {
         const val EXTRA_AUTO_CONNECT = "auto_connect"
+        const val EXTRA_FORCE_CONNECT = "force_connect"
         const val EXTRA_CONNECT_FOR_AUTH = "connect_for_auth"
         private const val MAX_RECONNECT_ATTEMPTS = 5
         private const val STEAM_SERVICE_NOTIFICATION_ID = 0x2001
@@ -218,12 +223,6 @@ class SteamService : Service() {
                         return@launch
                     }
                     kotlinx.coroutines.delay(500)
-                    val hasAccount = steamAuthManager.getActiveAccount() != null
-                    if (!hasAccount) {
-                        Log.d(TAG, "No active account, stopping reconnect")
-                        isRunning = false
-                        return@launch
-                    }
                     if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
                         Log.e(TAG, "Max reconnect attempts ($MAX_RECONNECT_ATTEMPTS) reached, giving up")
                         isRunning = false
@@ -276,10 +275,9 @@ class SteamService : Service() {
                 username = null,
                 steamId = null
             )
-            // Session replaced (e.g. user logged in on PC) -- preserve tokens, just reconnect
-            if (callback.result == `in`.dragonbra.javasteam.enums.EResult.LogonSessionReplaced ||
-                callback.result == `in`.dragonbra.javasteam.enums.EResult.LoggedInElsewhere) {
-                Log.d(TAG, "Session replaced externally, tokens preserved for reconnect")
+            if (callback.result == `in`.dragonbra.javasteam.enums.EResult.LogonSessionReplaced) {
+                Log.d(TAG, "Session replaced externally, stopping service (tokens preserved)")
+                isRunning = false
             }
         }
     }
@@ -289,6 +287,7 @@ class SteamService : Service() {
     private var suppressDisconnectError = false
 
     private fun connectForAuth() {
+        steamAuthManager.connectingForAuth = true
         suppressDisconnectError = true
         _state.value = _state.value.copy(connectionState = SteamConnectionState.CONNECTING, error = null)
         try { steamClient?.disconnect() } catch (_: Throwable) {}

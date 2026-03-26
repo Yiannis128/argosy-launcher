@@ -292,6 +292,16 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             contentPadding = PaddingValues(top = Dimens.spacingMd, bottom = Dimens.spacingXxl),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
+            // State priority: GN check -> QR visible -> auth in progress ->
+            // connecting -> idle error -> default (connect button).
+            //
+            // Errors are only surfaced when the user is idle (DISCONNECTED, no
+            // active auth flow).  Transient errors during connect/reconnect are
+            // swallowed so the user never sees a flash.
+            //
+            // CONNECTED/LOGGING_IN without an active auth flow means the user
+            // cancelled QR auth while the TCP connection was still alive -- show
+            // the connect button, not a stuck "Logging in" spinner.
             when {
                 !steam.gnInstalled -> item {
                     GnNotInstalledContent(
@@ -304,22 +314,6 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     )
                 }
 
-                steam.connectionState == SteamConnectionState.DISCONNECTED &&
-                    steam.error == null && !steam.authPolling -> item {
-                    NotConnectedContent(
-                        isFocused = uiState.focusedIndex == 0,
-                        onConnect = {
-                            viewModel.connectToSteam()
-                            viewModel.startSteamQrAuth()
-                        }
-                    )
-                }
-
-                steam.connectionState == SteamConnectionState.CONNECTING ||
-                    (steam.authPolling && steam.qrUrl == null) -> item {
-                    ConnectingContent()
-                }
-
                 steam.qrUrl != null -> item {
                     QrAuthContent(
                         qrUrl = steam.qrUrl,
@@ -328,12 +322,16 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     )
                 }
 
-                steam.connectionState == SteamConnectionState.CONNECTED ||
-                    steam.connectionState == SteamConnectionState.LOGGING_IN -> item {
-                    ConnectingContent(message = "Logging in...")
+                steam.authPolling -> item {
+                    ConnectingContent()
                 }
 
-                steam.error != null -> item {
+                steam.connectionState == SteamConnectionState.CONNECTING -> item {
+                    ConnectingContent()
+                }
+
+                steam.error != null &&
+                    steam.connectionState == SteamConnectionState.DISCONNECTED -> item {
                     ErrorContent(
                         message = steam.error,
                         isFocused = uiState.focusedIndex == 0,

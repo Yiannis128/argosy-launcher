@@ -17,6 +17,9 @@ interface SteamAccountDao {
     @Query("SELECT * FROM steam_accounts WHERE isActive = 1 LIMIT 1")
     suspend fun getActiveAccount(): SteamAccountEntity?
 
+    @Query("SELECT * FROM steam_accounts WHERE refreshToken IS NOT NULL AND refreshToken != '' ORDER BY lastLoginAt DESC LIMIT 1")
+    suspend fun getAnyAccount(): SteamAccountEntity?
+
     @Query("SELECT * FROM steam_accounts WHERE steamId = :steamId")
     suspend fun getBySteamId(steamId: Long): SteamAccountEntity?
 

@@ -9,6 +9,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.nendo.argosy.MainActivity
 import com.nendo.argosy.R
+import com.nendo.argosy.ui.common.toNotificationText
 import dagger.hilt.android.AndroidEntryPoint
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -100,26 +101,12 @@ class DownloadForegroundService : Service() {
 
                     // Steam notification takes priority when Steam is active
                     if (steamBusy && steamDl != null) {
-                        when (steamState) {
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Preparing ->
-                                updateNotification("Preparing: ${steamDl.gameName}", 0, 0)
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Connecting ->
-                                updateNotification("Connecting to Steam...", 0, 0)
-                            is com.nendo.argosy.data.steam.SteamDownloadState.FetchingManifest ->
-                                updateNotification("Fetching manifest: ${steamDl.gameName}", 0, 0)
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Validating ->
-                                updateNotification("Unpacking: ${steamDl.gameName}", 0, 0)
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Downloading -> {
-                                val pct = (steamDl.progress * 100).toInt()
-                                updateNotification("Downloading: ${steamDl.gameName}", pct, 100)
-                            }
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Moving ->
-                                updateNotification("Moving: ${steamDl.gameName}", 0, 0)
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Cleaning ->
-                                updateNotification("Cleaning up: ${steamDl.gameName}", 0, 0)
-                            is com.nendo.argosy.data.steam.SteamDownloadState.Paused ->
-                                updateNotification("Paused: ${steamDl.gameName}", 0, 0)
-                            else -> {}
+                        val text = steamState.toNotificationText(steamDl.gameName)
+                        if (text != null) {
+                            updateNotification(text, 0, 0)
+                        } else if (steamState is com.nendo.argosy.data.steam.SteamDownloadState.Downloading) {
+                            val pct = (steamDl.progress * 100).toInt()
+                            updateNotification("Downloading: ${steamDl.gameName}", pct, 100)
                         }
                         return@collect
                     }

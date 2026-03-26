@@ -127,12 +127,12 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             if (!isLoggedIn(state.steam) && state.focusedIndex == 0) {
                 if (!state.steam.gnInstalled) {
                     // GN install -- handled by click
-                } else if (state.steam.connectionState == SteamConnectionState.DISCONNECTED && !state.steam.authPolling) {
-                    vm.connectToSteam()
-                    vm.startSteamQrAuth()
                 } else if (state.steam.qrUrl != null) {
                     vm.cancelSteamQrAuth()
-                } else if (state.steam.error != null) {
+                } else if (!state.steam.authPolling &&
+                    state.steam.connectionState != SteamConnectionState.CONNECTING) {
+                    // Idle state (DISCONNECTED, CONNECTED after cancel, or
+                    // error) -- start a fresh connect + QR auth flow.
                     vm.connectToSteam()
                     vm.startSteamQrAuth()
                 }

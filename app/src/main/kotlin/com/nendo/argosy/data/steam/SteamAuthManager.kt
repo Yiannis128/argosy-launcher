@@ -60,7 +60,7 @@ class SteamAuthManager @Inject constructor(
     private var steamUser: SteamUser? = null
     private var qrAuthSession: QrAuthSession? = null
     private var authPollJob: Job? = null
-    private var qrCancelled = false
+    var connectingForAuth = false
     private var lastClientId: Long? = null
     @Volatile var sessionDead = false
         private set
@@ -81,7 +81,8 @@ class SteamAuthManager @Inject constructor(
         steamUser = user
         Log.d(TAG, "Steam client connected, ready for auth")
 
-        val qrActive = _qrAuthState.value is QrAuthState.WaitingForScan ||
+        val qrActive = connectingForAuth ||
+            _qrAuthState.value is QrAuthState.WaitingForScan ||
             _qrAuthState.value is QrAuthState.Polling ||
             _qrAuthState.value is QrAuthState.Starting
         if (qrActive) {
@@ -90,7 +91,7 @@ class SteamAuthManager @Inject constructor(
         }
 
         scope.launch {
-            val savedAccount = steamAccountDao.getActiveAccount()
+            val savedAccount = steamAccountDao.getAnyAccount()
             if (savedAccount != null) {
                 Log.d(TAG, "Found saved account: ${savedAccount.username}, attempting auto-login")
                 var attempts = 0
@@ -111,15 +112,14 @@ class SteamAuthManager @Inject constructor(
 
     fun onDisconnected() {
         _isLoggedIn.value = false
-        cancelQrAuth()
     }
 
     fun onLoggedOn(callback: LoggedOnCallback) {
         val steamId = callback.clientSteamID ?: return
-        val result = if (qrCancelled) null else pendingAuthResult
+        val result = pendingAuthResult
         pendingAuthResult = null
         sessionDead = false
-        qrCancelled = false
+        connectingForAuth = false
 
         _isLoggedIn.value = true
         Log.d(TAG, "Set isLoggedIn = true")
@@ -134,7 +134,6 @@ class SteamAuthManager @Inject constructor(
                     )
                 )
             } else {
-                // Auto-login succeeded -- update lastLoginAt to track token health
                 val account = steamAccountDao.getBySteamId(steamId.convertToUInt64())
                 if (account != null) {
                     steamAccountDao.update(account.copy(lastLoginAt = Instant.now()))
@@ -143,10 +142,12 @@ class SteamAuthManager @Inject constructor(
             }
         }
 
-        _qrAuthState.value = QrAuthState.Success(
-            username = result?.accountName ?: "Unknown",
-            steamId = steamId.convertToUInt64()
-        )
+        if (result != null) {
+            _qrAuthState.value = QrAuthState.Success(
+                username = result.accountName,
+                steamId = steamId.convertToUInt64()
+            )
+        }
     }
 
     private val AUTH_FATAL_RESULTS = setOf(
@@ -156,29 +157,39 @@ class SteamAuthManager @Inject constructor(
         EResult.ExpiredLoginAuthCode, EResult.ParentalControlRestricted
     )
 
+    private val RATE_LIMIT_RESULTS = setOf(
+        EResult.AccessDenied, EResult.RateLimitExceeded, EResult.TryAnotherCM
+    )
+
     fun onLoginFailed(result: EResult) {
-        if (qrCancelled) {
-            qrCancelled = false
-            Log.d(TAG, "Ignoring login failure after QR cancel: $result")
-            return
-        }
         scope.launch {
             _authEvents.emit(SteamAuthEvent.LoginFailed(result.name))
-            if (result in AUTH_FATAL_RESULTS) {
-                Log.w(TAG, "Auth permanently failed ($result), clearing saved account")
-                sessionDead = true
-                steamAccountDao.deactivateAll()
-                notificationManager.show(
-                    title = "Steam session expired",
-                    subtitle = "Sign in again from Settings > Steam",
-                    type = NotificationType.WARNING,
-                    key = "steam_auth_expired"
-                )
-            } else {
-                Log.w(TAG, "Login failed ($result), keeping account for retry")
+            when {
+                result in AUTH_FATAL_RESULTS -> {
+                    Log.w(TAG, "Auth permanently failed ($result), clearing saved account")
+                    sessionDead = true
+                    steamAccountDao.deactivateAll()
+                    notificationManager.show(
+                        title = "Steam session expired",
+                        subtitle = "Sign in again from Settings > Steam",
+                        type = NotificationType.WARNING,
+                        key = "steam_auth_expired"
+                    )
+                }
+                result in RATE_LIMIT_RESULTS -> {
+                    Log.w(TAG, "Steam rate limiting ($result), keeping account")
+                    notificationManager.show(
+                        title = "Steam temporarily unavailable",
+                        subtitle = "Try again in a few minutes",
+                        type = NotificationType.INFO,
+                        key = "steam_rate_limited"
+                    )
+                }
+                else -> {
+                    Log.w(TAG, "Login failed ($result), keeping account for retry")
+                }
             }
         }
-        // Only show error in UI for fatal auth failures, not transient reconnect issues
         if (result in AUTH_FATAL_RESULTS) {
             _qrAuthState.value = QrAuthState.Error("Login failed: ${result.name}")
         }
@@ -186,7 +197,7 @@ class SteamAuthManager @Inject constructor(
 
     fun startQrAuth() {
         sessionDead = false
-        qrCancelled = false
+        connectingForAuth = false
         val client = steamClient ?: run {
             _qrAuthState.value = QrAuthState.Error("Not connected to Steam")
             return
@@ -315,7 +326,6 @@ class SteamAuthManager @Inject constructor(
     }
 
     fun cancelQrAuth() {
-        qrCancelled = true
         authPollJob?.cancel()
         authPollJob = null
         qrAuthSession = null
@@ -333,7 +343,7 @@ class SteamAuthManager @Inject constructor(
     }
 
     suspend fun getActiveAccount(): SteamAccountEntity? {
-        return steamAccountDao.getActiveAccount()
+        return steamAccountDao.getAnyAccount()
     }
 
     suspend fun deleteAccount(accountId: Long) {

@@ -13,6 +13,7 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.update.ApkInstallManager
 import com.nendo.argosy.domain.usecase.download.DownloadResult
+import com.nendo.argosy.ui.common.toDownloadStatus
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.ui.input.SoundType
 import com.nendo.argosy.ui.notification.NotificationManager
@@ -145,22 +146,9 @@ class DownloadDelegate @Inject constructor(
                 val steamAppId = game.steamAppId ?: return@collect
                 if (steamDownload.appId != steamAppId) return@collect
 
-                val result: Pair<GameDownloadStatus, Float> = when (steamDownload.state) {
-                    is SteamDownloadState.Preparing,
-                    is SteamDownloadState.Connecting,
-                    is SteamDownloadState.FetchingManifest -> GameDownloadStatus.QUEUED to 0f
-                    is SteamDownloadState.Validating -> GameDownloadStatus.EXTRACTING to steamDownload.progress
-                    is SteamDownloadState.Downloading -> GameDownloadStatus.DOWNLOADING to steamDownload.progress
-                    is SteamDownloadState.Moving -> GameDownloadStatus.EXTRACTING to 1f
-                    is SteamDownloadState.Cleaning -> GameDownloadStatus.EXTRACTING to 0f
-                    is SteamDownloadState.Paused -> GameDownloadStatus.PAUSED to steamDownload.progress
-                    is SteamDownloadState.Completed -> {
-                        onCompleted(gameId)
-                        GameDownloadStatus.DOWNLOADED to 1f
-                    }
-                    is SteamDownloadState.Failed -> GameDownloadStatus.NOT_DOWNLOADED to 0f
-                    is SteamDownloadState.Idle -> return@collect
-                }
+                val result = steamDownload.state.toDownloadStatus(steamDownload.progress)
+                    ?: return@collect
+                if (steamDownload.state is SteamDownloadState.Completed) onCompleted(gameId)
 
                 val (status, progress) = result
                 _state.update { it.copy(downloadStatus = status, downloadProgress = progress) }

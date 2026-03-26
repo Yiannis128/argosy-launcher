@@ -111,6 +111,10 @@ fun CheatsScreen(
     var variantFocusIndex by remember { mutableIntStateOf(0) }
     val hasMultipleVariants = variants.size > 1
     val needsVariantSelection = hasMultipleVariants && selectedVariant == null
+    val currentNeedsVariantSelection by rememberUpdatedState(needsVariantSelection)
+    val currentHasMultipleVariants by rememberUpdatedState(hasMultipleVariants)
+    val currentVariants by rememberUpdatedState(variants)
+    val currentSelectedVariant by rememberUpdatedState(selectedVariant)
     val isDarkTheme = isSystemInDarkTheme()
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
@@ -148,6 +152,7 @@ fun CheatsScreen(
     fun getNextFocusIndex(current: Int, delta: Int): Int {
         return when (currentTab) {
             CheatsTab.CHEATS -> {
+                // Index 0 = search bar, indices 1..N = cheats, so max = size (not size-1)
                 val maxIndex = currentFilteredCheats.size
                 (current + delta).coerceIn(0, maxIndex)
             }
@@ -351,6 +356,7 @@ fun CheatsScreen(
                 }
             }
         }
+        add(InputButton.LB_RB to "Tab")
         add(InputButton.B to "Back")
     }
 
@@ -381,7 +387,7 @@ fun CheatsScreen(
                     variantFocusIndex = (variantFocusIndex - 1).coerceAtLeast(0)
                     return InputResult.HANDLED
                 }
-                if (needsVariantSelection && currentTab == CheatsTab.CHEATS) {
+                if (currentNeedsVariantSelection && currentTab == CheatsTab.CHEATS) {
                     contentFocusIndex = (contentFocusIndex - 1).coerceAtLeast(0)
                     return InputResult.HANDLED
                 }
@@ -391,11 +397,11 @@ fun CheatsScreen(
             override fun onDown(): InputResult {
                 if (isLoading) return InputResult.HANDLED
                 if (showVariantModal) {
-                    variantFocusIndex = (variantFocusIndex + 1).coerceAtMost(variants.lastIndex)
+                    variantFocusIndex = (variantFocusIndex + 1).coerceAtMost(currentVariants.lastIndex)
                     return InputResult.HANDLED
                 }
-                if (needsVariantSelection && currentTab == CheatsTab.CHEATS) {
-                    contentFocusIndex = (contentFocusIndex + 1).coerceAtMost(variants.lastIndex)
+                if (currentNeedsVariantSelection && currentTab == CheatsTab.CHEATS) {
+                    contentFocusIndex = (contentFocusIndex + 1).coerceAtMost(currentVariants.lastIndex)
                     return InputResult.HANDLED
                 }
                 contentFocusIndex = getNextFocusIndex(contentFocusIndex, 1)
@@ -426,7 +432,7 @@ fun CheatsScreen(
             override fun onConfirm(): InputResult {
                 if (isLoading) return InputResult.HANDLED
                 if (showVariantModal) {
-                    variants.getOrNull(variantFocusIndex)?.let { v ->
+                    currentVariants.getOrNull(variantFocusIndex)?.let { v ->
                         onSelectVariant(v.region, v.version)
                         showVariantModal = false
                     }
@@ -434,8 +440,8 @@ fun CheatsScreen(
                 }
                 when (currentTab) {
                     CheatsTab.CHEATS -> {
-                        if (needsVariantSelection) {
-                            variants.getOrNull(contentFocusIndex)?.let { v ->
+                        if (currentNeedsVariantSelection) {
+                            currentVariants.getOrNull(contentFocusIndex)?.let { v ->
                                 onSelectVariant(v.region, v.version)
                             }
                         } else if (contentFocusIndex == 0) {
@@ -491,9 +497,9 @@ fun CheatsScreen(
             }
             override fun onContextMenu(): InputResult {
                 if (isLoading) return InputResult.HANDLED
-                if (currentTab == CheatsTab.CHEATS && hasMultipleVariants && !needsVariantSelection) {
-                    variantFocusIndex = variants.indexOfFirst {
-                        it.region == selectedVariant?.first && it.version == selectedVariant?.second
+                if (currentTab == CheatsTab.CHEATS && currentHasMultipleVariants && !currentNeedsVariantSelection) {
+                    variantFocusIndex = currentVariants.indexOfFirst {
+                        it.region == currentSelectedVariant?.first && it.version == currentSelectedVariant?.second
                     }.coerceAtLeast(0)
                     showVariantModal = true
                     return InputResult.HANDLED

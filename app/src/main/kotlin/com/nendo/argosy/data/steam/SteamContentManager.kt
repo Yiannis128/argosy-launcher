@@ -292,14 +292,6 @@ class SteamContentManager @Inject constructor(
             if (isConnected() && currentDownloadJob?.isActive != true) {
                 Log.d(TAG, "Auto-resuming ${primary.gameName} (Steam connected)")
                 queueDownloadOptimistic(primary.appId, primary.gameName, primary.coverPath)
-            } else if (!isConnected()) {
-                val count = 1 + rest.size
-                notificationManager.show(
-                    title = "$count Steam download${if (count > 1) "s" else ""} paused",
-                    subtitle = "Open Downloads to resume",
-                    type = NotificationType.INFO,
-                    key = "steam_paused_downloads"
-                )
             }
         }
     }
@@ -485,12 +477,10 @@ class SteamContentManager @Inject constructor(
     suspend fun ensureConnected(): Boolean {
         if (steamClient != null && steamApps != null && steamAuthManager.isLoggedIn.value) return true
 
-        // Check if there's actually a saved account before waiting 30s
-        val hasAccount = steamAuthManager.getActiveAccount() != null
-        if (!hasAccount) {
-            Log.e(TAG, "No saved Steam account, cannot auto-connect")
+        if (steamAuthManager.sessionDead) {
+            Log.e(TAG, "Steam session dead, cannot auto-connect")
             notificationManager.show(
-                title = "Steam not signed in",
+                title = "Steam session expired",
                 subtitle = "Sign in from Settings > Steam to download",
                 type = NotificationType.WARNING,
                 key = "steam_not_signed_in"
@@ -506,7 +496,7 @@ class SteamContentManager @Inject constructor(
             _activeDownload.value = active.copy(state = connectingState)
         }
         val intent = android.content.Intent(context, SteamService::class.java).apply {
-            putExtra(SteamService.EXTRA_AUTO_CONNECT, true)
+            putExtra(SteamService.EXTRA_FORCE_CONNECT, true)
         }
         context.startService(intent)
 
@@ -595,6 +585,13 @@ class SteamContentManager @Inject constructor(
                 type = NotificationType.WARNING,
                 key = "steam_not_signed_in"
             )
+            // Revert to paused so the download stays visible
+            val active = _activeDownload.value
+            if (active != null) {
+                val pausedState = SteamDownloadState.Paused(appId, gameName, active.progress)
+                _downloadState.value = pausedState
+                _activeDownload.value = active.copy(state = pausedState)
+            }
             return
         }
         DownloadForegroundService.start(context)
@@ -691,9 +688,12 @@ class SteamContentManager @Inject constructor(
                 fetchAppInfo(next.appId.toInt())
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch app info for ${next.gameName}: ${e.message}")
-                val failedState = SteamDownloadState.Failed(next.appId, next.gameName, "Could not fetch app info: ${e.message}")
-                _downloadState.value = failedState
-                _activeDownload.value = _activeDownload.value?.copy(state = failedState)
+                val active = _activeDownload.value
+                if (active != null) {
+                    val pausedState = SteamDownloadState.Paused(next.appId, next.gameName, active.progress)
+                    _downloadState.value = pausedState
+                    _activeDownload.value = active.copy(state = pausedState)
+                }
                 return@launch
             }
             startDownload(next.appId, next.gameName, appInfo, next.coverPath)
