@@ -170,7 +170,22 @@ class SteamAuthManager @Inject constructor(
         scope.launch {
             _authEvents.emit(SteamAuthEvent.LoginFailed(result.name))
             when {
+                result in AUTH_FATAL_RESULTS && pendingAuthResult != null -> {
+                    // QR auth got a fresh token but login was rejected (rate limited
+                    // from prior attempts). Keep the account -- the token is valid,
+                    // just cooling down.
+                    Log.w(TAG, "QR auth login rejected ($result) during cooldown, keeping account")
+                    pendingAuthResult = null
+                    notificationManager.show(
+                        title = "Steam temporarily unavailable",
+                        subtitle = "Too many login attempts. Wait about an hour and try again",
+                        type = NotificationType.INFO,
+                        key = "steam_rate_limited"
+                    )
+                    _qrAuthState.value = QrAuthState.Error("Rate limited. Try again later")
+                }
                 result in AUTH_FATAL_RESULTS -> {
+                    // Auto-login with stored token failed -- token is dead.
                     Log.w(TAG, "Auth permanently failed ($result), clearing saved account")
                     sessionDead = true
                     steamAccountDao.deactivateAll()
@@ -180,6 +195,7 @@ class SteamAuthManager @Inject constructor(
                         type = NotificationType.WARNING,
                         key = "steam_auth_expired"
                     )
+                    _qrAuthState.value = QrAuthState.Error("Login failed: ${result.name}")
                 }
                 result in RATE_LIMIT_RESULTS -> {
                     Log.w(TAG, "Steam rate limiting ($result), keeping account")
@@ -194,9 +210,6 @@ class SteamAuthManager @Inject constructor(
                     Log.w(TAG, "Login failed ($result), keeping account for retry")
                 }
             }
-        }
-        if (result in AUTH_FATAL_RESULTS) {
-            _qrAuthState.value = QrAuthState.Error("Login failed: ${result.name}")
         }
     }
 
@@ -341,7 +354,7 @@ class SteamAuthManager @Inject constructor(
     }
 
     fun logout() {
-        steamUser?.logOff()
+        steamClient?.disconnect()
         scope.launch {
             steamAccountDao.deactivateAll()
             _authEvents.emit(SteamAuthEvent.LoggedOut)

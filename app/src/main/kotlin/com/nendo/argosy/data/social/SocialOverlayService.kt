@@ -273,7 +273,11 @@ class SocialOverlayService : Service() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_SUBTITLE, subtitle)
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "Cannot start overlay service from background: ${e.message}")
+            }
         }
     }
 }
