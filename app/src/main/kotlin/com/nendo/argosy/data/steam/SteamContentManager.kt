@@ -264,6 +264,18 @@ class SteamContentManager @Inject constructor(
             scope.launch(Dispatchers.IO) {
                 try {
                     finalDir.mkdirs()
+                    val destFree = android.os.StatFs(finalDir.absolutePath).availableBytes
+                    val stagingSize = getDirectorySize(stagingDir)
+                    if (destFree < stagingSize) {
+                        Log.e(TAG, "Insufficient destination space for deploy resume: ${destFree / 1024 / 1024}MB free, need ${stagingSize / 1024 / 1024}MB")
+                        steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.PAUSED.name,
+                            "Waiting for destination storage (need ${stagingSize / 1024 / 1024}MB)")
+                        _downloadState.value = SteamDownloadState.Paused(appId, gameName, 1f)
+                        _activeDownload.value = _activeDownload.value?.copy(
+                            state = SteamDownloadState.Paused(appId, gameName, 1f)
+                        )
+                        return@launch
+                    }
                     val moved = moveDirectory(stagingDir, finalDir)
                     if (!moved) {
                         Log.e(TAG, "Failed to resume deploy for $gameName")
@@ -894,6 +906,29 @@ class SteamContentManager @Inject constructor(
                 Log.d(TAG, "Final depot list: ${depots.map { "${it.depotId}(${it.name})" }}")
                 Log.d(TAG, "Total: ${totalSize / 1024 / 1024}MB for $gameName (${depots.size}/${allDepots.size} depots)")
 
+                // Storage checks before downloading
+                val stagingFreeBytes = android.os.StatFs(stagingDir.absolutePath).availableBytes
+                val requiredStagingBytes = totalSize * 2
+                Log.d(TAG, "Storage check: staging free=${stagingFreeBytes / 1024 / 1024}MB, required=${requiredStagingBytes / 1024 / 1024}MB (2x)")
+                if (stagingFreeBytes < requiredStagingBytes) {
+                    throw IllegalStateException(
+                        "Insufficient internal storage: ${stagingFreeBytes / 1024 / 1024}MB free, " +
+                        "need ${requiredStagingBytes / 1024 / 1024}MB (2x ${totalSize / 1024 / 1024}MB game size)"
+                    )
+                }
+
+                val destCheckDir = finalDir.parentFile ?: finalDir
+                destCheckDir.mkdirs()
+                val destFreeBytesPreDownload = android.os.StatFs(destCheckDir.absolutePath).availableBytes
+                val requiredDestBytes = (totalSize * 1.5).toLong()
+                Log.d(TAG, "Storage check: destination free=${destFreeBytesPreDownload / 1024 / 1024}MB, required=${requiredDestBytes / 1024 / 1024}MB (1.5x)")
+                if (destFreeBytesPreDownload < requiredDestBytes) {
+                    throw IllegalStateException(
+                        "Insufficient destination storage: ${destFreeBytesPreDownload / 1024 / 1024}MB free, " +
+                        "need ${requiredDestBytes / 1024 / 1024}MB (1.5x ${totalSize / 1024 / 1024}MB game size)"
+                    )
+                }
+
                 val depotSizes = sizeResult.depotSizes
                 val baselineBytes = loadPersistedBytes(stagingDir.absolutePath)
                 val bytesDownloaded = java.util.concurrent.atomic.AtomicLong(baselineBytes)
@@ -1112,6 +1147,16 @@ class SteamContentManager @Inject constructor(
                 steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.DEPLOYING.name)
                 steamDownloadQueueDao.updateInstallPath(appId, finalDir.absolutePath)
 
+                // Re-check destination space before move (may have changed during download)
+                val destFreeBeforeMove = android.os.StatFs(finalDir.absolutePath).availableBytes
+                Log.d(TAG, "Pre-move storage check: destination free=${destFreeBeforeMove / 1024 / 1024}MB, required=${requiredDestBytes / 1024 / 1024}MB (1.5x)")
+                if (destFreeBeforeMove < totalSize) {
+                    throw IllegalStateException(
+                        "Insufficient destination storage for move: ${destFreeBeforeMove / 1024 / 1024}MB free, " +
+                        "need at least ${totalSize / 1024 / 1024}MB"
+                    )
+                }
+
                 // Move from staging (internal fast storage) to final destination (GN/SD card)
                 _downloadState.value = SteamDownloadState.Moving(appId, gameName)
                 _activeDownload.value = _activeDownload.value?.copy(
@@ -1120,7 +1165,6 @@ class SteamContentManager @Inject constructor(
                 )
                 Log.d(TAG, "Moving from staging to final: ${finalDir.absolutePath}")
 
-                finalDir.mkdirs()
                 val moved = moveDirectory(stagingDir, finalDir)
                 if (!moved) {
                     throw IllegalStateException("Failed to move download from staging to ${finalDir.absolutePath}")
