@@ -9,7 +9,7 @@ import com.nendo.argosy.data.local.entity.SteamDownloadQueueEntity
 @Dao
 interface SteamDownloadQueueDao {
 
-    @Query("SELECT * FROM steam_download_queue WHERE state IN ('QUEUED', 'PAUSED', 'DOWNLOADING', 'PREPARING') ORDER BY createdAt ASC")
+    @Query("SELECT * FROM steam_download_queue WHERE state IN ('QUEUED', 'PAUSED', 'DOWNLOADING', 'PREPARING', 'DEPLOYING') ORDER BY createdAt ASC")
     suspend fun getPendingDownloads(): List<SteamDownloadQueueEntity>
 
     @Query("SELECT * FROM steam_download_queue WHERE appId = :appId LIMIT 1")

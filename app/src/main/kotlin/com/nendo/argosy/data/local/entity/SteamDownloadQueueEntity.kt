@@ -9,6 +9,7 @@ enum class SteamDownloadDbState {
     QUEUED,
     PREPARING,
     DOWNLOADING,
+    DEPLOYING,
     PAUSED,
     COMPLETED,
     FAILED

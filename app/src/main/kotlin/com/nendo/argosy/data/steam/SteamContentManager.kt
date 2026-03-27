@@ -174,16 +174,26 @@ class SteamContentManager @Inject constructor(
         val pending = steamDownloadQueueDao.getPendingDownloads()
         if (pending.isEmpty()) return@withContext
 
-        for (entity in pending) {
+        // Handle interrupted deploys first -- resume file copy
+        val deploying = pending.filter { it.state == SteamDownloadDbState.DEPLOYING.name }
+        for (entity in deploying) {
+            resumeInterruptedDeploy(entity)
+        }
+
+        // Re-fetch after deploy handling (some may now be COMPLETED)
+        val afterDeploy = steamDownloadQueueDao.getPendingDownloads()
+        if (afterDeploy.isEmpty()) return@withContext
+
+        for (entity in afterDeploy) {
             if (entity.state in listOf(SteamDownloadDbState.DOWNLOADING.name, SteamDownloadDbState.PREPARING.name)) {
                 steamDownloadQueueDao.updateState(entity.appId, SteamDownloadDbState.PAUSED.name)
             }
         }
 
-        val paused = pending.filter {
+        val paused = afterDeploy.filter {
             it.state in listOf(SteamDownloadDbState.PAUSED.name, SteamDownloadDbState.DOWNLOADING.name, SteamDownloadDbState.PREPARING.name)
         }
-        val queued = pending.filter { it.state == SteamDownloadDbState.QUEUED.name }
+        val queued = afterDeploy.filter { it.state == SteamDownloadDbState.QUEUED.name }
 
         if (paused.isNotEmpty()) {
             val primary = paused.first()
@@ -214,6 +224,86 @@ class SteamContentManager @Inject constructor(
         Log.d(TAG, "Restored ${paused.size} paused + ${queued.size} queued from DB")
     }
 
+    private suspend fun resumeInterruptedDeploy(entity: SteamDownloadQueueEntity) {
+        val appId = entity.appId
+        val gameName = entity.gameName
+        val finalPath = entity.installPath ?: return
+        val finalDir = File(finalPath)
+        val stagingDir = File(context.filesDir, "steam_staging/$appId")
+
+        Log.d(TAG, "Resuming interrupted deploy for $gameName: staging=${stagingDir.exists()}, final=${finalDir.exists()}")
+
+        // Case 1: Final dir has .download_complete -- move finished, just clean up
+        if (File(finalDir, ".download_complete").exists()) {
+            Log.d(TAG, "Deploy already complete for $gameName, cleaning up")
+            if (stagingDir.exists()) stagingDir.deleteRecursively()
+            gameDao.getBySteamAppId(appId)?.let { game ->
+                if (game.localPath != finalDir.absolutePath) {
+                    gameDao.update(game.copy(localPath = finalDir.absolutePath, source = GameSource.STEAM))
+                }
+            }
+            steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.COMPLETED.name)
+            return
+        }
+
+        // Case 2: Staging dir still has files -- resume the copy
+        if (stagingDir.exists() && (stagingDir.listFiles()?.isNotEmpty() == true)) {
+            Log.d(TAG, "Resuming file copy for $gameName: staging -> $finalPath")
+
+            _downloadState.value = SteamDownloadState.Moving(appId, gameName)
+            _activeDownload.value = SteamDownloadProgress(
+                appId = appId,
+                gameName = gameName,
+                coverPath = entity.coverPath,
+                progress = 1f,
+                totalBytes = entity.totalBytes,
+                bytesDownloaded = entity.totalBytes,
+                state = SteamDownloadState.Moving(appId, gameName)
+            )
+
+            scope.launch(Dispatchers.IO) {
+                try {
+                    finalDir.mkdirs()
+                    val moved = moveDirectory(stagingDir, finalDir)
+                    if (!moved) {
+                        Log.e(TAG, "Failed to resume deploy for $gameName")
+                        steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.FAILED.name, "File move failed")
+                        _downloadState.value = SteamDownloadState.Failed(appId, gameName, "File move failed")
+                        _activeDownload.value = _activeDownload.value?.copy(
+                            state = SteamDownloadState.Failed(appId, gameName, "File move failed")
+                        )
+                        return@launch
+                    }
+
+                    gameDao.getBySteamAppId(appId)?.let { game ->
+                        gameDao.update(game.copy(
+                            localPath = finalDir.absolutePath,
+                            source = GameSource.STEAM,
+                            addedAt = java.time.Instant.now()
+                        ))
+                    }
+                    File(finalDir, ".download_complete").createNewFile()
+                    File(finalDir, ".download_in_progress").delete()
+                    File(finalDir, DOWNLOAD_INFO_DIR).mkdirs()
+
+                    steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.COMPLETED.name)
+                    _downloadState.value = SteamDownloadState.Completed(appId, gameName, finalDir.absolutePath)
+                    _activeDownload.value = null
+                    Log.d(TAG, "Deploy resume complete: $gameName -> ${finalDir.absolutePath}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Deploy resume failed for $gameName", e)
+                    steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.FAILED.name, e.message)
+                    _downloadState.value = SteamDownloadState.Failed(appId, gameName, e.message ?: "Deploy failed")
+                }
+            }
+            return
+        }
+
+        // Case 3: Staging gone, final dir incomplete -- need re-download
+        Log.w(TAG, "Cannot resume deploy for $gameName: staging gone, final incomplete. Marking as failed.")
+        if (finalDir.exists()) finalDir.deleteRecursively()
+        steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.FAILED.name, "Deploy interrupted, staging lost")
+    }
 
     fun initialize(client: SteamClient, apps: SteamApps, cm: CallbackManager) {
         steamClient = client
@@ -1017,6 +1107,10 @@ class SteamContentManager @Inject constructor(
                 }
 
                 Log.d(TAG, "Download complete in staging: ${stagingDir.absolutePath}")
+
+                // Mark DEPLOYING before move so crash recovery knows to resume the copy
+                steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.DEPLOYING.name)
+                steamDownloadQueueDao.updateInstallPath(appId, finalDir.absolutePath)
 
                 // Move from staging (internal fast storage) to final destination (GN/SD card)
                 _downloadState.value = SteamDownloadState.Moving(appId, gameName)
