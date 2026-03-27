@@ -123,7 +123,8 @@ class SteamContentManager @Inject constructor(
     private val steamLibraryManager: SteamLibraryManager,
     private val androidDataAccessor: com.nendo.argosy.data.storage.AndroidDataAccessor,
     private val notificationManager: NotificationManager,
-    private val steamDownloadQueueDao: SteamDownloadQueueDao
+    private val steamDownloadQueueDao: SteamDownloadQueueDao,
+    private val downloadManager: dagger.Lazy<com.nendo.argosy.data.download.DownloadManager>
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val heartbeatDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
@@ -385,6 +386,23 @@ class SteamContentManager @Inject constructor(
 
         Log.d(TAG, "Auto-resuming ${active.gameName} (Steam connected)")
         queueDownloadOptimistic(active.appId, active.gameName, active.coverPath)
+    }
+
+    fun onDownloadSlotFreed() {
+        if (_downloadQueue.value.isNotEmpty() && currentDownloadJob?.isActive != true) {
+            Log.d(TAG, "Download slot freed, checking Steam queue")
+            processNextInQueue()
+        }
+    }
+
+    fun hasActiveSteamDownload(): Boolean {
+        val state = _downloadState.value
+        return state is SteamDownloadState.Downloading ||
+            state is SteamDownloadState.Preparing ||
+            state is SteamDownloadState.Connecting ||
+            state is SteamDownloadState.FetchingManifest ||
+            state is SteamDownloadState.Validating ||
+            state is SteamDownloadState.Moving
     }
 
     fun isConnected(): Boolean {
@@ -833,6 +851,15 @@ class SteamContentManager @Inject constructor(
         Log.d(TAG, "Starting next queued download: ${next.gameName}")
 
         scope.launch {
+            // Check shared slot budget before starting
+            val maxConcurrent = preferencesRepository.userPreferences.first().maxConcurrentDownloads
+            val rommActive = downloadManager.get().activeDownloadCount
+            if (rommActive + 1 > maxConcurrent) {
+                Log.d(TAG, "No download slots available (romm=$rommActive, max=$maxConcurrent), re-queuing ${next.gameName}")
+                _downloadQueue.value = listOf(next) + _downloadQueue.value
+                return@launch
+            }
+
             val appInfo = next.appInfo ?: try {
                 fetchAppInfo(next.appId.toInt())
             } catch (e: Exception) {
@@ -1256,6 +1283,8 @@ class SteamContentManager @Inject constructor(
 
                 Log.d(TAG, "Download complete: $gameName -> ${finalDir.absolutePath}")
 
+                // Notify RomM queue that a shared slot freed up
+                downloadManager.get().onExternalSlotFreed()
                 processNextInQueue()
 
             } catch (_: kotlinx.coroutines.CancellationException) {

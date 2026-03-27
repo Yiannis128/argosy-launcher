@@ -141,10 +141,17 @@ class DownloadManager @Inject constructor(
     private val m3uManager: M3uManager,
     private val thermalManager: dagger.Lazy<DownloadThermalManager>,
     private val emulatorResolver: EmulatorResolver,
-    private val edenContentManager: EdenContentManager
+    private val edenContentManager: EdenContentManager,
+    private val steamContentManager: dagger.Lazy<com.nendo.argosy.data.steam.SteamContentManager>
 ) {
     private val _state = MutableStateFlow(DownloadQueueState())
     val state: StateFlow<DownloadQueueState> = _state.asStateFlow()
+
+    val activeDownloadCount: Int get() = _state.value.activeDownloads.size
+
+    fun onExternalSlotFreed() {
+        scope.launch { processQueue() }
+    }
 
     private val _completionEvents = MutableSharedFlow<DownloadCompletionEvent>()
     val completionEvents: SharedFlow<DownloadCompletionEvent> = _completionEvents.asSharedFlow()
@@ -562,9 +569,10 @@ class DownloadManager @Inject constructor(
         }
 
         val maxConcurrent = preferencesRepository.userPreferences.first().maxConcurrentDownloads
-        val currentActive = _state.value.activeDownloads.size
+        val steamActive = if (steamContentManager.get().hasActiveSteamDownload()) 1 else 0
+        val currentActive = _state.value.activeDownloads.size + steamActive
 
-        Log.d(TAG, "processQueue: maxConcurrent=$maxConcurrent, currentActive=$currentActive")
+        Log.d(TAG, "processQueue: maxConcurrent=$maxConcurrent, rommActive=${_state.value.activeDownloads.size}, steamActive=$steamActive, totalActive=$currentActive")
         Log.d(TAG, "processQueue: queue size=${_state.value.queue.size}, states=${_state.value.queue.map { "${it.gameTitle}:${it.state}" }}")
 
         if (currentActive >= maxConcurrent) {
@@ -649,6 +657,8 @@ class DownloadManager @Inject constructor(
                         completed = _state.value.completed + finalProgress
                     )
                     processQueue()
+                    // Notify Steam queue that a slot may have freed up
+                    steamContentManager.get().onDownloadSlotFreed()
                     if (result is DownloadResult.Success) {
                         broadcastDownloadCompleted(next.gameId)
                     }
