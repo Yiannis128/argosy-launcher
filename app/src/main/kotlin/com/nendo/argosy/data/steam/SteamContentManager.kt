@@ -171,6 +171,9 @@ class SteamContentManager @Inject constructor(
     private suspend fun restoreSteamQueueFromDatabase() = withContext(Dispatchers.IO) {
         steamDownloadQueueDao.clearFinished()
 
+        // Recover orphaned downloads: game has localPath pointing to staging but no queue entry
+        recoverOrphanedStagingDownloads()
+
         val pending = steamDownloadQueueDao.getPendingDownloads()
         if (pending.isEmpty()) return@withContext
 
@@ -187,6 +190,12 @@ class SteamContentManager @Inject constructor(
         for (entity in afterDeploy) {
             if (entity.state in listOf(SteamDownloadDbState.DOWNLOADING.name, SteamDownloadDbState.PREPARING.name)) {
                 steamDownloadQueueDao.updateState(entity.appId, SteamDownloadDbState.PAUSED.name)
+                // Clear localPath if it points to staging so game doesn't appear installed
+                gameDao.getBySteamAppId(entity.appId)?.let { game ->
+                    if (game.localPath?.contains("steam_staging") == true) {
+                        gameDao.update(game.copy(localPath = null))
+                    }
+                }
             }
         }
 
@@ -224,12 +233,52 @@ class SteamContentManager @Inject constructor(
         Log.d(TAG, "Restored ${paused.size} paused + ${queued.size} queued from DB")
     }
 
+    private suspend fun recoverOrphanedStagingDownloads() {
+        val stagingRoot = File(context.filesDir, "steam_staging")
+        if (!stagingRoot.exists()) return
+
+        val steamGames = gameDao.getAllWithSteamAppId()
+        for (game in steamGames) {
+            val localPath = game.localPath ?: continue
+            if (!localPath.contains("steam_staging")) continue
+
+            val appId = game.steamAppId ?: continue
+            val existing = steamDownloadQueueDao.getByAppId(appId)
+            if (existing != null) continue
+
+            val stagingDir = File(localPath)
+            if (stagingDir.exists() && (stagingDir.listFiles()?.isNotEmpty() == true)) {
+                Log.d(TAG, "Recovering orphaned staging download: ${game.title} (appId=$appId)")
+                steamDownloadQueueDao.insert(SteamDownloadQueueEntity(
+                    appId = appId,
+                    gameName = game.title,
+                    coverPath = game.coverPath,
+                    installDir = null,
+                    installPath = localPath,
+                    totalBytes = 0L,
+                    bytesDownloaded = loadPersistedBytes(localPath),
+                    state = SteamDownloadDbState.PAUSED.name,
+                    errorReason = null
+                ))
+                gameDao.update(game.copy(localPath = null))
+            } else {
+                Log.d(TAG, "Clearing stale staging path for ${game.title}")
+                gameDao.update(game.copy(localPath = null))
+            }
+        }
+    }
+
     private suspend fun resumeInterruptedDeploy(entity: SteamDownloadQueueEntity) {
         val appId = entity.appId
         val gameName = entity.gameName
-        val finalPath = entity.installPath ?: return
-        val finalDir = File(finalPath)
         val stagingDir = File(context.filesDir, "steam_staging/$appId")
+
+        // Resolve final path from installDir (Steam name), not installPath (may still point to staging)
+        val finalDir = if (entity.installDir != null) {
+            getInstallDirByName(entity.installDir)
+        } else {
+            getInstallDir(appId)
+        }
 
         Log.d(TAG, "Resuming interrupted deploy for $gameName: staging=${stagingDir.exists()}, final=${finalDir.exists()}")
 
@@ -248,7 +297,7 @@ class SteamContentManager @Inject constructor(
 
         // Case 2: Staging dir still has files -- resume the copy
         if (stagingDir.exists() && (stagingDir.listFiles()?.isNotEmpty() == true)) {
-            Log.d(TAG, "Resuming file copy for $gameName: staging -> $finalPath")
+            Log.d(TAG, "Resuming file copy for $gameName: staging -> ${finalDir.absolutePath}")
 
             _downloadState.value = SteamDownloadState.Moving(appId, gameName)
             _activeDownload.value = SteamDownloadProgress(
@@ -264,9 +313,9 @@ class SteamContentManager @Inject constructor(
             scope.launch(Dispatchers.IO) {
                 try {
                     finalDir.mkdirs()
-                    val destFree = android.os.StatFs(finalDir.absolutePath).availableBytes
+                    val destFree = getAvailableBytes(finalDir)
                     val stagingSize = getDirectorySize(stagingDir)
-                    if (destFree < stagingSize) {
+                    if (destFree != null && destFree < stagingSize) {
                         Log.e(TAG, "Insufficient destination space for deploy resume: ${destFree / 1024 / 1024}MB free, need ${stagingSize / 1024 / 1024}MB")
                         steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.PAUSED.name,
                             "Waiting for destination storage (need ${stagingSize / 1024 / 1024}MB)")
@@ -917,16 +966,18 @@ class SteamContentManager @Inject constructor(
                     )
                 }
 
-                val destCheckDir = finalDir.parentFile ?: finalDir
-                destCheckDir.mkdirs()
-                val destFreeBytesPreDownload = android.os.StatFs(destCheckDir.absolutePath).availableBytes
                 val requiredDestBytes = (totalSize * 1.5).toLong()
-                Log.d(TAG, "Storage check: destination free=${destFreeBytesPreDownload / 1024 / 1024}MB, required=${requiredDestBytes / 1024 / 1024}MB (1.5x)")
-                if (destFreeBytesPreDownload < requiredDestBytes) {
-                    throw IllegalStateException(
-                        "Insufficient destination storage: ${destFreeBytesPreDownload / 1024 / 1024}MB free, " +
-                        "need ${requiredDestBytes / 1024 / 1024}MB (1.5x ${totalSize / 1024 / 1024}MB game size)"
-                    )
+                val destFreeBytes = getAvailableBytes(finalDir)
+                if (destFreeBytes != null) {
+                    Log.d(TAG, "Storage check: destination free=${destFreeBytes / 1024 / 1024}MB, required=${requiredDestBytes / 1024 / 1024}MB (1.5x)")
+                    if (destFreeBytes < requiredDestBytes) {
+                        throw IllegalStateException(
+                            "Insufficient destination storage: ${destFreeBytes / 1024 / 1024}MB free, " +
+                            "need ${requiredDestBytes / 1024 / 1024}MB (1.5x ${totalSize / 1024 / 1024}MB game size)"
+                        )
+                    }
+                } else {
+                    Log.w(TAG, "Cannot check destination storage (path not stattable), proceeding")
                 }
 
                 val depotSizes = sizeResult.depotSizes
@@ -1143,18 +1194,21 @@ class SteamContentManager @Inject constructor(
 
                 Log.d(TAG, "Download complete in staging: ${stagingDir.absolutePath}")
 
-                // Mark DEPLOYING before move so crash recovery knows to resume the copy
+                // Mark DEPLOYING before move so crash recovery knows to resume the copy.
+                // Keep installPath pointing to staging -- only update to final AFTER move succeeds.
+                // resumeInterruptedDeploy resolves final path from installDir.
                 steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.DEPLOYING.name)
-                steamDownloadQueueDao.updateInstallPath(appId, finalDir.absolutePath)
 
                 // Re-check destination space before move (may have changed during download)
-                val destFreeBeforeMove = android.os.StatFs(finalDir.absolutePath).availableBytes
-                Log.d(TAG, "Pre-move storage check: destination free=${destFreeBeforeMove / 1024 / 1024}MB, required=${requiredDestBytes / 1024 / 1024}MB (1.5x)")
-                if (destFreeBeforeMove < totalSize) {
-                    throw IllegalStateException(
-                        "Insufficient destination storage for move: ${destFreeBeforeMove / 1024 / 1024}MB free, " +
-                        "need at least ${totalSize / 1024 / 1024}MB"
-                    )
+                val destFreeBeforeMove = getAvailableBytes(finalDir)
+                if (destFreeBeforeMove != null) {
+                    Log.d(TAG, "Pre-move storage check: destination free=${destFreeBeforeMove / 1024 / 1024}MB, need=${totalSize / 1024 / 1024}MB")
+                    if (destFreeBeforeMove < totalSize) {
+                        throw IllegalStateException(
+                            "Insufficient destination storage for move: ${destFreeBeforeMove / 1024 / 1024}MB free, " +
+                            "need at least ${totalSize / 1024 / 1024}MB"
+                        )
+                    }
                 }
 
                 // Move from staging (internal fast storage) to final destination (GN/SD card)
@@ -1222,6 +1276,12 @@ class SteamContentManager @Inject constructor(
                 val failedState = SteamDownloadState.Failed(appId, gameName, e.message ?: "Unknown error")
                 _downloadState.value = failedState
                 _activeDownload.value = _activeDownload.value?.copy(state = failedState)
+                // Clear localPath if it points to staging so the game doesn't appear installed
+                gameDao.getBySteamAppId(appId)?.let { game ->
+                    if (game.localPath?.contains("steam_staging") == true) {
+                        gameDao.update(game.copy(localPath = null))
+                    }
+                }
                 scope.launch(Dispatchers.IO) {
                     steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.FAILED.name, e.message)
                 }
@@ -1313,6 +1373,23 @@ class SteamContentManager @Inject constructor(
         val game = gameDao.getBySteamAppId(appId)
         val path = game?.localPath ?: return false
         return File(path, ".download_complete").exists() || androidDataAccessor.exists("$path/.download_complete")
+    }
+
+    private fun getAvailableBytes(dir: File): Long? {
+        return try {
+            // Walk up to find a stattable path (target dir may be in another app's data)
+            var check: File? = dir
+            while (check != null) {
+                try {
+                    return android.os.StatFs(check.absolutePath).availableBytes
+                } catch (_: IllegalArgumentException) {
+                    check = check.parentFile
+                }
+            }
+            null
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun getDirectorySize(dir: File): Long {
