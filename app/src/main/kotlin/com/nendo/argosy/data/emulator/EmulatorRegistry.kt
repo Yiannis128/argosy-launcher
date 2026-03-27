@@ -636,8 +636,8 @@ object EmulatorRegistry {
         "3do" to listOf("builtin", "retroarch", "retroarch_64"),
         "ngp" to listOf("retroarch", "retroarch_64"),
         "ngpc" to listOf("retroarch", "retroarch_64"),
-        "wonderswan" to listOf("retroarch", "retroarch_64"),
-        "wsc" to listOf("retroarch", "retroarch_64"),
+        "wonderswan" to listOf("builtin", "retroarch", "retroarch_64"),
+        "wsc" to listOf("builtin", "retroarch", "retroarch_64"),
         "xbox360" to listOf("ax360e", "ax360e_free"),
         "steam" to listOf("gamehub", "gamehub_lite", "gamenative"),
         "c64" to listOf("retroarch", "retroarch_64"),
@@ -687,7 +687,7 @@ object EmulatorRegistry {
         "msx" to "bluemsx",
         "msx2" to "bluemsx",
         "wonderswan" to "mednafen_wswan",
-        "wonderswancolor" to "mednafen_wswan",
+        "wsc" to "mednafen_wswan",
         "c64" to "vice_x64",
         "vic20" to "vice_xvic",
         "pc9800" to "np2kai"
@@ -730,7 +730,7 @@ object EmulatorRegistry {
         "msx" to listOf("bluemsx", "fmsx"),
         "msx2" to listOf("bluemsx", "fmsx"),
         "wonderswan" to listOf("mednafen_wswan"),
-        "wonderswancolor" to listOf("mednafen_wswan"),
+        "wsc" to listOf("mednafen_wswan"),
         "c64" to listOf("vice_x64", "vice_x64sc"),
         "vic20" to listOf("vice_xvic"),
         "pc9800" to listOf("np2kai")
@@ -886,7 +886,7 @@ object EmulatorRegistry {
         "wonderswan" to listOf(
             RetroArchCore("mednafen_wswan", "Mednafen WonderSwan")
         ),
-        "wonderswancolor" to listOf(
+        "wsc" to listOf(
             RetroArchCore("mednafen_wswan", "Mednafen WonderSwan")
         ),
         "c64" to listOf(
