@@ -117,6 +117,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             val item = steamItemAtFocusIndex(state.focusedIndex, state.steam)
             when (item) {
                 SteamItem.GnInstall -> {} // handled by click
+                SteamItem.InstallPath -> vm.cycleSteamInstallVolume()
                 SteamItem.SyncLibrary -> vm.syncSteamLibrary()
                 SteamItem.AddManual -> vm.showAddSteamGameDialog()
                 SteamItem.Disconnect -> vm.disconnectSteam()

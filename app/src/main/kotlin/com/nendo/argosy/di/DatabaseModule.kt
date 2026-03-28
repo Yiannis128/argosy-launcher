@@ -34,6 +34,7 @@ import com.nendo.argosy.data.local.dao.StateCacheDao
 import com.nendo.argosy.data.local.dao.CachedLicenseDao
 import com.nendo.argosy.data.local.dao.SteamAccountDao
 import com.nendo.argosy.data.local.dao.SteamDownloadQueueDao
+import com.nendo.argosy.data.local.dao.SteamDownloadTrackingDao
 import com.nendo.argosy.data.local.dao.SteamLicenseDao
 import dagger.Module
 import dagger.Provides
@@ -148,7 +149,8 @@ object DatabaseModule {
                 ALauncherDatabase.MIGRATION_91_92,
                 ALauncherDatabase.MIGRATION_92_93,
                 ALauncherDatabase.MIGRATION_93_94,
-                ALauncherDatabase.MIGRATION_94_95
+                ALauncherDatabase.MIGRATION_94_95,
+                ALauncherDatabase.MIGRATION_95_96
             )
             .enableMultiInstanceInvalidation()
             .build()
@@ -278,4 +280,8 @@ object DatabaseModule {
     @Provides
     fun provideSteamDownloadQueueDao(database: ALauncherDatabase): SteamDownloadQueueDao =
         database.steamDownloadQueueDao()
+
+    @Provides
+    fun provideSteamDownloadTrackingDao(database: ALauncherDatabase): SteamDownloadTrackingDao =
+        database.steamDownloadTrackingDao()
 }

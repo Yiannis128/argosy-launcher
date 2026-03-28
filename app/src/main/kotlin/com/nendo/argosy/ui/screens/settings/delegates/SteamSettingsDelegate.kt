@@ -11,6 +11,7 @@ import android.os.Environment
 import com.nendo.argosy.data.emulator.EmulatorDownloadManager
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.launcher.SteamLaunchers
+import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.SteamIgdbResolver
 import com.nendo.argosy.data.remote.github.EmulatorUpdateRepository
 import com.nendo.argosy.data.remote.github.FetchReleaseResult
@@ -21,6 +22,7 @@ import com.nendo.argosy.data.steam.QrAuthState
 import com.nendo.argosy.data.steam.SteamAuthManager
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.data.steam.SteamLibraryManager
+import com.nendo.argosy.data.steam.SteamPathResolver
 import com.nendo.argosy.data.steam.SteamService
 import com.nendo.argosy.data.storage.AndroidDataAccessor
 import com.nendo.argosy.ui.screens.settings.InstalledSteamLauncher
@@ -30,6 +32,7 @@ import com.nendo.argosy.ui.notification.showError
 import com.nendo.argosy.ui.screens.settings.SteamSettingsState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -54,7 +57,9 @@ class SteamSettingsDelegate @Inject constructor(
     private val notificationManager: NotificationManager,
     private val emulatorDownloadManager: EmulatorDownloadManager,
     private val emulatorUpdateRepository: EmulatorUpdateRepository,
-    private val steamIgdbResolver: SteamIgdbResolver
+    private val steamIgdbResolver: SteamIgdbResolver,
+    private val preferencesRepository: UserPreferencesRepository,
+    private val steamPathResolver: SteamPathResolver
 ) {
     private val _state = MutableStateFlow(SteamSettingsState())
     val state: StateFlow<SteamSettingsState> = _state.asStateFlow()
@@ -126,13 +131,18 @@ class SteamSettingsDelegate @Inject constructor(
                     )
                 }
 
+            val prefs = preferencesRepository.userPreferences.first()
+            val volumes = withContext(Dispatchers.IO) { steamPathResolver.getAvailableVolumes() }
+
             _state.update {
                 it.copy(
                     gnInstalled = gnInstalled,
                     gnStoragePath = gnStoragePath,
                     hasStoragePermission = hasPermission,
                     installedLaunchers = installedLaunchers,
-                    notInstalledLaunchers = notInstalledLaunchers
+                    notInstalledLaunchers = notInstalledLaunchers,
+                    steamInstallVolume = prefs.steamInstallVolume,
+                    availableVolumes = volumes
                 )
             }
 
@@ -140,6 +150,22 @@ class SteamSettingsDelegate @Inject constructor(
             if (!bound) {
                 tryBindService(context)
             }
+        }
+    }
+
+    fun cycleSteamInstallVolume(scope: CoroutineScope) {
+        val current = _state.value.steamInstallVolume
+        val volumes = _state.value.availableVolumes.filter { it.hasGnPath }
+        if (volumes.isEmpty()) return
+
+        val paths = listOf<String?>(null) + volumes.map { it.path }
+        val currentIndex = paths.indexOf(current)
+        val nextIndex = (currentIndex + 1) % paths.size
+        val nextVolume = paths[nextIndex]
+
+        scope.launch {
+            preferencesRepository.setSteamInstallVolume(nextVolume)
+            _state.update { it.copy(steamInstallVolume = nextVolume) }
         }
     }
 

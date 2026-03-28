@@ -639,6 +639,10 @@ data class SteamSettingsState(
     val gnInstalled: Boolean = false,
     val gnStoragePath: String? = null,
 
+    // Install volume
+    val steamInstallVolume: String? = null,
+    val availableVolumes: List<com.nendo.argosy.data.steam.SteamInstallVolume> = emptyList(),
+
     // Steam connection
     val connectionState: com.nendo.argosy.data.steam.SteamConnectionState =
         com.nendo.argosy.data.steam.SteamConnectionState.DISCONNECTED,

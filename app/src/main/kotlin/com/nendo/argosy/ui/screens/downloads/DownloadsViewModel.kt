@@ -9,6 +9,8 @@ import com.nendo.argosy.data.download.DownloadState
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.steam.SteamContentManager
+import com.nendo.argosy.data.steam.QueuedSteamDownload
+import com.nendo.argosy.data.steam.SteamDownloadProgress
 import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
@@ -147,13 +149,22 @@ class DownloadsViewModel @Inject constructor(
         }
 
         // Convert Steam downloads to DownloadProgress entries
-        // Observe active download, state, and queue
+        // Observe active download, state, queue, and completed
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 steamContentManager.activeDownload,
                 steamContentManager.downloadState,
-                steamContentManager.downloadQueue
-            ) { activeDl, dlState, queue -> Triple(activeDl, dlState, queue) }.collect { (activeDl, steamState, queue) ->
+                steamContentManager.downloadQueue,
+                steamContentManager.completedDownloads
+            ) { activeDl, dlState, queue, completed ->
+                arrayOf(activeDl, dlState, queue, completed)
+            }.collect { values ->
+                @Suppress("UNCHECKED_CAST")
+                val activeDl = values[0] as SteamDownloadProgress?
+                val steamState = values[1] as SteamDownloadState
+                val queue = values[2] as List<QueuedSteamDownload>
+                val completed = values[3] as List<SteamDownloadProgress>
+
                 val items = mutableListOf<DownloadProgress>()
 
                 // Active/paused download
@@ -227,6 +238,24 @@ class DownloadsViewModel @Inject constructor(
                         bytesDownloaded = 0L,
                         state = DownloadState.QUEUED,
                         coverPath = queued.coverPath
+                    ))
+                }
+
+                // Completed Steam downloads
+                for (dl in completed) {
+                    if (dl.appId == activeAppId) continue
+                    val game = gameDao.getBySteamAppId(dl.appId)
+                    items.add(DownloadProgress(
+                        id = -dl.appId,
+                        gameId = game?.id ?: 0L,
+                        rommId = 0L,
+                        platformSlug = "steam",
+                        gameTitle = dl.gameName,
+                        fileName = "",
+                        totalBytes = dl.totalBytes,
+                        bytesDownloaded = dl.totalBytes,
+                        state = DownloadState.COMPLETED,
+                        coverPath = dl.coverPath
                     ))
                 }
 
@@ -306,10 +335,12 @@ class DownloadsViewModel @Inject constructor(
 
     fun clearCompleted() {
         downloadManager.clearCompleted()
+        steamContentManager.clearCompletedDownloads()
     }
 
     fun clearFinished() {
         downloadManager.clearFinished()
+        steamContentManager.clearCompletedDownloads()
     }
 
     fun removeFromCompleted(downloadId: Long) {

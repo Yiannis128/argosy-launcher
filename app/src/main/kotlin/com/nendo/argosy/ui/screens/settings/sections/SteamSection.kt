@@ -51,6 +51,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.nendo.argosy.data.steam.LibrarySyncState
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.InfoPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -87,6 +88,8 @@ internal sealed class SteamItem(
     data object GnInstall : SteamItem("gnInstall", "setup", visibleWhen = { !it.gnInstalled })
     data object GnStorageWarning : SteamItem("gnStorageWarning", "setup",
         visibleWhen = { it.gnInstalled && !it.gnConfigured })
+    data object InstallPath : SteamItem("installPath", "setup",
+        visibleWhen = { it.gnConfigured })
     data object AccountInfo : SteamItem("accountInfo", "account")
     data object SyncLibrary : SteamItem("syncLibrary", "library")
     data object AddManual : SteamItem("addManual", "library")
@@ -102,7 +105,7 @@ internal sealed class SteamItem(
         private val DangerSpacer = SectionSpacer("dangerSpacer", "danger")
 
         val ALL: List<SteamItem> = listOf(
-            SetupHeader, GnStatus, GnInstall, GnStorageWarning,
+            SetupHeader, GnStatus, GnInstall, GnStorageWarning, InstallPath,
             LibrarySpacer, AccountHeader, AccountInfo,
             LibrarySpacer, LibraryHeader, SyncLibrary,
             DangerSpacer, DangerHeader, Disconnect, ResetLibrary
@@ -216,6 +219,24 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     icon = Icons.Default.Warning,
                     isFocused = isFocused(item)
                 )
+
+                SteamItem.InstallPath -> {
+                    val volumeLabel = installVolumeLabel(
+                        steam.steamInstallVolume,
+                        steam.availableVolumes
+                    )
+                    val subtitle = installVolumeSubtitle(
+                        steam.steamInstallVolume,
+                        steam.availableVolumes
+                    )
+                    CyclePreference(
+                        title = "Install Path",
+                        value = volumeLabel,
+                        subtitle = subtitle,
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.cycleSteamInstallVolume() }
+                    )
+                }
 
                 SteamItem.AccountInfo -> InfoPreference(
                     title = "Steam Account",
@@ -638,6 +659,29 @@ private fun generateQrCode(content: String, size: Int): Bitmap? {
     } catch (e: Exception) {
         null
     }
+}
+
+private fun installVolumeLabel(
+    selectedVolume: String?,
+    volumes: List<com.nendo.argosy.data.steam.SteamInstallVolume>
+): String {
+    if (selectedVolume == null) return "Auto"
+    return volumes.find { it.path == selectedVolume }?.label ?: "Auto"
+}
+
+private fun installVolumeSubtitle(
+    selectedVolume: String?,
+    volumes: List<com.nendo.argosy.data.steam.SteamInstallVolume>
+): String? {
+    val vol = if (selectedVolume == null) {
+        volumes.find { it.hasGnPath }
+    } else {
+        volumes.find { it.path == selectedVolume }
+    } ?: return null
+    val freeMb = vol.freeBytes / (1024 * 1024)
+    val freeGb = freeMb / 1024
+    val freeLabel = if (freeGb > 0) "${freeGb}GB free" else "${freeMb}MB free"
+    return if (selectedVolume == null) "Auto-detect (${vol.label}, $freeLabel)" else freeLabel
 }
 
 @Composable

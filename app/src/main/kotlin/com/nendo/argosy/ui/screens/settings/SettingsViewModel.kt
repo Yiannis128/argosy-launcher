@@ -518,6 +518,7 @@ class SettingsViewModel @Inject constructor(
     fun dismissAddSteamGameDialog() = steamDelegate.dismissAddSteamGameDialog()
     fun setAddGameAppId(appId: String) = steamDelegate.setAddGameAppId(appId)
     fun confirmAddSteamGame() = steamDelegate.confirmAddSteamGame(context, viewModelScope)
+    fun cycleSteamInstallVolume() = steamDelegate.cycleSteamInstallVolume(viewModelScope)
 
     // Legacy Steam methods (used by GameDataSection/routers)
     fun scanSteamLauncher(packageName: String) = steamDelegate.scanSteamLauncher(context, viewModelScope, packageName)

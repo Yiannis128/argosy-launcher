@@ -37,6 +37,7 @@ import com.nendo.argosy.data.local.dao.StateCacheDao
 import com.nendo.argosy.data.local.dao.CachedLicenseDao
 import com.nendo.argosy.data.local.dao.SteamAccountDao
 import com.nendo.argosy.data.local.dao.SteamDownloadQueueDao
+import com.nendo.argosy.data.local.dao.SteamDownloadTrackingDao
 import com.nendo.argosy.data.local.dao.SteamLicenseDao
 import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.local.entity.AppCategoryEntity
@@ -69,6 +70,8 @@ import com.nendo.argosy.data.local.entity.PendingSocialSyncEntity
 import com.nendo.argosy.data.local.entity.SocialGameCacheEntity
 import com.nendo.argosy.data.local.entity.StateCacheEntity
 import com.nendo.argosy.data.local.entity.SteamAccountEntity
+import com.nendo.argosy.data.local.entity.SteamCompletedDepotEntity
+import com.nendo.argosy.data.local.entity.SteamCompletedFileEntity
 import com.nendo.argosy.data.local.entity.SteamDownloadQueueEntity
 import com.nendo.argosy.data.local.entity.SteamLicenseEntity
 
@@ -106,9 +109,11 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamAccountEntity::class,
         SteamLicenseEntity::class,
         SteamDownloadQueueEntity::class,
-        CachedLicenseEntity::class
+        CachedLicenseEntity::class,
+        SteamCompletedFileEntity::class,
+        SteamCompletedDepotEntity::class
     ],
-    version = 95,
+    version = 96,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -145,6 +150,7 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun steamLicenseDao(): SteamLicenseDao
     abstract fun cachedLicenseDao(): CachedLicenseDao
     abstract fun steamDownloadQueueDao(): SteamDownloadQueueDao
+    abstract fun steamDownloadTrackingDao(): SteamDownloadTrackingDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -1441,6 +1447,32 @@ abstract class ALauncherDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_steam_licenses_accountId ON steam_licenses(accountId)")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_steam_licenses_packageId_accountId ON steam_licenses(packageId, accountId)")
+            }
+        }
+
+        val MIGRATION_95_96 = object : Migration(95, 96) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS steam_completed_files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        appId INTEGER NOT NULL,
+                        depotId INTEGER NOT NULL,
+                        manifestId INTEGER NOT NULL,
+                        fileName TEXT NOT NULL
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_steam_completed_files_appId ON steam_completed_files(appId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_steam_completed_files_appId_depotId_fileName ON steam_completed_files(appId, depotId, fileName)")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS steam_completed_depots (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        appId INTEGER NOT NULL,
+                        depotId INTEGER NOT NULL,
+                        manifestId INTEGER NOT NULL
+                    )
+                """)
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_steam_completed_depots_appId_depotId ON steam_completed_depots(appId, depotId)")
             }
         }
     }

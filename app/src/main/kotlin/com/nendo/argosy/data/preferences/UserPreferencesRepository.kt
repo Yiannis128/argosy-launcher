@@ -129,6 +129,7 @@ class UserPreferencesRepository @Inject constructor(
             customBiosPath = storage.customBiosPath,
             weeklyIntegrityCheckEnabled = storage.weeklyIntegrityCheckEnabled,
             lastIntegrityCheckTime = storage.lastIntegrityCheckTime,
+            steamInstallVolume = storage.steamInstallVolume,
             videoWallpaperEnabled = display.videoWallpaperEnabled,
             videoWallpaperDelaySeconds = display.videoWallpaperDelaySeconds,
             videoWallpaperMuted = display.videoWallpaperMuted,
@@ -293,6 +294,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setCustomBiosPath(path: String?) = storagePrefs.setCustomBiosPath(path)
     suspend fun setWeeklyIntegrityCheckEnabled(enabled: Boolean) = storagePrefs.setWeeklyIntegrityCheckEnabled(enabled)
     suspend fun setLastIntegrityCheckTime(timeMs: Long) = storagePrefs.setLastIntegrityCheckTime(timeMs)
+    suspend fun setSteamInstallVolume(volume: String?) = storagePrefs.setSteamInstallVolume(volume)
 
     // --- App delegates ---
 
@@ -585,7 +587,8 @@ data class UserPreferences(
     val lastPlaySessionSync: Instant? = null,
     val lastStateValidation: Instant? = null,
     val weeklyIntegrityCheckEnabled: Boolean = true,
-    val lastIntegrityCheckTime: Long? = null
+    val lastIntegrityCheckTime: Long? = null,
+    val steamInstallVolume: String? = null
 ) {
     val isSocialLinked: Boolean get() = socialSessionToken != null
 }
