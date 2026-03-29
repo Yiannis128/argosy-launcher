@@ -47,6 +47,10 @@
     @androidx.lifecycle.OnLifecycleEvent <methods>;
 }
 
+# JavaSteam - prevent R8 from reordering/stripping lateinit field initialization
+-keep class in.dragonbra.javasteam.** { *; }
+-keepclassmembers class in.dragonbra.javasteam.** { *; }
+
 # Discord Social SDK (optional, may not be present)
 -keep class com.discord.socialsdk.** { *; }
 -keep class discordpp.** { *; }
