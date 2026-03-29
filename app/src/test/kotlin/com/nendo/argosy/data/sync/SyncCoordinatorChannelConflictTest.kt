@@ -11,6 +11,8 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.preferences.SyncPreferences
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.repository.StateCacheManager
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -107,7 +109,10 @@ class SyncCoordinatorChannelConflictTest {
             saveSyncRepository = saveSyncRepository,
             saveCacheManager = saveCacheManager,
             stateCacheManager = stateCacheManager,
-            syncQueueManager = syncQueueManager
+            syncQueueManager = syncQueueManager,
+            syncPreferencesRepository = mockk(relaxed = true) {
+                every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences())
+            }
         )
 
         coordinator.processQueue()
@@ -147,7 +152,10 @@ class SyncCoordinatorChannelConflictTest {
             saveSyncRepository = saveSyncRepository,
             saveCacheManager = saveCacheManager,
             stateCacheManager = stateCacheManager,
-            syncQueueManager = syncQueueManager
+            syncQueueManager = syncQueueManager,
+            syncPreferencesRepository = mockk(relaxed = true) {
+                every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences())
+            }
         )
 
         coordinator.processQueue()
@@ -196,7 +204,10 @@ class SyncCoordinatorChannelConflictTest {
             saveSyncRepository = saveSyncRepository,
             saveCacheManager = saveCacheManager,
             stateCacheManager = stateCacheManager,
-            syncQueueManager = syncQueueManager
+            syncQueueManager = syncQueueManager,
+            syncPreferencesRepository = mockk(relaxed = true) {
+                every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences())
+            }
         )
 
         coordinator.processQueue()
