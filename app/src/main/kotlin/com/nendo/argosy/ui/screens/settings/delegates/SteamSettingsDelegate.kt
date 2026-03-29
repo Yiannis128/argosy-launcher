@@ -268,7 +268,8 @@ class SteamSettingsDelegate @Inject constructor(
 
     private var pendingQrAuth = false
 
-    fun connectToSteam(context: Context) {
+    fun connectToSteam(context: Context, scope: CoroutineScope) {
+        bindScope = scope
         pendingQrAuth = true
         // Optimistically move to CONNECTING so the UI shows a spinner
         // immediately rather than flickering back to the connect button

@@ -506,7 +506,7 @@ class SettingsViewModel @Inject constructor(
     fun scanForAndroidGames() = routeScanForAndroidGames(this)
 
     // Steam integration (new flow)
-    fun connectToSteam() = steamDelegate.connectToSteam(context)
+    fun connectToSteam() = steamDelegate.connectToSteam(context, viewModelScope)
     fun startSteamQrAuth() = steamDelegate.startQrAuth()
     fun cancelSteamQrAuth() = steamDelegate.cancelQrAuth()
     fun syncSteamLibrary() = steamDelegate.syncLibrary()
