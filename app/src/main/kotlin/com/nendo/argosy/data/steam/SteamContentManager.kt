@@ -995,8 +995,11 @@ class SteamContentManager @Inject constructor(
                     appId.toInt(),
                     installDirectory = installDir.absolutePath,
                     depot = depotIds,
-                    preValidatedFiles = if (completedFileNames.isNotEmpty()) completedFileNames else null,
-                    completedDepotIds = if (completedDepotIds.isNotEmpty()) completedDepotIds else null
+                    preValidatedFiles = if (completedFileNames.isNotEmpty()) completedFileNames else null
+                    // completedDepotIds disabled: onDepotCompleted fires before all files
+                    // are flushed to disk, so a cancel after depot callback leaves incomplete
+                    // files. File-level pre-validation is safe; depot-level skipping needs
+                    // a verification step before it can be trusted on resume.
                 )
                 depotDownloader.add(appItem)
                 depotDownloader.finishAdding()

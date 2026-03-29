@@ -477,30 +477,27 @@ private fun SlotRow(
             )
             .clickableNoFocus(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            if (slot.isActive) {
-                Icon(
-                    imageVector = Icons.Filled.Circle,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(8.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(
-                text = slot.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (slot.isActive) FontWeight.Bold
-                    else FontWeight.Normal,
-                color = textColor
+        if (slot.isActive) {
+            Icon(
+                imageVector = Icons.Filled.Circle,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(8.dp)
             )
         }
+        Text(
+            text = slot.displayName,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (slot.isActive) FontWeight.Bold
+                else FontWeight.Normal,
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
         if (slot.saveCount > 0) {
             Text(
                 text = "${slot.saveCount}",

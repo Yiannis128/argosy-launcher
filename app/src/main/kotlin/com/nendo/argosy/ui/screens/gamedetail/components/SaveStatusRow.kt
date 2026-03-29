@@ -75,7 +75,7 @@ fun SaveStatusRow(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
         Icon(
@@ -85,36 +85,32 @@ fun SaveStatusRow(
             modifier = Modifier.size(Dimens.spacingMd)
         )
 
-        androidx.compose.foundation.layout.Column {
+        androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = status.displayLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalLauncherTheme.current.semanticColors.warning,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
             ) {
                 Text(
-                    text = status.displayLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = LocalLauncherTheme.current.semanticColors.warning
-                )
-
-                Text(
-                    text = "•",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-
-                Text(
                     text = status.effectiveStatus.displayName,
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                     color = status.effectiveStatus.textColor()
                 )
-            }
 
-            status.displayTime?.let { time ->
-                Text(
-                    text = time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
+                status.displayTime?.let { time ->
+                    Text(
+                        text = "· $time",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
             }
         }
     }

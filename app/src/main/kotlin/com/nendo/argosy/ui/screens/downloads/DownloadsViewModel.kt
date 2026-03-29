@@ -168,9 +168,13 @@ class DownloadsViewModel @Inject constructor(
                 val items = mutableListOf<DownloadProgress>()
 
                 // Active/paused download
+                // Skip stale activeDownload when state has moved to Completed/Idle --
+                // completed entries are handled by the completedDownloads flow.
                 val activeAppId: Long?
+                val isStaleActive = activeDl != null &&
+                    (steamState is SteamDownloadState.Completed || steamState is SteamDownloadState.Idle)
                 when {
-                    activeDl != null -> {
+                    activeDl != null && !isStaleActive -> {
                         activeAppId = activeDl.appId
                         val (mappedState, statusMsg) = when (steamState) {
                             is SteamDownloadState.Downloading -> {
