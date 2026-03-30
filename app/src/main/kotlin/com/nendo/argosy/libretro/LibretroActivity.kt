@@ -1285,6 +1285,9 @@ class LibretroActivity : ComponentActivity() {
             dsm.emulatorMotionDispatcher = null
         }
         raSession?.destroy()
+        if (coreLoadedSuccessfully && videoSettings.rewindEnabled && !hardcoreMode) {
+            retroView.destroyRewindBuffer()
+        }
         if (isFinishing && gameId != -1L) {
             com.nendo.argosy.DualScreenManagerHolder.instance
                 ?.onSessionChanged(-1L)
