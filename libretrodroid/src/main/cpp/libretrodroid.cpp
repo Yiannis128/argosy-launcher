@@ -144,7 +144,16 @@ void LibretroDroid::setControllerType(unsigned int port, unsigned int type) {
 }
 
 bool LibretroDroid::unserializeState(int8_t *data, size_t size) {
-    return core->retro_unserialize(data, size);
+    bool result = core->retro_unserialize(data, size);
+    if (result && video && video->isHWAccelerated()) {
+        auto contextReset = Environment::getInstance().getHwContextReset();
+        if (contextReset) {
+            video->bindHWContext();
+            contextReset();
+            video->bindMainContext();
+        }
+    }
+    return result;
 }
 
 JNIEXPORT jboolean JNICALL LibretroDroid::unserializeSRAM(int8_t* data, size_t size) {

@@ -320,7 +320,8 @@ object EmulatorRegistry {
             supportedPlatforms = setOf("nds"),
             launchConfig = LaunchConfig.Custom(
                 activityClass = "com.dsemu.drastic.DraSticActivity",
-                useShellLaunch = true
+                useShellLaunch = true,
+                useFileUri = true
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.dsemu.drastic"
         ),

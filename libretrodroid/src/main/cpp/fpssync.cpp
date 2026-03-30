@@ -22,10 +22,16 @@
 namespace libretrodroid {
 
 unsigned FPSSync::advanceFrames() {
-    if (useVSync) return 1;
-
     if (lastFrame == MIN_TIME) {
         start();
+    }
+
+    if (useVSync) {
+        // Always advance lastFrame so wait() has a valid target,
+        // even when vsync is nominally active. This provides a
+        // backstop on devices where eglSwapBuffers doesn't block.
+        lastFrame = lastFrame + sampleInterval;
+        return 1;
     }
 
     auto now = std::chrono::steady_clock::now();
@@ -58,7 +64,6 @@ double FPSSync::getTimeStretchFactor() {
 }
 
 void FPSSync::wait() {
-    if (useVSync) return;
     auto now = std::chrono::steady_clock::now();
     auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(lastFrame - now).count();
     if (delta > 1000) {

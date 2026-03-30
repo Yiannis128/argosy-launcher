@@ -714,12 +714,14 @@ class GameLauncher @Inject constructor(
         val command = arrayOf(
             "am", "start",
             "-n", component,
+            "-a", emulator.launchAction,
             "-d", data,
             "--activity-clear-task",
-            "--activity-clear-top"
+            "--activity-clear-top",
+            "--activity-no-history"
         )
 
-        Logger.debug(TAG, "Shell launch: am start -n $component -d ${LogSanitizer.sanitizePath(data)} --activity-clear-task --activity-clear-top")
+        Logger.debug(TAG, "Shell launch: am start -n $component -a ${emulator.launchAction} -d ${LogSanitizer.sanitizePath(data)}")
         Runtime.getRuntime().exec(command)
 
         return Intent(Intent.ACTION_VIEW).apply {

@@ -153,8 +153,11 @@ class GLRetroView(
         LibretroDroid.setRumbleEnabled(data.rumbleEventsEnabled)
     }
 
-    override fun onDestroy(owner: LifecycleOwner) = catchExceptions {
-        LibretroDroid.destroy()
+    override fun onDestroy(owner: LifecycleOwner) {
+        // Skip native destroy -- it corrupts EGL state for the next core
+        // when called from a dying GL thread. The native singleton will be
+        // re-initialized by the next create() call. The process-level cleanup
+        // handles resource deallocation when the activity is truly gone.
         lifecycle = null
     }
 
