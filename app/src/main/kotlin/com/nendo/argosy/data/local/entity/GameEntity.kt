@@ -97,6 +97,7 @@ data class GameEntity(
 
     val titleId: String? = null,
     val titleIdLocked: Boolean = false,
+    val storeEnrichStatus: Int = 0,
     val titleIdCandidates: String? = null,
     val youtubeVideoId: String? = null,
 
@@ -117,6 +118,12 @@ data class GameEntity(
     val syncDirty: Boolean = false
 ) {
     val effectiveRaId: Long? get() = if (raIdVerified) verifiedRaId else (verifiedRaId ?: raId)
+
+    companion object {
+        const val STORE_NOT_ATTEMPTED = 0
+        const val STORE_SUCCESS = 1
+        const val STORE_FAILED = 2
+    }
 }
 
 data class GameListItem(

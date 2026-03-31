@@ -92,6 +92,8 @@ class SteamLibraryManager @Inject constructor(
     private var lastFullSyncAt: Instant? = null
     @Volatile
     private var forceSyncRequested = false
+    @Volatile
+    private var wasForceSync = false
     private var enrichmentJob: kotlinx.coroutines.Job? = null
 
     private companion object {
@@ -164,6 +166,7 @@ class SteamLibraryManager @Inject constructor(
     }
 
     private suspend fun startSyncFromLicenses(licenses: List<License>) {
+        wasForceSync = forceSyncRequested
         syncMutex.withLock {
             _syncState.value = LibrarySyncState.SyncingLicenses
 
@@ -348,13 +351,17 @@ class SteamLibraryManager @Inject constructor(
             _syncState.value = LibrarySyncState.Complete(gamesAdded, gamesUpdated)
             Log.d(TAG, "Library sync complete: $gamesAdded added, $gamesUpdated updated")
 
+            if (wasForceSync) {
+                gameDao.resetFailedStoreEnrichment()
+            }
+
             val existing = enrichmentJob
             if (existing != null && existing.isActive) {
                 Log.d(TAG, "Enrichment already in progress, skipping")
             } else {
                 enrichmentJob = scope.launch {
                     enrichIncompleteGames()
-                    steamIgdbResolver.get().requestResolutionForUnresolved()
+                    steamIgdbResolver.get().requestResolutionForUnresolved(force = wasForceSync)
                 }
             }
         }
@@ -362,7 +369,7 @@ class SteamLibraryManager @Inject constructor(
 
     private suspend fun enrichIncompleteGames() {
         val steamGames = gameDao.getBySource(GameSource.STEAM)
-            .filter { it.description == null || it.screenshotPaths.isNullOrBlank() }
+            .filter { it.storeEnrichStatus == GameEntity.STORE_NOT_ATTEMPTED }
         if (steamGames.isEmpty()) {
             Log.d(TAG, "No games need enrichment")
             return
@@ -385,9 +392,15 @@ class SteamLibraryManager @Inject constructor(
                         imageCacheManager.queueScreenshotCacheByGameId(enrichedGame.id, screenshotUrls)
                     }
                 }
+                if (result is SteamResult.Success) {
+                    gameDao.updateStoreEnrichStatus(game.id, GameEntity.STORE_SUCCESS)
+                } else {
+                    gameDao.updateStoreEnrichStatus(game.id, GameEntity.STORE_FAILED)
+                }
                 kotlinx.coroutines.delay(1500)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to enrich ${game.title}", e)
+                gameDao.updateStoreEnrichStatus(game.id, GameEntity.STORE_FAILED)
             }
         }
         Log.d(TAG, "Enrichment complete")

@@ -25,7 +25,7 @@ class SteamIgdbResolver @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var resolutionJob: Job? = null
 
-    fun requestResolutionForUnresolved() {
+    fun requestResolutionForUnresolved(force: Boolean = false) {
         if (!socialService.isConnected()) {
             Log.d(TAG, "Social service not connected, skipping IGDB resolution")
             return
@@ -35,27 +35,27 @@ class SteamIgdbResolver @Inject constructor(
             Log.d(TAG, "Resolution already in progress, skipping")
             return
         }
-        resolutionJob = scope.launch { resolveThrottled() }
+        resolutionJob = scope.launch { resolveThrottled(force) }
     }
 
-    private suspend fun resolveThrottled() {
-        val unresolved = gameDao.getUnresolvedSteamGames()
-        if (unresolved.isEmpty()) return
-        Log.d(TAG, "Requesting IGDB resolution for ${unresolved.size} Steam games (${RESOLUTION_DELAY_MS}ms between each)")
-        for (game in unresolved) {
+    private suspend fun resolveThrottled(force: Boolean = false) {
+        val games = if (force) gameDao.getAllSteamGamesForResolve() else gameDao.getUnresolvedSteamGames()
+        if (games.isEmpty()) return
+        Log.d(TAG, "Requesting IGDB resolution for ${games.size} Steam games (${RESOLUTION_DELAY_MS}ms between each)")
+        for (game in games) {
             if (!awaitConnection()) {
                 Log.w(TAG, "Connection lost and did not recover, aborting resolution")
                 return
             }
             val steamAppId = game.steamAppId ?: continue
-            val sent = socialService.sendResolveSteamGame(steamAppId, game.title)
+            val sent = socialService.sendResolveSteamGame(steamAppId, game.title, game.releaseYear, force)
             if (!sent) {
                 Log.w(TAG, "Failed to send resolve for ${game.title}, waiting for reconnect")
                 if (!awaitConnection()) {
                     Log.w(TAG, "Connection lost and did not recover, aborting resolution")
                     return
                 }
-                socialService.sendResolveSteamGame(steamAppId, game.title)
+                socialService.sendResolveSteamGame(steamAppId, game.title, game.releaseYear, force)
             }
             delay(RESOLUTION_DELAY_MS)
         }

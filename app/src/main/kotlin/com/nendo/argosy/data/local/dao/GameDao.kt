@@ -656,6 +656,15 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE platformId = :platformId AND rommId IS NOT NULL AND localPath IS NULL")
     suspend fun getGamesWithRommIdButNoPathByPlatform(platformId: Long): List<GameEntity>
 
+    @Query("UPDATE games SET storeEnrichStatus = :status WHERE id = :gameId")
+    suspend fun updateStoreEnrichStatus(gameId: Long, status: Int)
+
+    @Query("UPDATE games SET storeEnrichStatus = 0 WHERE source = 'STEAM' AND storeEnrichStatus = 2")
+    suspend fun resetFailedStoreEnrichment()
+
+    @Query("SELECT * FROM games WHERE source = 'STEAM' AND steamAppId IS NOT NULL")
+    suspend fun getAllSteamGamesForResolve(): List<GameEntity>
+
 }
 
 data class SearchCandidate(

@@ -113,7 +113,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamCompletedFileEntity::class,
         SteamCompletedDepotEntity::class
     ],
-    version = 96,
+    version = 97,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1447,6 +1447,17 @@ abstract class ALauncherDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_steam_licenses_accountId ON steam_licenses(accountId)")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_steam_licenses_packageId_accountId ON steam_licenses(packageId, accountId)")
+            }
+        }
+
+        val MIGRATION_96_97 = object : Migration(96, 97) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN storeEnrichStatus INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("""
+                    UPDATE games SET storeEnrichStatus = 1
+                    WHERE source = 'STEAM' AND description IS NOT NULL
+                    AND screenshotPaths IS NOT NULL AND screenshotPaths != ''
+                """)
             }
         }
 
