@@ -27,6 +27,8 @@ class SecondaryHomeStateManager(
     private val emulatorConfigDao: EmulatorConfigDao,
     private val gameFileDao: GameFileDao,
     private val downloadQueueDao: DownloadQueueDao,
+    private val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager? = null,
     private val displayAffinityHelper: DisplayAffinityHelper
 ) {
 
@@ -117,6 +119,8 @@ class SecondaryHomeStateManager(
                 emulatorConfigDao = emulatorConfigDao,
                 gameFileDao = gameFileDao,
                 downloadQueueDao = downloadQueueDao,
+                steamDownloadQueueDao = steamDownloadQueueDao,
+                steamContentManager = steamContentManager,
                 displayAffinityHelper = affinityHelper,
                 context = context
             )
@@ -200,6 +204,8 @@ class SecondaryHomeStateManager(
             emulatorConfigDao = emulatorConfigDao,
             gameFileDao = gameFileDao,
             downloadQueueDao = downloadQueueDao,
+            steamDownloadQueueDao = steamDownloadQueueDao,
+            steamContentManager = steamContentManager,
             displayAffinityHelper = affinityHelper,
             context = context
         )

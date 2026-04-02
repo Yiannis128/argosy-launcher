@@ -65,6 +65,7 @@ data class DualGameDetailUiState(
     val earnedAchievementCount: Int = 0,
     val isRommGame: Boolean = false,
     val isSteamGame: Boolean = false,
+    val steamAppId: Long? = null,
     val isAndroidApp: Boolean = false,
     val isDownloaded: Boolean = false,
     val platformSlug: String = "",
@@ -77,23 +78,24 @@ data class DualGameDetailUiState(
     val selectedCoreName: String? = null,
     val selectedCoreId: String? = null,
     val downloadProgress: Float? = null,
-    val downloadState: String? = null
+    val downloadState: String? = null,
+    val isDeleting: Boolean = false
 )
 
 fun DualGameDetailUiState.visibleOptions(): List<GameDetailOption> {
     val isEmulated = !isSteamGame && !isAndroidApp
     return buildList {
-        add(GameDetailOption.PLAY)
+        if (!isDeleting) add(GameDetailOption.PLAY)
         add(GameDetailOption.RATING)
         add(GameDetailOption.DIFFICULTY)
         add(GameDetailOption.STATUS)
         add(GameDetailOption.TOGGLE_FAVORITE)
         if (isEmulated) add(GameDetailOption.CHANGE_EMULATOR)
         if (hasMultipleCores && isEmulated) add(GameDetailOption.CHANGE_CORE)
-        if (isDownloaded) add(GameDetailOption.UPDATES_DLC)
+        if (isDownloaded && !isDeleting) add(GameDetailOption.UPDATES_DLC)
         add(GameDetailOption.ADD_TO_COLLECTION)
         if (isRommGame || isAndroidApp) add(GameDetailOption.REFRESH_METADATA)
-        if (isDownloaded || isAndroidApp) add(GameDetailOption.DELETE)
+        if ((isDownloaded || isAndroidApp) && !isDeleting) add(GameDetailOption.DELETE)
         add(GameDetailOption.HIDE)
     }
 }

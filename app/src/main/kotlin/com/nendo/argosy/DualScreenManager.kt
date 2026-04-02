@@ -51,6 +51,7 @@ import android.os.Looper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -82,7 +83,9 @@ class DualScreenManager(
     private val edenContentManager: com.nendo.argosy.data.emulator.EdenContentManager,
     private val notificationManager: com.nendo.argosy.ui.notification.NotificationManager,
     internal val emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao,
+    internal val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
     internal val playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker,
+    internal val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     internal val repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase? = null,
     var isRolesSwapped: Boolean = false
 ) {
@@ -336,6 +339,7 @@ class DualScreenManager(
 
     private var companionWatchdogJob: Job? = null
     private var companionLaunchJob: Job? = null
+    private var startupGuardJob: Job? = null
     private var companionPausedPending = false
 
     private val displayListener = object : DisplayManager.DisplayListener {
@@ -410,6 +414,7 @@ class DualScreenManager(
             downloadQueueDao = downloadQueueDao,
             displayAffinityHelper = displayAffinityHelper,
             context = appContext,
+            steamContentManager = steamContentManager,
             preferencesRepository = preferencesRepository,
             repairImageCacheUseCase = repairImageCacheUseCase
         )
@@ -1201,7 +1206,12 @@ class DualScreenManager(
 
     private fun handleDualDownload(gameId: Long) {
         scope.launch(Dispatchers.IO) {
-            gameActionsDelegate.queueDownload(gameId)
+            val game = gameDao.getById(gameId) ?: return@launch
+            if (game.steamAppId != null) {
+                steamContentManager.queueDownloadOptimistic(game.steamAppId, game.title, game.coverPath)
+            } else {
+                gameActionsDelegate.queueDownload(gameId)
+            }
         }
     }
 
@@ -1225,6 +1235,8 @@ class DualScreenManager(
     }
 
     private fun handleDualDelete(gameId: Long) {
+        companionHost?.onDirectActionResult("DELETE_START", gameId)
+        _swappedGameDetailViewModel?.onDeleteStarted()
         scope.launch(Dispatchers.IO) {
             val game = gameDao.getById(gameId) ?: return@launch
             if (game.source == GameSource.ANDROID_APP) {
@@ -1237,10 +1249,13 @@ class DualScreenManager(
                 gameActionsDelegate.deleteLocalFile(gameId)
             }
             companionHost?.onDirectActionResult("DELETE_DONE", gameId)
+            _swappedGameDetailViewModel?.loadGame(gameId)
         }
     }
 
     private fun handleDualHide(gameId: Long) {
+        companionHost?.onDirectActionResult("DELETE_START", gameId)
+        _swappedGameDetailViewModel?.onDeleteStarted()
         scope.launch(Dispatchers.IO) {
             gameActionsDelegate.deleteLocalFile(gameId)
             gameActionsDelegate.hideGame(gameId)
@@ -1444,6 +1459,9 @@ class DualScreenManager(
         sessionStateStore.setArgosyForeground(isForeground)
         companionHost?.onForegroundChanged(isForeground)
         if (isForeground) {
+            if (!_isCompanionActive.value && displayAffinityHelper.hasSecondaryDisplay) {
+                ensureCompanionLaunched()
+            }
             val isWizard = sessionStateStore.isWizardActive()
             if (isWizard) companionHost?.onWizardStateChanged(true)
             scope.launch {
@@ -1493,6 +1511,8 @@ class DualScreenManager(
             emulatorConfigDao = emulatorConfigDao,
             gameFileDao = gameFileDao,
             downloadQueueDao = downloadQueueDao,
+            steamDownloadQueueDao = steamDownloadQueueDao,
+            steamContentManager = steamContentManager,
             displayAffinityHelper = displayAffinityHelper,
             context = appContext
         )
@@ -1564,6 +1584,26 @@ class DualScreenManager(
 
     fun setEmulatorDisplay(displayId: Int?) {
         emulatorDisplayId = displayId
+    }
+
+    fun startStartupGuard() {
+        startupGuardJob?.cancel()
+        startupGuardJob = scope.launch {
+            while (isActive) {
+                delay(1500)
+                if (!_isCompanionActive.value &&
+                    displayAffinityHelper.hasSecondaryDisplay &&
+                    !sessionStateStore.hasActiveSession()
+                ) {
+                    ensureCompanionLaunched()
+                }
+            }
+        }
+    }
+
+    fun stopStartupGuard() {
+        startupGuardJob?.cancel()
+        startupGuardJob = null
     }
 
     fun ensureCompanionLaunched(allowDuringSession: Boolean = false) {

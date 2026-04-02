@@ -120,6 +120,7 @@
 
         <service
             android:name=".data.steam.SteamService"
+            android:foregroundServiceType="dataSync"
             android:exported="false" />
 
         <service

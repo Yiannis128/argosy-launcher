@@ -103,7 +103,8 @@ fun ArgosyApp(
     dualViewMode: StateFlow<String>? = null,
     dualCollectionShowcase: StateFlow<DualCollectionShowcaseState>? = null,
     dualAppBarFocused: StateFlow<Boolean>? = null,
-    dualDrawerOpen: StateFlow<Boolean>? = null
+    dualDrawerOpen: StateFlow<Boolean>? = null,
+    onStartupComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -142,6 +143,10 @@ fun ArgosyApp(
     val isDualActive = isDualScreenDevice && companionActive
     LaunchedEffect(isDualActive) {
         viewModel.setDualScreenMode(isDualActive)
+    }
+
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) onStartupComplete()
     }
 
     val isOnWizard = currentRoute == Screen.FirstRun.route

@@ -88,8 +88,10 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var edenContentManager: com.nendo.argosy.data.emulator.EdenContentManager
     @Inject lateinit var notificationManager: com.nendo.argosy.ui.notification.NotificationManager
     @Inject lateinit var emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao
+    @Inject lateinit var steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao
     @Inject lateinit var playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker
     @Inject lateinit var repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
+    @Inject lateinit var steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
     @Inject lateinit var presenceManager: com.nendo.argosy.data.social.PresenceManager
     @Inject lateinit var discordPresenceManager: com.nendo.argosy.data.social.discord.DiscordPresenceManager
 
@@ -192,7 +194,10 @@ class MainActivity : ComponentActivity() {
             val companionIntent = Intent(this, SecondaryHomeActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
-            startActivity(companionIntent)
+            val options = android.app.ActivityOptions.makeBasic()
+                .setLaunchDisplayId(display!!.displayId)
+                .toBundle()
+            startActivity(companionIntent, options)
             finish()
             return
         }
@@ -251,7 +256,9 @@ class MainActivity : ComponentActivity() {
                 edenContentManager = edenContentManager,
                 notificationManager = notificationManager,
                 emulatorConfigDao = emulatorConfigDao,
+                steamDownloadQueueDao = steamDownloadQueueDao,
                 playSessionTracker = playSessionTracker,
+                steamContentManager = steamContentManager,
                 repairImageCacheUseCase = repairImageCacheUseCase,
                 isRolesSwapped = isRolesSwapped
             )
@@ -280,6 +287,7 @@ class MainActivity : ComponentActivity() {
         }
         dualScreenManager.registerReceivers()
         dualScreenManager.ensureCompanionLaunched()
+        dualScreenManager.startStartupGuard()
         activityScope.launch {
             dualScreenManager.isCompanionActive.collect { active ->
                 if (active && !isDualScreenDevice) {
@@ -315,7 +323,8 @@ class MainActivity : ComponentActivity() {
                         dualViewMode = dualViewMode,
                         dualCollectionShowcase = dualCollectionShowcase,
                         dualAppBarFocused = dualAppBarFocused,
-                        dualDrawerOpen = dualDrawerOpen
+                        dualDrawerOpen = dualDrawerOpen,
+                        onStartupComplete = { dualScreenManager.stopStartupGuard() }
                     )
                 }
             }

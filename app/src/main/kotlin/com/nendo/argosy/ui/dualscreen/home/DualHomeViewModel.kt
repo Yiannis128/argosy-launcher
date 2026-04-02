@@ -13,6 +13,9 @@ import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.entity.CollectionEntity
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.steam.SteamDownloadState
+import com.nendo.argosy.ui.common.appId
+import com.nendo.argosy.ui.common.toIndicator
 import com.nendo.argosy.data.repository.CollectionRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.local.entity.CollectionType
@@ -165,6 +168,7 @@ class DualHomeViewModel(
     private val displayAffinityHelper: DisplayAffinityHelper,
     private val context: Context,
     private val preferencesRepository: UserPreferencesRepository? = null,
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager? = null,
     private val repairImageCacheUseCase: RepairImageCacheUseCase? = null
 ) : ViewModel() {
 
@@ -206,7 +210,7 @@ class DualHomeViewModel(
         viewModelScope.launch {
             platformRepository.observePlatformsWithGames().collect { platforms ->
                 val filtered = platforms
-                    .filter { it.id != LocalPlatformIds.STEAM && it.id != LocalPlatformIds.ANDROID }
+                    .filter { it.id != LocalPlatformIds.ANDROID }
                 val newPlatformSections = filtered.map { platform ->
                     DualHomeSection.Platform(
                         id = platform.id,
@@ -242,6 +246,8 @@ class DualHomeViewModel(
             }
         }
     }
+
+    private var steamIndicators: Map<Long, com.nendo.argosy.ui.screens.home.GameDownloadIndicator> = emptyMap()
 
     private fun observeDownloads() {
         viewModelScope.launch {
@@ -288,11 +294,49 @@ class DualHomeViewModel(
                 }
             }
         }
+
+        val scm = steamContentManager ?: return
+        viewModelScope.launch {
+            var lastSteamGameId: Long? = null
+            scm.downloadState.collect { steamState ->
+                if (steamState is SteamDownloadState.Idle) {
+                    val prev = lastSteamGameId
+                    lastSteamGameId = null
+                    if (prev != null) {
+                        steamIndicators = steamIndicators - prev
+                        loadGamesForCurrentSectionSuspend()
+                    }
+                    return@collect
+                }
+                val appId = steamState.appId ?: return@collect
+                val game = gameDao.getBySteamAppId(appId) ?: return@collect
+                lastSteamGameId = game.id
+                val activeDl = scm.activeDownload.value
+                val progress = activeDl?.progress ?: when (steamState) {
+                    is SteamDownloadState.Paused -> steamState.progress
+                    else -> 0f
+                }
+                val indicator = steamState.toIndicator(progress)
+                if (indicator != null) {
+                    steamIndicators = steamIndicators + (game.id to indicator)
+                    updateSteamIndicators()
+                } else {
+                    steamIndicators = steamIndicators - game.id
+                    if (steamState is SteamDownloadState.Completed) {
+                        loadGamesForCurrentSectionSuspend()
+                    }
+                }
+            }
+        }
     }
 
     private fun List<HomeGameUi>.withCurrentDownloadState(): List<HomeGameUi> {
-        if (latestDownloads.isEmpty()) return this
-        return map { it.copy(downloadIndicator = indicatorForGame(it.id, latestDownloads)) }
+        if (latestDownloads.isEmpty() && steamIndicators.isEmpty()) return this
+        return map { game ->
+            val indicator = steamIndicators[game.id]
+                ?: indicatorForGame(game.id, latestDownloads)
+            game.copy(downloadIndicator = indicator)
+        }
     }
 
     private fun indicatorForGame(
@@ -304,6 +348,25 @@ class DualHomeViewModel(
             (entity.bytesDownloaded.toFloat() / entity.totalBytes).coerceIn(0f, 1f)
         } else 0f
         return GameDownloadIndicator(isDownloading = true, progress = progress)
+    }
+
+    private fun updateSteamIndicators() {
+        _uiState.update { state ->
+            state.copy(
+                games = state.games.map { game ->
+                    val indicator = steamIndicators[game.id] ?: game.downloadIndicator
+                    game.copy(downloadIndicator = indicator)
+                },
+                libraryGames = state.libraryGames.map { game ->
+                    val indicator = steamIndicators[game.id] ?: game.downloadIndicator
+                    game.copy(downloadIndicator = indicator)
+                },
+                collectionGames = state.collectionGames.map { game ->
+                    val indicator = steamIndicators[game.id] ?: game.downloadIndicator
+                    game.copy(downloadIndicator = indicator)
+                }
+            )
+        }
     }
 
     private suspend fun buildSections(): List<DualHomeSection> {
@@ -322,7 +385,7 @@ class DualHomeViewModel(
         }
 
         val platforms = platformRepository.getPlatformsWithGames()
-            .filter { it.id != LocalPlatformIds.STEAM && it.id != LocalPlatformIds.ANDROID }
+            .filter { it.id != LocalPlatformIds.ANDROID }
         platforms.forEach { platform ->
             sections.add(
                 DualHomeSection.Platform(
@@ -346,6 +409,7 @@ class DualHomeViewModel(
         return games.filter { game ->
             when {
                 game.source == GameSource.ANDROID_APP -> true
+                game.source == GameSource.STEAM -> true
                 game.localPath != null -> File(game.localPath).exists()
                 else -> false
             }
@@ -1176,7 +1240,12 @@ class DualHomeViewModel(
     private fun GameEntity.toUi(): HomeGameUi {
         val firstScreenshot = screenshotPaths?.split(",")?.firstOrNull()?.takeIf { it.isNotBlank() }
         val effectiveBackground = backgroundPath ?: firstScreenshot ?: coverPath
-        val isPlayable = localPath != null || source == GameSource.ANDROID_APP
+        val isDownloaded = when {
+            source == GameSource.ANDROID_APP -> true
+            steamAppId != null && localPath != null -> java.io.File(localPath, ".download_complete").exists()
+            else -> localPath != null
+        }
+        val isPlayable = isDownloaded || source == GameSource.ANDROID_APP
         return HomeGameUi(
             id = id,
             title = title,
@@ -1190,7 +1259,7 @@ class DualHomeViewModel(
             releaseYear = releaseYear,
             genre = genre,
             isFavorite = isFavorite,
-            isDownloaded = isPlayable,
+            isDownloaded = isDownloaded,
             isRommGame = rommId != null,
             rating = rating,
             userRating = userRating,

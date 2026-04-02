@@ -475,6 +475,7 @@ class SecondaryHomeActivity :
     override fun onDirectActionResult(type: String, gameId: Long) {
         val vm = dualGameDetailViewModel ?: return
         when (type) {
+            "DELETE_START" -> { if (gameId > 0) vm.onDeleteStarted() }
             "REFRESH_DONE", "DELETE_DONE" -> { if (gameId > 0) vm.loadGame(gameId) }
             "HIDE_DONE" -> returnToHome()
             "SAVE_SWITCH_DONE", "SAVE_RESTORE_DONE", "SAVE_CREATE_DONE", "SAVE_LOCK_DONE" -> { }
@@ -544,6 +545,7 @@ class SecondaryHomeActivity :
             downloadQueueDao = dsm.downloadQueueDao,
             displayAffinityHelper = affinityHelper,
             context = applicationContext,
+            steamContentManager = dsm.steamContentManager,
             preferencesRepository = dsm.preferencesRepository,
             repairImageCacheUseCase = dsm.repairImageCacheUseCase
         )
@@ -558,6 +560,8 @@ class SecondaryHomeActivity :
             emulatorConfigDao = dsm.emulatorConfigDao,
             gameFileDao = dsm.gameFileDao,
             downloadQueueDao = dsm.downloadQueueDao,
+            steamDownloadQueueDao = dsm.steamDownloadQueueDao,
+            steamContentManager = dsm.steamContentManager,
             displayAffinityHelper = affinityHelper
         )
 

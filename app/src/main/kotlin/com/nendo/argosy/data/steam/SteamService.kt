@@ -98,6 +98,7 @@ class SteamService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "SteamService started")
+        promoteToForeground()
 
         if (intent?.getBooleanExtra(EXTRA_CONNECT_FOR_AUTH, false) == true) {
             scope.launch {
@@ -138,6 +139,27 @@ class SteamService : Service() {
         const val EXTRA_FORCE_CONNECT = "force_connect"
         const val EXTRA_CONNECT_FOR_AUTH = "connect_for_auth"
         private const val MAX_RECONNECT_ATTEMPTS = 5
+        private const val NOTIFICATION_ID = 9201
+    }
+
+    private fun promoteToForeground() {
+        com.nendo.argosy.data.sync.SyncNotificationChannel.create(this)
+        val notification = androidx.core.app.NotificationCompat.Builder(
+            this, com.nendo.argosy.data.sync.SyncNotificationChannel.CHANNEL_ID
+        )
+            .setSmallIcon(com.nendo.argosy.R.drawable.ic_helm)
+            .setContentTitle("Steam")
+            .setContentText("Connecting...")
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .build()
+        try {
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to promote to foreground: ${e.message}")
+        }
     }
 
     override fun onDestroy() {

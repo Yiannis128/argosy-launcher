@@ -18,6 +18,8 @@ import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.download.ZipExtractor
 import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.data.steam.SteamDownloadState
+import com.nendo.argosy.ui.common.appId
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.RetroArchCore
@@ -48,6 +50,8 @@ class DualGameDetailViewModel(
     private val emulatorConfigDao: EmulatorConfigDao,
     private val gameFileDao: GameFileDao,
     private val downloadQueueDao: DownloadQueueDao,
+    private val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager? = null,
     private val displayAffinityHelper: DisplayAffinityHelper,
     private val context: Context
 ) : ViewModel() {
@@ -138,6 +142,7 @@ class DualGameDetailViewModel(
     val collectionPickerFocusIndex: StateFlow<Int> = _collectionPickerFocusIndex.asStateFlow()
 
     private var downloadObserverJob: Job? = null
+    private var steamDownloadObserverJob: Job? = null
     private var ratingDebounceJob: Job? = null
     private var difficultyDebounceJob: Job? = null
     private var statusDebounceJob: Job? = null
@@ -281,8 +286,22 @@ class DualGameDetailViewModel(
                     ?: url
             }
 
-            val isPlayable = game.localPath != null ||
-                game.source == GameSource.ANDROID_APP
+            val isDownloaded = when {
+                game.source == GameSource.ANDROID_APP -> true
+                game.steamAppId != null && game.localPath != null ->
+                    java.io.File(game.localPath, ".download_complete").exists()
+                else -> game.localPath != null
+            }
+            val isPlayable = when {
+                game.source == GameSource.ANDROID_APP -> true
+                game.steamAppId != null -> isDownloaded && run {
+                    val launcher = game.steamLauncher
+                        ?.let { com.nendo.argosy.data.launcher.SteamLaunchers.getByPackage(it) }
+                        ?: com.nendo.argosy.data.launcher.SteamLaunchers.getPreferred(context)
+                    launcher?.isInstalled(context) == true
+                }
+                else -> isDownloaded
+            }
 
             val gameSpecificConfig = emulatorConfigDao.getByGameId(game.id)
             val platformDefaultConfig = emulatorConfigDao.getDefaultForPlatform(game.platformId)
@@ -330,8 +349,9 @@ class DualGameDetailViewModel(
                 earnedAchievementCount = game.earnedAchievementCount,
                 isRommGame = game.rommId != null,
                 isSteamGame = game.source == GameSource.STEAM || game.steamAppId != null,
+                steamAppId = game.steamAppId,
                 isAndroidApp = game.source == GameSource.ANDROID_APP,
-                isDownloaded = game.localPath != null,
+                isDownloaded = isDownloaded,
                 platformSlug = game.platformSlug,
                 platformId = game.platformId,
                 emulatorName = emulatorConfig?.displayName,
@@ -348,6 +368,9 @@ class DualGameDetailViewModel(
                 if (screenshots.isNotEmpty()) 0 else -1
             _selectedOptionIndex.value = 0
             observeDownloads(game.id)
+            if (game.steamAppId != null) {
+                observeSteamDownloads(game.id, game.steamAppId)
+            }
         }
     }
 
@@ -366,18 +389,113 @@ class DualGameDetailViewModel(
 
                 if (wasActive && entity == null) {
                     val game = gameDao.getById(gameId) ?: return@collect
-                    val isNowPlayable = game.localPath != null ||
-                        game.source == GameSource.ANDROID_APP
+                    val isNowPlayable = when {
+                        game.source == GameSource.ANDROID_APP -> true
+                        game.steamAppId != null && game.localPath != null ->
+                            java.io.File(game.localPath, ".download_complete").exists()
+                        else -> game.localPath != null
+                    }
                     _uiState.update {
                         it.copy(
                             isPlayable = isNowPlayable,
-                            isDownloaded = game.localPath != null
+                            isDownloaded = isNowPlayable
                         )
                     }
                     _visibleOptions.value = _uiState.value.visibleOptions()
                 }
             }
         }
+    }
+
+    private fun observeSteamDownloads(gameId: Long, steamAppId: Long) {
+        steamDownloadObserverJob?.cancel()
+        val scm = steamContentManager
+        if (scm != null) {
+            steamDownloadObserverJob = viewModelScope.launch {
+                scm.downloadState.collect { steamState ->
+                    val stateAppId = steamState.appId
+                    if (stateAppId != null && stateAppId != steamAppId) return@collect
+                    val activeDl = scm.activeDownload.value
+                    val progress = activeDl?.progress ?: when (steamState) {
+                        is SteamDownloadState.Paused -> steamState.progress
+                        else -> 0f
+                    }
+                    val uiState = steamStateToUiState(steamState)
+                    if (uiState != null) {
+                        _uiState.update { it.copy(downloadProgress = progress, downloadState = uiState) }
+                    } else {
+                        if (_uiState.value.downloadState != null) {
+                            val game = gameDao.getById(gameId) ?: return@collect
+                            val isNowDownloaded = game.steamAppId != null && game.localPath != null &&
+                                java.io.File(game.localPath, ".download_complete").exists()
+                            _uiState.update {
+                                it.copy(
+                                    downloadProgress = null,
+                                    downloadState = null,
+                                    isPlayable = isNowDownloaded,
+                                    isDownloaded = isNowDownloaded
+                                )
+                            }
+                            _visibleOptions.value = _uiState.value.visibleOptions()
+                        }
+                    }
+                }
+            }
+        } else {
+            steamDownloadObserverJob = viewModelScope.launch {
+                steamDownloadQueueDao.observeByAppId(steamAppId).collect { entity ->
+                    if (entity != null) {
+                        val progress = if (entity.totalBytes > 0) {
+                            (entity.bytesDownloaded.toFloat() / entity.totalBytes).coerceIn(0f, 1f)
+                        } else 0f
+                        _uiState.update {
+                            it.copy(downloadProgress = progress, downloadState = entity.state)
+                        }
+                    } else if (_uiState.value.downloadState != null && _uiState.value.isSteamGame) {
+                        val game = gameDao.getById(gameId) ?: return@collect
+                        val isNowDownloaded = game.steamAppId != null && game.localPath != null &&
+                            java.io.File(game.localPath, ".download_complete").exists()
+                        _uiState.update {
+                            it.copy(
+                                downloadProgress = null,
+                                downloadState = null,
+                                isPlayable = isNowDownloaded,
+                                isDownloaded = isNowDownloaded
+                            )
+                        }
+                        _visibleOptions.value = _uiState.value.visibleOptions()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun steamStateToUiState(state: SteamDownloadState): String? =
+        when (state) {
+            is SteamDownloadState.Preparing,
+            is SteamDownloadState.Connecting,
+            is SteamDownloadState.FetchingManifest -> "QUEUED"
+            is SteamDownloadState.Validating,
+            is SteamDownloadState.Moving,
+            is SteamDownloadState.Cleaning -> "EXTRACTING"
+            is SteamDownloadState.Downloading -> "DOWNLOADING"
+            is SteamDownloadState.Paused -> "PAUSED"
+            is SteamDownloadState.Completed,
+            is SteamDownloadState.Failed,
+            is SteamDownloadState.Idle -> null
+        }
+
+    fun onDeleteStarted() {
+        _uiState.update {
+            it.copy(
+                isPlayable = false,
+                isDownloaded = false,
+                isDeleting = true,
+                downloadProgress = null,
+                downloadState = null
+            )
+        }
+        _visibleOptions.value = _uiState.value.visibleOptions()
     }
 
     fun loadUnifiedSaves(

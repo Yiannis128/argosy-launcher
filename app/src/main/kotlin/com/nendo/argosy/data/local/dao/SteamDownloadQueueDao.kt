@@ -15,6 +15,9 @@ interface SteamDownloadQueueDao {
     @Query("SELECT * FROM steam_download_queue WHERE appId = :appId LIMIT 1")
     suspend fun getByAppId(appId: Long): SteamDownloadQueueEntity?
 
+    @Query("SELECT * FROM steam_download_queue WHERE appId = :appId LIMIT 1")
+    fun observeByAppId(appId: Long): kotlinx.coroutines.flow.Flow<SteamDownloadQueueEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: SteamDownloadQueueEntity): Long
 

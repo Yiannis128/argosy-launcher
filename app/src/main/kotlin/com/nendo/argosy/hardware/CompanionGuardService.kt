@@ -10,21 +10,13 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.MainActivity
 import com.nendo.argosy.R
-import com.nendo.argosy.util.SafeCoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class CompanionGuardService : Service() {
 
     companion object {
         private const val TAG = "CompanionGuard"
-        private const val RELAUNCH_DELAY_MS = 800L
 
         fun start(context: Context) {
             context.startForegroundService(
@@ -39,8 +31,6 @@ class CompanionGuardService : Service() {
         }
     }
 
-    private val scope = SafeCoroutineScope(Dispatchers.Main, "CompanionGuardService")
-    private var observerJob: Job? = null
     private val handler = Handler(Looper.getMainLooper())
     private var displayManager: DisplayManager? = null
 
@@ -62,7 +52,6 @@ class CompanionGuardService : Service() {
         displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         displayManager?.registerDisplayListener(displayListener, handler)
         startForegroundNotification()
-        startObserving()
         Log.d(TAG, "Companion guard service started")
     }
 
@@ -73,47 +62,9 @@ class CompanionGuardService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        observerJob?.cancel()
-        scope.cancel()
         displayManager?.unregisterDisplayListener(displayListener)
         Log.d(TAG, "Companion guard service stopped")
         super.onDestroy()
-    }
-
-    private fun startObserving() {
-        observerJob = scope.launch {
-            val dsm = DualScreenManagerHolder.instance ?: run {
-                Log.w(TAG, "DSM not available, waiting...")
-                var attempts = 0
-                while (DualScreenManagerHolder.instance == null && attempts < 50) {
-                    delay(200)
-                    attempts++
-                }
-                DualScreenManagerHolder.instance
-            }
-            if (dsm == null) {
-                Log.e(TAG, "DSM never became available, stopping")
-                stopSelf()
-                return@launch
-            }
-
-            dsm.isCompanionActive.collect { active ->
-                if (!active && dsm.displayAffinityHelper.hasSecondaryDisplay) {
-                    if (dsm.sessionStateStore.hasActiveSession()) {
-                        Log.d(TAG, "Companion inactive during game session -- allowing other app to remain in foreground")
-                        return@collect
-                    }
-                    Log.d(TAG, "Companion inactive, no game session, scheduling relaunch")
-                    delay(RELAUNCH_DELAY_MS)
-                    if (!dsm.isCompanionActive.value &&
-                        !dsm.sessionStateStore.hasActiveSession()
-                    ) {
-                        Log.d(TAG, "Companion still inactive with no session, relaunching")
-                        dsm.ensureCompanionLaunched()
-                    }
-                }
-            }
-        }
     }
 
     private fun startForegroundNotification() {

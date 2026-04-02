@@ -513,7 +513,7 @@ class SteamLibraryManager @Inject constructor(
                     slug = STEAM_PLATFORM_SLUG,
                     name = "Steam",
                     shortName = "Steam",
-                    sortOrder = 130,
+                    sortOrder = 2,
                     isVisible = true,
                     romExtensions = "",
                     gameCount = 0
