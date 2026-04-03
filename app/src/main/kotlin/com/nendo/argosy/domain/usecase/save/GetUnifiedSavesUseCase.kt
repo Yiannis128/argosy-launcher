@@ -14,6 +14,8 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
+private const val LATEST_SLOT_KEY = "__latest__"
+
 class GetUnifiedSavesUseCase @Inject constructor(
     private val saveCacheManager: SaveCacheManager,
     private val saveSyncRepository: SaveSyncRepository,
@@ -51,6 +53,7 @@ class GetUnifiedSavesUseCase @Inject constructor(
     ): List<UnifiedSaveEntry> {
         val result = mutableListOf<UnifiedSaveEntry>()
         val usedServerIds = mutableSetOf<Long>()
+        val claimedSlots = mutableSetOf<String>()
         val serverSaveById = serverSaves.associateBy { it.id }
 
         // Find the most recent cache for each channel (only these should match server saves by name)
@@ -91,6 +94,8 @@ class GetUnifiedSavesUseCase @Inject constructor(
                 val deviceSyncCurrent = saveSyncRepository.getDeviceId()?.let { devId ->
                     matchingServer.deviceSyncs?.find { it.deviceId == devId }?.isCurrent
                 }
+                val slotKey = resolveSlotKey(matchingServer.slot, matchingServer.fileName, romBaseName)
+                claimedSlots.add(slotKey)
                 result.add(
                     UnifiedSaveEntry(
                         localCacheId = cache.id,
@@ -128,8 +133,13 @@ class GetUnifiedSavesUseCase @Inject constructor(
             }
         }
 
-        for (serverSave in serverSaves) {
-            if (serverSave.id in usedServerIds) continue
+        val unmatchedServerSaves = serverSaves
+            .filter { it.id !in usedServerIds }
+            .sortedByDescending { parseServerTimestamp(it.updatedAt) ?: Instant.EPOCH }
+
+        for (serverSave in unmatchedServerSaves) {
+            val slotKey = resolveSlotKey(serverSave.slot, serverSave.fileName, romBaseName)
+            if (slotKey in claimedSlots) continue
 
             val timestamp = parseServerTimestamp(serverSave.updatedAt) ?: Instant.now()
             val isLatest = isLatestSlot(serverSave.slot, serverSave.fileName, romBaseName)
@@ -140,6 +150,7 @@ class GetUnifiedSavesUseCase @Inject constructor(
                 serverSave.deviceSyncs?.find { it.deviceId == devId }?.isCurrent
             }
 
+            claimedSlots.add(slotKey)
             result.add(
                 UnifiedSaveEntry(
                     serverSaveId = serverSave.id,
@@ -156,6 +167,15 @@ class GetUnifiedSavesUseCase @Inject constructor(
         }
 
         return result
+    }
+
+    private fun resolveSlotKey(slot: String?, fileName: String, romBaseName: String?): String {
+        if (slot != null) return slot.lowercase()
+        val baseName = File(fileName).nameWithoutExtension.lowercase()
+        if (romBaseName != null && SaveSyncApiClient.isLatestSaveFileName(fileName, romBaseName)) {
+            return LATEST_SLOT_KEY
+        }
+        return baseName
     }
 
     private fun matchesLocalCache(

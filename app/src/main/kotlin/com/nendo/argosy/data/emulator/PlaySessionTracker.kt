@@ -751,6 +751,10 @@ class PlaySessionTracker @Inject constructor(
     }
 
     private suspend fun syncAndCacheSave(session: ActiveSession): SaveCacheManager.CacheResult? {
+        // Clear mid-game dirty flags before caching/uploading to prevent
+        // SyncCoordinator from racing to upload stale mid-game entries
+        saveCacheDao.clearAllDirtyFlags(session.gameId)
+
         val cacheResult = cacheCurrentSave(session)
 
         if (cacheResult is SaveCacheManager.CacheResult.Failed || cacheResult == null) {
