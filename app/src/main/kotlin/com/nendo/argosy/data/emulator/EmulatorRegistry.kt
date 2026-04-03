@@ -500,8 +500,7 @@ object EmulatorRegistry {
             displayName = "Flycast",
             supportedPlatforms = setOf("dreamcast", "arcade"),
             launchConfig = LaunchConfig.Custom(
-                activityClass = "com.flycast.emulator.MainActivity",
-                useFileUri = true
+                activityClass = "com.flycast.emulator.MainActivity"
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.flycast.emulator"
         ),
