@@ -249,16 +249,16 @@ object SavePathRegistry {
         "melonds" to SavePathConfig(
             emulatorId = "melonds",
             defaultPaths = listOf(
-                "{extStorage}/melonDS/saves",
-                "{extStorage}/Android/data/me.magnum.melonds/files/saves"
+                "{extStorage}/Android/data/me.magnum.melonds/files/saves",
+                "{extStorage}/melonDS/saves"
             ),
             saveExtensions = listOf("sav")
         ),
         "melondualds" to SavePathConfig(
             emulatorId = "melondualds",
             defaultPaths = listOf(
-                "{extStorage}/melonDS/saves",
-                "{extStorage}/Android/data/me.magnum.melondualds/files/saves"
+                "{extStorage}/Android/data/me.magnum.melondualds/files/saves",
+                "{extStorage}/melonDS/saves"
             ),
             saveExtensions = listOf("sav")
         ),
