@@ -71,11 +71,6 @@ class RetroArchSaveHandler @Inject constructor(
         val contentDir = context.romPath?.let { File(it).parent }
         val contentDirName = context.romPath?.let { File(it).parentFile?.name }
 
-        // RetroArchConfigParser.resolveSavePaths handles:
-        // - savefile_directory from config
-        // - savefiles_in_content_dir setting
-        // - sort_savefiles_enable (core subdir) and sort_savefiles_by_content_enable (ROM parent subdir)
-        // - Fallback paths based on install type
         val paths = retroArchConfigParser.resolveSavePaths(
             packageName, contentDirName, coreName, contentDir, null
         )

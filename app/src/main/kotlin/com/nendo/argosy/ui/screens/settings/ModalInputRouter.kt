@@ -82,9 +82,12 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             InputMethod.CONFIRM -> {
                 when (focusedRow) {
                     is LaunchArgsRow.LaunchMethod -> viewModel.cycleLaunchArgsMethod()
-                    is LaunchArgsRow.RomPathFormat -> viewModel.cycleLaunchArgsRomPathFormat()
+                    is LaunchArgsRow.DataBinding -> viewModel.cycleLaunchArgsDataBinding()
+                    is LaunchArgsRow.ExtraBinding -> viewModel.cycleLaunchArgsExtraBinding()
+                    is LaunchArgsRow.ClipDataBinding -> viewModel.cycleLaunchArgsClipDataBinding()
                     is LaunchArgsRow.Flag -> viewModel.toggleLaunchArgsFlag(focusedRow.bit)
                     is LaunchArgsRow.MimeType -> viewModel.cycleLaunchArgsMimeType()
+                    is LaunchArgsRow.LockedBinding -> {} // non-interactive
                     null -> {}
                 }
                 InputResult.HANDLED

@@ -361,18 +361,18 @@ class SettingsViewModel @Inject constructor(
     fun setPlatformBuiltinStatePath(platformId: Long, path: String) = routeSetPlatformBuiltinStatePath(this, platformId, path)
     fun resetPlatformBuiltinStatePath(platformId: Long) = routeResetPlatformBuiltinStatePath(this, platformId)
 
-    // --- Launch Args modal ---
     fun openLaunchArgsModal(platformId: Long) = routeOpenLaunchArgsModal(this, platformId)
     fun closeLaunchArgsModal() = routeCloseLaunchArgsModal(this)
     fun moveLaunchArgsFocus(delta: Int) = routeMoveLaunchArgsFocus(this, delta)
     fun cycleLaunchArgsMethod() = routeCycleLaunchArgsMethod(this)
-    fun cycleLaunchArgsRomPathFormat() = routeCycleLaunchArgsRomPathFormat(this)
+    fun cycleLaunchArgsDataBinding() = routeCycleLaunchArgsDataBinding(this)
+    fun cycleLaunchArgsExtraBinding() = routeCycleLaunchArgsExtraBinding(this)
+    fun cycleLaunchArgsClipDataBinding() = routeCycleLaunchArgsClipDataBinding(this)
     fun toggleLaunchArgsFlag(flagBit: Int) = routeToggleLaunchArgsFlag(this, flagBit)
     fun cycleLaunchArgsMimeType() = routeCycleLaunchArgsMimeType(this)
     fun resetLaunchArgsFocused() = routeResetLaunchArgsFocused(this)
     fun resetAllLaunchArgs() = routeResetAllLaunchArgs(this)
 
-    // --- App Picker modal (ad-hoc emulator bindings) ---
     fun openAppPickerModal(platformId: Long) = routeOpenAppPickerModal(this, platformId)
     fun closeAppPickerModal() = routeCloseAppPickerModal(this)
     fun moveAppPickerFocus(delta: Int) = routeMoveAppPickerFocus(this, delta)

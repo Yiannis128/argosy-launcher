@@ -3,16 +3,13 @@ package com.nendo.argosy.ui.screens.settings
 import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.emulator.EmulatorDef
+import com.nendo.argosy.data.emulator.ExtraValue
 import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.LaunchMethod
-import com.nendo.argosy.data.emulator.RomPathFormat
+import com.nendo.argosy.data.emulator.RomBindingFormat
 import com.nendo.argosy.data.local.entity.EmulatorLaunchArgsEntity
 import kotlinx.coroutines.launch
 
-/**
- * Fresh-launch flag mask defaults per LaunchConfig variant. Mirrors the per-variant flag sets in
- * GameLauncher's commandFor* helpers and must stay in sync with them.
- */
 internal fun defaultFlagsMaskFor(launchConfig: LaunchConfig): Int = when (launchConfig) {
     is LaunchConfig.FileUri -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     is LaunchConfig.FilePathExtra -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -30,32 +27,123 @@ internal fun defaultFlagsMaskFor(launchConfig: LaunchConfig): Int = when (launch
     is LaunchConfig.BuiltIn -> Intent.FLAG_ACTIVITY_NEW_TASK
 }
 
-/** The emulator's default MIME type, when the launch uses a data URI. null for extras-only. */
 internal fun defaultMimeTypeFor(launchConfig: LaunchConfig): String? = when (launchConfig) {
     is LaunchConfig.FileUri -> "*/*"
-    is LaunchConfig.Custom -> launchConfig.mimeTypeOverride ?: "*/*".takeIf { true }
+    is LaunchConfig.Custom -> launchConfig.mimeTypeOverride ?: "*/*"
     else -> null
 }
 
-/** Whether the emulator's launch config has a ROM path that could sensibly be reformatted. */
-internal fun supportsRomPathFormatFor(launchConfig: LaunchConfig): Boolean = when (launchConfig) {
-    is LaunchConfig.FileUri,
-    is LaunchConfig.FilePathExtra,
-    is LaunchConfig.Custom -> true
-    else -> false
-}
+internal data class BindingDefaults(
+    val data: String,
+    val extras: String,
+    val clipData: String,
+    val dataLocked: Boolean = false,
+    val extrasLocked: Boolean = false
+)
 
-/** Whether the emulator's launch config emits a data URI (MIME type is only meaningful then). */
-internal fun supportsMimeTypeFor(launchConfig: LaunchConfig): Boolean = when (launchConfig) {
-    is LaunchConfig.FileUri -> true
-    is LaunchConfig.Custom -> launchConfig.useFileUri || launchConfig.useShellLaunch ||
-        launchConfig.mimeTypeOverride != null || run {
-            // Custom + ACTION_VIEW emits a data URI; ACTION_MAIN does not.
-            false // caller supplies emulator.launchAction; handled at open time
+internal fun computeBindingDefaults(emulator: EmulatorDef): BindingDefaults {
+    val config = emulator.launchConfig
+    val action = emulator.launchAction
+
+    return when (config) {
+        is LaunchConfig.FileUri -> BindingDefaults(
+            data = "FileProvider URI",
+            extras = "None",
+            clipData = "FileProvider URI"
+        )
+
+        is LaunchConfig.FilePathExtra -> BindingDefaults(
+            data = "None",
+            extras = "Absolute path (${config.extraKeys.joinToString()})",
+            clipData = "None"
+        )
+
+        is LaunchConfig.Custom -> when {
+            config.useFileUri && action == android.content.Intent.ACTION_VIEW -> BindingDefaults(
+                data = "Absolute path (shell)",
+                extras = "None",
+                clipData = "None"
+            )
+            config.useShellLaunch && action == android.content.Intent.ACTION_VIEW -> BindingDefaults(
+                data = "FileProvider URI (shell)",
+                extras = "None",
+                clipData = "None"
+            )
+            action == android.content.Intent.ACTION_VIEW -> BindingDefaults(
+                data = "FileProvider URI",
+                extras = "None",
+                clipData = "FileProvider URI"
+            )
+            else -> {
+                val hasDocUri = config.intentExtras.values.any { it is ExtraValue.DocumentUri }
+                val hasFileUri = config.intentExtras.values.any { it is ExtraValue.FileUri }
+                val hasFilePath = config.intentExtras.values.any { it is ExtraValue.FilePath }
+                val hasAbsPath = config.useAbsolutePath
+
+                val extrasLabel = when {
+                    hasDocUri -> "Document URI (SAF)"
+                    hasFileUri -> "FileProvider URI"
+                    hasFilePath || hasAbsPath -> "Absolute path"
+                    else -> "None"
+                }
+                val extraKeys = config.intentExtras.entries
+                    .filter { it.value is ExtraValue.FilePath || it.value is ExtraValue.FileUri || it.value is ExtraValue.DocumentUri }
+                    .map { it.key }
+                val extrasWithKeys = if (extraKeys.isNotEmpty()) {
+                    "$extrasLabel (${extraKeys.joinToString()})"
+                } else if (hasAbsPath) {
+                    "$extrasLabel (path/file/filePath)"
+                } else {
+                    extrasLabel
+                }
+
+                val clipLabel = when {
+                    hasDocUri -> "Document URI"
+                    hasFileUri -> "FileProvider URI"
+                    else -> "None"
+                }
+
+                BindingDefaults(
+                    data = "None",
+                    extras = extrasWithKeys,
+                    clipData = clipLabel
+                )
+            }
         }
-    is LaunchConfig.CustomScheme,
-    is LaunchConfig.ScummVM -> true // opaque scheme, not user-tunable
-    else -> false
+
+        is LaunchConfig.RetroArch -> BindingDefaults(
+            data = "None",
+            extras = "Absolute path (ROM)",
+            clipData = "None"
+        )
+
+        is LaunchConfig.CustomScheme -> BindingDefaults(
+            data = "${config.scheme}:// scheme URI",
+            extras = "None",
+            clipData = "None",
+            dataLocked = true
+        )
+
+        is LaunchConfig.Vita3K -> BindingDefaults(
+            data = "None",
+            extras = "Title ID (AppStartParameters)",
+            clipData = "None",
+            extrasLocked = true
+        )
+
+        is LaunchConfig.ScummVM -> BindingDefaults(
+            data = "scummvm: game ID",
+            extras = "None",
+            clipData = "None",
+            dataLocked = true
+        )
+
+        is LaunchConfig.BuiltIn -> BindingDefaults(
+            data = "N/A (in-process)",
+            extras = "N/A (in-process)",
+            clipData = "N/A (in-process)"
+        )
+    }
 }
 
 internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
@@ -66,10 +154,10 @@ internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
         val emulatorDef = vm.emulatorDetector.getByPackage(config.effectiveEmulatorPackage ?: return@launch)
             ?: return@launch
 
-        // Don't open for built-in; it doesn't go through the launch args pipeline.
         if (emulatorDef.launchConfig is LaunchConfig.BuiltIn) return@launch
 
         val override = vm.emulatorLaunchArgsDao.getByPlatformAndEmulator(platformId, emulatorId)
+        val bindings = computeBindingDefaults(emulatorDef)
         val state = LaunchArgsModalState(
             platformId = platformId,
             platformName = config.platform.name,
@@ -77,13 +165,14 @@ internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
             emulatorName = emulatorDef.displayName,
             focusIndex = 0,
             override = override,
-            defaultLaunchMethod = LaunchMethod.INTENT.name,
-            defaultRomPathFormat = RomPathFormat.AUTO.name,
+            defaultLaunchMethod = emulatorDef.defaultLaunchMethod.name,
             defaultFlagsMask = defaultFlagsMaskFor(emulatorDef.launchConfig),
             defaultMimeType = defaultMimeTypeFor(emulatorDef.launchConfig),
-            supportsRomPathFormat = supportsRomPathFormatFor(emulatorDef.launchConfig),
-            supportsMimeType = emulatorDef.launchAction == Intent.ACTION_VIEW &&
-                supportsRomPathFormatFor(emulatorDef.launchConfig)
+            defaultDataBinding = bindings.data,
+            defaultExtraBinding = bindings.extras,
+            defaultClipDataBinding = bindings.clipData,
+            dataBindingLocked = bindings.dataLocked,
+            extraBindingLocked = bindings.extrasLocked
         )
         vm.emulatorDelegate.showLaunchArgsModal(state)
     }
@@ -100,7 +189,6 @@ internal fun routeMoveLaunchArgsFocus(vm: SettingsViewModel, delta: Int) {
 internal fun routeCycleLaunchArgsMethod(vm: SettingsViewModel) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
     val current = state.override?.launchMethod
-    // Cycle: null (default) -> INTENT -> SHELL -> null
     val next = when (current) {
         null -> LaunchMethod.INTENT.name
         LaunchMethod.INTENT.name -> LaunchMethod.SHELL.name
@@ -110,25 +198,37 @@ internal fun routeCycleLaunchArgsMethod(vm: SettingsViewModel) {
     persistLaunchArgsField(vm, state) { it.copy(launchMethod = next) }
 }
 
-internal fun routeCycleLaunchArgsRomPathFormat(vm: SettingsViewModel) {
+private fun cycleBindingValue(current: String?): String? = when (current) {
+    null -> RomBindingFormat.NONE.name
+    RomBindingFormat.NONE.name -> RomBindingFormat.ABSOLUTE_PATH.name
+    RomBindingFormat.ABSOLUTE_PATH.name -> RomBindingFormat.FILE_PROVIDER.name
+    RomBindingFormat.FILE_PROVIDER.name -> RomBindingFormat.DOCUMENT_URI.name
+    RomBindingFormat.DOCUMENT_URI.name -> null
+    else -> null
+}
+
+internal fun routeCycleLaunchArgsDataBinding(vm: SettingsViewModel) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
-    val current = state.override?.romPathFormat
-    val next = when (current) {
-        null -> RomPathFormat.ABSOLUTE_PATH.name
-        RomPathFormat.ABSOLUTE_PATH.name -> RomPathFormat.FILE_PROVIDER.name
-        RomPathFormat.FILE_PROVIDER.name -> RomPathFormat.DOCUMENT_URI.name
-        RomPathFormat.DOCUMENT_URI.name -> null
-        else -> null
-    }
-    persistLaunchArgsField(vm, state) { it.copy(romPathFormat = next) }
+    val next = cycleBindingValue(state.override?.dataBinding)
+    persistLaunchArgsField(vm, state) { it.copy(dataBinding = next) }
+}
+
+internal fun routeCycleLaunchArgsExtraBinding(vm: SettingsViewModel) {
+    val state = vm._uiState.value.emulators.launchArgsModalState ?: return
+    val next = cycleBindingValue(state.override?.extraBinding)
+    persistLaunchArgsField(vm, state) { it.copy(extraBinding = next) }
+}
+
+internal fun routeCycleLaunchArgsClipDataBinding(vm: SettingsViewModel) {
+    val state = vm._uiState.value.emulators.launchArgsModalState ?: return
+    val next = cycleBindingValue(state.override?.clipDataBinding)
+    persistLaunchArgsField(vm, state) { it.copy(clipDataBinding = next) }
 }
 
 internal fun routeToggleLaunchArgsFlag(vm: SettingsViewModel, flagBit: Int) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
-    // Initialize override mask from the base mask if not already overridden.
     val currentMask = state.override?.intentFlagsMask ?: state.defaultFlagsMask
     val toggledMask = currentMask xor flagBit
-    // If the result equals the base mask, the override becomes redundant -> clear to null.
     val nextMask: Int? = if (toggledMask == state.defaultFlagsMask) null else toggledMask
     persistLaunchArgsField(vm, state) { it.copy(intentFlagsMask = nextMask) }
 }
@@ -148,9 +248,12 @@ internal fun routeResetLaunchArgsFocused(vm: SettingsViewModel) {
     val focused = rows.getOrNull(state.focusIndex) ?: return
     val cleared = when (focused) {
         is LaunchArgsRow.LaunchMethod -> override.copy(launchMethod = null)
-        is LaunchArgsRow.RomPathFormat -> override.copy(romPathFormat = null)
+        is LaunchArgsRow.DataBinding -> override.copy(dataBinding = null)
+        is LaunchArgsRow.ExtraBinding -> override.copy(extraBinding = null)
+        is LaunchArgsRow.ClipDataBinding -> override.copy(clipDataBinding = null)
         is LaunchArgsRow.Flag -> override.copy(intentFlagsMask = null)
         is LaunchArgsRow.MimeType -> override.copy(mimeType = null)
+        is LaunchArgsRow.LockedBinding -> return
     }
     persistLaunchArgsField(vm, state) { cleared }
 }
@@ -185,14 +288,6 @@ private fun persistLaunchArgsField(
     }
 }
 
-// --- App Picker (ad-hoc bindings) ---
-
-/**
- * Opens the App Picker modal. Loads the list of launchable user apps off-thread and populates
- * the modal state. Safe to call on any platform; the picker list excludes known emulators so
- * even if this is triggered on a platform that has known installable options, the results will
- * still be the "everything else" set.
- */
 internal fun routeOpenAppPickerModal(vm: SettingsViewModel, platformId: Long) {
     vm.viewModelScope.launch {
         val config = vm._uiState.value.emulators.platforms.find { it.platform.id == platformId }
@@ -228,30 +323,42 @@ internal fun routeConfirmAppPickerSelection(vm: SettingsViewModel) {
             displayName = selected.displayName
         )
         vm.emulatorDelegate.dismissAppPickerModal()
-        vm.loadSettings() // refresh platform config list so the Emulator row shows the new binding
+        vm.loadSettings()
     }
 }
 
-/** Visible rows in the Launch Args modal, used for focus management. */
 internal sealed class LaunchArgsRow {
+    open val interactive: Boolean get() = true
+
     data object LaunchMethod : LaunchArgsRow()
-    data object RomPathFormat : LaunchArgsRow()
+    data object DataBinding : LaunchArgsRow()
+    data object ExtraBinding : LaunchArgsRow()
+    data object ClipDataBinding : LaunchArgsRow()
+    data class LockedBinding(val label: String, val value: String) : LaunchArgsRow() {
+        override val interactive: Boolean get() = false
+    }
     data class Flag(val label: String, val bit: Int) : LaunchArgsRow()
     data object MimeType : LaunchArgsRow()
 }
 
 internal fun launchArgsModalRows(state: LaunchArgsModalState): List<LaunchArgsRow> = buildList {
     add(LaunchArgsRow.LaunchMethod)
-    if (state.supportsRomPathFormat) {
-        add(LaunchArgsRow.RomPathFormat)
+    if (state.dataBindingLocked) {
+        add(LaunchArgsRow.LockedBinding("Data URI", state.defaultDataBinding))
+    } else {
+        add(LaunchArgsRow.DataBinding)
     }
+    if (state.extraBindingLocked) {
+        add(LaunchArgsRow.LockedBinding("Extras", state.defaultExtraBinding))
+    } else {
+        add(LaunchArgsRow.ExtraBinding)
+    }
+    add(LaunchArgsRow.ClipDataBinding)
     add(LaunchArgsRow.Flag("New task", Intent.FLAG_ACTIVITY_NEW_TASK))
     add(LaunchArgsRow.Flag("Clear task", Intent.FLAG_ACTIVITY_CLEAR_TASK))
     add(LaunchArgsRow.Flag("No history", Intent.FLAG_ACTIVITY_NO_HISTORY))
     add(LaunchArgsRow.Flag("Single top", Intent.FLAG_ACTIVITY_SINGLE_TOP))
     add(LaunchArgsRow.Flag("Grant read URI", Intent.FLAG_GRANT_READ_URI_PERMISSION))
     add(LaunchArgsRow.Flag("Clear top", Intent.FLAG_ACTIVITY_CLEAR_TOP))
-    if (state.supportsMimeType) {
-        add(LaunchArgsRow.MimeType)
-    }
+    add(LaunchArgsRow.MimeType)
 }

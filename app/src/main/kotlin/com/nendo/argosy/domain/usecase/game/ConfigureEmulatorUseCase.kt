@@ -41,12 +41,6 @@ class ConfigureEmulatorUseCase @Inject constructor(
         }
     }
 
-    /**
-     * Persist an ad-hoc app binding for a platform. The package is not in [EmulatorRegistry];
-     * at launch time, [com.nendo.argosy.data.emulator.GameLauncher.resolveEmulator] detects this
-     * and synthesizes an [com.nendo.argosy.data.emulator.EmulatorDef] with the broad-compat
-     * default launch config.
-     */
     suspend fun setAdHocForPlatform(platformId: Long, packageName: String, displayName: String) {
         emulatorConfigDao.clearPlatformDefaults(platformId)
         val config = EmulatorConfigEntity(

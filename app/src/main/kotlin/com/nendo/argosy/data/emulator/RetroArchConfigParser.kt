@@ -174,10 +174,6 @@ class RetroArchConfigParser @Inject constructor() {
         return paths
     }
 
-    /**
-     * Appends RetroArch sort-flag subdirectories to a base path.
-     * Order matches RetroArch: content directory first, then core name.
-     */
     private fun buildSortedPath(
         base: String,
         contentDirName: String?,

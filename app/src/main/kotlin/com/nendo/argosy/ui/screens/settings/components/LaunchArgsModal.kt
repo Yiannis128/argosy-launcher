@@ -20,7 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.data.emulator.LaunchMethod
-import com.nendo.argosy.data.emulator.RomPathFormat
+import com.nendo.argosy.data.emulator.RomBindingFormat
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.screens.settings.LaunchArgsModalState
 import com.nendo.argosy.ui.screens.settings.LaunchArgsRow
@@ -28,25 +28,13 @@ import com.nendo.argosy.ui.screens.settings.launchArgsModalRows
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.util.clickableNoFocus
 
-/**
- * Launch Args modal -- per-(platform, emulator) override of launch method, ROM path format,
- * intent flags, and MIME type. Rows are dynamic based on which knobs apply to the current
- * emulator's LaunchConfig; visibility is computed in [launchArgsModalRows].
- *
- * Input behavior:
- * - UP/DOWN moves focus between rows
- * - A toggles / cycles the focused row
- * - Y resets the focused field to default (clear override)
- * - X resets all fields (delete override row entirely)
- * - B dismisses
- *
- * Resume-mode flags are never overridden; documented in subtext.
- */
 @Composable
 fun LaunchArgsModal(
     state: LaunchArgsModalState,
     onCycleMethod: () -> Unit,
-    onCycleRomPathFormat: () -> Unit,
+    onCycleDataBinding: () -> Unit,
+    onCycleExtraBinding: () -> Unit,
+    onCycleClipDataBinding: () -> Unit,
     onToggleFlag: (Int) -> Unit,
     onCycleMimeType: () -> Unit,
     onDismiss: () -> Unit
@@ -72,20 +60,46 @@ fun LaunchArgsModal(
                 is LaunchArgsRow.LaunchMethod -> LaunchArgsOptionRow(
                     label = "Launch method",
                     value = methodLabel(state.override?.launchMethod, state.defaultLaunchMethod),
-                    subtitle = "Shell launches via am start and bypass caller-side URI grants. " +
+                    subtitle = "Shell launches via am start and bypasses caller-side URI grants. " +
                         "More reliable on scoped storage.",
                     isOverridden = state.override?.launchMethod != null,
                     isFocused = focused,
                     onClick = onCycleMethod
                 )
-                is LaunchArgsRow.RomPathFormat -> LaunchArgsOptionRow(
-                    label = "ROM path format",
-                    value = romPathFormatLabel(state.override?.romPathFormat),
-                    subtitle = "How the ROM location is expressed to the emulator. Try a different " +
-                        "format if the emulator can't find the ROM.",
-                    isOverridden = state.override?.romPathFormat != null,
+                is LaunchArgsRow.DataBinding -> LaunchArgsOptionRow(
+                    label = "Data URI",
+                    value = bindingLabel(state.override?.dataBinding, state.defaultDataBinding),
+                    subtitle = "Sets Intent.data (`-d` in shell). Used by ACTION_VIEW emulators " +
+                        "that read the ROM from the intent's data URI.",
+                    isOverridden = state.override?.dataBinding != null,
                     isFocused = focused,
-                    onClick = onCycleRomPathFormat
+                    onClick = onCycleDataBinding
+                )
+                is LaunchArgsRow.ExtraBinding -> LaunchArgsOptionRow(
+                    label = "Extras",
+                    value = bindingLabel(state.override?.extraBinding, state.defaultExtraBinding),
+                    subtitle = "Rewrites every path-typed extra (e.g. bootPath, ROM, AutoStartFile) " +
+                        "to this format. `None` removes them.",
+                    isOverridden = state.override?.extraBinding != null,
+                    isFocused = focused,
+                    onClick = onCycleExtraBinding
+                )
+                is LaunchArgsRow.ClipDataBinding -> LaunchArgsOptionRow(
+                    label = "ClipData URI",
+                    value = bindingLabel(state.override?.clipDataBinding, state.defaultClipDataBinding),
+                    subtitle = "Attaches the ROM URI to Intent.clipData. Required for " +
+                        "FLAG_GRANT_READ_URI_PERMISSION to actually delegate access to the receiver.",
+                    isOverridden = state.override?.clipDataBinding != null,
+                    isFocused = focused,
+                    onClick = onCycleClipDataBinding
+                )
+                is LaunchArgsRow.LockedBinding -> LaunchArgsOptionRow(
+                    label = row.label,
+                    value = row.value,
+                    subtitle = "Fixed for this emulator -- not a file path.",
+                    isOverridden = false,
+                    isFocused = focused,
+                    onClick = { }
                 )
                 is LaunchArgsRow.Flag -> {
                     val mask = state.override?.intentFlagsMask ?: state.defaultFlagsMask
@@ -196,13 +210,13 @@ private fun methodLabel(override: String?, defaultName: String): String = when (
     else -> "Default"
 }
 
-private fun romPathFormatLabel(override: String?): String = when (override) {
-    null -> "Default"
-    RomPathFormat.ABSOLUTE_PATH.name -> "Absolute path"
-    RomPathFormat.FILE_PROVIDER.name -> "FileProvider URI"
-    RomPathFormat.DOCUMENT_URI.name -> "Document URI (SAF)"
-    RomPathFormat.AUTO.name -> "Default"
-    else -> "Default"
+private fun bindingLabel(override: String?, defaultLabel: String): String = when (override) {
+    null -> "Default ($defaultLabel)"
+    RomBindingFormat.NONE.name -> "None"
+    RomBindingFormat.ABSOLUTE_PATH.name -> "Absolute path"
+    RomBindingFormat.FILE_PROVIDER.name -> "FileProvider URI"
+    RomBindingFormat.DOCUMENT_URI.name -> "Document URI (SAF)"
+    else -> "Default ($defaultLabel)"
 }
 
 private fun flagSubtext(bit: Int): String = when (bit) {

@@ -304,8 +304,7 @@ class EmulatorSettingsDelegate @Inject constructor(
     ) {
         scope.launch {
             val existing = emulatorSaveConfigDao.getByEmulator(emulatorId)
-            // If a state override is also stored on this row, preserve it by updating instead
-            // of deleting; otherwise the user's state path would be wiped by a save reset.
+            // Preserve co-located state override when clearing save override.
             if (existing?.isUserStateOverride == true && existing.statePathPattern != null) {
                 emulatorSaveConfigDao.upsert(
                     existing.copy(
@@ -352,7 +351,6 @@ class EmulatorSettingsDelegate @Inject constructor(
         scope.launch {
             val existing = emulatorSaveConfigDao.getByEmulator(emulatorId)
             if (existing != null) {
-                // If the row has no save override either, drop it entirely.
                 val hasSaveOverride = existing.isUserOverride && existing.savePathPattern.isNotEmpty()
                 if (hasSaveOverride) {
                     emulatorSaveConfigDao.upsert(
@@ -417,8 +415,6 @@ class EmulatorSettingsDelegate @Inject constructor(
         }
     }
 
-    // --- Launch Args modal ---
-
     fun showLaunchArgsModal(state: LaunchArgsModalState) {
         _state.update {
             it.copy(
@@ -442,9 +438,10 @@ class EmulatorSettingsDelegate @Inject constructor(
     fun moveLaunchArgsFocus(delta: Int) {
         _state.update { state ->
             val modal = state.launchArgsModalState ?: return@update state
-            val rowCount = launchArgsModalRows(modal).size
-            if (rowCount == 0) return@update state
-            val newIndex = (modal.focusIndex + delta).coerceIn(0, rowCount - 1)
+            val rows = launchArgsModalRows(modal)
+            if (rows.isEmpty()) return@update state
+            // Locked rows stay focusable so scroll doesn't jump past them.
+            val newIndex = (modal.focusIndex + delta).coerceIn(0, rows.size - 1)
             state.copy(launchArgsModalState = modal.copy(focusIndex = newIndex))
         }
     }
@@ -455,8 +452,6 @@ class EmulatorSettingsDelegate @Inject constructor(
             state.copy(launchArgsModalState = modal.copy(override = override))
         }
     }
-
-    // --- App Picker modal (ad-hoc bindings for platforms with no known installed emulator) ---
 
     fun showAppPickerModal(modalState: com.nendo.argosy.ui.screens.settings.AppPickerModalState) {
         _state.update {

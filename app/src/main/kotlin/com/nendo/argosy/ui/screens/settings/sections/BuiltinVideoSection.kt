@@ -96,12 +96,10 @@ fun BuiltinVideoSection(
     }
 
     val showResetAll = !isGlobal && hasAnyOverrides
-    // In platform context, Reset All is immediately after settings. Save/State paths come after that when shown.
     val resetAllExtra = if (showResetAll) 1 else 0
     val savePathFocusIndex = maxSettingsFocusIndex + 1 + resetAllExtra
     val statePathFocusIndex = maxSettingsFocusIndex + 2 + resetAllExtra
 
-    // Effective path values depend on context. In platform context, platform override wins over global.
     val effectiveSavePath = if (isGlobal) videoState.savePath else (platformSettings?.savePath ?: videoState.savePath)
     val effectiveStatePath = if (isGlobal) videoState.statePath else (platformSettings?.statePath ?: videoState.statePath)
     val hasPlatformSaveOverride = !isGlobal && platformSettings?.savePath != null
@@ -185,7 +183,6 @@ fun builtinVideoMaxFocusIndex(state: BuiltinVideoState, platformSettings: Map<Lo
         platformSlug = platformContext?.platformSlug,
         canEnableBFI = state.canEnableBlackFrameInsertion
     )
-    // Path items render in both global and platform contexts when the global save path is known.
     val pathItems = if (state.savePath.isNotEmpty()) 2 else 0
     val resetAllItem = if (!state.isGlobalContext && hasAnyOverrides) 1 else 0
     return settingsMax + resetAllItem + pathItems

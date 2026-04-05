@@ -204,9 +204,6 @@ internal fun routeResetBuiltinStatePath(vm: SettingsViewModel) {
     }
 }
 
-// --- Platform-scoped builtin save/state paths ---
-// These override the global builtin save/state paths for a single platform.
-
 internal fun routeSetPlatformBuiltinSavePath(vm: SettingsViewModel, platformId: Long, newPath: String) {
     vm.viewModelScope.launch {
         val current = vm.platformLibretroSettingsDao.getByPlatformId(platformId)

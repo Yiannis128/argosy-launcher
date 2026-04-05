@@ -527,7 +527,9 @@ fun PlatformDetailSection(
             com.nendo.argosy.ui.screens.settings.components.LaunchArgsModal(
                 state = emulators.launchArgsModalState,
                 onCycleMethod = { viewModel.cycleLaunchArgsMethod() },
-                onCycleRomPathFormat = { viewModel.cycleLaunchArgsRomPathFormat() },
+                onCycleDataBinding = { viewModel.cycleLaunchArgsDataBinding() },
+                onCycleExtraBinding = { viewModel.cycleLaunchArgsExtraBinding() },
+                onCycleClipDataBinding = { viewModel.cycleLaunchArgsClipDataBinding() },
                 onToggleFlag = { bit -> viewModel.toggleLaunchArgsFlag(bit) },
                 onCycleMimeType = { viewModel.cycleLaunchArgsMimeType() },
                 onDismiss = { viewModel.closeLaunchArgsModal() }

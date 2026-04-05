@@ -15,11 +15,6 @@ data class InstalledApp(
     val icon: Drawable?
 )
 
-/**
- * Lists launchable user-installed apps suitable for ad-hoc emulator binding. Excludes system apps
- * (emulators are never system-installed), Argosy itself, and packages already in [EmulatorRegistry]
- * since those go through the standard emulator picker.
- */
 @Singleton
 class InstalledAppResolver @Inject constructor(
     @ApplicationContext private val context: Context

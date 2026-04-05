@@ -296,20 +296,6 @@ data class EmulatorUpdateModal(
     val state: UpdateModalState = UpdateModalState.Fetching
 )
 
-/**
- * State for the Launch Args modal (per-platform, per-emulator launch intent customization).
- * Null fields on [override] mean "use the emulator's default for this field"; non-null means
- * "user has overridden this field".
- *
- * [defaultLaunchMethod], [defaultFlagsMask], [defaultMimeType], [defaultRomPathFormat] capture
- * what the base [EmulatorDef.launchConfig] produces, so the modal can render subtitles like
- * "Default: Intent" or "Default: 0x10208000" without recomputing them per frame.
- */
-/**
- * State for the App Picker modal -- ad-hoc fallback when a platform has no known installed
- * emulator. Lists launchable user-installed apps (system apps and Argosy itself excluded, known
- * emulators excluded since they go through the standard picker).
- */
 data class AppPickerModalState(
     val platformId: Long,
     val platformName: String,
@@ -325,14 +311,16 @@ data class LaunchArgsModalState(
     val emulatorName: String,
     val focusIndex: Int = 0,
     val override: com.nendo.argosy.data.local.entity.EmulatorLaunchArgsEntity? = null,
-    val defaultLaunchMethod: String = "INTENT",   // LaunchMethod name
-    val defaultRomPathFormat: String = "AUTO",    // RomPathFormat name
-    val defaultFlagsMask: Int = 0,                // Intent flags bitmask
+    val defaultLaunchMethod: String = "INTENT",
+    val defaultFlagsMask: Int = 0,
     val defaultMimeType: String? = null,
-    /** Whether the emulator's config supports a user-tunable ROM path format (non-opaque sources). */
-    val supportsRomPathFormat: Boolean = true,
-    /** Whether the emulator's config emits a data URI (MIME type is only meaningful then). */
-    val supportsMimeType: Boolean = true
+    val defaultDataBinding: String = "None",
+    val defaultExtraBinding: String = "None",
+    val defaultClipDataBinding: String = "None",
+    /** Opaque data binding (scheme URI, game ID) -- not user-cycleable. */
+    val dataBindingLocked: Boolean = false,
+    /** Non-path extras (title ID array) -- not user-cycleable. */
+    val extraBindingLocked: Boolean = false
 )
 
 sealed class UpdateModalState {

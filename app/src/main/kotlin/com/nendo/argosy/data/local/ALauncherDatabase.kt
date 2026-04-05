@@ -116,7 +116,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamCompletedDepotEntity::class,
         EmulatorLaunchArgsEntity::class
     ],
-    version = 99,
+    version = 100,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1489,6 +1489,14 @@ abstract class ALauncherDatabase : RoomDatabase() {
                     )
                 """)
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_emulator_launch_args_platformId_emulatorId ON emulator_launch_args(platformId, emulatorId)")
+            }
+        }
+
+        val MIGRATION_99_100 = object : Migration(99, 100) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE emulator_launch_args ADD COLUMN dataBinding TEXT")
+                db.execSQL("ALTER TABLE emulator_launch_args ADD COLUMN extraBinding TEXT")
+                db.execSQL("ALTER TABLE emulator_launch_args ADD COLUMN clipDataBinding TEXT")
             }
         }
 

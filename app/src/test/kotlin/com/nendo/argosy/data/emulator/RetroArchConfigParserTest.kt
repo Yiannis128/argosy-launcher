@@ -5,15 +5,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Covers the sort-flag matrix for [RetroArchConfigParser.resolveSavePathsWithConfig] and
- * [RetroArchConfigParser.resolveStatePathsWithConfig], plus the content-directory semantics
- * that RetroArch uses for `sort_savefiles_by_content_enable` and the analogous state flag.
- *
- * The `sort_by_content_enable` flags sort into the ROM's parent directory basename, NOT the
- * internal platform slug. These tests guard against regressions where the platform slug
- * leaks into the parser.
- */
 class RetroArchConfigParserTest {
 
     private lateinit var parser: RetroArchConfigParser
@@ -236,7 +227,6 @@ class RetroArchConfigParserTest {
 
     @Test
     fun `state path appends content dir when sort_savestates_by_content_enable is true`() {
-        // This flag was parsed into RetroArchStateConfig but never applied before the fix.
         val config = RetroArchStateConfig(
             savestateDirectory = "/sdcard/RetroArch/states",
             savestatesInContentDir = false,
@@ -323,9 +313,7 @@ class RetroArchConfigParserTest {
             contentDirectory = "/sdcard/ROMs/SNES",
             basePathOverride = "/sdcard/custom/saves"
         )
-        // Override forces non-content-dir branch; core subdir still applies.
         assertTrue(paths.contains("/sdcard/custom/saves/Snes9x"))
-        // And the content directory must NOT appear.
         assertTrue(paths.none { it.startsWith("/sdcard/ROMs/SNES") })
     }
 

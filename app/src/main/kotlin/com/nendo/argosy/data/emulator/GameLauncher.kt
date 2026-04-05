@@ -413,7 +413,6 @@ class GameLauncher @Inject constructor(
         val gameOverride = emulatorConfigDao.getByGameId(game.id)
         val platformDefault = emulatorConfigDao.getDefaultForPlatform(game.platformId)
 
-        // If configured emulator isn't in our cached list, re-detect in case it was just installed
         val configuredPackage = gameOverride?.packageName ?: platformDefault?.packageName
         if (configuredPackage != null && configuredPackage !in installedPackages) {
             Logger.debug(TAG, "Configured emulator $configuredPackage not in cache, re-detecting...")
@@ -429,7 +428,6 @@ class GameLauncher @Inject constructor(
 
         if (gameOverride?.packageName != null && gameOverride.packageName in installedPackages) {
             if (!builtinEnabled && isBuiltinPackage(gameOverride.packageName)) {
-                // Skip builtin when disabled, fall through to next option
             } else {
                 return emulatorDetector.getByPackage(gameOverride.packageName)
             }
@@ -437,15 +435,11 @@ class GameLauncher @Inject constructor(
 
         if (platformDefault?.packageName != null && platformDefault.packageName in installedPackages) {
             if (!builtinEnabled && isBuiltinPackage(platformDefault.packageName)) {
-                // Skip builtin when disabled, fall through to auto-resolution
             } else {
                 return emulatorDetector.getByPackage(platformDefault.packageName)
             }
         }
 
-        // Ad-hoc binding fallback: if a per-game or per-platform config references a package that
-        // isn't in EmulatorRegistry but is installed on the device, synthesize an EmulatorDef so
-        // the launch pipeline and Launch Args modal can work against it transparently.
         val adHocPackage = gameOverride?.packageName?.takeIf {
             !EmulatorRegistry.isKnownPackage(it) && installedAppResolver.isAppInstalled(it)
         } ?: platformDefault?.packageName?.takeIf {
@@ -469,7 +463,6 @@ class GameLauncher @Inject constructor(
         val configType = emulator.launchConfig::class.simpleName
         Logger.debug(TAG, "buildIntent: emulator=${emulator.displayName}, config=$configType, rom=${romFile.name}, forResume=$forResume")
 
-        // Built-in libretro runs in-process and doesn't participate in the EffectiveLaunchCommand pipeline.
         if (emulator.launchConfig is LaunchConfig.BuiltIn) {
             return buildBuiltInIntent(romFile, game)
         }
@@ -484,12 +477,6 @@ class GameLauncher @Inject constructor(
         }
     }
 
-    /**
-     * Transforms an [EmulatorDef.launchConfig] into a fully-resolved [EffectiveLaunchCommand]
-     * for the given game. Applies the legacy per-platform `useFileUri` override from
-     * [com.nendo.argosy.data.local.entity.EmulatorConfigEntity], then layers any user launch-args
-     * override stored in [EmulatorLaunchArgsEntity] (Launch Args modal).
-     */
     private suspend fun buildEffectiveCommand(
         emulator: EmulatorDef,
         romFile: File,
@@ -510,18 +497,16 @@ class GameLauncher @Inject constructor(
             is LaunchConfig.CustomScheme -> commandForCustomScheme(emulator, romFile, config, forResume)
             is LaunchConfig.Vita3K -> commandForVita3K(emulator, romFile, config)
             is LaunchConfig.ScummVM -> commandForScummVM(emulator, romFile, forResume)
-            is LaunchConfig.BuiltIn -> null // handled in buildIntent directly
+            is LaunchConfig.BuiltIn -> null
         } ?: return null
 
-        // Apply the emulator's default launch method unless a commandFor* helper already set it
-        // explicitly (legacy useFileUri/useShellLaunch branches hardcode SHELL and must stay).
+        // commandFor* helpers that hardcode SHELL (legacy useFileUri/useShellLaunch) must not be overwritten.
         val base = if (rawBase.launchMethod == LaunchMethod.INTENT) {
             rawBase.copy(launchMethod = emulator.defaultLaunchMethod)
         } else {
             rawBase
         }
 
-        // Layer user-facing launch args overrides (Launch Args modal).
         val override = emulatorLaunchArgsDao.getByPlatformAndEmulator(game.platformId, emulator.id)
         return if (override != null && override.hasAnyOverride()) {
             applyLaunchArgsOverride(base, override, romFile, forResume)
@@ -530,14 +515,6 @@ class GameLauncher @Inject constructor(
         }
     }
 
-    /**
-     * Applies a [EmulatorLaunchArgsEntity] override to a base [EffectiveLaunchCommand]. Each
-     * field is optional; null fields pass the base value through unchanged.
-     *
-     * Resume-mode flag mask is never overridden -- resume launches continue to use the base
-     * command's flags regardless of user-set fresh-launch flag overrides. The modal calls this
-     * out in its subtext.
-     */
     private fun applyLaunchArgsOverride(
         base: EffectiveLaunchCommand,
         override: EmulatorLaunchArgsEntity,
@@ -553,100 +530,107 @@ class GameLauncher @Inject constructor(
         }
 
         override.mimeType?.let { mime ->
-            // Only apply MIME override when the command has a data URI; extras-only commands ignore.
             if (result.dataUri != null) {
                 result = result.copy(mimeType = mime)
             }
         }
 
         override.intentFlagsMask?.let { mask ->
-            // Only rewrite flags for fresh launches; resume keeps its base flags.
             if (!forResume) {
                 result = result.copy(intentFlags = mask)
             }
         }
 
-        override.romPathFormat?.let { formatName ->
-            val format = runCatching { RomPathFormat.valueOf(formatName) }.getOrDefault(RomPathFormat.AUTO)
-            if (format != RomPathFormat.AUTO) {
-                result = rewriteRomPathFormat(result, format, romFile)
-            }
+        val dataBinding = override.dataBinding?.let { parseBindingFormat(it) }
+        val extraBinding = override.extraBinding?.let { parseBindingFormat(it) }
+        val clipDataBinding = override.clipDataBinding?.let { parseBindingFormat(it) }
+        if (dataBinding != null || extraBinding != null || clipDataBinding != null) {
+            result = rewriteBindings(result, romFile, dataBinding, extraBinding, clipDataBinding)
         }
 
         return result
     }
 
-    /**
-     * Rewrites every path-typed extra and the data URI to match the requested [format]. Non-path
-     * extras (Literal, BooleanLiteral, Platform, string arrays) pass through unchanged. Grant
-     * URIs and clipData are recomputed for the new format.
-     */
-    private fun rewriteRomPathFormat(
+    private fun parseBindingFormat(name: String): RomBindingFormat? =
+        runCatching { RomBindingFormat.valueOf(name) }.getOrNull()
+
+    private fun rewriteBindings(
         command: EffectiveLaunchCommand,
-        format: RomPathFormat,
-        romFile: File
+        romFile: File,
+        dataBinding: RomBindingFormat?,
+        extraBinding: RomBindingFormat?,
+        clipDataBinding: RomBindingFormat?
     ): EffectiveLaunchCommand {
         val absolutePath = romFile.absolutePath
+        val grantUris = command.grantReadUriTo.toMutableList()
 
-        // Identify which extras are path-typed so we can rewrite them consistently.
+        fun targetUriFor(format: RomBindingFormat): Uri? = when (format) {
+            RomBindingFormat.NONE -> null
+            RomBindingFormat.ABSOLUTE_PATH -> Uri.parse(absolutePath)
+            RomBindingFormat.FILE_PROVIDER -> {
+                val uri = getFileUri(romFile)
+                if (uri !in grantUris) grantUris += uri
+                uri
+            }
+            RomBindingFormat.DOCUMENT_URI -> {
+                val docUri = getDocumentUri(romFile)
+                if (docUri != null && docUri !in grantUris) grantUris += docUri
+                docUri
+            }
+        }
+
+        // Non-file schemes (game IDs, custom schemes) are not reformattable.
+        val baseDataIsFilePath = command.dataUri == null ||
+            command.dataUri.scheme == null ||
+            command.dataUri.scheme in listOf("file", "content") ||
+            command.dataUri.toString() == absolutePath
+        val newDataUri: Uri? = when {
+            dataBinding == null -> command.dataUri
+            !baseDataIsFilePath -> command.dataUri
+            dataBinding == RomBindingFormat.NONE -> null
+            else -> targetUriFor(dataBinding) ?: command.dataUri
+        }
+
         fun isPathExtra(extra: ResolvedExtra): Boolean = when (extra) {
             is ResolvedExtra.UriExtra -> true
-            is ResolvedExtra.StringExtra -> extra.value == absolutePath // set by commandFor* from a path source
+            is ResolvedExtra.StringExtra -> extra.value == absolutePath
             else -> false
         }
-
-        val grantUris = mutableListOf<Uri>()
-        var clipDataUri: Uri? = null
-
-        val newExtras = command.extras.map { extra ->
-            if (!isPathExtra(extra)) return@map extra
-            when (format) {
-                RomPathFormat.ABSOLUTE_PATH -> ResolvedExtra.StringExtra(extra.key, absolutePath)
-                RomPathFormat.FILE_PROVIDER -> {
-                    val uri = getFileUri(romFile)
-                    if (uri !in grantUris) grantUris += uri
-                    clipDataUri = clipDataUri ?: uri
-                    ResolvedExtra.UriExtra(extra.key, uri)
+        val newExtras: List<ResolvedExtra> = when (extraBinding) {
+            null -> command.extras
+            RomBindingFormat.NONE -> command.extras.filterNot { isPathExtra(it) }
+            RomBindingFormat.ABSOLUTE_PATH -> command.extras.map { extra ->
+                if (isPathExtra(extra)) ResolvedExtra.StringExtra(extra.key, absolutePath) else extra
+            }
+            RomBindingFormat.FILE_PROVIDER -> {
+                val uri = getFileUri(romFile)
+                if (uri !in grantUris) grantUris += uri
+                command.extras.map { extra ->
+                    if (isPathExtra(extra)) ResolvedExtra.UriExtra(extra.key, uri) else extra
                 }
-                RomPathFormat.DOCUMENT_URI -> {
-                    val docUri = getDocumentUri(romFile) ?: return command // fall back to base if unbuildable
-                    if (docUri !in grantUris) grantUris += docUri
-                    clipDataUri = clipDataUri ?: docUri
-                    ResolvedExtra.UriExtra(extra.key, docUri)
+            }
+            RomBindingFormat.DOCUMENT_URI -> {
+                val docUri = getDocumentUri(romFile)
+                if (docUri != null && docUri !in grantUris) grantUris += docUri
+                command.extras.map { extra ->
+                    if (isPathExtra(extra) && docUri != null) ResolvedExtra.UriExtra(extra.key, docUri) else extra
                 }
-                RomPathFormat.AUTO -> extra
             }
         }
 
-        // Rewrite the data URI too, if present, using the same format.
-        val newDataUri: Uri? = command.dataUri?.let { existing ->
-            when (format) {
-                RomPathFormat.ABSOLUTE_PATH -> Uri.parse(absolutePath)
-                RomPathFormat.FILE_PROVIDER -> {
-                    val uri = getFileUri(romFile)
-                    if (uri !in grantUris) grantUris += uri
-                    if (clipDataUri == null) clipDataUri = uri
-                    uri
-                }
-                RomPathFormat.DOCUMENT_URI -> {
-                    val docUri = getDocumentUri(romFile) ?: existing
-                    if (docUri !in grantUris) grantUris += docUri
-                    if (clipDataUri == null) clipDataUri = docUri
-                    docUri
-                }
-                RomPathFormat.AUTO -> existing
-            }
+        val newClipDataUri: Uri? = when (clipDataBinding) {
+            null -> command.clipDataUri
+            RomBindingFormat.NONE -> null
+            else -> targetUriFor(clipDataBinding) ?: command.clipDataUri
         }
 
         return command.copy(
-            extras = newExtras,
             dataUri = newDataUri,
-            grantReadUriTo = grantUris.ifEmpty { command.grantReadUriTo },
-            clipDataUri = clipDataUri ?: command.clipDataUri
+            extras = newExtras,
+            clipDataUri = newClipDataUri,
+            grantReadUriTo = grantUris
         )
     }
-
-    // --- Per-variant command builders ---
 
     private fun commandForFileUri(emulator: EmulatorDef, romFile: File, forResume: Boolean): EffectiveLaunchCommand {
         val uri = getFileUri(romFile)
@@ -676,7 +660,7 @@ class GameLauncher @Inject constructor(
             action = emulator.launchAction,
             packageName = emulator.packageName,
             activityClass = null,
-            categories = emptyList(), // legacy buildFilePathIntent did not add CATEGORY_DEFAULT
+            categories = emptyList(),
             extras = config.extraKeys.map { key ->
                 ResolvedExtra.StringExtra(key, romFile.absolutePath)
             },
@@ -706,8 +690,6 @@ class GameLauncher @Inject constructor(
             return null
         }
 
-        // Just the core filename -- RetroArch resolves the path internally. Avoids Android 16
-        // restrictions on referencing paths in other apps' data dirs.
         val coreFileName = "${coreName}_libretro_android.so"
         Logger.debug(TAG, "RetroArch core: $coreFileName for platform: ${game.platformSlug}")
 
@@ -715,7 +697,7 @@ class GameLauncher @Inject constructor(
             action = emulator.launchAction,
             packageName = retroArchPackage,
             activityClass = config.activityClass,
-            categories = emptyList(), // legacy buildRetroArchIntent did not add CATEGORY_DEFAULT
+            categories = emptyList(),
             extras = listOf(
                 ResolvedExtra.StringExtra("ROM", romFile.absolutePath),
                 ResolvedExtra.StringExtra("LIBRETRO", coreFileName),
@@ -725,7 +707,6 @@ class GameLauncher @Inject constructor(
                 ResolvedExtra.StringExtra("SDCARD", "/storage/emulated/0"),
                 ResolvedExtra.StringExtra("EXTERNAL", externalDir)
             ),
-            // RetroArch handles fresh-vs-resume internally, so we always launch with SINGLE_TOP.
             intentFlags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         )
     }
@@ -786,10 +767,7 @@ class GameLauncher @Inject constructor(
         config: LaunchConfig.Custom,
         forResume: Boolean
     ): EffectiveLaunchCommand? {
-        // Legacy shell-launch modes. In the old model these short-circuited via launchViaShell with
-        // either absolute path or content URI in the -d slot and no extras. Preserved bit-for-bit.
         if (config.useFileUri && emulator.launchAction == Intent.ACTION_VIEW) {
-            // -d <absolute-path-as-bare-URI>, no extras, no grant.
             return EffectiveLaunchCommand(
                 action = emulator.launchAction,
                 packageName = emulator.packageName,
@@ -818,7 +796,6 @@ class GameLauncher @Inject constructor(
             )
         }
 
-        // ACTION_VIEW Custom: data URI + MIME type, extras are dropped (matches legacy behavior).
         if (emulator.launchAction == Intent.ACTION_VIEW) {
             val uri = getFileUri(romFile)
             val mimeType = config.mimeTypeOverride ?: getMimeType(romFile)
@@ -840,7 +817,6 @@ class GameLauncher @Inject constructor(
             )
         }
 
-        // ACTION_MAIN Custom: extras from intentExtras map + optional useAbsolutePath shotgun.
         val resolvedExtras = mutableListOf<ResolvedExtra>()
         var documentUri: Uri? = null
         var fileUri: Uri? = null
@@ -874,9 +850,6 @@ class GameLauncher @Inject constructor(
             }
         }
 
-        // URI permission: grant on the FileProvider URI (always for MAIN+URI variants) and also on
-        // the document URI when present. ClipData carries the document URI if set, else the
-        // FileProvider URI, so the delegated grant lands on the one the receiver reads.
         val hasUriExtra = fileUri != null || documentUri != null
         val grantUris = mutableListOf<Uri>()
         var clipDataUri: Uri? = null
@@ -906,12 +879,6 @@ class GameLauncher @Inject constructor(
         )
     }
 
-    /**
-     * Executes an [EffectiveLaunchCommand] via `am start` and returns a sentinel Intent that
-     * [LaunchScreen] recognizes via [EXTRA_ALREADY_LAUNCHED] to skip the redundant `startActivity`.
-     * URI pre-grants are issued before exec since `am start --grant-read-uri-permission` only sets
-     * the intent flag -- it does not establish the grant.
-     */
     private fun launchViaShell(command: EffectiveLaunchCommand): Intent {
         command.grantReadUriTo.forEach { uri ->
             try {
@@ -962,7 +929,7 @@ class GameLauncher @Inject constructor(
         return EffectiveLaunchCommand(
             action = emulator.launchAction,
             packageName = emulator.packageName,
-            activityClass = null, // legacy used setPackage
+            activityClass = null,
             categories = emptyList(),
             dataUri = uri,
             intentFlags = if (forResume) {
@@ -995,7 +962,6 @@ class GameLauncher @Inject constructor(
             activityClass = config.activityClass,
             categories = emptyList(),
             extras = extras,
-            // Vita3K ignores forResume (no resume semantics today).
             intentFlags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TASK or
                 Intent.FLAG_ACTIVITY_NO_HISTORY

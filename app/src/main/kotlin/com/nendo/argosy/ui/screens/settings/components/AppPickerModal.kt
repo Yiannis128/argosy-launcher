@@ -32,16 +32,6 @@ import com.nendo.argosy.ui.screens.settings.AppPickerModalState
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.util.clickableNoFocus
 
-/**
- * App picker for ad-hoc emulator bindings on platforms with no known installed emulator. Lists
- * launchable user-installed apps alphabetically, excluding system apps and known emulators.
- *
- * Input:
- * - UP/DOWN move focus
- * - LB/RB skip 5 items (shoulder jump)
- * - A confirms selection
- * - B dismisses
- */
 @Composable
 fun AppPickerModal(
     state: AppPickerModalState,
@@ -51,7 +41,6 @@ fun AppPickerModal(
 ) {
     val listState = rememberLazyListState()
 
-    // Keep focused item in view as focus moves.
     LaunchedEffect(state.focusIndex) {
         if (state.apps.isNotEmpty()) {
             listState.animateScrollToItem(state.focusIndex.coerceIn(0, state.apps.size - 1))
@@ -166,7 +155,6 @@ private fun AppIcon(app: InstalledApp, modifier: Modifier = Modifier) {
             return
         }
     }
-    // Fallback: colored square placeholder
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(Dimens.radiusSm))
