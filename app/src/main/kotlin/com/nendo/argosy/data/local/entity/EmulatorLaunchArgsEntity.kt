@@ -32,7 +32,6 @@ data class EmulatorLaunchArgsEntity(
 ) {
     fun hasAnyOverride(): Boolean =
         launchMethod != null ||
-            romPathFormat != null ||
             intentFlagsMask != null ||
             mimeType != null ||
             dataBinding != null ||

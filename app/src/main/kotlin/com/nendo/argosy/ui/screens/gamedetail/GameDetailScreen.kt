@@ -829,6 +829,21 @@ private fun GameDetailModals(
     }
 
     AnimatedVisibility(
+        visible = pickerState.showVariantPicker,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        com.nendo.argosy.ui.screens.gamedetail.modals.VariantPickerModal(
+            variants = pickerState.variantPickerOptions,
+            focusIndex = pickerState.variantPickerFocusIndex,
+            onSelectVariant = { fileId ->
+                viewModel.pickerModalDelegate.confirmVariantSelection()
+            },
+            onDismiss = viewModel.pickerModalDelegate::dismissVariantPicker
+        )
+    }
+
+    AnimatedVisibility(
         visible = uiState.showRatingPicker,
         enter = fadeIn(),
         exit = fadeOut()

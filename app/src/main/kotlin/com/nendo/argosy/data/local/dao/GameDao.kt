@@ -442,6 +442,12 @@ interface GameDao {
     @Query("UPDATE games SET m3uPath = :path WHERE id = :gameId")
     suspend fun updateM3uPath(gameId: Long, path: String?)
 
+    @Query("UPDATE games SET activeVariantFileId = :fileId WHERE id = :gameId")
+    suspend fun updateActiveVariantFileId(gameId: Long, fileId: Long?)
+
+    @Query("UPDATE games SET lastPlayedFileId = :fileId WHERE id = :gameId")
+    suspend fun updateLastPlayedFileId(gameId: Long, fileId: Long?)
+
     @Query("UPDATE games SET achievementCount = :count, earnedAchievementCount = :earnedCount WHERE id = :gameId")
     suspend fun updateAchievementCount(gameId: Long, count: Int, earnedCount: Int = 0)
 

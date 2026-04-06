@@ -47,6 +47,7 @@ data class DiscOption(
 sealed class LaunchResult {
     data class Success(val intent: Intent, val discId: Long? = null, val alreadyLaunched: Boolean = false) : LaunchResult()
     data class SelectDisc(val gameId: Long, val discs: List<DiscOption>) : LaunchResult()
+    data class SelectVariant(val gameId: Long, val variants: List<VariantOption>) : LaunchResult()
     data class NoEmulator(val platformSlug: String) : LaunchResult()
     data class NoRomFile(val gamePath: String?) : LaunchResult()
     data class NoSteamLauncher(val launcherPackage: String) : LaunchResult()
@@ -64,6 +65,7 @@ class GameLauncher @Inject constructor(
     private val gameDiscDao: GameDiscDao,
     private val emulatorConfigDao: EmulatorConfigDao,
     private val emulatorLaunchArgsDao: EmulatorLaunchArgsDao,
+    private val variantResolver: VariantResolver,
     private val installedAppResolver: com.nendo.argosy.data.platform.InstalledAppResolver,
     private val platformLibretroSettingsDao: com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao,
     private val emulatorDetector: EmulatorDetector,
@@ -79,9 +81,10 @@ class GameLauncher @Inject constructor(
         gameId: Long,
         discId: Long? = null,
         forResume: Boolean = false,
-        selectedDiscPath: String? = null
+        selectedDiscPath: String? = null,
+        variantFileId: Long? = null
     ): LaunchResult {
-        Logger.debug(TAG, "launch() called: gameId=$gameId, discId=$discId, forResume=$forResume, selectedDiscPath=$selectedDiscPath")
+        Logger.debug(TAG, "launch() called: gameId=$gameId, discId=$discId, forResume=$forResume, variantFileId=$variantFileId")
 
         val game = gameDao.getById(gameId)
             ?: return LaunchResult.Error("Game not found").also {
@@ -96,6 +99,26 @@ class GameLauncher @Inject constructor(
 
         if (game.source == GameSource.ANDROID_APP || game.platformSlug == "android") {
             return launchAndroidApp(game)
+        }
+
+        // Variant selection: if no variant specified and variants exist, prompt the user.
+        if (variantFileId == null) {
+            val options = variantResolver.getVariantOptions(game)
+            if (options != null) {
+                return LaunchResult.SelectVariant(gameId, options)
+            }
+        }
+
+        // A specific variant was selected — launch its file instead of the primary.
+        if (variantFileId != null) {
+            val variantFile = gameFileDao.getById(variantFileId)
+            if (variantFile != null) {
+                val result = launchVariantFile(game, variantFile, forResume)
+                if (result is LaunchResult.Success) {
+                    gameDao.updateLastPlayedFileId(game.id, variantFileId)
+                }
+                return result
+            }
         }
 
         if (game.isMultiDisc) {
@@ -195,6 +218,33 @@ class GameLauncher @Inject constructor(
                 append(" | config=${emulator.launchConfig::class.simpleName}")
             }
         })
+        val alreadyLaunched = intent.getBooleanExtra(EXTRA_ALREADY_LAUNCHED, false)
+        return LaunchResult.Success(intent, alreadyLaunched = alreadyLaunched)
+    }
+
+    private suspend fun launchVariantFile(game: GameEntity, variant: com.nendo.argosy.data.local.entity.GameFileEntity, forResume: Boolean): LaunchResult {
+        val variantPath = variant.localPath
+            ?: return LaunchResult.NoRomFile(null)
+        val variantFile = File(variantPath)
+        if (!variantFile.exists()) return LaunchResult.NoRomFile(variantPath)
+
+        // Multi-disc variant: launch via its M3U, which feeds into the existing disc flow.
+        if (variant.isMultiDisc) {
+            val m3u = variant.m3uPath?.let { File(it) }
+            if (m3u != null && m3u.exists()) {
+                val emulator = resolveEmulator(game) ?: return LaunchResult.NoEmulator(game.platformSlug)
+                val intent = buildIntent(emulator, m3u, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug)
+                gameDao.recordPlayStart(game.id, java.time.Instant.now())
+                val alreadyLaunched = intent.getBooleanExtra(EXTRA_ALREADY_LAUNCHED, false)
+                return LaunchResult.Success(intent, alreadyLaunched = alreadyLaunched)
+            }
+            return LaunchResult.Error("Variant M3U file not found")
+        }
+
+        // Single-file variant.
+        val emulator = resolveEmulator(game) ?: return LaunchResult.NoEmulator(game.platformSlug)
+        val intent = buildIntent(emulator, variantFile, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug)
+        gameDao.recordPlayStart(game.id, java.time.Instant.now())
         val alreadyLaunched = intent.getBooleanExtra(EXTRA_ALREADY_LAUNCHED, false)
         return LaunchResult.Success(intent, alreadyLaunched = alreadyLaunched)
     }

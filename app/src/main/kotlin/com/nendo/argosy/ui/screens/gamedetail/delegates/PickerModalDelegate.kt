@@ -37,11 +37,15 @@ data class PickerModalState(
     val discPickerFocusIndex: Int = 0,
 
     val showUpdatesPicker: Boolean = false,
-    val updatesPickerFocusIndex: Int = 0
+    val updatesPickerFocusIndex: Int = 0,
+
+    val showVariantPicker: Boolean = false,
+    val variantPickerOptions: List<com.nendo.argosy.data.emulator.VariantOption> = emptyList(),
+    val variantPickerFocusIndex: Int = 0
 ) {
     val hasAnyPickerOpen: Boolean
         get() = showEmulatorPicker || showCorePicker || showSteamLauncherPicker ||
-                showDiscPicker || showUpdatesPicker
+                showDiscPicker || showUpdatesPicker || showVariantPicker
 }
 
 sealed class PickerSelection {
@@ -51,6 +55,7 @@ sealed class PickerSelection {
     data class Disc(val discPath: String) : PickerSelection()
     data class UpdateFile(val file: UpdateFileUi) : PickerSelection()
     data class ApplyUpdate(val file: UpdateFileUi) : PickerSelection()
+    data class Variant(val variantFileId: Long?) : PickerSelection()
 }
 
 @Singleton
@@ -247,6 +252,53 @@ class PickerModalDelegate @Inject constructor(
                 showDiscPicker = false,
                 discPickerOptions = emptyList(),
                 discPickerFocusIndex = 0
+            )
+        }
+    }
+
+    // endregion
+
+    // region Variant Picker
+
+    fun showVariantPicker(options: List<com.nendo.argosy.data.emulator.VariantOption>) {
+        _state.update {
+            it.copy(
+                showVariantPicker = true,
+                variantPickerOptions = options,
+                variantPickerFocusIndex = 0
+            )
+        }
+        soundManager.play(SoundType.OPEN_MODAL)
+    }
+
+    fun dismissVariantPicker() {
+        _state.update {
+            it.copy(
+                showVariantPicker = false,
+                variantPickerOptions = emptyList(),
+                variantPickerFocusIndex = 0
+            )
+        }
+        soundManager.play(SoundType.CLOSE_MODAL)
+    }
+
+    fun moveVariantPickerFocus(delta: Int) {
+        _state.update { state ->
+            val maxIndex = (state.variantPickerOptions.size - 1).coerceAtLeast(0)
+            val newIndex = (state.variantPickerFocusIndex + delta).coerceIn(0, maxIndex)
+            state.copy(variantPickerFocusIndex = newIndex)
+        }
+    }
+
+    fun confirmVariantSelection() {
+        val state = _state.value
+        val variant = state.variantPickerOptions.getOrNull(state.variantPickerFocusIndex) ?: return
+        _selection.value = PickerSelection.Variant(variant.fileId)
+        _state.update {
+            it.copy(
+                showVariantPicker = false,
+                variantPickerOptions = emptyList(),
+                variantPickerFocusIndex = 0
             )
         }
     }

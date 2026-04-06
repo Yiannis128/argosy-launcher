@@ -467,16 +467,18 @@ class RomMLibrarySyncService @Inject constructor(
 
         val savedGame = gameDao.getByRommId(rom.id)
         if (savedGame != null) {
-            syncGameFiles(savedGame.id, rom)
+            syncGameFiles(savedGame.id, rom, platformSlug)
         }
 
         return isNew to game
     }
 
-    private suspend fun syncGameFiles(gameId: Long, rom: RomMRom) {
+    private suspend fun syncGameFiles(gameId: Long, rom: RomMRom, platformSlug: String) {
+        val isVariantExcluded = platformSlug in com.nendo.argosy.data.model.VariantCategory.VARIANT_EXCLUDED_PLATFORMS
         val files = rom.files?.filter { file ->
-            file.category in setOf("update", "dlc") &&
-            !file.fileName.startsWith(".")
+            val cat = file.category
+            if (cat == null || file.fileName.startsWith(".")) return@filter false
+            if (isVariantExcluded) cat in setOf("update", "dlc") else true
         } ?: return
 
         if (files.isEmpty()) {
@@ -484,10 +486,14 @@ class RomMLibrarySyncService @Inject constructor(
             return
         }
 
-        gameFileDao.deleteInvalidFiles(gameId, files.map { it.id })
+        val validIds = files.mapNotNull { if (it.id > 0) it.id else null }
+        if (validIds.isNotEmpty()) {
+            gameFileDao.deleteInvalidFiles(gameId, validIds)
+        }
 
         val entities = files.map { file ->
             val existing = gameFileDao.getByRommFileId(file.id)
+            val category = com.nendo.argosy.data.model.VariantCategory.fromKey(file.category)
             GameFileEntity(
                 id = existing?.id ?: 0,
                 gameId = gameId,
@@ -495,10 +501,13 @@ class RomMLibrarySyncService @Inject constructor(
                 romId = file.romId,
                 fileName = file.fileName,
                 filePath = file.filePath,
-                category = file.category ?: "update",
+                category = category.key,
                 fileSize = file.fileSizeBytes,
                 localPath = existing?.localPath,
-                downloadedAt = existing?.downloadedAt
+                downloadedAt = existing?.downloadedAt,
+                isLaunchTarget = category.isLaunchTarget,
+                isMultiDisc = existing?.isMultiDisc ?: false,
+                m3uPath = existing?.m3uPath
             )
         }
         gameFileDao.insertAll(entities)

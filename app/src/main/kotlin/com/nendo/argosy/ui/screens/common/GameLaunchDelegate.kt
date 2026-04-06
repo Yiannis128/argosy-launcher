@@ -67,6 +67,14 @@ data class DiscPickerState(
     val onLaunch: (Intent) -> Unit
 )
 
+data class VariantPickerState(
+    val gameId: Long,
+    val variants: List<com.nendo.argosy.data.emulator.VariantOption>,
+    val channelName: String? = null,
+    val launchMode: LaunchMode? = null,
+    val onLaunch: (Intent) -> Unit
+)
+
 class GameLaunchDelegate @Inject constructor(
     private val application: Application,
     private val gameRepository: GameRepository,
@@ -81,7 +89,8 @@ class GameLaunchDelegate @Inject constructor(
     private val notificationManager: NotificationManager,
     private val titleIdDetector: TitleIdDetector,
     private val saveSyncRepository: SaveSyncRepository,
-    private val saveCacheManager: SaveCacheManager
+    private val saveCacheManager: SaveCacheManager,
+    private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver
 ) {
     companion object {
         private const val EMULATOR_KILL_DELAY_MS = 500L
@@ -98,6 +107,9 @@ class GameLaunchDelegate @Inject constructor(
 
     private val _discPickerState = MutableStateFlow<DiscPickerState?>(null)
     val discPickerState: StateFlow<DiscPickerState?> = _discPickerState.asStateFlow()
+
+    private val _variantPickerState = MutableStateFlow<VariantPickerState?>(null)
+    val variantPickerState: StateFlow<VariantPickerState?> = _variantPickerState.asStateFlow()
 
     val isSyncing: Boolean get() = _syncOverlayState.value != null
 
@@ -142,8 +154,11 @@ class GameLaunchDelegate @Inject constructor(
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
 
+                val variantGame = gameRepository.getById(gameId)
+                val resolvedVariantId = variantGame?.let { variantResolver.resolveVariant(it)?.id }
+
                 if (canResume) {
-                    when (val result = launchGameUseCase(gameId, discId, forResume = true)) {
+                    when (val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId)) {
                         is LaunchResult.Success -> {
                             soundManager.play(SoundType.LAUNCH_GAME)
                             onLaunch(result.intent)
@@ -152,6 +167,14 @@ class GameLaunchDelegate @Inject constructor(
                             _discPickerState.value = DiscPickerState(
                                 gameId = result.gameId,
                                 discs = result.discs,
+                                channelName = channelName,
+                                onLaunch = onLaunch
+                            )
+                        }
+                        is LaunchResult.SelectVariant -> {
+                            _variantPickerState.value = VariantPickerState(
+                                gameId = result.gameId,
+                                variants = result.variants,
                                 channelName = channelName,
                                 onLaunch = onLaunch
                             )
@@ -326,7 +349,7 @@ class GameLaunchDelegate @Inject constructor(
                     else -> null
                 }
 
-                when (val result = launchGameUseCase(gameId, discId)) {
+                when (val result = launchGameUseCase(gameId, discId, variantFileId = resolvedVariantId)) {
                     is LaunchResult.Success -> {
                         soundManager.play(SoundType.LAUNCH_GAME)
                         val intent = if (launchMode != null) {
@@ -342,6 +365,15 @@ class GameLaunchDelegate @Inject constructor(
                         _discPickerState.value = DiscPickerState(
                             gameId = result.gameId,
                             discs = result.discs,
+                            channelName = channelName,
+                            launchMode = launchMode,
+                            onLaunch = onLaunch
+                        )
+                    }
+                    is LaunchResult.SelectVariant -> {
+                        _variantPickerState.value = VariantPickerState(
+                            gameId = result.gameId,
+                            variants = result.variants,
                             channelName = channelName,
                             launchMode = launchMode,
                             onLaunch = onLaunch

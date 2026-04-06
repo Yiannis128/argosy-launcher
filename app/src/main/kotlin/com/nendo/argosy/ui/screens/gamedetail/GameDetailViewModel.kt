@@ -367,6 +367,22 @@ class GameDetailViewModel @Inject constructor(
             is PickerSelection.ApplyUpdate -> {
                 applyUpdateToEmulator(selection.file)
             }
+            is PickerSelection.Variant -> {
+                val result = launchGameUseCase(currentGameId, variantFileId = selection.variantFileId)
+                when (result) {
+                    is LaunchResult.Success -> {
+                        soundManager.play(SoundType.LAUNCH_GAME)
+                        val options = displayAffinityHelper.getActivityOptions(
+                            forEmulator = true,
+                            rolesSwapped = sessionStateStore.isRolesSwapped()
+                        )
+                        _launchEvents.emit(LaunchEvent.LaunchIntent(result.intent, options))
+                    }
+                    is LaunchResult.SelectDisc -> pickerModalDelegate.showDiscPicker(result.discs)
+                    is LaunchResult.Error -> notificationManager.showError(result.message)
+                    else -> {}
+                }
+            }
         }
     }
 
@@ -848,6 +864,7 @@ class GameDetailViewModel @Inject constructor(
                 _launchEvents.emit(LaunchEvent.LaunchIntent(intentWithMode, options))
             }
             is LaunchResult.SelectDisc -> pickerModalDelegate.showDiscPicker(result.discs)
+            is LaunchResult.SelectVariant -> pickerModalDelegate.showVariantPicker(result.variants)
             is LaunchResult.NoEmulator -> showEmulatorPicker()
             is LaunchResult.NoCore -> showCorePicker()
             is LaunchResult.MissingDiscs -> downloadDelegate.showMissingDiscPrompt(result.missingDiscNumbers)
@@ -1422,6 +1439,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showMissingDiscPrompt -> InputResult.UNHANDLED
                 pickerState.showCorePicker -> { moveCorePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(-1); InputResult.HANDLED }
+                pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showUpdatesPicker -> { moveUpdatesPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showEmulatorPicker -> { moveEmulatorPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(-1); InputResult.HANDLED }
@@ -1450,6 +1468,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showMissingDiscPrompt -> InputResult.UNHANDLED
                 pickerState.showCorePicker -> { moveCorePickerFocus(1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(1); InputResult.HANDLED }
+                pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(1); InputResult.HANDLED }
                 pickerState.showUpdatesPicker -> { moveUpdatesPickerFocus(1); InputResult.HANDLED }
                 pickerState.showEmulatorPicker -> { moveEmulatorPickerFocus(1); InputResult.HANDLED }
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(1); InputResult.HANDLED }
@@ -1559,6 +1578,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showExtractionFailedPrompt -> confirmExtractionPromptSelection()
                 pickerState.showCorePicker -> confirmCoreSelection()
                 pickerState.showDiscPicker -> selectFocusedDisc()
+                pickerState.showVariantPicker -> pickerModalDelegate.confirmVariantSelection()
                 pickerState.showUpdatesPicker -> confirmUpdatesSelection()
                 pickerState.showEmulatorPicker -> confirmEmulatorSelection()
                 pickerState.showSteamLauncherPicker -> confirmSteamLauncherSelection()
@@ -1591,6 +1611,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showExtractionFailedPrompt -> dismissExtractionPrompt()
                 pickerState.showCorePicker -> dismissCorePicker()
                 pickerState.showDiscPicker -> dismissDiscPicker()
+                pickerState.showVariantPicker -> pickerModalDelegate.dismissVariantPicker()
                 pickerState.showUpdatesPicker -> dismissUpdatesPicker()
                 pickerState.showEmulatorPicker -> dismissEmulatorPicker()
                 pickerState.showSteamLauncherPicker -> dismissSteamLauncherPicker()

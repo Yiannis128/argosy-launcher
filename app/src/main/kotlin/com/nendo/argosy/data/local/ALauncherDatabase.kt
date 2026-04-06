@@ -116,7 +116,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamCompletedDepotEntity::class,
         EmulatorLaunchArgsEntity::class
     ],
-    version = 100,
+    version = 101,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1497,6 +1497,41 @@ abstract class ALauncherDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE emulator_launch_args ADD COLUMN dataBinding TEXT")
                 db.execSQL("ALTER TABLE emulator_launch_args ADD COLUMN extraBinding TEXT")
                 db.execSQL("ALTER TABLE emulator_launch_args ADD COLUMN clipDataBinding TEXT")
+            }
+        }
+
+        val MIGRATION_100_101 = object : Migration(100, 101) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN activeVariantFileId INTEGER")
+                db.execSQL("ALTER TABLE games ADD COLUMN lastPlayedFileId INTEGER")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS game_files_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        gameId INTEGER NOT NULL,
+                        rommFileId INTEGER,
+                        romId INTEGER NOT NULL DEFAULT 0,
+                        fileName TEXT NOT NULL,
+                        filePath TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        fileSize INTEGER NOT NULL,
+                        localPath TEXT,
+                        downloadedAt INTEGER,
+                        isLaunchTarget INTEGER NOT NULL DEFAULT 0,
+                        isMultiDisc INTEGER NOT NULL DEFAULT 0,
+                        m3uPath TEXT,
+                        FOREIGN KEY(gameId) REFERENCES games(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO game_files_new (id, gameId, rommFileId, romId, fileName, filePath, category, fileSize, localPath, downloadedAt)
+                    SELECT id, gameId, rommFileId, romId, fileName, filePath, category, fileSize, localPath, downloadedAt
+                    FROM game_files
+                """)
+                db.execSQL("DROP TABLE game_files")
+                db.execSQL("ALTER TABLE game_files_new RENAME TO game_files")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_game_files_gameId ON game_files(gameId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_game_files_rommFileId ON game_files(rommFileId)")
             }
         }
 

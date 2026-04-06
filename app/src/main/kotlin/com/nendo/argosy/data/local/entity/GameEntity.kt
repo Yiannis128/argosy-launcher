@@ -86,6 +86,8 @@ data class GameEntity(
     val isMultiDisc: Boolean = false,
     val lastPlayedDiscId: Long? = null,
     val m3uPath: String? = null,
+    val activeVariantFileId: Long? = null,
+    val lastPlayedFileId: Long? = null,
 
     val achievementCount: Int = 0,
     val earnedAchievementCount: Int = 0,

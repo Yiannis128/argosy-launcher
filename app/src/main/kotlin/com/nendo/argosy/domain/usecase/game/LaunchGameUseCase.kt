@@ -14,9 +14,10 @@ class LaunchGameUseCase @Inject constructor(
         gameId: Long,
         discId: Long? = null,
         forResume: Boolean = false,
-        selectedDiscPath: String? = null
+        selectedDiscPath: String? = null,
+        variantFileId: Long? = null
     ): LaunchResult {
-        val result = gameLauncher.launch(gameId, discId, forResume, selectedDiscPath)
+        val result = gameLauncher.launch(gameId, discId, forResume, selectedDiscPath, variantFileId)
         if (result is LaunchResult.Success) {
             val coreName = extractCoreName(result.intent)
             playSessionTracker.startSession(
