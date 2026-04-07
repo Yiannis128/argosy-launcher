@@ -148,6 +148,7 @@ fun SettingsScreen(
     }
 
     var showFileBrowser by remember { mutableStateOf(false) }
+    var fileBrowserTitle by remember { mutableStateOf<String?>(null) }
     var fileBrowserCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -185,7 +186,6 @@ fun SettingsScreen(
         if (uiState.launchFolderPicker) {
             fileBrowserCallback = when {
                 viewModel.hasPendingBiosCopy -> { path: String -> viewModel.onBiosCopyFolderSelected(path) }
-                viewModel.hasPendingStatePath -> { path: String -> viewModel.onStatePathFolderSelected(path) }
                 else -> { path: String -> viewModel.setStoragePath(path) }
             }
             showFileBrowser = true
@@ -266,8 +266,12 @@ fun SettingsScreen(
         }
     }
 
+    fun platformName(platformId: Long): String =
+        uiState.emulators.platforms.find { it.platform.id == platformId }?.platform?.name ?: "Platform"
+
     LaunchedEffect(Unit) {
         viewModel.launchPlatformFolderPicker.collect { platformId ->
+            fileBrowserTitle = "${platformName(platformId)} ROM Path"
             fileBrowserCallback = { path -> viewModel.setPlatformPath(platformId, path) }
             showFileBrowser = true
         }
@@ -276,6 +280,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         viewModel.launchSavePathPicker.collect {
             uiState.emulators.savePathModalInfo?.emulatorId?.let { emulatorId ->
+                fileBrowserTitle = "Save Path"
                 fileBrowserCallback = { path -> viewModel.setEmulatorSavePath(emulatorId, path) }
                 showFileBrowser = true
             }
@@ -284,6 +289,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchPlatformSavePathPicker.collect { platformId ->
+            fileBrowserTitle = "${platformName(platformId)} Save Path"
             fileBrowserCallback = { path -> viewModel.setPlatformSavePath(platformId, path) }
             showFileBrowser = true
         }
@@ -297,6 +303,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchPlatformStatePathPicker.collect { platformId ->
+            fileBrowserTitle = "${platformName(platformId)} State Path"
             fileBrowserCallback = { path -> viewModel.setPlatformStatePath(platformId, path) }
             showFileBrowser = true
         }
@@ -304,6 +311,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchBuiltinSavePathPicker.collect {
+            fileBrowserTitle = "Built-in Save Path"
             fileBrowserCallback = { path -> viewModel.setBuiltinSavePath(path) }
             showFileBrowser = true
         }
@@ -311,6 +319,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchBuiltinStatePathPicker.collect {
+            fileBrowserTitle = "Built-in State Path"
             fileBrowserCallback = { path -> viewModel.setBuiltinStatePath(path) }
             showFileBrowser = true
         }
@@ -318,6 +327,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchPlatformBuiltinSavePathPicker.collect { platformId ->
+            fileBrowserTitle = "${platformName(platformId)} Built-in Save Path"
             fileBrowserCallback = { path -> viewModel.setPlatformBuiltinSavePath(platformId, path) }
             showFileBrowser = true
         }
@@ -325,6 +335,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchPlatformBuiltinStatePathPicker.collect { platformId ->
+            fileBrowserTitle = "${platformName(platformId)} Built-in State Path"
             fileBrowserCallback = { path -> viewModel.setPlatformBuiltinStatePath(platformId, path) }
             showFileBrowser = true
         }
@@ -733,13 +744,16 @@ fun SettingsScreen(
     if (showFileBrowser) {
         FileBrowserScreen(
             mode = FileBrowserMode.FOLDER_SELECTION,
+            title = fileBrowserTitle,
             onPathSelected = { path ->
                 showFileBrowser = false
+                fileBrowserTitle = null
                 fileBrowserCallback?.invoke(path)
                 fileBrowserCallback = null
             },
             onDismiss = {
                 showFileBrowser = false
+                fileBrowserTitle = null
                 fileBrowserCallback = null
             }
         )
@@ -931,7 +945,9 @@ private fun getFilePathFromUri(context: Context, uri: Uri): String? {
 
 @Composable
 private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackState) {
-    if (uiState.emulators.showSavePathModal || uiState.emulators.showEmulatorPicker || uiState.emulators.updateModal != null) {
+    if (uiState.emulators.showSavePathModal || uiState.emulators.showEmulatorPicker ||
+        uiState.emulators.updateModal != null || uiState.emulators.showLaunchArgsModal ||
+        uiState.emulators.showAppPickerModal) {
         return
     }
     if (shaderStack.showShaderPicker) {
@@ -1004,30 +1020,32 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
         }
         if (uiState.currentSection == SettingsSection.PLATFORM_DETAIL) {
             val config = uiState.emulators.platforms.getOrNull(uiState.platformDetail.platformIndex)
+            val detail = uiState.platformDetail
             val focusedItem = config?.let {
-                platformDetailItemAtFocusIndex(uiState.focusedIndex, it, uiState.platformDetail)
+                platformDetailItemAtFocusIndex(uiState.focusedIndex, it, detail)
             }
-            // L1/R1: section jump
-            add(InputButton.LB_RB to "Section")
-            // L2/R2: platform cycle
-            if (uiState.emulators.platforms.size > 1) {
-                add(InputButton.LT_RT to "Platform")
-            }
-            // D-pad horizontal for cycle items
             if (focusedItem is PlatformDetailItem.Core ||
                 focusedItem is PlatformDetailItem.Extension ||
                 focusedItem is PlatformDetailItem.DisplayTarget ||
                 focusedItem is PlatformDetailItem.Emulator) {
                 add(InputButton.DPAD_HORIZONTAL to "Adjust")
             }
-            // X button -- update emulator if available
             if (config != null) {
                 val emulatorId = config.effectiveEmulatorId
                 if (emulatorId != null && emulatorId in uiState.emulators.emulatorUpdateVersions) {
                     add(InputButton.X to "Update Emulator")
                 }
             }
-            // A button -- context-specific label
+            val storageConfig = uiState.storage.platformConfigs.find { it.platformId == config?.platform?.id }
+            val canReset = when (focusedItem) {
+                is PlatformDetailItem.RomPath -> storageConfig?.customRomPath != null
+                is PlatformDetailItem.SavePath -> !config!!.effectiveEmulatorIsRetroArch && storageConfig?.isUserSavePathOverride == true
+                is PlatformDetailItem.StatePath -> !config!!.effectiveEmulatorIsRetroArch && storageConfig?.isUserStatePathOverride == true
+                else -> false
+            }
+            if (canReset) {
+                add(InputButton.Y to "Reset")
+            }
             val aLabel = when (focusedItem) {
                 is PlatformDetailItem.SyncToggle, is PlatformDetailItem.LegacyMode -> "Toggle"
                 is PlatformDetailItem.BuiltinVideo, is PlatformDetailItem.BuiltinControls, is PlatformDetailItem.BuiltinCoreOptions -> "Open"

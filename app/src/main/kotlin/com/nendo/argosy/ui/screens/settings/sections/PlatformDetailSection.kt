@@ -190,6 +190,8 @@ fun PlatformDetailSection(
         return
     }
 
+    val storageConfig = uiState.storage.platformConfigs.find { it.platformId == config.platform.id }
+
     val visibility = remember(config, detail) { PlatformDetailVisibility.from(config, detail) }
     val layout = remember { createPlatformDetailLayout() }
     val visibleItems = remember(visibility) { layout.visibleItems(visibility) }
@@ -359,20 +361,20 @@ fun PlatformDetailSection(
                 // -- PATHS section --
                 PlatformDetailItem.RomPath -> CyclePreference(
                     title = "ROM Path",
-                    value = formatPath(detail.effectiveRomPath),
-                    subtitle = if (detail.customRomPath != null) "(custom)" else null,
+                    value = formatPath(storageConfig?.effectivePath),
+                    subtitle = if (storageConfig?.customRomPath != null) "(custom)" else null,
                     isFocused = isFocused(item),
                     onClick = { viewModel.openPlatformFolderPicker(config.platform.id) },
-                    showResetButton = detail.customRomPath != null,
+                    showResetButton = storageConfig?.customRomPath != null,
                     onReset = { viewModel.resetPlatformRomPath(config.platform.id) }
                 )
                 PlatformDetailItem.SavePath -> {
                     if (config.effectiveEmulatorIsRetroArch) {
                         InfoPreference(
                             title = "Save Path",
-                            value = formatPath(detail.effectiveSavePath),
+                            value = formatPath(storageConfig?.effectiveSavePath),
                             isFocused = isFocused(item),
-                            subtitle = if (detail.effectiveSavePath == "(ROM directory)") {
+                            subtitle = if (storageConfig?.effectiveSavePath == "(ROM directory)") {
                                 "content dir (from retroarch.cfg)"
                             } else {
                                 "from retroarch.cfg"
@@ -382,15 +384,15 @@ fun PlatformDetailSection(
                         val isBuiltinEmulator = config.effectiveEmulatorId == "builtin"
                         CyclePreference(
                             title = "Save Path",
-                            value = formatPath(detail.effectiveSavePath),
+                            value = formatPath(storageConfig?.effectiveSavePath),
                             subtitle = when {
-                                !isBuiltinEmulator && detail.packagePathAccessible == false && !detail.isUserSavePathOverride -> "Access blocked -- set a custom save path"
-                                detail.isUserSavePathOverride -> "(custom)"
+                                !isBuiltinEmulator && detail.packagePathAccessible == false && storageConfig?.isUserSavePathOverride != true -> "Access blocked -- set a custom save path"
+                                storageConfig?.isUserSavePathOverride == true -> "(custom)"
                                 else -> null
                             },
                             isFocused = isFocused(item),
                             onClick = { viewModel.launchSavePathPicker(config.platform.id) },
-                            showResetButton = detail.isUserSavePathOverride,
+                            showResetButton = storageConfig?.isUserSavePathOverride == true,
                             onReset = { viewModel.resetPlatformSavePath(config.platform.id) }
                         )
                     }
@@ -399,9 +401,9 @@ fun PlatformDetailSection(
                     if (config.effectiveEmulatorIsRetroArch) {
                         InfoPreference(
                             title = "State Path",
-                            value = formatPath(detail.effectiveStatePath),
+                            value = formatPath(storageConfig?.effectiveStatePath),
                             isFocused = isFocused(item),
-                            subtitle = if (detail.effectiveStatePath == "(ROM directory)") {
+                            subtitle = if (storageConfig?.effectiveStatePath == "(ROM directory)") {
                                 "content dir (from retroarch.cfg)"
                             } else {
                                 "from retroarch.cfg"
@@ -410,11 +412,11 @@ fun PlatformDetailSection(
                     } else {
                         CyclePreference(
                             title = "State Path",
-                            value = formatPath(detail.effectiveStatePath),
-                            subtitle = if (detail.isUserStatePathOverride) "(custom)" else null,
+                            value = formatPath(storageConfig?.effectiveStatePath),
+                            subtitle = if (storageConfig?.isUserStatePathOverride == true) "(custom)" else null,
                             isFocused = isFocused(item),
                             onClick = { viewModel.launchStatePathPicker(config.platform.id) },
-                            showResetButton = detail.isUserStatePathOverride,
+                            showResetButton = storageConfig?.isUserStatePathOverride == true,
                             onReset = { viewModel.resetPlatformStatePath(config.platform.id) }
                         )
                     }
@@ -424,7 +426,7 @@ fun PlatformDetailSection(
                 PlatformDetailItem.SyncToggle -> SwitchPreference(
                     title = "Sync Enabled",
                     subtitle = "Include this platform in library sync",
-                    isEnabled = detail.syncEnabled,
+                    isEnabled = storageConfig?.syncEnabled ?: true,
                     isFocused = isFocused(item),
                     onToggle = { viewModel.togglePlatformSync(config.platform.id, it) }
                 )
@@ -532,7 +534,6 @@ fun PlatformDetailSection(
         if (emulators.showLaunchArgsModal && emulators.launchArgsModalState != null) {
             com.nendo.argosy.ui.screens.settings.components.LaunchArgsModal(
                 state = emulators.launchArgsModalState,
-                onCycleMethod = { viewModel.cycleLaunchArgsMethod() },
                 onCycleDataBinding = { viewModel.cycleLaunchArgsDataBinding() },
                 onCycleExtraBinding = { viewModel.cycleLaunchArgsExtraBinding() },
                 onCycleClipDataBinding = { viewModel.cycleLaunchArgsClipDataBinding() },

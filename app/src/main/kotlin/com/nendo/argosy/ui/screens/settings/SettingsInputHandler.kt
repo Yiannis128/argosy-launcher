@@ -84,6 +84,7 @@ class SettingsInputHandler(
                 InputMethod.SELECT -> it.onSelect()
                 InputMethod.LEFT_STICK_CLICK -> it.onLeftStickClick()
                 InputMethod.RIGHT_STICK_CLICK -> it.onRightStickClick()
+                InputMethod.LONG_CONFIRM -> it.onLongConfirm()
             }
             if (result != InputResult.UNHANDLED) result else fallback()
         } ?: fallback()
@@ -109,6 +110,10 @@ class SettingsInputHandler(
 
     override fun onConfirm(): InputResult = dispatch(InputMethod.CONFIRM) {
         viewModel.handleConfirm()
+    }
+
+    override fun onLongConfirm(): InputResult = dispatch(InputMethod.LONG_CONFIRM) {
+        InputResult.UNHANDLED
     }
 
     override fun onBack(): InputResult {

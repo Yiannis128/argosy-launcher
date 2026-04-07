@@ -198,8 +198,8 @@ class GameLauncher @Inject constructor(
                     }
                 }
                 else -> {
-                    LaunchResult.Error("Failed to build launch intent").also {
-                        Logger.error(TAG, "launch() failed: could not build intent")
+                    LaunchResult.Error("Failed to launch ${emulator.displayName}").also {
+                        Logger.error(TAG, "launch() failed: could not build or execute intent for ${emulator.displayName}")
                     }
                 }
             }
@@ -519,11 +519,44 @@ class GameLauncher @Inject constructor(
 
         val command = buildEffectiveCommand(emulator, romFile, game, forResume) ?: return null
 
-        return when (command.launchMethod) {
-            LaunchMethod.INTENT -> command.toIntent(context).also { intent ->
-                Logger.debug(TAG, "Intent built: ${LogSanitizer.describeIntent(intent)}")
+        Logger.info(TAG, buildString {
+            append("[Command] method=${command.launchMethod}")
+            append(" action=${command.action}")
+            append(" pkg=${command.packageName}")
+            if (command.activityClass != null) append(" activity=${command.activityClass}")
+            if (command.dataUri != null) append(" data=${command.dataUri}")
+            if (command.mimeType != null) append(" mime=${command.mimeType}")
+            append(" flags=0x${command.intentFlags.toString(16)}")
+            if (command.extras.isNotEmpty()) {
+                append(" extras=[")
+                command.extras.forEachIndexed { i, e ->
+                    if (i > 0) append(", ")
+                    append("${e.key}=")
+                    when (e) {
+                        is ResolvedExtra.StringExtra -> append(e.value)
+                        is ResolvedExtra.UriExtra -> append(e.uri)
+                        is ResolvedExtra.BoolExtra -> append(e.value)
+                        is ResolvedExtra.StringArrayExtra -> append(e.values.joinToString(","))
+                    }
+                }
+                append("]")
             }
-            LaunchMethod.SHELL -> launchViaShell(command)
+            if (command.clipDataUri != null) append(" clipData=${command.clipDataUri}")
+            if (command.grantReadUriTo.isNotEmpty()) append(" grants=${command.grantReadUriTo.size}")
+        })
+
+        val needsIntentForContentUri = command.launchMethod == LaunchMethod.SHELL &&
+            command.dataUri?.scheme == "content"
+        if (needsIntentForContentUri) {
+            Logger.debug(TAG, "Falling back to Intent for content:// data URI (shell can't grant URI permissions)")
+        }
+
+        return when {
+            needsIntentForContentUri -> command.copy(launchMethod = LaunchMethod.INTENT).toIntent(context)
+            command.launchMethod == LaunchMethod.INTENT -> command.toIntent(context)
+            else -> launchViaShell(command)
+        }?.also {
+            Logger.debug(TAG, "Launch dispatched: method=${command.launchMethod}")
         }
     }
 
@@ -558,11 +591,11 @@ class GameLauncher @Inject constructor(
         }
 
         val override = emulatorLaunchArgsDao.getByPlatformAndEmulator(game.platformId, emulator.id)
-        return if (override != null && override.hasAnyOverride()) {
-            applyLaunchArgsOverride(base, override, romFile, forResume)
-        } else {
-            base
+        if (override != null && override.hasAnyOverride()) {
+            Logger.debug(TAG, "Applying launch args override: data=${override.dataBinding} extras=${override.extraBinding} clip=${override.clipDataBinding} flags=${override.intentFlagsMask} mime=${override.mimeType}")
+            return applyLaunchArgsOverride(base, override, romFile, forResume)
         }
+        return base
     }
 
     private fun applyLaunchArgsOverride(
@@ -691,9 +724,11 @@ class GameLauncher @Inject constructor(
             dataUri = uri,
             mimeType = getMimeType(romFile),
             intentFlags = if (forResume) {
-                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
             } else {
-                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
             },
             grantReadUriTo = listOf(uri),
             clipDataUri = uri
@@ -856,11 +891,11 @@ class GameLauncher @Inject constructor(
                 dataUri = uri,
                 mimeType = mimeType,
                 intentFlags = if (forResume) {
-                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
                 } else {
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                        Intent.FLAG_ACTIVITY_NO_HISTORY
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
                 },
                 grantReadUriTo = listOf(uri),
                 clipDataUri = uri
@@ -912,24 +947,46 @@ class GameLauncher @Inject constructor(
             clipDataUri = documentUri ?: providerUri
         }
 
+        val grantFlag = if (hasUriExtra) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0
+
         return EffectiveLaunchCommand(
             action = emulator.launchAction,
             packageName = emulator.packageName,
             activityClass = config.activityClass,
             extras = resolvedExtras,
             intentFlags = if (forResume) {
-                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or grantFlag
             } else {
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                    Intent.FLAG_ACTIVITY_NO_HISTORY
+                    Intent.FLAG_ACTIVITY_NO_HISTORY or grantFlag
             },
             grantReadUriTo = grantUris,
             clipDataUri = clipDataUri
         )
     }
 
-    private fun launchViaShell(command: EffectiveLaunchCommand): Intent {
+    private fun demoteContentUrisToFilePaths(command: EffectiveLaunchCommand, romFile: File): EffectiveLaunchCommand {
+        val absolutePath = romFile.absolutePath
+        val pathUri = Uri.parse(absolutePath)
+        val isContentUri = { uri: Uri? -> uri?.scheme == "content" }
+
+        val newDataUri = if (isContentUri(command.dataUri)) pathUri else command.dataUri
+        val newExtras = command.extras.map { extra ->
+            if (extra is ResolvedExtra.UriExtra && isContentUri(extra.uri)) {
+                ResolvedExtra.StringExtra(extra.key, absolutePath)
+            } else extra
+        }
+
+        return command.copy(
+            dataUri = newDataUri,
+            clipDataUri = null,
+            extras = newExtras,
+            grantReadUriTo = emptyList()
+        )
+    }
+
+    private fun launchViaShell(command: EffectiveLaunchCommand): Intent? {
         command.grantReadUriTo.forEach { uri ->
             try {
                 context.grantUriPermission(command.packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -939,20 +996,20 @@ class GameLauncher @Inject constructor(
         }
 
         val argv = command.toShellArgv()
-        val sanitizedArgs = argv.joinToString(" ") { arg ->
-            if (arg.startsWith("/storage") || arg.startsWith("content:")) LogSanitizer.sanitizePath(arg) else arg
-        }
-        Logger.debug(TAG, "Shell launch: $sanitizedArgs")
+        Logger.debug(TAG, "Shell argv: ${argv.joinToString(" ")}")
 
         try {
-            val process = Runtime.getRuntime().exec(argv)
+            val process = ProcessBuilder(*argv).redirectErrorStream(false).start()
             val exitCode = process.waitFor()
             if (exitCode != 0) {
                 val stderr = process.errorStream.bufferedReader().use { it.readText() }.trim()
-                Logger.warn(TAG, "am start exited with code=$exitCode stderr=$stderr")
+                val stdout = process.inputStream.bufferedReader().use { it.readText() }.trim()
+                Logger.error(TAG, "Shell launch failed: code=$exitCode stdout=$stdout stderr=$stderr")
+                return null
             }
         } catch (e: Exception) {
             Logger.error(TAG, "Failed to exec am start for ${command.packageName}", e)
+            return null
         }
 
         return Intent(Intent.ACTION_VIEW).apply {
@@ -1181,9 +1238,7 @@ class GameLauncher @Inject constructor(
     }
 
     private fun getMimeType(file: File): String {
-        // Most emulators filter by file extension, not MIME type.
-        // Using */* ensures the intent resolves to the target emulator.
-        return "*/*"
+        return "application/octet-stream"
     }
 
     suspend fun buildInstallIntent(game: GameEntity, file: File): Intent? {

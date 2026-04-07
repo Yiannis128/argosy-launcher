@@ -491,7 +491,7 @@ class StorageSettingsDelegate @Inject constructor(
             }
             statePathIndex -> {
                 if (buttonIndex == 0) {
-                    openPlatformStatePathPicker(scope, platformId)
+                    emitStatePathPicker(scope, platformId)
                 } else if (buttonIndex == 1 && config.isUserStatePathOverride) {
                     resetPlatformStatePath(scope, platformId)
                 }
@@ -522,7 +522,7 @@ class StorageSettingsDelegate @Inject constructor(
         scope.launch { _resetSavePathEvent.emit(platformId) }
     }
 
-    private fun openPlatformStatePathPicker(scope: CoroutineScope, platformId: Long) {
+    fun emitStatePathPicker(scope: CoroutineScope, platformId: Long) {
         scope.launch { _launchStatePathPicker.emit(platformId) }
     }
 

@@ -60,6 +60,7 @@ import com.nendo.argosy.ui.theme.Dimens
 @Composable
 fun FileBrowserScreen(
     mode: FileBrowserMode = FileBrowserMode.FOLDER_SELECTION,
+    title: String? = null,
     fileFilter: FileFilter? = null,
     onPathSelected: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -96,7 +97,7 @@ fun FileBrowserScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             FileBrowserHeader(
-                title = when (mode) {
+                title = title ?: when (mode) {
                     FileBrowserMode.FOLDER_SELECTION -> "Select Folder"
                     FileBrowserMode.FILE_SELECTION -> "Select File"
                     FileBrowserMode.FILE_OR_FOLDER_SELECTION -> "Select File or Folder"

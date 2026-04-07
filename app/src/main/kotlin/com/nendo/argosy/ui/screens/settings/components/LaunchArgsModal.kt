@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +33,6 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 @Composable
 fun LaunchArgsModal(
     state: LaunchArgsModalState,
-    onCycleMethod: () -> Unit,
     onCycleDataBinding: () -> Unit,
     onCycleExtraBinding: () -> Unit,
     onCycleClipDataBinding: () -> Unit,
@@ -41,10 +42,19 @@ fun LaunchArgsModal(
 ) {
     val rows = launchArgsModalRows(state)
 
+    val hasOverride = state.override?.hasAnyOverride() == true
     Modal(
         title = "Launch Args  -  ${state.platformName} / ${state.emulatorName}",
         baseWidth = Dimens.modalWidthXl,
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
+        footerHints = buildList {
+            add(com.nendo.argosy.ui.components.InputButton.A to "Cycle")
+            add(com.nendo.argosy.ui.components.InputButton.Y to "Reset Field")
+            if (hasOverride) {
+                add(com.nendo.argosy.ui.components.InputButton.X to "Reset All")
+            }
+            add(com.nendo.argosy.ui.components.InputButton.B to "Back")
+        }
     ) {
         Text(
             text = "Override how Argosy launches this emulator on this platform. Resume-mode " +
@@ -54,83 +64,76 @@ fun LaunchArgsModal(
             modifier = Modifier.padding(bottom = Dimens.spacingMd)
         )
 
-        rows.forEachIndexed { index, row ->
-            val focused = index == state.focusIndex
-            when (row) {
-                is LaunchArgsRow.LaunchMethod -> LaunchArgsOptionRow(
-                    label = "Launch method",
-                    value = methodLabel(state.override?.launchMethod, state.defaultLaunchMethod),
-                    subtitle = "Shell launches via am start and bypasses caller-side URI grants. " +
-                        "More reliable on scoped storage.",
-                    isOverridden = state.override?.launchMethod != null,
-                    isFocused = focused,
-                    onClick = onCycleMethod
-                )
-                is LaunchArgsRow.DataBinding -> LaunchArgsOptionRow(
-                    label = "Data URI",
-                    value = bindingLabel(state.override?.dataBinding, state.defaultDataBinding),
-                    subtitle = "Sets Intent.data (`-d` in shell). Used by ACTION_VIEW emulators " +
-                        "that read the ROM from the intent's data URI.",
-                    isOverridden = state.override?.dataBinding != null,
-                    isFocused = focused,
-                    onClick = onCycleDataBinding
-                )
-                is LaunchArgsRow.ExtraBinding -> LaunchArgsOptionRow(
-                    label = "Extras",
-                    value = bindingLabel(state.override?.extraBinding, state.defaultExtraBinding),
-                    subtitle = "Rewrites every path-typed extra (e.g. bootPath, ROM, AutoStartFile) " +
-                        "to this format. `None` removes them.",
-                    isOverridden = state.override?.extraBinding != null,
-                    isFocused = focused,
-                    onClick = onCycleExtraBinding
-                )
-                is LaunchArgsRow.ClipDataBinding -> LaunchArgsOptionRow(
-                    label = "ClipData URI",
-                    value = bindingLabel(state.override?.clipDataBinding, state.defaultClipDataBinding),
-                    subtitle = "Attaches the ROM URI to Intent.clipData. Required for " +
-                        "FLAG_GRANT_READ_URI_PERMISSION to actually delegate access to the receiver.",
-                    isOverridden = state.override?.clipDataBinding != null,
-                    isFocused = focused,
-                    onClick = onCycleClipDataBinding
-                )
-                is LaunchArgsRow.LockedBinding -> LaunchArgsOptionRow(
-                    label = row.label,
-                    value = row.value,
-                    subtitle = "Fixed for this emulator -- not a file path.",
-                    isOverridden = false,
-                    isFocused = focused,
-                    onClick = { }
-                )
-                is LaunchArgsRow.Flag -> {
-                    val mask = state.override?.intentFlagsMask ?: state.defaultFlagsMask
-                    val isOn = (mask and row.bit) != 0
-                    val isOverridden = state.override?.intentFlagsMask != null
-                    LaunchArgsOptionRow(
-                        label = row.label,
-                        value = if (isOn) "On" else "Off",
-                        subtitle = flagSubtext(row.bit),
-                        isOverridden = isOverridden,
-                        isFocused = focused,
-                        onClick = { onToggleFlag(row.bit) }
-                    )
+        val listState = rememberLazyListState()
+        com.nendo.argosy.ui.components.FocusedScroll(listState = listState, focusedIndex = state.focusIndex)
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
+            rows.forEachIndexed { index, row ->
+                item(key = "row_$index") {
+                    val focused = index == state.focusIndex
+                    when (row) {
+                        is LaunchArgsRow.DataBinding -> LaunchArgsOptionRow(
+                            label = "Data URI",
+                            value = bindingLabel(state.override?.dataBinding, state.defaultDataBinding),
+                            subtitle = "Sets Intent.data (`-d` in shell). Used by ACTION_VIEW emulators " +
+                                "that read the ROM from the intent's data URI.",
+                            isOverridden = state.override?.dataBinding != null,
+                            isFocused = focused,
+                            onClick = onCycleDataBinding
+                        )
+                        is LaunchArgsRow.ExtraBinding -> LaunchArgsOptionRow(
+                            label = "Extras",
+                            value = bindingLabel(state.override?.extraBinding, state.defaultExtraBinding),
+                            subtitle = "Rewrites every path-typed extra (e.g. bootPath, ROM, AutoStartFile) " +
+                                "to this format. `None` removes them.",
+                            isOverridden = state.override?.extraBinding != null,
+                            isFocused = focused,
+                            onClick = onCycleExtraBinding
+                        )
+                        is LaunchArgsRow.ClipDataBinding -> LaunchArgsOptionRow(
+                            label = "ClipData URI",
+                            value = bindingLabel(state.override?.clipDataBinding, state.defaultClipDataBinding),
+                            subtitle = "Attaches the ROM URI to Intent.clipData. Required for " +
+                                "FLAG_GRANT_READ_URI_PERMISSION to actually delegate access to the receiver.",
+                            isOverridden = state.override?.clipDataBinding != null,
+                            isFocused = focused,
+                            onClick = onCycleClipDataBinding
+                        )
+                        is LaunchArgsRow.LockedBinding -> LaunchArgsOptionRow(
+                            label = row.label,
+                            value = row.value,
+                            subtitle = "Fixed for this emulator -- not a file path.",
+                            isOverridden = false,
+                            isFocused = focused,
+                            onClick = { }
+                        )
+                        is LaunchArgsRow.Flag -> {
+                            val mask = state.override?.intentFlagsMask ?: state.defaultFlagsMask
+                            val isOn = (mask and row.bit) != 0
+                            val isOverridden = state.override?.intentFlagsMask != null
+                            LaunchArgsOptionRow(
+                                label = row.label,
+                                value = if (isOn) "On" else "Off",
+                                subtitle = flagSubtext(row.bit),
+                                isOverridden = isOverridden,
+                                isFocused = focused,
+                                onClick = { onToggleFlag(row.bit) }
+                            )
+                        }
+                        is LaunchArgsRow.MimeType -> LaunchArgsOptionRow(
+                            label = "MIME type",
+                            value = state.override?.mimeType ?: "Default (${state.defaultMimeType ?: "*/*"})",
+                            subtitle = "MIME type sent with the ROM URI. Most emulators ignore this and " +
+                                "filter by extension.",
+                            isOverridden = state.override?.mimeType != null,
+                            isFocused = focused,
+                            onClick = onCycleMimeType
+                        )
+                    }
                 }
-                is LaunchArgsRow.MimeType -> LaunchArgsOptionRow(
-                    label = "MIME type",
-                    value = state.override?.mimeType ?: "Default (${state.defaultMimeType ?: "*/*"})",
-                    subtitle = "MIME type sent with the ROM URI. Most emulators ignore this and " +
-                        "filter by extension.",
-                    isOverridden = state.override?.mimeType != null,
-                    isFocused = focused,
-                    onClick = onCycleMimeType
-                )
-            }
-            if (index < rows.size - 1) {
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    thickness = 1.dp
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
             }
         }
     }

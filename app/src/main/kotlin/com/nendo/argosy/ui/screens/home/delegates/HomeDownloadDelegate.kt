@@ -29,6 +29,8 @@ class HomeDownloadDelegate @Inject constructor(
     private val steamContentManager: SteamContentManager,
     private val gameDao: GameDao
 ) {
+    private val rommIndicators = MutableStateFlow<Map<Long, GameDownloadIndicator>>(emptyMap())
+    private val steamIndicators = MutableStateFlow<Map<Long, GameDownloadIndicator>>(emptyMap())
     private val _downloadIndicators = MutableStateFlow<Map<Long, GameDownloadIndicator>>(emptyMap())
     val downloadIndicators: StateFlow<Map<Long, GameDownloadIndicator>> = _downloadIndicators.asStateFlow()
 
@@ -36,18 +38,24 @@ class HomeDownloadDelegate @Inject constructor(
     private var lastDownloadQueueTime = 0L
     private val downloadQueueDebounceMs = 300L
 
+    private fun mergeIndicators() {
+        _downloadIndicators.value = rommIndicators.value + steamIndicators.value
+    }
+
     fun observeDownloadState(scope: CoroutineScope, onNewlyCompleted: suspend () -> Unit) {
         scope.launch {
             downloadManager.state.collect { downloadState ->
                 val indicators = mutableMapOf<Long, GameDownloadIndicator>()
 
                 downloadState.activeDownloads.forEach { download ->
-                    indicators[download.gameId] = download.state.toIndicator(
-                        download.progressPercent, download.extractionPercent
-                    )
+                    indicators[download.gameId] = when (download.state) {
+                        DownloadState.EXTRACTING -> GameDownloadIndicator(isExtracting = true, progress = download.extractionPercent)
+                        else -> GameDownloadIndicator(isDownloading = true, progress = download.progressPercent)
+                    }
                 }
 
                 downloadState.queue.forEach { download ->
+                    if (download.gameId in indicators) return@forEach
                     val indicator = download.state.toIndicator(
                         download.progressPercent, download.extractionPercent
                     )
@@ -65,22 +73,20 @@ class HomeDownloadDelegate @Inject constructor(
                     onNewlyCompleted()
                 }
 
-                _downloadIndicators.value = indicators
+                rommIndicators.value = indicators
+                mergeIndicators()
             }
         }
 
-        // Steam downloads
-        var lastSteamGameId: Long? = null
         scope.launch {
             steamContentManager.downloadState.collect { steamState ->
                 if (steamState is SteamDownloadState.Idle) {
-                    lastSteamGameId?.let { _downloadIndicators.value = _downloadIndicators.value - it }
-                    lastSteamGameId = null
+                    steamIndicators.value = emptyMap()
+                    mergeIndicators()
                     return@collect
                 }
                 val appId = steamState.appId ?: return@collect
                 val game = gameDao.getBySteamAppId(appId) ?: return@collect
-                lastSteamGameId = game.id
                 val activeDl = steamContentManager.activeDownload.value
                 val progress = activeDl?.progress ?: when (steamState) {
                     is SteamDownloadState.Paused -> steamState.progress
@@ -88,11 +94,12 @@ class HomeDownloadDelegate @Inject constructor(
                 }
                 val indicator = steamState.toIndicator(progress)
                 if (indicator != null) {
-                    _downloadIndicators.value = _downloadIndicators.value + (game.id to indicator)
+                    steamIndicators.value = mapOf(game.id to indicator)
                 } else {
                     if (steamState is SteamDownloadState.Completed) onNewlyCompleted()
-                    _downloadIndicators.value = _downloadIndicators.value - game.id
+                    steamIndicators.value = emptyMap()
                 }
+                mergeIndicators()
             }
         }
     }

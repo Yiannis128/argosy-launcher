@@ -20,23 +20,24 @@ internal class PlatformDetailSectionInput(
         val config = state.emulators.platforms.getOrNull(state.platformDetail.platformIndex)
             ?: return InputResult.UNHANDLED
         val detail = state.platformDetail
+        val storageConfig = state.storage.platformConfigs.find { it.platformId == config.platform.id }
         val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, detail)
             ?: return InputResult.UNHANDLED
         return when (item) {
             PlatformDetailItem.RomPath -> {
-                if (detail.customRomPath != null) {
+                if (storageConfig?.customRomPath != null) {
                     viewModel.resetPlatformRomPath(config.platform.id)
                     InputResult.HANDLED
                 } else InputResult.UNHANDLED
             }
             PlatformDetailItem.SavePath -> {
-                if (!config.effectiveEmulatorIsRetroArch && detail.isUserSavePathOverride) {
+                if (!config.effectiveEmulatorIsRetroArch && storageConfig?.isUserSavePathOverride == true) {
                     viewModel.resetPlatformSavePath(config.platform.id)
                     InputResult.HANDLED
                 } else InputResult.UNHANDLED
             }
             PlatformDetailItem.StatePath -> {
-                if (!config.effectiveEmulatorIsRetroArch && detail.isUserStatePathOverride) {
+                if (!config.effectiveEmulatorIsRetroArch && storageConfig?.isUserStatePathOverride == true) {
                     viewModel.resetPlatformStatePath(config.platform.id)
                     InputResult.HANDLED
                 } else InputResult.UNHANDLED
@@ -44,6 +45,8 @@ internal class PlatformDetailSectionInput(
             else -> InputResult.UNHANDLED
         }
     }
+
+    override fun onLongConfirm(): InputResult = onSecondaryAction()
 
     override fun onContextMenu(): InputResult {
         val state = viewModel.uiState.value

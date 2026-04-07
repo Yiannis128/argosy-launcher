@@ -552,9 +552,13 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 else -> null
             }
 
-            // State path support now tracks save path support -- any emulator that has
-            // a save-path concept also has a state-path concept in Argosy's path model.
-            val supportsStatePath = config.showSavePath
+            val emulatorIdForStateCheck = config.effectiveEmulatorId
+            val supportsStatePath = when {
+                emulatorIdForStateCheck == null -> false
+                emulatorIdForStateCheck == "builtin" -> true
+                config.effectiveEmulatorIsRetroArch -> true
+                else -> com.nendo.argosy.data.emulator.StatePathRegistry.getConfig(emulatorIdForStateCheck) != null
+            }
 
             platformEmulatorInfoMap[config.platform.id] = StorageSettingsDelegate.PlatformEmulatorInfo(
                 supportsStatePath = supportsStatePath,

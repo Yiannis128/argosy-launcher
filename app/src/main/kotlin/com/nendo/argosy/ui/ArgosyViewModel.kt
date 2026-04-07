@@ -294,6 +294,7 @@ class ArgosyViewModel @Inject constructor(
     private fun scheduleStartupTasks() {
         viewModelScope.launch {
             _startupStatus.value = "Initializing..."
+            playSessionTracker.endSession()
             val ready = gameRepository.awaitStorageReady(timeoutMs = 10_000L)
             if (ready) {
                 _startupStatus.value = "Loading library..."

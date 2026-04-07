@@ -122,7 +122,6 @@ class MainActivity : ComponentActivity() {
         get() = dualScreenManager.isOverlayFocused
         set(value) {
             dualScreenManager.isOverlayFocused = value
-            updateWindowFocusability()
         }
 
     var onDimmerActivity: (() -> Unit)? = null
@@ -274,17 +273,12 @@ class MainActivity : ComponentActivity() {
             if (swapped && dualScreenManager.swappedDualHomeViewModel == null) {
                 dualScreenManager.initSwappedViewModel()
             }
-            updateWindowFocusability()
         }
         dualScreenManager.onDisplayChanged = { hasDisplay ->
             isDualScreenDevice = hasDisplay
         }
-        dualScreenManager.onOverlayFocusChanged = { _ ->
-            updateWindowFocusability()
-        }
-        dualScreenManager.onEmulatorDispatcherChanged = {
-            updateWindowFocusability()
-        }
+        dualScreenManager.onOverlayFocusChanged = { _ -> }
+        dualScreenManager.onEmulatorDispatcherChanged = { }
         dualScreenManager.registerReceivers()
         dualScreenManager.ensureCompanionLaunched()
         dualScreenManager.startStartupGuard()
@@ -296,7 +290,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         initCacheAndPreferences()
-        collectSwappedGameState()
+
 
         com.nendo.argosy.data.sync.AchievementSubmissionWorker.schedule(this)
 
@@ -357,7 +351,6 @@ class MainActivity : ComponentActivity() {
         }
 
         emulatorSessionPolicy.clearStaleSession(this, dualScreenManager)
-        updateWindowFocusability()
 
         if (::dualScreenManager.isInitialized) {
             val emulatorDisplay = dualScreenManager.emulatorDisplayId
@@ -509,14 +502,6 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         Log.d(TAG, "onWindowFocusChanged: hasFocus=$hasFocus swapped=$isRolesSwapped gameActive=${if (::dualScreenManager.isInitialized) dualScreenManager.swappedIsGameActive.value else "N/A"}")
-        if (hasFocus &&
-            ::dualScreenManager.isInitialized &&
-            dualScreenManager.swappedIsGameActive.value &&
-            !isOverlayFocused
-        ) {
-            updateWindowFocusability()
-            return
-        }
         if (hasFocus) {
             val timeSinceFocusLost = System.currentTimeMillis() - focusLostTime
             if (hadFocusBefore && focusLostTime > 0 && timeSinceFocusLost < 1000) {
@@ -583,27 +568,6 @@ class MainActivity : ComponentActivity() {
     }
 
 
-    private fun collectSwappedGameState() {
-        activityScope.launch {
-            dualScreenManager.swappedIsGameActive.collect {
-                updateWindowFocusability()
-            }
-        }
-    }
-
-    private fun updateWindowFocusability() {
-        val gameActive = dualScreenManager.swappedIsGameActive.value &&
-            !isOverlayFocused
-        val hasEmulatorDispatcher =
-            dualScreenManager.emulatorKeyDispatcher != null
-        val shouldBlock = gameActive && !hasEmulatorDispatcher
-        Log.d(TAG, "updateWindowFocusability: shouldBlock=$shouldBlock (gameActive=$gameActive hasDispatcher=$hasEmulatorDispatcher)")
-        if (shouldBlock) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-        }
-    }
 
     private fun handleDeepLink(intent: Intent): Boolean {
         val uri = intent.data ?: return false

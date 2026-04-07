@@ -11,11 +11,12 @@ import com.nendo.argosy.data.local.entity.EmulatorLaunchArgsEntity
 import kotlinx.coroutines.launch
 
 internal fun defaultFlagsMaskFor(launchConfig: LaunchConfig): Int = when (launchConfig) {
-    is LaunchConfig.FileUri -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    is LaunchConfig.FileUri -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or
+        Intent.FLAG_GRANT_READ_URI_PERMISSION
     is LaunchConfig.FilePathExtra -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     is LaunchConfig.Custom -> Intent.FLAG_ACTIVITY_NEW_TASK or
         Intent.FLAG_ACTIVITY_CLEAR_TASK or
-        Intent.FLAG_ACTIVITY_NO_HISTORY
+        Intent.FLAG_GRANT_READ_URI_PERMISSION
     is LaunchConfig.RetroArch -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
     is LaunchConfig.CustomScheme -> Intent.FLAG_ACTIVITY_NEW_TASK or
         Intent.FLAG_ACTIVITY_CLEAR_TASK or
@@ -28,8 +29,8 @@ internal fun defaultFlagsMaskFor(launchConfig: LaunchConfig): Int = when (launch
 }
 
 internal fun defaultMimeTypeFor(launchConfig: LaunchConfig): String? = when (launchConfig) {
-    is LaunchConfig.FileUri -> "*/*"
-    is LaunchConfig.Custom -> launchConfig.mimeTypeOverride ?: "*/*"
+    is LaunchConfig.FileUri -> "application/octet-stream"
+    is LaunchConfig.Custom -> launchConfig.mimeTypeOverride ?: "application/octet-stream"
     else -> null
 }
 
@@ -198,30 +199,35 @@ internal fun routeCycleLaunchArgsMethod(vm: SettingsViewModel) {
     persistLaunchArgsField(vm, state) { it.copy(launchMethod = next) }
 }
 
-private fun cycleBindingValue(current: String?): String? = when (current) {
-    null -> RomBindingFormat.NONE.name
-    RomBindingFormat.NONE.name -> RomBindingFormat.ABSOLUTE_PATH.name
-    RomBindingFormat.ABSOLUTE_PATH.name -> RomBindingFormat.FILE_PROVIDER.name
-    RomBindingFormat.FILE_PROVIDER.name -> RomBindingFormat.DOCUMENT_URI.name
-    RomBindingFormat.DOCUMENT_URI.name -> null
-    else -> null
+private val BINDING_CYCLE = listOf(
+    null,
+    RomBindingFormat.NONE.name,
+    RomBindingFormat.ABSOLUTE_PATH.name,
+    RomBindingFormat.FILE_PROVIDER.name,
+    RomBindingFormat.DOCUMENT_URI.name
+)
+
+private fun cycleBindingValue(current: String?, direction: Int): String? {
+    val idx = BINDING_CYCLE.indexOf(current).coerceAtLeast(0)
+    val next = (idx + direction + BINDING_CYCLE.size) % BINDING_CYCLE.size
+    return BINDING_CYCLE[next]
 }
 
-internal fun routeCycleLaunchArgsDataBinding(vm: SettingsViewModel) {
+internal fun routeCycleLaunchArgsDataBinding(vm: SettingsViewModel, direction: Int = 1) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
-    val next = cycleBindingValue(state.override?.dataBinding)
+    val next = cycleBindingValue(state.override?.dataBinding, direction)
     persistLaunchArgsField(vm, state) { it.copy(dataBinding = next) }
 }
 
-internal fun routeCycleLaunchArgsExtraBinding(vm: SettingsViewModel) {
+internal fun routeCycleLaunchArgsExtraBinding(vm: SettingsViewModel, direction: Int = 1) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
-    val next = cycleBindingValue(state.override?.extraBinding)
+    val next = cycleBindingValue(state.override?.extraBinding, direction)
     persistLaunchArgsField(vm, state) { it.copy(extraBinding = next) }
 }
 
-internal fun routeCycleLaunchArgsClipDataBinding(vm: SettingsViewModel) {
+internal fun routeCycleLaunchArgsClipDataBinding(vm: SettingsViewModel, direction: Int = 1) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
-    val next = cycleBindingValue(state.override?.clipDataBinding)
+    val next = cycleBindingValue(state.override?.clipDataBinding, direction)
     persistLaunchArgsField(vm, state) { it.copy(clipDataBinding = next) }
 }
 
@@ -233,11 +239,11 @@ internal fun routeToggleLaunchArgsFlag(vm: SettingsViewModel, flagBit: Int) {
     persistLaunchArgsField(vm, state) { it.copy(intentFlagsMask = nextMask) }
 }
 
-internal fun routeCycleLaunchArgsMimeType(vm: SettingsViewModel) {
+internal fun routeCycleLaunchArgsMimeType(vm: SettingsViewModel, direction: Int = 1) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
     val presets = listOf(null, "application/octet-stream", "application/x-iso9660-image")
-    val currentIndex = presets.indexOf(state.override?.mimeType)
-    val nextIndex = if (currentIndex < 0) 0 else (currentIndex + 1) % presets.size
+    val currentIndex = presets.indexOf(state.override?.mimeType).coerceAtLeast(0)
+    val nextIndex = (currentIndex + direction + presets.size) % presets.size
     persistLaunchArgsField(vm, state) { it.copy(mimeType = presets[nextIndex]) }
 }
 
@@ -247,7 +253,6 @@ internal fun routeResetLaunchArgsFocused(vm: SettingsViewModel) {
     val rows = launchArgsModalRows(state)
     val focused = rows.getOrNull(state.focusIndex) ?: return
     val cleared = when (focused) {
-        is LaunchArgsRow.LaunchMethod -> override.copy(launchMethod = null)
         is LaunchArgsRow.DataBinding -> override.copy(dataBinding = null)
         is LaunchArgsRow.ExtraBinding -> override.copy(extraBinding = null)
         is LaunchArgsRow.ClipDataBinding -> override.copy(clipDataBinding = null)
@@ -330,7 +335,6 @@ internal fun routeConfirmAppPickerSelection(vm: SettingsViewModel) {
 internal sealed class LaunchArgsRow {
     open val interactive: Boolean get() = true
 
-    data object LaunchMethod : LaunchArgsRow()
     data object DataBinding : LaunchArgsRow()
     data object ExtraBinding : LaunchArgsRow()
     data object ClipDataBinding : LaunchArgsRow()
@@ -342,7 +346,6 @@ internal sealed class LaunchArgsRow {
 }
 
 internal fun launchArgsModalRows(state: LaunchArgsModalState): List<LaunchArgsRow> = buildList {
-    add(LaunchArgsRow.LaunchMethod)
     if (state.dataBindingLocked) {
         add(LaunchArgsRow.LockedBinding("Data URI", state.defaultDataBinding))
     } else {

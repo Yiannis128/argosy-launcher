@@ -115,7 +115,7 @@ fun EffectiveLaunchCommand.toShellArgv(): Array<String> {
     if (activityClass != null) {
         args += listOf("-n", "$packageName/$activityClass")
     } else {
-        args += listOf("--user", "current")
+        args += listOf("-p", packageName)
     }
 
     categories.forEach { category ->

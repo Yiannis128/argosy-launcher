@@ -275,7 +275,10 @@ object EmulatorRegistry {
             id = "yuzu",
             packageName = "org.yuzu.yuzu_emu",
             displayName = "Yuzu",
-            supportedPlatforms = setOf("switch")
+            supportedPlatforms = setOf("switch"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "org.yuzu.yuzu_emu.activities.EmulationActivity",
+            )
         ),
         EmulatorDef(
             id = "ryujinx",
@@ -294,6 +297,9 @@ object EmulatorRegistry {
             packageName = "dev.eden.eden_emulator",
             displayName = "Eden",
             supportedPlatforms = setOf("switch"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "org.yuzu.yuzu_emu.activities.EmulationActivity",
+            ),
             defaultLaunchMethod = LaunchMethod.SHELL,
             downloadUrl = "https://git.eden-emu.dev/eden-emu/eden/releases",
             releaseSource = ReleaseSource.Gitea("https://git.eden-emu.dev", "eden-emu/eden")
@@ -308,7 +314,10 @@ object EmulatorRegistry {
             id = "citron",
             packageName = "org.citron.emu",
             displayName = "Citron",
-            supportedPlatforms = setOf("switch")
+            supportedPlatforms = setOf("switch"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "org.citron.citron_emu.activities.EmulationActivity",
+            )
         ),
         // NOTE: Kenji-NX is an active fork of Ryujinx for Android
         EmulatorDef(
@@ -323,7 +332,10 @@ object EmulatorRegistry {
             id = "sudachi",
             packageName = "org.sudachi.sudachi_emu",
             displayName = "Sudachi",
-            supportedPlatforms = setOf("switch")
+            supportedPlatforms = setOf("switch"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "org.sudachi.sudachi_emu.activities.EmulationActivity",
+            )
         ),
         EmulatorDef(
             id = "drastic",
@@ -459,7 +471,6 @@ object EmulatorRegistry {
             supportedPlatforms = setOf("psp"),
             launchConfig = LaunchConfig.Custom(
                 activityClass = "org.ppsspp.ppsspp.PpssppActivity",
-                mimeTypeOverride = "application/octet-stream"
             ),
             defaultLaunchMethod = LaunchMethod.SHELL,
             downloadUrl = "https://play.google.com/store/apps/details?id=org.ppsspp.ppsspp"
@@ -471,7 +482,6 @@ object EmulatorRegistry {
             supportedPlatforms = setOf("psp"),
             launchConfig = LaunchConfig.Custom(
                 activityClass = "org.ppsspp.ppssppgold.PpssppActivity",
-                mimeTypeOverride = "application/octet-stream"
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=org.ppsspp.ppssppgold"
         ),

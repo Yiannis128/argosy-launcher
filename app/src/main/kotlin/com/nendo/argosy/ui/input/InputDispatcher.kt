@@ -153,6 +153,10 @@ class InputDispatcher(
                 hapticManager?.vibrate(HapticPattern.SELECTION)
                 soundManager?.play(result.soundOverride ?: SoundType.SELECT)
             }
+            GamepadEvent.LongConfirm -> {
+                hapticManager?.vibrate(HapticPattern.SELECTION)
+                soundManager?.play(result.soundOverride ?: SoundType.SELECT)
+            }
             GamepadEvent.Back -> {
                 soundManager?.play(result.soundOverride ?: SoundType.BACK)
             }
@@ -179,6 +183,7 @@ class InputDispatcher(
             GamepadEvent.LeftStickClick -> handler.onLeftStickClick()
             GamepadEvent.RightStickClick -> handler.onRightStickClick()
             GamepadEvent.Home -> InputResult.UNHANDLED
+            GamepadEvent.LongConfirm -> handler.onLongConfirm()
         }
     }
 }

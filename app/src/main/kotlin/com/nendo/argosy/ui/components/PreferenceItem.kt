@@ -144,8 +144,16 @@ fun CyclePreference(
         else -> MaterialTheme.colorScheme.primary
     }
 
+    val modifier = if (showResetButton && onReset != null) {
+        preferenceModifier(isFocused).then(
+            Modifier.clickableNoFocus(onClick = onClick, onLongClick = onReset)
+        )
+    } else {
+        preferenceModifier(isFocused, onClick = onClick)
+    }
+
     Row(
-        modifier = preferenceModifier(isFocused, onClick = onClick),
+        modifier = modifier,
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

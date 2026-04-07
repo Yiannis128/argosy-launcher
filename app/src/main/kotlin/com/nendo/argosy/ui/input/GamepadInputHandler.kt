@@ -42,6 +42,7 @@ sealed interface GamepadEvent {
     data object LeftStickClick : GamepadEvent
     data object RightStickClick : GamepadEvent
     data object Home : GamepadEvent
+    data object LongConfirm : GamepadEvent
 }
 
 @Singleton
@@ -124,6 +125,12 @@ class GamepadInputHandler @Inject constructor(
         rawMotionEventListener = listener
     }
 
+    private var confirmDownTime = 0L
+    private var confirmFired = false
+    private var confirmDeferred = false
+    private var confirmDeferJob: kotlinx.coroutines.Job? = null
+    private val longPressThresholdMs = 500L
+
     private var lastStickDirection: GamepadEvent? = null
     private val stickDeadZone = 0.5f
 
@@ -182,6 +189,41 @@ class GamepadInputHandler @Inject constructor(
                     return true
                 }
             }
+        }
+
+        // Confirm long-press: defer Confirm by the threshold duration. If the button is still
+        // held when the timer fires, emit LongConfirm instead. If released (no more repeats),
+        // the deferred Confirm fires. Uses a coroutine timer since ACTION_UP is unreliable
+        // (controllers send repeated ACTION_DOWN instead).
+        if (gamepadEvent == GamepadEvent.Confirm && event.action == KeyEvent.ACTION_DOWN) {
+            if (event.repeatCount == 0) {
+                confirmDownTime = System.currentTimeMillis()
+                confirmFired = false
+                confirmDeferred = true
+                confirmDeferJob?.cancel()
+                confirmDeferJob = scope.launch {
+                    kotlinx.coroutines.delay(longPressThresholdMs)
+                    if (confirmDeferred && !confirmFired) {
+                        confirmFired = true
+                        confirmDeferred = false
+                        emitWithDebounce(GamepadEvent.LongConfirm)
+                    }
+                }
+                return true
+            } else if (confirmDeferred) {
+                return true
+            } else {
+                return true
+            }
+        }
+        if (gamepadEvent == GamepadEvent.Confirm && event.action == KeyEvent.ACTION_UP) {
+            confirmDeferJob?.cancel()
+            if (confirmDeferred && !confirmFired) {
+                confirmFired = true
+                confirmDeferred = false
+                emitWithDebounce(GamepadEvent.Confirm)
+            }
+            return true
         }
 
         if (event.action != KeyEvent.ACTION_DOWN) return false

@@ -238,7 +238,7 @@ class SettingsViewModel @Inject constructor(
         loadPlatformDetailStats(newIndex)
     }
 
-    private fun loadPlatformDetailStats(platformIndex: Int) {
+    internal fun loadPlatformDetailStats(platformIndex: Int) {
         val config = _uiState.value.emulators.platforms.getOrNull(platformIndex) ?: return
         viewModelScope.launch {
             val platformId = config.platform.id
@@ -257,9 +257,6 @@ class SettingsViewModel @Inject constructor(
                 }
             }
 
-            val storageConfig = _uiState.value.storage.platformConfigs
-                .find { it.platformId == platformId }
-
             _uiState.update { it.copy(
                 platformDetail = it.platformDetail.copy(
                     totalGames = config.platform.gameCount,
@@ -269,16 +266,7 @@ class SettingsViewModel @Inject constructor(
                     packagePathAccessible = packagePathAccessible,
                     biosTotal = biosStatus?.totalFiles ?: 0,
                     biosDownloaded = biosStatus?.downloadedFiles ?: 0,
-                    hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0,
-                    effectiveRomPath = storageConfig?.effectivePath,
-                    customRomPath = storageConfig?.customRomPath,
-                    effectiveSavePath = config.effectiveSavePath,
-                    isUserSavePathOverride = config.isUserSavePathOverride,
-                    effectiveStatePath = storageConfig?.effectiveStatePath,
-                    isUserStatePathOverride = storageConfig?.isUserStatePathOverride ?: false,
-                    supportsStatePath = storageConfig?.supportsStatePath ?: false,
-                    syncEnabled = storageConfig?.syncEnabled ?: true,
-                    downloadedSizeBytes = 0
+                    hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0
                 )
             ) }
         }
@@ -369,11 +357,11 @@ class SettingsViewModel @Inject constructor(
     fun closeLaunchArgsModal() = routeCloseLaunchArgsModal(this)
     fun moveLaunchArgsFocus(delta: Int) = routeMoveLaunchArgsFocus(this, delta)
     fun cycleLaunchArgsMethod() = routeCycleLaunchArgsMethod(this)
-    fun cycleLaunchArgsDataBinding() = routeCycleLaunchArgsDataBinding(this)
-    fun cycleLaunchArgsExtraBinding() = routeCycleLaunchArgsExtraBinding(this)
-    fun cycleLaunchArgsClipDataBinding() = routeCycleLaunchArgsClipDataBinding(this)
+    fun cycleLaunchArgsDataBinding(direction: Int = 1) = routeCycleLaunchArgsDataBinding(this, direction)
+    fun cycleLaunchArgsExtraBinding(direction: Int = 1) = routeCycleLaunchArgsExtraBinding(this, direction)
+    fun cycleLaunchArgsClipDataBinding(direction: Int = 1) = routeCycleLaunchArgsClipDataBinding(this, direction)
     fun toggleLaunchArgsFlag(flagBit: Int) = routeToggleLaunchArgsFlag(this, flagBit)
-    fun cycleLaunchArgsMimeType() = routeCycleLaunchArgsMimeType(this)
+    fun cycleLaunchArgsMimeType(direction: Int = 1) = routeCycleLaunchArgsMimeType(this, direction)
     fun resetLaunchArgsFocused() = routeResetLaunchArgsFocused(this)
     fun resetAllLaunchArgs() = routeResetAllLaunchArgs(this)
 
@@ -814,7 +802,8 @@ class SettingsViewModel @Inject constructor(
     fun confirmMigration() = storageDelegate.confirmMigration(viewModelScope)
     fun cancelMigration() = storageDelegate.cancelMigration()
     fun skipMigration() = storageDelegate.skipMigration()
-    fun togglePlatformSync(platformId: Long, enabled: Boolean) = storageDelegate.togglePlatformSync(viewModelScope, platformId, enabled)
+    fun togglePlatformSync(platformId: Long, enabled: Boolean) =
+        storageDelegate.togglePlatformSync(viewModelScope, platformId, enabled)
     fun enablePlatformAndReload(platformId: Long) {
         storageDelegate.togglePlatformSync(viewModelScope, platformId, true)
         viewModelScope.launch {
@@ -823,7 +812,8 @@ class SettingsViewModel @Inject constructor(
         }
     }
     fun openPlatformFolderPicker(platformId: Long) = storageDelegate.openPlatformFolderPicker(viewModelScope, platformId)
-    fun setPlatformPath(platformId: Long, path: String) = storageDelegate.setPlatformPath(viewModelScope, platformId, path)
+    fun setPlatformPath(platformId: Long, path: String) =
+        storageDelegate.setPlatformPath(viewModelScope, platformId, path)
     fun resetPlatformToGlobal(platformId: Long) = storageDelegate.resetPlatformToGlobal(viewModelScope, platformId)
     fun syncPlatform(platformId: Long, platformName: String) = storageDelegate.syncPlatform(viewModelScope, platformId, platformName)
     fun openPlatformSavePathPicker(platformId: Long) = storageDelegate.emitSavePathPicker(viewModelScope, platformId)
@@ -936,9 +926,7 @@ class SettingsViewModel @Inject constructor(
     fun onBiosFolderSelected(path: String) = biosDelegate.onBiosFolderSelected(path, viewModelScope)
 
     private var pendingBiosCopyPlatformSlug: String? = null
-    private var pendingStatePathPlatformId: Long? = null
     val hasPendingBiosCopy: Boolean get() = pendingBiosCopyPlatformSlug != null
-    val hasPendingStatePath: Boolean get() = pendingStatePathPlatformId != null
 
     fun requestRemoveLocalFiles() {
         _uiState.update { it.copy(platformDetail = it.platformDetail.copy(showRemoveConfirm = true)) }
@@ -966,24 +954,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun resetPlatformRomPath(platformId: Long) {
+    fun resetPlatformRomPath(platformId: Long) =
         storageDelegate.resetPlatformToGlobal(viewModelScope, platformId)
-    }
 
     fun launchSavePathPicker(platformId: Long) {
         storageDelegate.emitSavePathPicker(viewModelScope, platformId)
     }
 
     fun launchStatePathPicker(platformId: Long) {
-        pendingStatePathPlatformId = platformId
-        _uiState.update { it.copy(launchFolderPicker = true) }
-    }
-
-    fun onStatePathFolderSelected(path: String) {
-        val id = pendingStatePathPlatformId ?: return
-        pendingStatePathPlatformId = null
-        setPlatformStatePath(id, path)
-        loadPlatformDetailStats(_uiState.value.platformDetail.platformIndex)
+        storageDelegate.emitStatePathPicker(viewModelScope, platformId)
     }
 
     fun launchBiosCopyPicker(platformSlug: String) {

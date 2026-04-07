@@ -4,7 +4,7 @@ import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.SoundType
 
 internal enum class InputMethod {
-    UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, CONTEXT_MENU, SECONDARY_ACTION,
+    UP, DOWN, LEFT, RIGHT, CONFIRM, LONG_CONFIRM, BACK, CONTEXT_MENU, SECONDARY_ACTION,
     PREV_SECTION, NEXT_SECTION, PREV_TRIGGER, NEXT_TRIGGER,
     MENU, SELECT, LEFT_STICK_CLICK, RIGHT_STICK_CLICK
 }
@@ -76,26 +76,47 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         val modal = state.emulators.launchArgsModalState ?: return null
         val rows = launchArgsModalRows(modal)
         val focusedRow = rows.getOrNull(modal.focusIndex)
+        val isCycleable = focusedRow is LaunchArgsRow.DataBinding ||
+            focusedRow is LaunchArgsRow.ExtraBinding ||
+            focusedRow is LaunchArgsRow.ClipDataBinding ||
+            focusedRow is LaunchArgsRow.MimeType
+
         return when (method) {
             InputMethod.UP -> { viewModel.moveLaunchArgsFocus(-1); InputResult.HANDLED }
             InputMethod.DOWN -> { viewModel.moveLaunchArgsFocus(1); InputResult.HANDLED }
+            InputMethod.LEFT -> if (isCycleable) {
+                cycleLaunchArgsRow(viewModel, focusedRow, -1); InputResult.HANDLED
+            } else InputResult.HANDLED
+            InputMethod.RIGHT -> if (isCycleable) {
+                cycleLaunchArgsRow(viewModel, focusedRow, 1); InputResult.HANDLED
+            } else InputResult.HANDLED
             InputMethod.CONFIRM -> {
                 when (focusedRow) {
-                    is LaunchArgsRow.LaunchMethod -> viewModel.cycleLaunchArgsMethod()
                     is LaunchArgsRow.DataBinding -> viewModel.cycleLaunchArgsDataBinding()
                     is LaunchArgsRow.ExtraBinding -> viewModel.cycleLaunchArgsExtraBinding()
                     is LaunchArgsRow.ClipDataBinding -> viewModel.cycleLaunchArgsClipDataBinding()
                     is LaunchArgsRow.Flag -> viewModel.toggleLaunchArgsFlag(focusedRow.bit)
                     is LaunchArgsRow.MimeType -> viewModel.cycleLaunchArgsMimeType()
-                    is LaunchArgsRow.LockedBinding -> {} // non-interactive
+                    is LaunchArgsRow.LockedBinding -> {}
                     null -> {}
                 }
                 InputResult.HANDLED
             }
             InputMethod.SECONDARY_ACTION -> { viewModel.resetLaunchArgsFocused(); InputResult.HANDLED }
+            InputMethod.LONG_CONFIRM -> { viewModel.resetLaunchArgsFocused(); InputResult.HANDLED }
             InputMethod.CONTEXT_MENU -> { viewModel.resetAllLaunchArgs(); InputResult.HANDLED }
             InputMethod.BACK -> { viewModel.closeLaunchArgsModal(); InputResult.HANDLED }
             else -> InputResult.HANDLED
+        }
+    }
+
+    private fun cycleLaunchArgsRow(vm: SettingsViewModel, row: LaunchArgsRow?, direction: Int) {
+        when (row) {
+            is LaunchArgsRow.DataBinding -> vm.cycleLaunchArgsDataBinding(direction)
+            is LaunchArgsRow.ExtraBinding -> vm.cycleLaunchArgsExtraBinding(direction)
+            is LaunchArgsRow.ClipDataBinding -> vm.cycleLaunchArgsClipDataBinding(direction)
+            is LaunchArgsRow.MimeType -> vm.cycleLaunchArgsMimeType(direction)
+            else -> {}
         }
     }
 

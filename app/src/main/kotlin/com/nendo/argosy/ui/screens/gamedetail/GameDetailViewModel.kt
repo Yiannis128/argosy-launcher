@@ -868,9 +868,11 @@ class GameDetailViewModel @Inject constructor(
             is LaunchResult.NoEmulator -> showEmulatorPicker()
             is LaunchResult.NoCore -> showCorePicker()
             is LaunchResult.MissingDiscs -> downloadDelegate.showMissingDiscPrompt(result.missingDiscNumbers)
-            is LaunchResult.NoRomFile, is LaunchResult.NoSteamLauncher,
-            is LaunchResult.NoAndroidApp, is LaunchResult.NoScummVMGameId,
-            is LaunchResult.Error -> { }
+            is LaunchResult.Error -> notificationManager.showError(result.message)
+            is LaunchResult.NoRomFile -> notificationManager.showError("ROM file not found")
+            is LaunchResult.NoSteamLauncher -> notificationManager.showError("Steam launcher not installed")
+            is LaunchResult.NoAndroidApp -> notificationManager.showError("App not installed: ${result.packageName}")
+            is LaunchResult.NoScummVMGameId -> notificationManager.showError("No ScummVM game ID found")
         }
     }
 
