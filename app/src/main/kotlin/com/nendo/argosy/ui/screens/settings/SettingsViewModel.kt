@@ -802,6 +802,9 @@ class SettingsViewModel @Inject constructor(
     fun confirmMigration() = storageDelegate.confirmMigration(viewModelScope)
     fun cancelMigration() = storageDelegate.cancelMigration()
     fun skipMigration() = storageDelegate.skipMigration()
+    fun confirmBuiltinPathMigration() = routeConfirmBuiltinPathMigration(this)
+    fun cancelBuiltinPathMigration() = routeCancelBuiltinPathMigration(this)
+    fun skipBuiltinPathMigration() = routeSkipBuiltinPathMigration(this)
     fun togglePlatformSync(platformId: Long, enabled: Boolean) =
         storageDelegate.togglePlatformSync(viewModelScope, platformId, enabled)
     fun enablePlatformAndReload(platformId: Long) {

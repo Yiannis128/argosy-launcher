@@ -37,6 +37,15 @@ import com.nendo.argosy.util.LogLevel
 import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.social.discord.DiscordPresenceState
 
+enum class BuiltinPathType { SAVE, STATE }
+
+data class BuiltinPathMigration(
+    val pathType: BuiltinPathType,
+    val oldPath: String,
+    val newPath: String,
+    val existingFileCount: Int
+)
+
 enum class SettingsSection {
     MAIN,
     SERVER,
@@ -905,6 +914,8 @@ data class SettingsUiState(
     val showMigrationDialog: Boolean = false,
     val pendingStoragePath: String? = null,
     val isMigrating: Boolean = false,
+    val showBuiltinPathMigrationDialog: Boolean = false,
+    val pendingBuiltinPathMigration: BuiltinPathMigration? = null,
     val appVersion: String = BuildConfig.VERSION_NAME,
     val updateCheck: UpdateCheckState = UpdateCheckState(),
     val betaUpdatesEnabled: Boolean = false,

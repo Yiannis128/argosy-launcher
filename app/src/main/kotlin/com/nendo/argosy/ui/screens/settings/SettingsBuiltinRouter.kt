@@ -135,70 +135,105 @@ internal fun routeSetBuiltinAutoRestoreState(vm: SettingsViewModel, enabled: Boo
 }
 
 internal fun routeSetBuiltinSavePath(vm: SettingsViewModel, newPath: String) {
-    vm.viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-        val oldPath = vm._uiState.value.builtinVideo.savePath
-        migrateFiles(java.io.File(oldPath), java.io.File(newPath))
-        vm.preferencesRepository.setBuiltinCustomSavePath(newPath)
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-            vm._uiState.update {
-                it.copy(builtinVideo = it.builtinVideo.copy(
-                    savePath = newPath,
-                    isCustomSavePath = true
-                ))
-            }
-        }
-    }
+    val oldPath = vm._uiState.value.builtinVideo.savePath
+    initiateBuiltinPathMigration(vm, BuiltinPathType.SAVE, oldPath, newPath)
 }
 
 internal fun routeResetBuiltinSavePath(vm: SettingsViewModel) {
-    vm.viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-        val oldPath = vm._uiState.value.builtinVideo.savePath
-        val defaultPath = vm.context.filesDir.resolve("libretro/saves").absolutePath
-        if (oldPath != defaultPath) {
-            migrateFiles(java.io.File(oldPath), java.io.File(defaultPath))
-        }
-        vm.preferencesRepository.setBuiltinCustomSavePath(null)
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-            vm._uiState.update {
-                it.copy(builtinVideo = it.builtinVideo.copy(
-                    savePath = defaultPath,
-                    isCustomSavePath = false
-                ))
-            }
-        }
-    }
+    val oldPath = vm._uiState.value.builtinVideo.savePath
+    val defaultPath = vm.context.filesDir.resolve("libretro/saves").absolutePath
+    if (oldPath == defaultPath) return
+    initiateBuiltinPathMigration(vm, BuiltinPathType.SAVE, oldPath, defaultPath)
 }
 
 internal fun routeSetBuiltinStatePath(vm: SettingsViewModel, newPath: String) {
-    vm.viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-        val oldPath = vm._uiState.value.builtinVideo.statePath
-        migrateFiles(java.io.File(oldPath), java.io.File(newPath))
-        vm.preferencesRepository.setBuiltinCustomStatePath(newPath)
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-            vm._uiState.update {
-                it.copy(builtinVideo = it.builtinVideo.copy(
-                    statePath = newPath,
-                    isCustomStatePath = true
-                ))
-            }
-        }
-    }
+    val oldPath = vm._uiState.value.builtinVideo.statePath
+    initiateBuiltinPathMigration(vm, BuiltinPathType.STATE, oldPath, newPath)
 }
 
 internal fun routeResetBuiltinStatePath(vm: SettingsViewModel) {
-    vm.viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-        val oldPath = vm._uiState.value.builtinVideo.statePath
-        val defaultPath = vm.context.filesDir.resolve("libretro/states").absolutePath
-        if (oldPath != defaultPath) {
-            migrateFiles(java.io.File(oldPath), java.io.File(defaultPath))
+    val oldPath = vm._uiState.value.builtinVideo.statePath
+    val defaultPath = vm.context.filesDir.resolve("libretro/states").absolutePath
+    if (oldPath == defaultPath) return
+    initiateBuiltinPathMigration(vm, BuiltinPathType.STATE, oldPath, defaultPath)
+}
+
+private fun initiateBuiltinPathMigration(
+    vm: SettingsViewModel,
+    pathType: BuiltinPathType,
+    oldPath: String,
+    newPath: String
+) {
+    val source = java.io.File(oldPath)
+    val destination = java.io.File(newPath)
+    val existingFiles = destination.walkTopDown().filter { it.isFile }.count()
+
+    if (source.exists() && existingFiles > 0) {
+        vm._uiState.update {
+            it.copy(
+                showBuiltinPathMigrationDialog = true,
+                pendingBuiltinPathMigration = BuiltinPathMigration(
+                    pathType = pathType,
+                    oldPath = oldPath,
+                    newPath = newPath,
+                    existingFileCount = existingFiles
+                )
+            )
         }
-        vm.preferencesRepository.setBuiltinCustomStatePath(null)
+    } else {
+        commitBuiltinPathChange(vm, pathType, oldPath, newPath, migrate = source.exists())
+    }
+}
+
+internal fun routeConfirmBuiltinPathMigration(vm: SettingsViewModel) {
+    val pending = vm._uiState.value.pendingBuiltinPathMigration ?: return
+    vm._uiState.update { it.copy(showBuiltinPathMigrationDialog = false, pendingBuiltinPathMigration = null) }
+    commitBuiltinPathChange(vm, pending.pathType, pending.oldPath, pending.newPath, migrate = true)
+}
+
+internal fun routeSkipBuiltinPathMigration(vm: SettingsViewModel) {
+    val pending = vm._uiState.value.pendingBuiltinPathMigration ?: return
+    vm._uiState.update { it.copy(showBuiltinPathMigrationDialog = false, pendingBuiltinPathMigration = null) }
+    commitBuiltinPathChange(vm, pending.pathType, pending.oldPath, pending.newPath, migrate = false)
+}
+
+internal fun routeCancelBuiltinPathMigration(vm: SettingsViewModel) {
+    vm._uiState.update { it.copy(showBuiltinPathMigrationDialog = false, pendingBuiltinPathMigration = null) }
+}
+
+private fun commitBuiltinPathChange(
+    vm: SettingsViewModel,
+    pathType: BuiltinPathType,
+    oldPath: String,
+    newPath: String,
+    migrate: Boolean
+) {
+    vm.viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        if (migrate) {
+            migrateFiles(java.io.File(oldPath), java.io.File(newPath))
+        }
+        val isCustom = when (pathType) {
+            BuiltinPathType.SAVE -> {
+                val defaultPath = vm.context.filesDir.resolve("libretro/saves").absolutePath
+                val custom = newPath != defaultPath
+                if (custom) vm.preferencesRepository.setBuiltinCustomSavePath(newPath)
+                else vm.preferencesRepository.setBuiltinCustomSavePath(null)
+                custom
+            }
+            BuiltinPathType.STATE -> {
+                val defaultPath = vm.context.filesDir.resolve("libretro/states").absolutePath
+                val custom = newPath != defaultPath
+                if (custom) vm.preferencesRepository.setBuiltinCustomStatePath(newPath)
+                else vm.preferencesRepository.setBuiltinCustomStatePath(null)
+                custom
+            }
+        }
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
             vm._uiState.update {
-                it.copy(builtinVideo = it.builtinVideo.copy(
-                    statePath = defaultPath,
-                    isCustomStatePath = false
-                ))
+                it.copy(builtinVideo = when (pathType) {
+                    BuiltinPathType.SAVE -> it.builtinVideo.copy(savePath = newPath, isCustomSavePath = isCustom)
+                    BuiltinPathType.STATE -> it.builtinVideo.copy(statePath = newPath, isCustomStatePath = isCustom)
+                })
             }
         }
     }

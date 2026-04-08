@@ -550,6 +550,37 @@ fun SettingsScreen(
 
     }
 
+    uiState.pendingBuiltinPathMigration?.let { migration ->
+        if (uiState.showBuiltinPathMigrationDialog) {
+            val typeLabel = when (migration.pathType) {
+                BuiltinPathType.SAVE -> "save"
+                BuiltinPathType.STATE -> "state"
+            }
+            AlertDialog(
+                onDismissRequest = { viewModel.cancelBuiltinPathMigration() },
+                title = { Text("Migrate ${typeLabel} files?") },
+                text = {
+                    Text("The destination already contains ${migration.existingFileCount} ${typeLabel} files. Move existing files from the old location? This will overwrite any conflicts.")
+                },
+                confirmButton = {
+                    Button(onClick = { viewModel.confirmBuiltinPathMigration() }) {
+                        Text("Migrate")
+                    }
+                },
+                dismissButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        TextButton(onClick = { viewModel.cancelBuiltinPathMigration() }) {
+                            Text("Cancel")
+                        }
+                        TextButton(onClick = { viewModel.skipBuiltinPathMigration() }) {
+                            Text("Skip")
+                        }
+                    }
+                }
+            )
+        }
+    }
+
     if (uiState.showMigrationDialog) {
         val sizeText = formatFileSize(uiState.storage.downloadedGamesSize)
         AlertDialog(
