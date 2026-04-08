@@ -108,7 +108,8 @@ class GameDetailViewModel @Inject constructor(
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     private val variantScanner: com.nendo.argosy.data.scanner.VariantScanner,
-    private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver
+    private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
+    private val downloadManager: com.nendo.argosy.data.download.DownloadManager
 ) : ViewModel() {
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
@@ -1134,6 +1135,31 @@ class GameDetailViewModel @Inject constructor(
             val game = gameRepository.getById(currentGameId) ?: return@launch
             val options = variantResolver.getVariantOptions(game) ?: return@launch
             pickerModalDelegate.showVariantPicker(options)
+        }
+    }
+
+    fun downloadVariant(fileId: Long) {
+        viewModelScope.launch {
+            val game = gameRepository.getById(currentGameId) ?: return@launch
+            val file = gameFileDao.getById(fileId) ?: return@launch
+            val rommFileId = file.rommFileId
+            if (rommFileId == null) {
+                notificationManager.showError("Cannot download local-only variant")
+                return@launch
+            }
+            pickerModalDelegate.dismissVariantPicker()
+            downloadManager.enqueueGameFileDownload(
+                gameId = game.id,
+                gameFileId = file.id,
+                rommFileId = rommFileId,
+                fileName = file.fileName,
+                category = file.category,
+                gameTitle = game.title,
+                platformSlug = game.platformSlug,
+                coverPath = game.coverPath,
+                expectedSizeBytes = file.fileSize
+            )
+            notificationManager.showSuccess("Downloading ${file.fileName}")
         }
     }
     fun dismissDiscPicker() = pickerModalDelegate.dismissDiscPicker()

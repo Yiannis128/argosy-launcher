@@ -19,6 +19,7 @@ fun VariantPickerModal(
     variants: List<VariantOption>,
     focusIndex: Int,
     onSelectVariant: (Long?) -> Unit,
+    onDownloadVariant: ((Long) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     Modal(
@@ -55,12 +56,24 @@ fun VariantPickerModal(
                 item(key = "variant_${variant.fileId ?: "primary"}") {
                     val label = if (variant.fileId == null) "Default (Original)" else variant.fileName
                     val downloaded = variant.isDownloaded
+                    val canDownload = !downloaded && variant.fileId != null && onDownloadVariant != null
                     OptionItem(
                         label = label,
-                        value = if (!downloaded) "Not downloaded" else if (variant.isMultiDisc) "Multi-disc" else "",
+                        value = when {
+                            !downloaded && canDownload -> "Tap to download"
+                            !downloaded -> "Not downloaded"
+                            variant.isMultiDisc -> "Multi-disc"
+                            else -> ""
+                        },
                         isFocused = focusIndex == index,
-                        isEnabled = downloaded,
-                        onClick = { if (downloaded) onSelectVariant(variant.fileId) }
+                        isEnabled = downloaded || canDownload,
+                        onClick = {
+                            if (downloaded) {
+                                onSelectVariant(variant.fileId)
+                            } else if (canDownload) {
+                                onDownloadVariant!!(variant.fileId!!)
+                            }
+                        }
                     )
                 }
             }
