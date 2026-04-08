@@ -14,6 +14,7 @@ import javax.inject.Singleton
 private const val TAG = "VariantScanner"
 
 private val PATCH_EXTENSIONS = setOf("ips", "bps", "ups", "xdelta", "ppf")
+private val DISC_COMPONENT_EXTENSIONS = setOf("bin", "raw", "wav", "ogg", "img", "sub")
 
 @Singleton
 class VariantScanner @Inject constructor(
@@ -36,28 +37,52 @@ class VariantScanner @Inject constructor(
 
         val discPaths = gameDiscDao.getDiscsForGame(game.id).mapNotNull { it.localPath }.toSet()
 
-        val m3uReferencedFiles = mutableSetOf<String>()
+        val referencedFiles = mutableSetOf<String>()
 
-        val candidates = parentDir.listFiles()?.filter { file ->
-            if (!file.isFile) return@filter false
-            val ext = file.extension.lowercase()
-            if (ext in PATCH_EXTENSIONS) return@filter false
-            if (ext !in validExtensions) return@filter false
-            if (file.absolutePath == primaryAbsolute) return@filter false
-            if (file.absolutePath == primaryM3u) return@filter false
-            if (file.absolutePath in discPaths) return@filter false
-            true
-        }?.sortedBy { it.name } ?: return 0
+        val allFiles = parentDir.listFiles()?.filter { it.isFile } ?: return 0
 
-        val m3uFiles = candidates.filter { it.extension.equals("m3u", ignoreCase = true) }
-        for (m3u in m3uFiles) {
-            m3u.readLines().filter { it.isNotBlank() && !it.startsWith("#") }.forEach { line ->
-                val resolved = File(parentDir, line.trim())
-                m3uReferencedFiles.add(resolved.absolutePath)
+        for (file in allFiles) {
+            when (file.extension.lowercase()) {
+                "m3u" -> file.readLines()
+                    .filter { it.isNotBlank() && !it.startsWith("#") }
+                    .forEach { referencedFiles.add(File(parentDir, it.trim()).absolutePath) }
+                "cue" -> file.readLines()
+                    .filter { it.trimStart().startsWith("FILE", ignoreCase = true) }
+                    .forEach { line ->
+                        val match = Regex("""FILE\s+"([^"]+)"""", RegexOption.IGNORE_CASE).find(line)
+                            ?: Regex("""FILE\s+(\S+)""", RegexOption.IGNORE_CASE).find(line)
+                        match?.groupValues?.getOrNull(1)?.let {
+                            referencedFiles.add(File(parentDir, it).absolutePath)
+                        }
+                    }
             }
         }
 
-        val launchTargets = candidates.filter { it.absolutePath !in m3uReferencedFiles }
+        val candidates = allFiles.filter { file ->
+            val ext = file.extension.lowercase()
+            val nameLC = file.name.lowercase()
+            if (ext in PATCH_EXTENSIONS) return@filter false
+            if (ext in DISC_COMPONENT_EXTENSIONS) return@filter false
+            if (ext !in validExtensions) return@filter false
+            if (nameLC.endsWith(".zip.m3u") || nameLC.endsWith(".7z.m3u")) return@filter false
+            if (file.absolutePath == primaryAbsolute) return@filter false
+            if (file.absolutePath == primaryM3u) return@filter false
+            if (file.absolutePath in discPaths) return@filter false
+            if (file.absolutePath in referencedFiles) return@filter false
+            true
+        }.sortedBy { it.name }
+
+        val launchTargets = candidates
+
+        val existingVariants = gameFileDao.getVariantsForGame(game.id)
+        val launchTargetPaths = launchTargets.map { it.absolutePath }.toSet()
+        for (variant in existingVariants) {
+            val path = variant.localPath ?: continue
+            if (path !in launchTargetPaths && variant.rommFileId == null) {
+                gameFileDao.deleteById(variant.id)
+                Logger.debug(TAG, "Removed stale variant: ${variant.fileName} for game ${game.title}")
+            }
+        }
 
         var added = 0
         for (file in launchTargets) {

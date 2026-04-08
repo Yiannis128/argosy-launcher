@@ -77,6 +77,9 @@ interface GameFileDao {
     @Query("UPDATE game_files SET localPath = NULL, downloadedAt = NULL WHERE gameId = :gameId")
     suspend fun clearLocalPathsByGameId(gameId: Long)
 
+    @Query("DELETE FROM game_files WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM game_files WHERE gameId = :gameId")
     suspend fun deleteByGameId(gameId: Long)
 
