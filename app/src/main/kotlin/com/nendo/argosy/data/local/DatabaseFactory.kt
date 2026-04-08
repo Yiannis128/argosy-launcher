@@ -96,6 +96,10 @@ object DatabaseFactory {
                 ALauncherDatabase.MIGRATION_73_74,
                 ALauncherDatabase.MIGRATION_74_75,
                 ALauncherDatabase.MIGRATION_75_76,
+                ALauncherDatabase.MIGRATION_76_77,
+                ALauncherDatabase.MIGRATION_77_78,
+                ALauncherDatabase.MIGRATION_78_79,
+                ALauncherDatabase.MIGRATION_79_80,
                 ALauncherDatabase.MIGRATION_80_81,
                 ALauncherDatabase.MIGRATION_81_82,
                 ALauncherDatabase.MIGRATION_82_83,
@@ -106,7 +110,17 @@ object DatabaseFactory {
                 ALauncherDatabase.MIGRATION_87_88,
                 ALauncherDatabase.MIGRATION_88_89,
                 ALauncherDatabase.MIGRATION_89_90,
-                ALauncherDatabase.MIGRATION_90_91
+                ALauncherDatabase.MIGRATION_90_91,
+                ALauncherDatabase.MIGRATION_91_92,
+                ALauncherDatabase.MIGRATION_92_93,
+                ALauncherDatabase.MIGRATION_93_94,
+                ALauncherDatabase.MIGRATION_94_95,
+                ALauncherDatabase.MIGRATION_95_96,
+                ALauncherDatabase.MIGRATION_96_97,
+                ALauncherDatabase.MIGRATION_97_98,
+                ALauncherDatabase.MIGRATION_98_99,
+                ALauncherDatabase.MIGRATION_99_100,
+                ALauncherDatabase.MIGRATION_100_101
             )
             .enableMultiInstanceInvalidation()
             .build()
