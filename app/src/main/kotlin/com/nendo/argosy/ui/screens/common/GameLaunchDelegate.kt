@@ -513,12 +513,15 @@ class GameLaunchDelegate @Inject constructor(
                     }
                 }
 
+                android.util.Log.d("GameLaunchDelegate", "[DualSync] Starting post-session sync | game=$gameTitle, channel=${session.channelName}, emulator=$emulatorId, sessionStart=${session.startTime}")
+
                 _syncOverlayState.value = SyncOverlayState(
                     gameTitle,
                     SyncProgress.PostSession.CheckingSave(session.channelName)
                 )
 
                 val result = playSessionTracker.endSession()
+                android.util.Log.d("GameLaunchDelegate", "[DualSync] endSession result: ${result::class.simpleName}")
 
                 when (result) {
                     is SessionEndResult.Success -> {
@@ -527,9 +530,11 @@ class GameLaunchDelegate @Inject constructor(
                         _syncOverlayState.value = null
                     }
                     is SessionEndResult.Duplicate, is SessionEndResult.Skipped -> {
+                        android.util.Log.d("GameLaunchDelegate", "[DualSync] Session end was ${result::class.simpleName}, clearing overlay")
                         _syncOverlayState.value = null
                     }
                     is SessionEndResult.Error -> {
+                        android.util.Log.w("GameLaunchDelegate", "[DualSync] Session end error: ${result.message}")
                         _syncOverlayState.value = SyncOverlayState(gameTitle, SyncProgress.Error(result.message))
                         delay(1500)
                         _syncOverlayState.value = null

@@ -860,8 +860,10 @@ class DualScreenManager(
             sessionStateStore.clearSession()
             swappedSessionTimer?.stop(appContext)
             swappedSessionTimer = null
+            _dualGameDetailState.value = null
             val savedDetailGameId = sessionStateStore.getDetailGameId()
             if (savedDetailGameId > 0) selectGameSwapped(savedDetailGameId)
+            else resyncShowcaseFromHome()
             val savedSwapped = preGameRolesSwapped
             if (savedSwapped != null) {
                 isRolesSwapped = savedSwapped
@@ -1179,12 +1181,17 @@ class DualScreenManager(
         syncConflictMirrorJob?.cancel()
         syncConflictMirrorJob = scope.launch {
             gameLaunchDelegate.syncOverlayState.collect { state ->
+                Log.d(TAG, "[DualSync] syncOverlayState changed: progress=${state?.syncProgress?.javaClass?.simpleName}, gameTitle=${state?.gameTitle}")
                 val isConflict = state?.syncProgress is com.nendo.argosy.domain.model.SyncProgress.HardcoreConflict ||
                     state?.syncProgress is com.nendo.argosy.domain.model.SyncProgress.LocalModified
                 if (isConflict) {
+                    Log.d(TAG, "[DualSync] Conflict detected, mirroring to dual screen: ${state?.syncProgress}")
                     _dualSyncConflictFocusIndex.value = 0
                     _dualSyncConflict.value = state
                 } else {
+                    if (_dualSyncConflict.value != null) {
+                        Log.d(TAG, "[DualSync] Clearing dual sync conflict (state no longer conflict)")
+                    }
                     _dualSyncConflict.value = null
                 }
             }

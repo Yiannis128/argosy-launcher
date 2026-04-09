@@ -486,7 +486,8 @@ class PlaySessionTracker @Inject constructor(
         emulatorBackgroundJob?.cancel()
         emulatorBackgroundJob = scope.launch {
             delay(10_000L)
-            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Ending session: emulator left foreground")
+            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Ending session via onEmulatorBackgrounded (bypasses GameLaunchDelegate conflict UI)")
+            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | isOnOlderSave=${session.isOnOlderSave}, channel=${session.channelName}, emulator=${session.emulatorPackage}")
             endSession()
         }
     }
