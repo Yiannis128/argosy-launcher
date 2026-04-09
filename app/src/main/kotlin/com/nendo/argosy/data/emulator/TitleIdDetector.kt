@@ -1,8 +1,5 @@
 package com.nendo.argosy.data.emulator
 
-import android.os.Build
-import android.os.Environment
-import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.storage.AndroidDataAccessor
 import com.nendo.argosy.util.Logger
 import java.io.File
@@ -11,8 +8,8 @@ import javax.inject.Singleton
 
 @Singleton
 class TitleIdDetector @Inject constructor(
-    private val emulatorSaveConfigDao: EmulatorSaveConfigDao,
-    private val androidDataAccessor: AndroidDataAccessor
+    private val androidDataAccessor: AndroidDataAccessor,
+    private val savePathValidator: SavePathValidator
 ) {
 
     companion object {
@@ -24,65 +21,6 @@ class TitleIdDetector @Inject constructor(
         val modifiedAt: Long,
         val savePath: String
     )
-
-    sealed class ValidationResult {
-        data object Valid : ValidationResult()
-        data object PermissionRequired : ValidationResult()
-        data class SavePathNotFound(val checkedPaths: List<String>) : ValidationResult()
-        data class AccessDenied(val path: String) : ValidationResult()
-        data object NotFolderBased : ValidationResult()
-        data object NoConfig : ValidationResult()
-    }
-
-    suspend fun validateSavePathAccess(emulatorId: String, emulatorPackage: String? = null): ValidationResult {
-        val config = SavePathRegistry.getConfigIncludingUnsupported(emulatorId)
-        if (config == null) {
-            Logger.debug(TAG, "[SaveSync] VALIDATE | No config for emulator | emulator=$emulatorId")
-            return ValidationResult.NoConfig
-        }
-
-        if (!config.usesFolderBasedSaves) {
-            return ValidationResult.NotFolderBased
-        }
-
-        if (!hasFileAccessPermission()) {
-            Logger.debug(TAG, "[SaveSync] VALIDATE | Permission not granted | emulator=$emulatorId")
-            return ValidationResult.PermissionRequired
-        }
-
-        val resolvedPaths = resolvePathsWithUserOverride(emulatorId, config, emulatorPackage)
-
-        for (path in resolvedPaths) {
-            val dir = androidDataAccessor.getFile(path)
-            if (!dir.exists() || !dir.isDirectory) continue
-
-            val canRead = try {
-                dir.listFiles() != null
-            } catch (e: SecurityException) {
-                Logger.debug(TAG, "[SaveSync] VALIDATE | SecurityException reading path | path=$path, error=${e.message}")
-                false
-            }
-
-            if (canRead) {
-                Logger.debug(TAG, "[SaveSync] VALIDATE | Path accessible | path=$path")
-                return ValidationResult.Valid
-            } else {
-                Logger.debug(TAG, "[SaveSync] VALIDATE | Path exists but access denied (SELinux/OEM restriction?) | path=$path")
-                return ValidationResult.AccessDenied(path)
-            }
-        }
-
-        Logger.debug(TAG, "[SaveSync] VALIDATE | No save path found | emulator=$emulatorId, package=$emulatorPackage, paths=$resolvedPaths")
-        return ValidationResult.SavePathNotFound(resolvedPaths)
-    }
-
-    private fun hasFileAccessPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            true
-        }
-    }
 
     suspend fun detectRecentTitleId(
         emulatorId: String,
@@ -102,7 +40,7 @@ class TitleIdDetector @Inject constructor(
             return null
         }
 
-        val resolvedPaths = resolvePathsWithUserOverride(emulatorId, config, emulatorPackage, platformSlug)
+        val resolvedPaths = savePathValidator.resolvePaths(emulatorId, config, emulatorPackage, platformSlug)
         Logger.debug(TAG, "[SaveSync] DETECT | Scanning paths | paths=$resolvedPaths")
         for (basePath in resolvedPaths) {
             val detected = scanForRecentTitleId(basePath, platformSlug, sessionStartTime)
@@ -115,31 +53,6 @@ class TitleIdDetector @Inject constructor(
 
         Logger.debug(TAG, "[SaveSync] DETECT | No recent title ID found | emulator=$emulatorId, platform=$platformSlug")
         return null
-    }
-
-    private suspend fun resolvePathsWithUserOverride(
-        emulatorId: String,
-        config: SavePathConfig,
-        emulatorPackage: String?,
-        platformSlug: String? = null
-    ): List<String> {
-        val userConfig = emulatorSaveConfigDao.getByEmulator(emulatorId)
-        return if (userConfig?.isUserOverride == true) {
-            val basePath = userConfig.savePathPattern
-            val effectivePath = when (platformSlug) {
-                "3ds" -> {
-                    if (basePath.endsWith("/sdmc/Nintendo 3DS") || basePath.endsWith("/sdmc/Nintendo 3DS/")) {
-                        basePath.trimEnd('/')
-                    } else {
-                        "$basePath/sdmc/Nintendo 3DS"
-                    }
-                }
-                else -> basePath
-            }
-            listOf(effectivePath)
-        } else {
-            SavePathRegistry.resolvePathWithPackage(config, emulatorPackage)
-        }
     }
 
     private fun scanForRecentTitleId(

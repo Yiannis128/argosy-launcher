@@ -15,7 +15,7 @@ import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.SessionEndResult
-import com.nendo.argosy.data.emulator.TitleIdDetector
+import com.nendo.argosy.data.emulator.SavePathValidator
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
@@ -87,7 +87,7 @@ class GameLaunchDelegate @Inject constructor(
     private val gameLauncher: GameLauncher,
     private val soundManager: SoundFeedbackManager,
     private val notificationManager: NotificationManager,
-    private val titleIdDetector: TitleIdDetector,
+    private val savePathValidator: SavePathValidator,
     private val saveSyncRepository: SaveSyncRepository,
     private val saveCacheManager: SaveCacheManager,
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver
@@ -481,9 +481,9 @@ class GameLaunchDelegate @Inject constructor(
                 val gameTitle = game?.title ?: "Game"
                 val emulatorName = EmulatorRegistry.getById(emulatorId)?.displayName
 
-                val validationResult = titleIdDetector.validateSavePathAccess(emulatorId, session.emulatorPackage)
+                val validationResult = savePathValidator.validateAccess(emulatorId, session.emulatorPackage)
                 when (validationResult) {
-                    is TitleIdDetector.ValidationResult.PermissionRequired -> {
+                    is SavePathValidator.Result.PermissionRequired -> {
                         showBlockedOverlay(
                             gameTitle = gameTitle,
                             progress = SyncProgress.BlockedReason.PermissionRequired(emulatorName),
@@ -492,7 +492,7 @@ class GameLaunchDelegate @Inject constructor(
                         )
                         return@launch
                     }
-                    is TitleIdDetector.ValidationResult.AccessDenied -> {
+                    is SavePathValidator.Result.AccessDenied -> {
                         showBlockedOverlay(
                             gameTitle = gameTitle,
                             progress = SyncProgress.BlockedReason.AccessDenied(
@@ -505,10 +505,10 @@ class GameLaunchDelegate @Inject constructor(
                         )
                         return@launch
                     }
-                    is TitleIdDetector.ValidationResult.SavePathNotFound,
-                    is TitleIdDetector.ValidationResult.Valid,
-                    is TitleIdDetector.ValidationResult.NotFolderBased,
-                    is TitleIdDetector.ValidationResult.NoConfig -> {
+                    is SavePathValidator.Result.SavePathNotFound,
+                    is SavePathValidator.Result.Valid,
+                    is SavePathValidator.Result.NotFolderBased,
+                    is SavePathValidator.Result.NoConfig -> {
                         // Proceed to actual sync
                     }
                 }

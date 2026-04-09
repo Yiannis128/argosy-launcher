@@ -111,7 +111,7 @@ class SettingsViewModel @Inject constructor(
     private val gameDao: com.nendo.argosy.data.local.dao.GameDao,
     private val playSessionDao: com.nendo.argosy.data.local.dao.PlaySessionDao,
     private val biosRepository: com.nendo.argosy.data.repository.BiosRepository,
-    private val titleIdDetector: com.nendo.argosy.data.emulator.TitleIdDetector
+    private val savePathValidator: com.nendo.argosy.data.emulator.SavePathValidator
 ) : ViewModel() {
 
     internal val _uiState = MutableStateFlow(SettingsUiState())
@@ -253,7 +253,7 @@ class SettingsViewModel @Inject constructor(
             } else {
                 config.effectiveEmulatorPackage?.let { pkg ->
                     val emulatorId = config.effectiveEmulatorId ?: return@let null
-                    titleIdDetector.validateSavePathAccess(emulatorId, pkg) is com.nendo.argosy.data.emulator.TitleIdDetector.ValidationResult.Valid
+                    savePathValidator.validateAccess(emulatorId, pkg) is com.nendo.argosy.data.emulator.SavePathValidator.Result.Valid
                 }
             }
 
