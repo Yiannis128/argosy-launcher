@@ -147,6 +147,8 @@ android.applicationVariants.all {
 val runIntegrationTests = project.hasProperty("runIntegrationTests")
 
 tasks.withType<Test> {
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    maxHeapSize = "2g"
     if (name == "testDebugUnitTest" || name == "testReleaseUnitTest") {
         if (!runIntegrationTests) {
             exclude("**/integration/**")

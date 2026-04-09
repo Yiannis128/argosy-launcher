@@ -28,6 +28,7 @@ class VariantScanner @Inject constructor(
         val primaryFile = File(primaryPath)
         val parentDir = primaryFile.parentFile ?: return 0
         if (!parentDir.exists() || !parentDir.isDirectory) return 0
+        if (PlatformDefinitions.getBySlug(parentDir.name) != null) return 0
 
         val platformDef = PlatformDefinitions.getBySlug(game.platformSlug) ?: return 0
         val validExtensions = platformDef.extensions + setOf("m3u")

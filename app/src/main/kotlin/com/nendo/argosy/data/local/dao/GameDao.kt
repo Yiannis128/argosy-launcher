@@ -3,7 +3,7 @@ package com.nendo.argosy.data.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
+import androidx.room.Upsert
 import androidx.room.Query
 import androidx.room.Update
 import com.nendo.argosy.data.local.entity.GameCategoryInfo
@@ -244,10 +244,10 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE title LIKE '%' || :query || '%' AND isHidden = 0 ORDER BY sortTitle ASC")
     fun search(query: String): Flow<List<GameEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insert(game: GameEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(games: List<GameEntity>)
 
     @Update
