@@ -269,6 +269,7 @@ class DualScreenManager(
         if (_dualSyncConflict.value?.syncProgress is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict) {
             _dualSyncConflict.value = null
             _dualSyncConflictFocusIndex.value = 0
+            resyncShowcaseFromHome()
         }
     }
 
@@ -560,6 +561,14 @@ class DualScreenManager(
     fun onGameDetailClosed() {
         Log.d("UpdatesDLC", "onGameDetailClosed, currentModal=${_dualGameDetailState.value?.modalType}")
         _dualGameDetailState.value = null
+        resyncShowcaseFromHome()
+    }
+
+    private fun resyncShowcaseFromHome() {
+        val game = swappedDualHomeViewModel?.uiState?.value?.selectedGame
+        if (game != null) {
+            onGameSelected(game.toShowcaseState())
+        }
     }
 
     fun onScreenshotSelected(index: Int) {
@@ -1191,7 +1200,14 @@ class DualScreenManager(
         }
 
         scope.launch {
-            val effectiveSwapped = resolveEmulatorDisplaySwapped(gameId)
+            val platformId = _swappedGameDetailViewModel?.uiState?.value?.platformId
+                ?: swappedDualHomeViewModel?.uiState?.value?.selectedGame?.platformId
+                ?: gameDao.getById(gameId)?.platformId
+            val effectiveSwapped = if (platformId != null) {
+                resolveEmulatorDisplaySwapped(platformId)
+            } else {
+                isRolesSwapped
+            }
 
             gameLaunchDelegate.launchGame(
                 scope = scope,
@@ -1225,9 +1241,8 @@ class DualScreenManager(
         }
     }
 
-    private suspend fun resolveEmulatorDisplaySwapped(gameId: Long): Boolean {
+    private suspend fun resolveEmulatorDisplaySwapped(platformId: Long): Boolean {
         if (!displayAffinityHelper.hasSecondaryDisplay) return isRolesSwapped
-        val platformId = gameDao.getById(gameId)?.platformId ?: return isRolesSwapped
         val target = EmulatorDisplayTarget.fromString(
             emulatorConfigDao.getDisplayTargetForPlatform(platformId)
         )
@@ -1574,8 +1589,6 @@ class DualScreenManager(
         _swappedCurrentScreen.value = com.nendo.argosy.hardware.CompanionScreen.HOME
         sessionStateStore.setCompanionScreen("HOME")
         onGameDetailClosed()
-        val game = swappedDualHomeViewModel?.uiState?.value?.selectedGame
-        if (game != null) onGameSelected(game.toShowcaseState())
         swappedDualHomeViewModel?.refresh()
     }
 

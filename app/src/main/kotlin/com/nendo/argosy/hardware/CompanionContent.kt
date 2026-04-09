@@ -87,11 +87,6 @@ fun CompanionContent(
             .background(Color.Black)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            CompanionTabHeader(
-                currentPanel = state.currentPanel,
-                onTabChanged = onTabChanged
-            )
-
             Box(
                 modifier = Modifier
                     .weight(1f)
