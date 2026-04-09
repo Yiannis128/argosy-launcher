@@ -154,11 +154,15 @@ class GameLaunchDelegate @Inject constructor(
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
 
-                val variantGame = gameRepository.getById(gameId)
-                val resolvedVariantId = variantGame?.let { variantResolver.resolveVariant(it)?.id }
+                val game = gameRepository.getById(gameId)
+                if (game == null) {
+                    onLaunchFailed()
+                    return@launch
+                }
+                val resolvedVariantId = variantResolver.resolveVariant(game)?.id
 
                 if (canResume) {
-                    when (val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId)) {
+                    when (val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId, prefetchedGame = game)) {
                         is LaunchResult.Success -> {
                             soundManager.play(SoundType.LAUNCH_GAME)
                             onLaunch(result.intent)
@@ -216,11 +220,6 @@ class GameLaunchDelegate @Inject constructor(
                     return@launch
                 }
 
-                val game = gameRepository.getById(gameId)
-                if (game == null) {
-                    onLaunchFailed()
-                    return@launch
-                }
                 val gameTitle = game.title
 
                 val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
@@ -349,7 +348,7 @@ class GameLaunchDelegate @Inject constructor(
                     else -> null
                 }
 
-                when (val result = launchGameUseCase(gameId, discId, variantFileId = resolvedVariantId)) {
+                when (val result = launchGameUseCase(gameId, discId, variantFileId = resolvedVariantId, prefetchedGame = game)) {
                     is LaunchResult.Success -> {
                         soundManager.play(SoundType.LAUNCH_GAME)
                         val intent = if (launchMode != null) {

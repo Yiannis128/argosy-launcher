@@ -34,7 +34,7 @@ class LaunchGameUseCaseTest {
         val intent = mockk<Intent>(relaxed = true) {
             coEvery { this@mockk.component } returns component
         }
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.Success(intent)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Success(intent)
 
         val result = useCase(123L)
 
@@ -55,7 +55,7 @@ class LaunchGameUseCaseTest {
             coEvery { component } returns null
             coEvery { `package` } returns null
         }
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.Success(intent)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Success(intent)
 
         useCase(123L)
 
@@ -71,7 +71,7 @@ class LaunchGameUseCaseTest {
 
     @Test
     fun `invoke returns NoEmulator when no emulator available`() = runTest {
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.NoEmulator("nes")
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.NoEmulator("nes")
 
         val result = useCase(123L)
 
@@ -81,7 +81,7 @@ class LaunchGameUseCaseTest {
 
     @Test
     fun `invoke does not start session on NoEmulator`() = runTest {
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.NoEmulator("nes")
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.NoEmulator("nes")
 
         useCase(123L)
 
@@ -90,7 +90,7 @@ class LaunchGameUseCaseTest {
 
     @Test
     fun `invoke returns NoRomFile when file missing`() = runTest {
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.NoRomFile("/path/to/game.nes")
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.NoRomFile("/path/to/game.nes")
 
         val result = useCase(123L)
 
@@ -100,7 +100,7 @@ class LaunchGameUseCaseTest {
 
     @Test
     fun `invoke does not start session on NoRomFile`() = runTest {
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.NoRomFile("/path")
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.NoRomFile("/path")
 
         useCase(123L)
 
@@ -109,7 +109,7 @@ class LaunchGameUseCaseTest {
 
     @Test
     fun `invoke returns Error on failure`() = runTest {
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.Error("Launch failed")
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Error("Launch failed")
 
         val result = useCase(123L)
 
@@ -119,7 +119,7 @@ class LaunchGameUseCaseTest {
 
     @Test
     fun `invoke does not start session on Error`() = runTest {
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.Error("Launch failed")
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Error("Launch failed")
 
         useCase(123L)
 
@@ -129,7 +129,7 @@ class LaunchGameUseCaseTest {
     @Test
     fun `invoke returns success intent`() = runTest {
         val intent = mockk<Intent>(relaxed = true)
-        coEvery { gameLauncher.launch(123L, null) } returns LaunchResult.Success(intent)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Success(intent)
 
         val result = useCase(123L)
 

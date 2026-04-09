@@ -36,6 +36,7 @@ import com.nendo.argosy.util.PermissionHelper
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -109,6 +110,7 @@ class PlaySessionTracker @Inject constructor(
     private val sessionStateStore by lazy { SessionStateStore(application) }
     private val endingSession = AtomicBoolean(false)
     private var backgroundTimeoutJob: Job? = null
+    private var emulatorBackgroundJob: Job? = null
 
     private fun broadcastSessionChanged(gameId: Long?, channelName: String?, isHardcore: Boolean) {
         // Write to SharedPreferences for companion process to read on startup
@@ -473,15 +475,25 @@ class PlaySessionTracker @Inject constructor(
 
     fun onEmulatorForegrounded() {
         if (_activeSession.value == null) return
-        Logger.debug(TAG, "Emulator FOREGROUNDED")
+        emulatorBackgroundJob?.cancel()
+        emulatorBackgroundJob = null
+        Logger.debug(TAG, "Emulator FOREGROUNDED (cancelled pending session end)")
     }
 
     fun onEmulatorBackgrounded() {
-        if (_activeSession.value == null) return
-        Logger.debug(TAG, "Emulator BACKGROUNDED")
+        val session = _activeSession.value ?: return
+        Logger.debug(TAG, "Emulator BACKGROUNDED -- scheduling session end in 10s")
+        emulatorBackgroundJob?.cancel()
+        emulatorBackgroundJob = scope.launch {
+            delay(10_000L)
+            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Ending session: emulator left foreground")
+            endSession()
+        }
     }
 
     fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false) {
+        emulatorBackgroundJob?.cancel()
+        emulatorBackgroundJob = null
         endingSession.set(false)
         lastScreenOnTime = Instant.now()
         isScreenOn = true
@@ -593,6 +605,11 @@ class PlaySessionTracker @Inject constructor(
     }
 
     suspend fun endSession(stopService: Boolean = true): SessionEndResult {
+        val pendingJob = emulatorBackgroundJob
+        emulatorBackgroundJob = null
+        if (pendingJob != null && pendingJob != coroutineContext[Job]) {
+            pendingJob.cancel()
+        }
         if (!endingSession.compareAndSet(false, true)) {
             Logger.debug(TAG, "[SaveSync] SESSION | endSession already in progress, skipping")
             return SessionEndResult.Skipped

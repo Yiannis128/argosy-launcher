@@ -1296,6 +1296,9 @@ fun ArgosyApp(
                             onFilterCategoryTapped = { category ->
                                 swappedVm.setFilterCategory(category)
                             },
+                            onSearchQueryChange = { query ->
+                                swappedVm.updateSearchQuery(query)
+                            },
                             onOpenDrawer = { openDrawer() },
                             onDetailBack = { dualScreenManager.returnToHomeSwapped() },
                             onOptionAction = { vm, option ->

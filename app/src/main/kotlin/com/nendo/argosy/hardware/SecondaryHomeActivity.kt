@@ -184,6 +184,9 @@ class SecondaryHomeActivity :
                             onFilterCategoryTapped = {
                                 dualHomeViewModel.setFilterCategory(it)
                             },
+                            onSearchQueryChange = { query ->
+                                dualHomeViewModel.updateSearchQuery(query)
+                            },
                             onDetailBack = ::returnToHome,
                             onOptionAction = { vm, option ->
                                 inputHandler.handleOption(vm, option)

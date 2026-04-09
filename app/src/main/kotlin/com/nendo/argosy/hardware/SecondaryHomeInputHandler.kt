@@ -8,6 +8,7 @@ import com.nendo.argosy.ui.dualscreen.gamedetail.ActiveModal
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailTab
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailViewModel
 import com.nendo.argosy.ui.dualscreen.gamedetail.GameDetailOption
+import com.nendo.argosy.ui.dualscreen.home.DualFilterCategory
 import com.nendo.argosy.ui.dualscreen.home.DualHomeFocusZone
 import com.nendo.argosy.ui.dualscreen.home.DualHomeViewModel
 import com.nendo.argosy.ui.dualscreen.home.DualHomeViewMode
@@ -705,12 +706,15 @@ class SecondaryHomeInputHandler(
     }
 
     private fun handleFilterInput(event: GamepadEvent): InputResult {
+        val isSearch = dualHomeViewModel.uiState.value.filterCategory == DualFilterCategory.SEARCH
         return when (event) {
             GamepadEvent.Up -> {
+                if (isSearch) return InputResult.UNHANDLED
                 dualHomeViewModel.moveFilterFocus(-1)
                 InputResult.HANDLED
             }
             GamepadEvent.Down -> {
+                if (isSearch) return InputResult.UNHANDLED
                 dualHomeViewModel.moveFilterFocus(1)
                 InputResult.HANDLED
             }
@@ -723,6 +727,7 @@ class SecondaryHomeInputHandler(
                 InputResult.HANDLED
             }
             GamepadEvent.Confirm -> {
+                if (isSearch) return InputResult.UNHANDLED
                 dualHomeViewModel.confirmFilter()
                 InputResult.HANDLED
             }
@@ -734,7 +739,7 @@ class SecondaryHomeInputHandler(
                 dualHomeViewModel.clearCategoryFilters()
                 InputResult.HANDLED
             }
-            else -> InputResult.HANDLED
+            else -> if (isSearch) InputResult.UNHANDLED else InputResult.HANDLED
         }
     }
 

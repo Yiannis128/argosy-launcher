@@ -31,6 +31,7 @@ fun DualHomeLowerContent(
     onLetterClick: (String) -> Unit,
     onFilterOptionTapped: (Int) -> Unit,
     onFilterCategoryTapped: (DualFilterCategory) -> Unit,
+    onSearchQueryChange: (String) -> Unit = {},
     onOpenDrawer: () -> Unit = {},
     onDimTapped: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -96,8 +97,10 @@ fun DualHomeLowerContent(
                         category = uiState.filterCategory,
                         options = uiState.filterOptions,
                         focusedIndex = uiState.filterFocusedIndex,
+                        searchQuery = uiState.activeFilters.searchQuery,
                         onOptionTapped = onFilterOptionTapped,
-                        onCategoryTapped = onFilterCategoryTapped
+                        onCategoryTapped = onFilterCategoryTapped,
+                        onSearchQueryChange = onSearchQueryChange
                     )
                 } else {
                     DualHomeLibraryGrid(

@@ -986,6 +986,12 @@ class DualHomeViewModel(
         applyFilters(newFilters)
     }
 
+    fun updateSearchQuery(query: String) {
+        val newFilters = _uiState.value.activeFilters.copy(searchQuery = query)
+        _uiState.update { it.copy(activeFilters = newFilters) }
+        applyFilters(newFilters)
+    }
+
     fun clearCategoryFilters() {
         val state = _uiState.value
         val newFilters = when (state.filterCategory) {

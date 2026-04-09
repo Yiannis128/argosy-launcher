@@ -4,6 +4,7 @@ import android.content.Intent
 import com.nendo.argosy.data.emulator.GameLauncher
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
+import com.nendo.argosy.data.local.entity.GameEntity
 import javax.inject.Inject
 
 class LaunchGameUseCase @Inject constructor(
@@ -15,9 +16,10 @@ class LaunchGameUseCase @Inject constructor(
         discId: Long? = null,
         forResume: Boolean = false,
         selectedDiscPath: String? = null,
-        variantFileId: Long? = null
+        variantFileId: Long? = null,
+        prefetchedGame: GameEntity? = null
     ): LaunchResult {
-        val result = gameLauncher.launch(gameId, discId, forResume, selectedDiscPath, variantFileId)
+        val result = gameLauncher.launch(gameId, discId, forResume, selectedDiscPath, variantFileId, prefetchedGame)
         if (result is LaunchResult.Success) {
             val coreName = extractCoreName(result.intent)
             playSessionTracker.startSession(

@@ -92,11 +92,12 @@ class GameLauncher @Inject constructor(
         discId: Long? = null,
         forResume: Boolean = false,
         selectedDiscPath: String? = null,
-        variantFileId: Long? = null
+        variantFileId: Long? = null,
+        prefetchedGame: GameEntity? = null
     ): LaunchResult {
         Logger.debug(TAG, "launch() called: gameId=$gameId, discId=$discId, forResume=$forResume, variantFileId=$variantFileId")
 
-        val game = gameDao.getById(gameId)
+        val game = prefetchedGame ?: gameDao.getById(gameId)
             ?: return LaunchResult.Error("Game not found").also {
                 Logger.warn(TAG, "launch() failed: game not found for id=$gameId")
             }

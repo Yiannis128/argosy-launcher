@@ -29,6 +29,7 @@ fun ControlRoleContent(
     onLetterClick: (String) -> Unit,
     onFilterOptionTapped: (Int) -> Unit,
     onFilterCategoryTapped: (DualFilterCategory) -> Unit,
+    onSearchQueryChange: (String) -> Unit = {},
     onOpenDrawer: () -> Unit,
     onDetailBack: () -> Unit,
     onOptionAction: (DualGameDetailViewModel, GameDetailOption) -> Unit,
@@ -51,6 +52,7 @@ fun ControlRoleContent(
                 onLetterClick = onLetterClick,
                 onFilterOptionTapped = onFilterOptionTapped,
                 onFilterCategoryTapped = onFilterCategoryTapped,
+                onSearchQueryChange = onSearchQueryChange,
                 onOpenDrawer = onOpenDrawer,
                 onDimTapped = onDimTapped,
                 modifier = modifier
