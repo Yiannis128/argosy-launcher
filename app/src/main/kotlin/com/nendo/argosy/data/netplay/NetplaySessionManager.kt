@@ -28,6 +28,7 @@ class NetplaySessionManager(
     private val socialService: ArgosSocialService,
     private val handshake: NetplayHandshake,
     private val retroView: GLRetroView,
+    private val sessionRules: NetplaySessionRules? = null,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
 
@@ -240,11 +241,16 @@ class NetplaySessionManager(
         retroView.netplayTick = { driver.tick() }
         scope.launch {
             runCatching {
+                sessionRules?.apply(NetplaySessionRules.ApplyContext(NetplaySessionRules.Role.Host))
                 val state = retroView.serializeState()
                 driver.sendInitialSnapshot(state)
-            }.onFailure { Log.w(TAG, "initial snapshot serialize failed: ${it.message}") }
+                _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = guestUserId)
+            }.onFailure {
+                Log.w(TAG, "host install failed: ${it.message}")
+                sessionRules?.release()
+                _sessionState.value = NetplaySessionState.Error("host_install_failed")
+            }
         }
-        _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = guestUserId)
     }
 
     private fun installGuestDriver(sessionId: String, hostUserId: String, result: NetplayHandshake.HandshakeResult.Success) {
@@ -265,7 +271,16 @@ class NetplaySessionManager(
         }
         retroView.netplayLocalPort = GUEST_PORT
         retroView.netplayTick = { driver.tick() }
-        _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = hostUserId)
+        scope.launch {
+            runCatching {
+                sessionRules?.apply(NetplaySessionRules.ApplyContext(NetplaySessionRules.Role.Guest))
+                _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = hostUserId)
+            }.onFailure {
+                Log.w(TAG, "guest install failed: ${it.message}")
+                sessionRules?.release()
+                _sessionState.value = NetplaySessionState.Error("guest_install_failed")
+            }
+        }
     }
 
     private suspend fun tearDownDriver(reason: String) {
@@ -278,6 +293,7 @@ class NetplaySessionManager(
         for (port in 0 until NetplayInputShadow.MAX_PORTS) {
             inputShadow.clear(port)
         }
+        sessionRules?.release()
         delay(0)
     }
 
