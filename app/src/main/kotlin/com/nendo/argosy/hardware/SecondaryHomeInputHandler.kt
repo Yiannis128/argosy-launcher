@@ -339,7 +339,7 @@ class SecondaryHomeInputHandler(
             GameDetailOption.TOGGLE_FAVORITE -> vm.toggleFavorite()
             GameDetailOption.CHANGE_EMULATOR -> {
                 lifecycleLaunch {
-                    val detector = EmulatorDetector(context)
+                    val detector = com.nendo.argosy.data.emulator.getSharedEmulatorDetector(context)
                     detector.detectEmulators()
                     val emulators = detector.getInstalledForPlatform(
                         vm.uiState.value.platformSlug

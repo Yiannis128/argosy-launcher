@@ -5,7 +5,11 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import com.nendo.argosy.data.platform.PlatformDefinitions
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +19,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "EmulatorDetector"
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface EmulatorDetectorEntryPoint {
+    fun emulatorDetector(): EmulatorDetector
+}
+
+fun getSharedEmulatorDetector(context: Context): EmulatorDetector =
+    EntryPointAccessors.fromApplication(context.applicationContext, EmulatorDetectorEntryPoint::class.java)
+        .emulatorDetector()
 
 data class InstalledEmulator(
     val def: EmulatorDef,
@@ -102,10 +116,35 @@ class EmulatorDetector @Inject constructor(
         val alternatives = EmulatorRegistry.getAlternatives(def.packageName)
         if (alternatives.size <= 1) return def
 
+        val label = try {
+            packageInfo.applicationInfo?.let {
+                packageManager.getApplicationLabel(it).toString().trim()
+            }
+        } catch (_: Exception) {
+            null
+        }
+
+        if (!label.isNullOrEmpty()) {
+            val exactMatches = alternatives.filter { it.displayName.equals(label, ignoreCase = true) }
+            if (exactMatches.size == 1) {
+                val candidate = exactMatches[0]
+                val couldOverlap = alternatives.any { other ->
+                    other != candidate &&
+                        (other.displayName.startsWith(label, ignoreCase = true) ||
+                            label.startsWith(other.displayName, ignoreCase = true))
+                }
+                if (!couldOverlap) {
+                    Log.d(TAG, "Resolved ${def.packageName} to ${candidate.id} by label '$label'")
+                    return candidate
+                }
+            }
+        }
+
         val version = packageInfo.versionName ?: return def
         val parts = version.split(".")
 
-        // Cemu dual-screen fork uses 3-part versions (e.g., 0.3.1), official uses 2-part (e.g., 0.3)
+        // Cemu dual-screen fork historically used 3-part versions (e.g., 0.3.1), official used 2-part (e.g., 0.3).
+        // Newer dual-screen builds publish commit-hash versions, so this is best-effort only.
         if (def.packageName == "info.cemu.cemu") {
             return if (parts.size >= 3) {
                 alternatives.find { it.id == "cemu_dualscreen" } ?: def

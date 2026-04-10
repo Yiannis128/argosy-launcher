@@ -128,8 +128,19 @@ class EmulatorUpdateManager @Inject constructor(
             Log.d(TAG, "Update checkable: ${updateCheckable.map { it.id }}")
 
             val emulatorsToCheck = updateCheckable.filter { def ->
-                installedEmulators.any { it.def.packageName == def.packageName }
+                installedEmulators.any { it.def.id == def.id }
             }
+
+            // Clean up stale update entries from alternative variants sharing a package name.
+            // Without this, users who had a prior (buggy) detection would keep a phantom update badge.
+            val installedPackages = installedEmulators.map { it.def.packageName }.toSet()
+            val installedIds = installedEmulators.map { it.def.id }.toSet()
+            updateCheckable
+                .filter { def -> def.packageName in installedPackages && def.id !in installedIds }
+                .forEach { stale ->
+                    Log.d(TAG, "Clearing stale update entry for ${stale.id} (not the resolved variant)")
+                    emulatorUpdateDao.delete(stale.id)
+                }
 
             Log.d(TAG, "Checking ${emulatorsToCheck.size} emulators for updates: ${emulatorsToCheck.map { it.id }}")
 

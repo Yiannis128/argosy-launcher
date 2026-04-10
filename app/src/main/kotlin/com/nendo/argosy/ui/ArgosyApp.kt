@@ -1327,7 +1327,7 @@ fun ArgosyApp(
                                     GameDetailOption.TOGGLE_FAVORITE -> vm.toggleFavorite()
                                     GameDetailOption.CHANGE_EMULATOR -> {
                                         scope.launch {
-                                            val detector = com.nendo.argosy.data.emulator.EmulatorDetector(context)
+                                            val detector = com.nendo.argosy.data.emulator.getSharedEmulatorDetector(context)
                                             detector.detectEmulators()
                                             val emulators = detector.getInstalledForPlatform(
                                                 vm.uiState.value.platformSlug
