@@ -43,6 +43,28 @@ sealed class InGameMenuAction {
 
 enum class NetplayMenuRole { Host, Guest }
 
+enum class NetplayQualityLabel { Excellent, Good, Fair, Poor, Bad }
+
+data class NetplayQualityInfo(
+    val peerDisplayName: String,
+    val role: NetplayMenuRole,
+    val pingMs: Int?,
+    val label: NetplayQualityLabel
+) {
+    companion object {
+        fun labelForRttMs(pingMs: Int?): NetplayQualityLabel {
+            if (pingMs == null) return NetplayQualityLabel.Bad
+            return when {
+                pingMs < 40 -> NetplayQualityLabel.Excellent
+                pingMs < 80 -> NetplayQualityLabel.Good
+                pingMs < 150 -> NetplayQualityLabel.Fair
+                pingMs < 200 -> NetplayQualityLabel.Poor
+                else -> NetplayQualityLabel.Bad
+            }
+        }
+    }
+}
+
 @Composable
 fun InGameMenu(
     gameName: String,
@@ -54,7 +76,8 @@ fun InGameMenu(
     isHardcoreMode: Boolean = false,
     netplaySupported: Boolean = false,
     isInNetplaySession: Boolean = false,
-    netplayRole: NetplayMenuRole? = null
+    netplayRole: NetplayMenuRole? = null,
+    netplayQuality: NetplayQualityInfo? = null
 ): InputHandler {
     val menuItems = remember(
         cheatsAvailable,
@@ -69,7 +92,6 @@ fun InGameMenu(
             if (!isInNetplaySession && !isHardcoreMode && statesSupported) {
                 add("Manage States" to InGameMenuAction.ManageStates)
             }
-            // TODO(3b): quality indicator row (host name + ping + quality label) when in session
             add("Settings" to InGameMenuAction.Settings)
             if (!isInNetplaySession && cheatsAvailable) {
                 add("Cheats" to InGameMenuAction.Cheats)
@@ -163,6 +185,10 @@ fun InGameMenu(
                     maxLines = 2
                 )
 
+                if (isInNetplaySession && netplayQuality != null) {
+                    NetplayQualityRow(info = netplayQuality)
+                }
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -180,6 +206,45 @@ fun InGameMenu(
     }
 
     return inputHandler
+}
+
+@Composable
+private fun NetplayQualityRow(info: NetplayQualityInfo) {
+    val qualityColor = when (info.label) {
+        NetplayQualityLabel.Excellent -> Color(0xFF22C55E)
+        NetplayQualityLabel.Good -> Color(0xFF84CC16)
+        NetplayQualityLabel.Fair -> Color(0xFFFBBF24)
+        NetplayQualityLabel.Poor -> Color(0xFFF97316)
+        NetplayQualityLabel.Bad -> Color(0xFFEF4444)
+    }
+    val pingText = info.pingMs?.let { "${it}ms" } ?: "--"
+    val roleLabel = if (info.role == NetplayMenuRole.Host) "Guest" else "Host"
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = "$roleLabel: ${info.peerDisplayName}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "$pingText  ${info.label.name}",
+                style = MaterialTheme.typography.labelSmall,
+                color = qualityColor,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
 }
 
 @Composable
