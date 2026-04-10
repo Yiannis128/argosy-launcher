@@ -495,11 +495,13 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             .sortedByDescending { it.platform.syncEnabled }
 
         val currentEmulatorState = vm.emulatorDelegate.state.value
+        val archOverride = vm.preferencesRepository.getArchitectureOverride().first()
         vm.emulatorDelegate.updateState(EmulatorState(
             platforms = filteredPlatformConfigs,
             installedEmulators = installedEmulators,
             platformSubFocusIndex = currentEmulatorState.platformSubFocusIndex,
             builtinLibretroEnabled = prefs.builtinLibretroEnabled,
+            architectureDisplay = architectureAbiToDisplay(archOverride),
             emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions
         ))
         vm.emulatorDelegate.updateCoreCounts()

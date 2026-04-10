@@ -21,7 +21,9 @@ import com.nendo.argosy.data.sync.SocialSyncWorker
 import com.nendo.argosy.data.sync.SyncServiceController
 import com.nendo.argosy.data.update.UpdateCheckWorker
 import com.nendo.argosy.data.emulator.PlaySessionTracker
+import com.nendo.argosy.data.preferences.BuiltinEmulatorPreferencesRepository
 import com.nendo.argosy.libretro.CoreUpdateCheckWorker
+import com.nendo.argosy.libretro.LibretroBuildbot
 import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.data.remote.ssl.UserCertTrustManager.withUserCertTrust
 import com.nendo.argosy.ui.coil.AppIconFetcher
@@ -29,6 +31,7 @@ import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -71,6 +74,9 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     lateinit var playSessionTracker: PlaySessionTracker
 
     @Inject
+    lateinit var builtinPrefs: BuiltinEmulatorPreferencesRepository
+
+    @Inject
     lateinit var steamAuthManager: SteamAuthManager
 
     override fun onCreate() {
@@ -84,7 +90,12 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         titleIdDownloadObserver.start()
         downloadServiceController.start()
         syncServiceController.start()
-        appScope.launch { coreManager.migrateAbiIfNeeded() }
+        appScope.launch {
+            builtinPrefs.getArchitectureOverride().first()?.let {
+                LibretroBuildbot.abiOverride = it
+            }
+            coreManager.migrateAbiIfNeeded()
+        }
         appScope.launch { playSessionTracker.checkOrphanedSession() }
         appScope.launch { gameDao.resetAllActiveSaveApplied() }
         appScope.launch { autoConnectSteam() }

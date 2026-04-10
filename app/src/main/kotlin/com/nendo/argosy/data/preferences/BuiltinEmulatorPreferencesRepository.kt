@@ -44,6 +44,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_CUSTOM_SAVE_PATH = stringPreferencesKey("builtin_custom_save_path")
         val BUILTIN_CUSTOM_STATE_PATH = stringPreferencesKey("builtin_custom_state_path")
         val BUILTIN_MIGRATION_V1 = booleanPreferencesKey("builtin_migration_v2")
+        val BUILTIN_ARCHITECTURE_OVERRIDE = stringPreferencesKey("builtin_architecture_override")
     }
 
     fun isBuiltinLibretroEnabled(): Flow<Boolean> = dataStore.data.map { prefs ->
@@ -77,7 +78,8 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
                 ?: (prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] != "off"),
             autoRestoreStateMode = prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] ?: "restore",
             customSavePath = prefs[Keys.BUILTIN_CUSTOM_SAVE_PATH],
-            customStatePath = prefs[Keys.BUILTIN_CUSTOM_STATE_PATH]
+            customStatePath = prefs[Keys.BUILTIN_CUSTOM_STATE_PATH],
+            architectureOverride = prefs[Keys.BUILTIN_ARCHITECTURE_OVERRIDE]
         )
     }
 
@@ -229,5 +231,16 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinMigrationComplete() {
         dataStore.edit { it[Keys.BUILTIN_MIGRATION_V1] = true }
+    }
+
+    fun getArchitectureOverride(): Flow<String?> = dataStore.data.map { prefs ->
+        prefs[Keys.BUILTIN_ARCHITECTURE_OVERRIDE]
+    }
+
+    suspend fun setArchitectureOverride(abi: String?) {
+        dataStore.edit {
+            if (abi != null) it[Keys.BUILTIN_ARCHITECTURE_OVERRIDE] = abi
+            else it.remove(Keys.BUILTIN_ARCHITECTURE_OVERRIDE)
+        }
     }
 }

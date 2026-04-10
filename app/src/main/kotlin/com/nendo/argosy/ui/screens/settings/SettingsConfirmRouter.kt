@@ -735,7 +735,7 @@ private fun computeMaxFocusIndex(
     SettingsSection.PLATFORMS -> emulatorsMaxFocusIndex(
         state.emulators.platforms.size
     )
-    SettingsSection.BUILTIN_EMULATOR -> if (state.emulators.builtinLibretroEnabled) 4 else 0
+    SettingsSection.BUILTIN_EMULATOR -> if (state.emulators.builtinLibretroEnabled) 5 else 0
     SettingsSection.PLATFORM_DETAIL -> platformDetailMaxFocusIndex(state)
     SettingsSection.BUILTIN_VIDEO -> builtinVideoMaxFocusIndex(state.builtinVideo, state.platformLibretro.platformSettings)
     SettingsSection.BUILTIN_CONTROLS -> builtinControlsMaxFocusIndex(state.builtinControls)
@@ -789,10 +789,11 @@ private fun routeBuiltinEmulatorConfirm(vm: SettingsViewModel, state: SettingsUi
     val builtinEnabled = state.emulators.builtinLibretroEnabled
     when (state.focusedIndex) {
         0 -> vm.setBuiltinLibretroEnabled(!builtinEnabled)
-        1 -> if (builtinEnabled) vm.navigateToBuiltinVideo()
-        2 -> if (builtinEnabled) vm.navigateToBuiltinControls()
-        3 -> if (builtinEnabled) vm.navigateToCoreManagement()
-        4 -> if (builtinEnabled) vm.navigateToCoreOptions()
+        1 -> if (builtinEnabled) vm.cycleBuiltinArchitecture(1)
+        2 -> if (builtinEnabled) vm.navigateToBuiltinVideo()
+        3 -> if (builtinEnabled) vm.navigateToBuiltinControls()
+        4 -> if (builtinEnabled) vm.navigateToCoreManagement()
+        5 -> if (builtinEnabled) vm.navigateToCoreOptions()
     }
     return InputResult.HANDLED
 }

@@ -488,15 +488,17 @@ class GameLauncher @Inject constructor(
         }
 
         if (gameOverride?.packageName != null && gameOverride.packageName in installedPackages) {
-            if (!builtinEnabled && isBuiltinPackage(gameOverride.packageName)) {
-            } else {
+            val skipBuiltin = isBuiltinPackage(gameOverride.packageName) &&
+                (!builtinEnabled || !libretroCoreMgr.isPlatformSupported(game.platformSlug))
+            if (!skipBuiltin) {
                 return emulatorDetector.getByPackage(gameOverride.packageName)
             }
         }
 
         if (platformDefault?.packageName != null && platformDefault.packageName in installedPackages) {
-            if (!builtinEnabled && isBuiltinPackage(platformDefault.packageName)) {
-            } else {
+            val skipBuiltin = isBuiltinPackage(platformDefault.packageName) &&
+                (!builtinEnabled || !libretroCoreMgr.isPlatformSupported(game.platformSlug))
+            if (!skipBuiltin) {
                 return emulatorDetector.getByPackage(platformDefault.packageName)
             }
         }

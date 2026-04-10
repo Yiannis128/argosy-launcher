@@ -64,6 +64,7 @@ internal class LightSectionsInput(
             SettingsSection.SYNC_SETTINGS -> handleSyncSettingsLeftRight(direction)
             SettingsSection.ABOUT -> handleAboutLeftRight(direction)
             SettingsSection.STEAM_SETTINGS -> handleSteamLeftRight(direction)
+            SettingsSection.BUILTIN_EMULATOR -> handleBuiltinEmulatorLeftRight(direction)
             SettingsSection.CORE_MANAGEMENT -> handleCoreManagementLeftRight(direction)
             else -> InputResult.UNHANDLED
         }
@@ -158,6 +159,15 @@ internal class LightSectionsInput(
     }
 
     private fun handleSteamLeftRight(direction: Int): InputResult {
+        return InputResult.UNHANDLED
+    }
+
+    private fun handleBuiltinEmulatorLeftRight(direction: Int): InputResult {
+        val state = viewModel.uiState.value
+        if (state.emulators.builtinLibretroEnabled && state.focusedIndex == 1) {
+            viewModel.cycleBuiltinArchitecture(direction)
+            return InputResult.HANDLED
+        }
         return InputResult.UNHANDLED
     }
 

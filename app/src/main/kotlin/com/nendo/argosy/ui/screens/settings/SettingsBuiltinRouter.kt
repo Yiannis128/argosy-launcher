@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
+import com.nendo.argosy.libretro.LibretroBuildbot
 import com.nendo.argosy.data.platform.PlatformWeightRegistry
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.shader.ShaderChainConfig
@@ -30,6 +31,39 @@ internal fun routeSetBuiltinFramesEnabled(vm: SettingsViewModel, enabled: Boolea
     vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(framesEnabled = enabled)) }
     vm.viewModelScope.launch {
         vm.preferencesRepository.setBuiltinFramesEnabled(enabled)
+    }
+}
+
+private val ARCHITECTURE_OPTIONS = listOf("Universal", "ARMv7 (32-bit)", "ARMv8 (64-bit)")
+
+private fun architectureDisplayToAbi(display: String): String? = when (display) {
+    "ARMv7 (32-bit)" -> "armeabi-v7a"
+    "ARMv8 (64-bit)" -> "arm64-v8a"
+    else -> null
+}
+
+internal fun architectureAbiToDisplay(abi: String?): String = when (abi) {
+    "armeabi-v7a" -> "ARMv7 (32-bit)"
+    "arm64-v8a" -> "ARMv8 (64-bit)"
+    else -> "Universal"
+}
+
+internal fun routeCycleBuiltinArchitecture(vm: SettingsViewModel, direction: Int) {
+    val current = vm._uiState.value.emulators.architectureDisplay
+    val currentIndex = ARCHITECTURE_OPTIONS.indexOf(current).coerceAtLeast(0)
+    val nextIndex = (currentIndex + direction + ARCHITECTURE_OPTIONS.size) % ARCHITECTURE_OPTIONS.size
+    routeSetBuiltinArchitecture(vm, ARCHITECTURE_OPTIONS[nextIndex])
+}
+
+internal fun routeSetBuiltinArchitecture(vm: SettingsViewModel, value: String) {
+    vm._uiState.update {
+        it.copy(emulators = it.emulators.copy(architectureDisplay = value))
+    }
+    val override = architectureDisplayToAbi(value)
+    LibretroBuildbot.abiOverride = override
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setArchitectureOverride(override)
+        vm.coreManager.migrateAbiIfNeeded()
     }
 }
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -40,11 +41,19 @@ fun BuiltinEmulatorSection(
             )
         }
         if (builtinEnabled) {
+            item(key = "builtin_architecture") {
+                CyclePreference(
+                    title = "Architecture",
+                    value = emulators.architectureDisplay,
+                    isFocused = uiState.focusedIndex == 1,
+                    onClick = { viewModel.cycleBuiltinArchitecture(1) }
+                )
+            }
             item(key = "builtin_video") {
                 ActionPreference(
                     title = "A/V & Performance",
                     subtitle = "Shaders, display, performance, saving",
-                    isFocused = uiState.focusedIndex == 1,
+                    isFocused = uiState.focusedIndex == 2,
                     onClick = { viewModel.navigateToBuiltinVideo() }
                 )
             }
@@ -52,7 +61,7 @@ fun BuiltinEmulatorSection(
                 ActionPreference(
                     title = "Controls",
                     subtitle = "Rumble, input mapping, hotkeys",
-                    isFocused = uiState.focusedIndex == 2,
+                    isFocused = uiState.focusedIndex == 3,
                     onClick = { viewModel.navigateToBuiltinControls() }
                 )
             }
@@ -61,7 +70,7 @@ fun BuiltinEmulatorSection(
                 ActionPreference(
                     title = "Manage Cores",
                     subtitle = "${emulators.installedCoreCount} of ${emulators.totalCoreCount} cores installed",
-                    isFocused = uiState.focusedIndex == 3,
+                    isFocused = uiState.focusedIndex == 4,
                     onClick = { viewModel.navigateToCoreManagement() },
                     badge = if (updatesAvailable > 0) "$updatesAvailable update${if (updatesAvailable > 1) "s" else ""}" else null
                 )
@@ -70,7 +79,7 @@ fun BuiltinEmulatorSection(
                 ActionPreference(
                     title = "Core Options",
                     subtitle = "Per-core settings and overrides",
-                    isFocused = uiState.focusedIndex == 4,
+                    isFocused = uiState.focusedIndex == 5,
                     onClick = { viewModel.navigateToCoreOptions() }
                 )
             }

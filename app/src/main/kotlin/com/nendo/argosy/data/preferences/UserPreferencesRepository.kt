@@ -344,6 +344,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBuiltinCustomSavePath(path: String?) = builtinPrefs.setBuiltinCustomSavePath(path)
     suspend fun setBuiltinCustomStatePath(path: String?) = builtinPrefs.setBuiltinCustomStatePath(path)
     suspend fun setBuiltinMigrationComplete() = builtinPrefs.setBuiltinMigrationComplete()
+    suspend fun setArchitectureOverride(abi: String?) = builtinPrefs.setArchitectureOverride(abi)
+    fun getArchitectureOverride(): Flow<String?> = builtinPrefs.getArchitectureOverride()
     fun getBuiltinEmulatorSettings(): Flow<BuiltinEmulatorSettings> = builtinPrefs.getBuiltinEmulatorSettings()
     fun getBuiltinCoreSelections(): Flow<Map<String, String>> = builtinPrefs.getBuiltinCoreSelections()
     fun isBuiltinMigrationComplete(): Flow<Boolean> = builtinPrefs.isBuiltinMigrationComplete()
@@ -422,7 +424,8 @@ data class BuiltinEmulatorSettings(
     val autoRestoreState: Boolean = true,
     val autoRestoreStateMode: String = "restore",
     val customSavePath: String? = null,
-    val customStatePath: String? = null
+    val customStatePath: String? = null,
+    val architectureOverride: String? = null
 ) {
     val shaderConfig: com.swordfish.libretrodroid.ShaderConfig
         get() = when (shader) {

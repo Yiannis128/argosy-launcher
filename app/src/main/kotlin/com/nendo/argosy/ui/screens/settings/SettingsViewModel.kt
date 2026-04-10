@@ -332,6 +332,7 @@ class SettingsViewModel @Inject constructor(
     fun downloadCoreWithNotification(coreId: String) = routeDownloadCoreWithNotification(this, coreId)
     fun deleteCore(coreId: String) = routeDeleteCore(this, coreId)
 
+    fun cycleBuiltinArchitecture(direction: Int) = routeCycleBuiltinArchitecture(this, direction)
     fun setBuiltinShader(value: String) = routeSetBuiltinShader(this, value)
     fun setBuiltinFramesEnabled(enabled: Boolean) = routeSetBuiltinFramesEnabled(this, enabled)
     fun setBuiltinLibretroEnabled(enabled: Boolean) = routeSetBuiltinLibretroEnabled(this, enabled)
