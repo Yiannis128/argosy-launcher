@@ -148,6 +148,31 @@ class CheatSessionManager(
         }
     }
 
+    val hasAnyEnabledCheats: Boolean
+        get() = cheats.any { it.enabled }
+
+    suspend fun disableAllAndCycleForNetplay() {
+        val hadEnabled = cheats.any { it.enabled }
+        if (!hadEnabled) {
+            Log.d(TAG, "Netplay cheats: no enabled cheats, no-op")
+            return
+        }
+        val now = System.currentTimeMillis()
+        cheats.filter { it.enabled }.forEach { cheat ->
+            cheatDao.setEnabled(cheat.id, false, now)
+        }
+        cheats = cheatsRepository.getCheatsForGame(gameId)
+        val view = retroView
+        if (view != null) {
+            val stateData = view.serializeState()
+            view.resetCheat()
+            view.unserializeState(stateData)
+            Log.d(TAG, "Netplay cheats: disabled all enabled cheats and cycled state")
+        } else {
+            Log.w(TAG, "Netplay cheats: retroView null during disable-and-cycle")
+        }
+    }
+
     fun flushCheatReset() {
         if (!cheatsNeedReset) return
         val view = retroView ?: return

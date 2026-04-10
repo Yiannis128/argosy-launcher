@@ -56,6 +56,10 @@ class RetroAchievementsSessionManager(
         private set
 
     private var heartbeatJob: Job? = null
+    private var cachedAchievementDefs: Array<com.swordfish.libretrodroid.AchievementDef>? = null
+    private var cachedConsoleId: Int? = null
+    private var cachedRetroView: GLRetroView? = null
+    private var pausedForNetplay: Boolean = false
 
     private data class AchievementPatchInfo(
         val title: String,
@@ -65,6 +69,7 @@ class RetroAchievementsSessionManager(
     )
 
     fun initialize(retroView: GLRetroView) {
+        cachedRetroView = retroView
         scope.launch {
             val isLoggedIn = raRepository.isLoggedIn()
             Log.d(TAG, "RA login check: isLoggedIn=$isLoggedIn")
@@ -144,6 +149,8 @@ class RetroAchievementsSessionManager(
 
                         Log.d(TAG, "Sending ${achievementDefs.size} achievements to native for console $consoleId")
                         com.swordfish.libretrodroid.LibretroDroid.initAchievements(achievementDefs, consoleId)
+                        cachedAchievementDefs = achievementDefs
+                        cachedConsoleId = consoleId
 
                         retroView.achievementUnlockListener = { achievementId ->
                             onAchievementUnlocked(achievementId)
@@ -295,9 +302,43 @@ class RetroAchievementsSessionManager(
         raConnectionInfo = null
     }
 
+    fun pause() {
+        if (pausedForNetplay) return
+        pausedForNetplay = true
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        com.swordfish.libretrodroid.LibretroDroid.clearAchievements()
+        cachedRetroView?.achievementUnlockListener = null
+        Log.d(TAG, "RA paused for netplay")
+    }
+
+    fun resume() {
+        if (!pausedForNetplay) return
+        pausedForNetplay = false
+        val defs = cachedAchievementDefs
+        val consoleId = cachedConsoleId
+        val view = cachedRetroView
+        if (defs != null && consoleId != null && view != null && gameRaId != null) {
+            com.swordfish.libretrodroid.LibretroDroid.initAchievements(defs, consoleId)
+            view.achievementUnlockListener = { achievementId ->
+                onAchievementUnlocked(achievementId)
+            }
+            if (raSessionActive) {
+                startHeartbeatLoop()
+            }
+            Log.d(TAG, "RA resumed after netplay")
+        } else {
+            Log.d(TAG, "RA resume is a no-op (nothing cached)")
+        }
+    }
+
     fun destroy() {
         heartbeatJob?.cancel()
         raSessionActive = false
+        pausedForNetplay = false
+        cachedAchievementDefs = null
+        cachedConsoleId = null
+        cachedRetroView = null
         com.swordfish.libretrodroid.LibretroDroid.clearAchievements()
     }
 
