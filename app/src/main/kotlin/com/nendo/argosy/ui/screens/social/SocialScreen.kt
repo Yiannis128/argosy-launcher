@@ -143,6 +143,24 @@ fun SocialScreen(
     val notificationsListState = rememberLazyListState()
     val profileListState = rememberLazyListState()
 
+    val launchContext = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.launchEvents.collect { event ->
+            when (event) {
+                is SocialLaunchEvent.LaunchIntent -> {
+                    event.intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    launchContext.startActivity(event.intent)
+                }
+                is SocialLaunchEvent.LaunchError -> {
+                    viewModel.notificationManager.show(
+                        title = event.message,
+                        type = com.nendo.argosy.ui.notification.NotificationType.ERROR
+                    )
+                }
+            }
+        }
+    }
+
     LaunchedEffect(uiState.isConnected) {
         if (uiState.isConnected && uiState.activeFeedEvents.isEmpty()) {
             viewModel.loadFeed()
@@ -285,10 +303,8 @@ fun SocialScreen(
                                 onViewProfile = onViewProfile,
                                 onToggleFavorite = { friendId -> viewModel.toggleFavoriteFriend(friendId) },
                                 netplayPreflight = { session -> viewModel.runNetplayPreflight(session) },
-                                onJoinNetplaySession = { friend, _ ->
-                                    viewModel.notificationManager.show(
-                                        title = "Launch ${friend.currentGame?.title ?: "the game"} and Join from the in-game menu"
-                                    )
+                                onJoinNetplaySession = { friend, session ->
+                                    viewModel.launchNetplayJoin(friend, session)
                                 }
                             )
                         }

@@ -209,6 +209,9 @@ class LibretroActivity : ComponentActivity() {
     private var pendingSaveScreenshot: Bitmap? = null
 
     private var netplaySessionManager: NetplaySessionManager? = null
+    private var pendingNetplayJoin: PendingNetplayJoin? = null
+
+    private data class PendingNetplayJoin(val sessionId: String, val hostUserId: String)
     private var netplaySessionRules: NetplaySessionRules? = null
     private var netplayInSession by mutableStateOf(false)
     private var netplayRole: NetplayMenuRole? by mutableStateOf(null)
@@ -324,6 +327,13 @@ class LibretroActivity : ComponentActivity() {
         coreName = intent.getStringExtra(EXTRA_CORE_NAME)
         launchMode = LaunchMode.fromString(intent.getStringExtra(LaunchMode.EXTRA_LAUNCH_MODE))
         hardcoreMode = launchMode.isHardcore
+
+        val joinSessionId = intent.getStringExtra(EXTRA_NETPLAY_JOIN_SESSION_ID)
+        val joinHostUserId = intent.getStringExtra(EXTRA_NETPLAY_JOIN_HOST_USER_ID)
+        if (!joinSessionId.isNullOrEmpty() && !joinHostUserId.isNullOrEmpty()) {
+            pendingNetplayJoin = PendingNetplayJoin(joinSessionId, joinHostUserId)
+        }
+
         return true
     }
 
@@ -1116,6 +1126,19 @@ class LibretroActivity : ComponentActivity() {
                 netplayLastRttMs = if (rtt > 0L) (rtt / 1_000_000L).toInt() else null
             }
         }
+
+        val pending = pendingNetplayJoin
+        if (pending != null) {
+            pendingNetplayJoin = null
+            netplayRole = NetplayMenuRole.Guest
+            lifecycleScope.launch {
+                runCatching {
+                    manager.joinSession(pending.sessionId, pending.hostUserId)
+                }.onFailure { err ->
+                    Log.w(TAG, "auto-join from intent failed: ${err.message}")
+                }
+            }
+        }
     }
 
     private fun resolveFriendDisplayName(userId: String): String {
@@ -1672,6 +1695,8 @@ class LibretroActivity : ComponentActivity() {
         const val EXTRA_CORE_VAR_VALUES = "core_var_values"
         const val EXTRA_SAVES_DIR = "saves_dir"
         const val EXTRA_STATES_DIR = "states_dir"
+        const val EXTRA_NETPLAY_JOIN_SESSION_ID = "netplay_join_session_id"
+        const val EXTRA_NETPLAY_JOIN_HOST_USER_ID = "netplay_join_host_user_id"
         const val ACTION_SHOW_MENU = "com.nendo.argosy.action.SHOW_MENU"
         const val ACTION_QUIT = "com.nendo.argosy.action.QUIT"
 

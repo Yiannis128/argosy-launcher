@@ -1,8 +1,10 @@
 package com.nendo.argosy.ui.screens.social
 
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.netplay.NetplayPreflightChecker
 import com.nendo.argosy.data.netplay.NetplayPreflightResult
@@ -10,11 +12,14 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.social.CommunityFollow
 import com.nendo.argosy.data.social.FeedEventDto
 import com.nendo.argosy.data.social.Friend
+import com.nendo.argosy.data.social.NetplaySession
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialNotification
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.data.social.UserProfileData
+import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
+import com.nendo.argosy.libretro.LibretroActivity
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.notification.NotificationManager
 import com.nendo.argosy.ui.input.InputResult
@@ -22,8 +27,11 @@ import com.nendo.argosy.ui.screens.doodle.GamePickerItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -110,18 +118,62 @@ data class SocialUiState(
         get() = notifications.getOrNull(focusedNotificationIndex)
 }
 
+sealed class SocialLaunchEvent {
+    data class LaunchIntent(val intent: Intent) : SocialLaunchEvent()
+    data class LaunchError(val message: String) : SocialLaunchEvent()
+}
+
 @HiltViewModel
 class SocialViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val preferencesRepository: UserPreferencesRepository,
     private val gameDao: GameDao,
     private val netplayPreflightChecker: NetplayPreflightChecker,
+    private val launchGameUseCase: LaunchGameUseCase,
     val notificationManager: NotificationManager
 ) : ViewModel() {
 
+    private val _launchEvents = MutableSharedFlow<SocialLaunchEvent>(extraBufferCapacity = 4)
+    val launchEvents: SharedFlow<SocialLaunchEvent> = _launchEvents.asSharedFlow()
+
     suspend fun runNetplayPreflight(
-        session: com.nendo.argosy.data.social.NetplaySession
+        session: NetplaySession
     ): NetplayPreflightResult = netplayPreflightChecker.check(session)
+
+    fun launchNetplayJoin(friend: Friend, session: NetplaySession) {
+        viewModelScope.launch {
+            val preflight = netplayPreflightChecker.check(session)
+            if (preflight !is NetplayPreflightResult.Joinable) {
+                _launchEvents.emit(SocialLaunchEvent.LaunchError("This session is not joinable"))
+                return@launch
+            }
+            val igdbId = session.gameIgdbId?.toLong()
+            if (igdbId == null) {
+                _launchEvents.emit(SocialLaunchEvent.LaunchError("Missing game id for session"))
+                return@launch
+            }
+            val game = gameDao.getByIgdbId(igdbId)
+            if (game == null) {
+                _launchEvents.emit(SocialLaunchEvent.LaunchError("Local game not found"))
+                return@launch
+            }
+            when (val result = launchGameUseCase(gameId = game.id)) {
+                is LaunchResult.Success -> {
+                    val decorated = Intent(result.intent).apply {
+                        putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_SESSION_ID, session.sessionId)
+                        putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_HOST_USER_ID, friend.id)
+                    }
+                    _launchEvents.emit(SocialLaunchEvent.LaunchIntent(decorated))
+                }
+                is LaunchResult.Error -> {
+                    _launchEvents.emit(SocialLaunchEvent.LaunchError(result.message))
+                }
+                else -> {
+                    _launchEvents.emit(SocialLaunchEvent.LaunchError("Couldn't launch ${friend.currentGame?.title ?: "game"}"))
+                }
+            }
+        }
+    }
 
     val feedOptionsDelegate = FeedOptionsDelegate()
     private var communitySearchJob: Job? = null
