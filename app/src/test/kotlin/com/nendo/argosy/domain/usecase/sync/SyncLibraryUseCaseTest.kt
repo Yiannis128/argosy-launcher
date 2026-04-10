@@ -14,13 +14,17 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SyncLibraryUseCaseTest {
 
     private lateinit var romMRepository: RomMRepository
@@ -34,7 +38,9 @@ class SyncLibraryUseCaseTest {
         every { romMRepository.syncProgress } returns MutableStateFlow(SyncProgress())
         notificationManager = mockk(relaxed = true)
         librarySyncBus = mockk(relaxed = true)
-        useCase = SyncLibraryUseCase(romMRepository, notificationManager, librarySyncBus)
+        useCase = SyncLibraryUseCase(romMRepository, notificationManager, librarySyncBus).apply {
+            progressDispatcher = UnconfinedTestDispatcher()
+        }
     }
 
     @Test

@@ -8,6 +8,7 @@ import com.nendo.argosy.ui.screens.common.LibrarySyncBus
 import com.nendo.argosy.util.Logger
 import com.nendo.argosy.ui.notification.NotificationProgress
 import com.nendo.argosy.ui.notification.NotificationType
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -28,6 +29,7 @@ class SyncLibraryUseCase @Inject constructor(
     private val notificationManager: NotificationManager,
     private val librarySyncBus: LibrarySyncBus
 ) {
+    internal var progressDispatcher: CoroutineDispatcher = Dispatchers.IO
     suspend operator fun invoke(
         initializeFirst: Boolean = false,
         onProgress: ((current: Int, total: Int, platform: String) -> Unit)? = null
@@ -63,7 +65,7 @@ class SyncLibraryUseCase @Inject constructor(
                 try {
                     withContext(NonCancellable) {
                         Logger.info(TAG, "invoke: calling syncLibrary")
-                        val progressJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        val progressJob = CoroutineScope(progressDispatcher).launch {
                             romMRepository.syncProgress.collect { sp ->
                                 if (sp.isSyncing && sp.currentPlatform.isNotEmpty()) {
                                     val gameInfo = if (sp.gamesTotal > 0) " (${sp.gamesDone}/${sp.gamesTotal} games)" else ""
