@@ -87,7 +87,8 @@ data class GameInfo(
 @JsonClass(generateAdapter = true)
 data class PresenceGameInfo(
     val title: String,
-    @Json(name = "cover_thumb") val coverThumb: String? = null
+    @Json(name = "cover_thumb") val coverThumb: String? = null,
+    @Json(name = "netplay_session") val netplaySession: NetplaySession? = null
 )
 
 enum class FriendshipStatus(val value: String) {
@@ -234,6 +235,27 @@ object MessageTypes {
     // Steam IGDB resolution
     const val RESOLVE_STEAM_GAME = "resolve_steam_game"
     const val STEAM_GAME_RESOLVED = "steam_game_resolved"
+
+    // Netplay (client -> server)
+    const val NETPLAY_OPEN = "netplay_open"
+    const val NETPLAY_CLOSE = "netplay_close"
+    const val NETPLAY_JOIN_REQUEST = "netplay_join_request"
+    const val NETPLAY_JOIN_RESPONSE = "netplay_join_response"
+    const val NETPLAY_CANDIDATES = "netplay_candidates"
+    const val NETPLAY_HANDSHAKE_RESULT = "netplay_handshake_result"
+    const val NETPLAY_HANDSHAKE_TELEMETRY = "netplay_handshake_telemetry"
+    const val NETPLAY_LEAVE = "netplay_leave"
+    const val NETPLAY_KICK = "netplay_kick"
+
+    // Netplay (server -> client)
+    const val NETPLAY_READY = "netplay_ready"
+    const val NETPLAY_JOIN_REQUESTED = "netplay_join_requested"
+    const val NETPLAY_JOIN_DECLINED = "netplay_join_declined"
+    const val NETPLAY_PEER_CANDIDATES = "netplay_peer_candidates"
+    const val NETPLAY_PUNCH_START = "netplay_punch_start"
+    const val NETPLAY_HANDSHAKE_FAILED = "netplay_handshake_failed"
+    const val NETPLAY_KICKED = "netplay_kicked"
+    const val NETPLAY_SESSION_ENDED = "netplay_session_ended"
 }
 
 @JsonClass(generateAdapter = true)

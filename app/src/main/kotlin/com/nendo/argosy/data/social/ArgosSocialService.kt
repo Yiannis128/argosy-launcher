@@ -156,6 +156,15 @@ class ArgosSocialService @Inject constructor(
             val igdbId: Long,
             val coverImageId: String?
         ) : IncomingMessage()
+
+        data class NetplayReady(val payload: NetplayReadyPayload) : IncomingMessage()
+        data class NetplayJoinRequested(val payload: NetplayJoinRequestedPayload) : IncomingMessage()
+        data class NetplayJoinDeclined(val payload: NetplayJoinDeclinedPayload) : IncomingMessage()
+        data class NetplayPeerCandidates(val payload: NetplayPeerCandidatesPayload) : IncomingMessage()
+        data class NetplayPunchStart(val payload: NetplayPunchStartPayload) : IncomingMessage()
+        data class NetplayHandshakeFailed(val payload: NetplayHandshakeFailedPayload) : IncomingMessage()
+        data class NetplayKicked(val payload: NetplayKickedPayload) : IncomingMessage()
+        data class NetplaySessionEnded(val payload: NetplaySessionEndedPayload) : IncomingMessage()
     }
 
     fun connect(token: String) {
@@ -255,7 +264,8 @@ class ArgosSocialService @Inject constructor(
                             game = payload.optJSONObject("game")?.let { gameJson ->
                                 PresenceGameInfo(
                                     title = gameJson.getString("title"),
-                                    coverThumb = gameJson.optString("cover_thumb", null)
+                                    coverThumb = gameJson.optString("cover_thumb", null),
+                                    netplaySession = parseNetplaySession(gameJson.optJSONObject("netplay_session"))
                                 )
                             },
                             deviceName = payload.optString("device_name", null),
@@ -657,6 +667,100 @@ class ArgosSocialService @Inject constructor(
                     missedPongs = 0
                     if (BuildConfig.DEBUG) Log.v(TAG, "Pong received")
                     null
+                }
+
+                MessageTypes.NETPLAY_READY -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplayReady(
+                            NetplayReadyPayload(
+                                sessionId = payload.getString("session_id"),
+                                sessionKey = payload.getString("session_key"),
+                                protocolVersion = payload.getInt("protocol_version"),
+                                assignedPort = if (payload.has("assigned_port")) payload.optInt("assigned_port") else null
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_JOIN_REQUESTED -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplayJoinRequested(
+                            NetplayJoinRequestedPayload(
+                                sessionId = payload.getString("session_id"),
+                                fromUserId = payload.getString("from_user_id"),
+                                fromUsername = payload.getString("from_username")
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_JOIN_DECLINED -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplayJoinDeclined(
+                            NetplayJoinDeclinedPayload(
+                                sessionId = payload.getString("session_id"),
+                                reason = payload.optString("reason", "declined")
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_PEER_CANDIDATES -> {
+                    if (payload != null) {
+                        val candidates = parseNetplayCandidates(payload.optJSONArray("candidates"))
+                        IncomingMessage.NetplayPeerCandidates(
+                            NetplayPeerCandidatesPayload(
+                                sessionId = payload.getString("session_id"),
+                                peerUserId = payload.getString("peer_user_id"),
+                                candidates = candidates
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_PUNCH_START -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplayPunchStart(
+                            NetplayPunchStartPayload(
+                                sessionId = payload.getString("session_id"),
+                                startAtUnixMs = payload.getLong("start_at_unix_ms"),
+                                serverNowUnixMs = payload.getLong("server_now_unix_ms")
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_HANDSHAKE_FAILED -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplayHandshakeFailed(
+                            NetplayHandshakeFailedPayload(
+                                sessionId = payload.getString("session_id"),
+                                reason = payload.optString("reason", "unknown")
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_KICKED -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplayKicked(
+                            NetplayKickedPayload(
+                                sessionId = payload.getString("session_id"),
+                                reason = payload.optString("reason", null)
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_SESSION_ENDED -> {
+                    if (payload != null) {
+                        IncomingMessage.NetplaySessionEnded(
+                            NetplaySessionEndedPayload(
+                                sessionId = payload.getString("session_id"),
+                                reason = payload.optString("reason", null)
+                            )
+                        )
+                    } else null
                 }
 
                 else -> IncomingMessage.Raw(type, payload?.toString() ?: "{}")
@@ -1133,7 +1237,8 @@ class ArgosSocialService @Inject constructor(
                     currentGame = presenceObj?.optJSONObject("game")?.let { gameJson ->
                         PresenceGameInfo(
                             title = gameJson.getString("title"),
-                            coverThumb = gameJson.optString("cover_thumb", null)
+                            coverThumb = gameJson.optString("cover_thumb", null),
+                            netplaySession = parseNetplaySession(gameJson.optJSONObject("netplay_session"))
                         )
                     },
                     deviceName = presenceObj?.optString("device_name", null),
@@ -1323,6 +1428,128 @@ class ArgosSocialService @Inject constructor(
             Log.w(TAG, "Failed to parse community follow", e)
             null
         }
+    }
+
+    private fun parseNetplaySession(obj: JSONObject?): NetplaySession? {
+        if (obj == null) return null
+        return try {
+            NetplaySession(
+                sessionId = obj.getString("session_id"),
+                gameIgdbId = if (obj.has("game_igdb_id")) obj.optInt("game_igdb_id") else null,
+                coreId = obj.getString("core_id"),
+                romHashPrefix = obj.getString("rom_hash_prefix"),
+                coreHash = obj.getString("core_hash"),
+                joinable = obj.optBoolean("joinable", false),
+                protocolVersion = obj.getInt("protocol_version")
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse netplay_session", e)
+            null
+        }
+    }
+
+    private fun parseNetplayCandidates(array: org.json.JSONArray?): List<NetplayCandidate> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).mapNotNull { i ->
+            try {
+                val obj = array.getJSONObject(i)
+                NetplayCandidate(
+                    type = obj.getString("type"),
+                    address = obj.getString("address"),
+                    port = obj.getInt("port"),
+                    priority = obj.optInt("priority", 0)
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to parse netplay candidate", e)
+                null
+            }
+        }
+    }
+
+    fun sendNetplayOpen(payload: NetplayOpenPayload): Boolean {
+        return send(MessageTypes.NETPLAY_OPEN, buildMap {
+            put("game_igdb_id", payload.gameIgdbId)
+            put("game_title", payload.gameTitle)
+            put("core_id", payload.coreId)
+            put("rom_hash_prefix", payload.romHashPrefix)
+            put("core_hash", payload.coreHash)
+            if (payload.reservedForUserId != null) put("reserved_for_user_id", payload.reservedForUserId)
+        })
+    }
+
+    fun sendNetplayClose(sessionId: String): Boolean {
+        return send(MessageTypes.NETPLAY_CLOSE, mapOf("session_id" to sessionId))
+    }
+
+    fun sendNetplayJoinRequest(payload: NetplayJoinRequestPayload): Boolean {
+        return send(MessageTypes.NETPLAY_JOIN_REQUEST, mapOf(
+            "session_id" to payload.sessionId,
+            "host_user_id" to payload.hostUserId
+        ))
+    }
+
+    fun sendNetplayJoinResponse(payload: NetplayJoinResponsePayload): Boolean {
+        return send(MessageTypes.NETPLAY_JOIN_RESPONSE, buildMap {
+            put("session_id", payload.sessionId)
+            put("joiner_user_id", payload.joinerUserId)
+            put("accept", payload.accept)
+            if (payload.reason != null) put("reason", payload.reason)
+        })
+    }
+
+    fun sendNetplayCandidates(payload: NetplayCandidatesPayload): Boolean {
+        val candidatesJson = org.json.JSONArray().apply {
+            payload.candidates.forEach { candidate ->
+                put(JSONObject().apply {
+                    put("type", candidate.type)
+                    put("address", candidate.address)
+                    put("port", candidate.port)
+                    put("priority", candidate.priority)
+                })
+            }
+        }
+        val json = JSONObject().apply {
+            put("type", MessageTypes.NETPLAY_CANDIDATES)
+            put("payload", JSONObject().apply {
+                put("session_id", payload.sessionId)
+                put("candidates", candidatesJson)
+            })
+        }
+        return webSocket?.send(json.toString()) ?: false
+    }
+
+    fun sendNetplayHandshakeResult(payload: NetplayHandshakeResultPayload): Boolean {
+        return send(MessageTypes.NETPLAY_HANDSHAKE_RESULT, buildMap {
+            put("session_id", payload.sessionId)
+            put("success", payload.success)
+            if (payload.measuredRttMs != null) put("measured_rtt_ms", payload.measuredRttMs)
+            if (payload.jitterMs != null) put("jitter_ms", payload.jitterMs)
+            if (payload.latchedCandidate != null) put("latched_candidate", payload.latchedCandidate)
+            if (payload.reason != null) put("reason", payload.reason)
+        })
+    }
+
+    fun sendNetplayHandshakeTelemetry(payload: NetplayHandshakeTelemetryPayload): Boolean {
+        return send(MessageTypes.NETPLAY_HANDSHAKE_TELEMETRY, buildMap {
+            put("outcome", payload.outcome)
+            if (payload.latchedCandidate != null) put("latched_candidate", payload.latchedCandidate)
+            if (payload.measuredRttMs != null) put("measured_rtt_ms", payload.measuredRttMs)
+            if (payload.measuredJitterMs != null) put("measured_jitter_ms", payload.measuredJitterMs)
+            if (payload.natHint != null) put("nat_hint", payload.natHint)
+            if (payload.regionPairHint != null) put("region_pair_hint", payload.regionPairHint)
+        })
+    }
+
+    fun sendNetplayLeave(sessionId: String): Boolean {
+        return send(MessageTypes.NETPLAY_LEAVE, mapOf("session_id" to sessionId))
+    }
+
+    fun sendNetplayKick(sessionId: String, joinerUserId: String, reason: String? = null): Boolean {
+        return send(MessageTypes.NETPLAY_KICK, buildMap {
+            put("session_id", sessionId)
+            put("joiner_user_id", joinerUserId)
+            if (reason != null) put("reason", reason)
+        })
     }
 
     private fun jsonObjectToMap(obj: JSONObject): Map<String, Any?> {
