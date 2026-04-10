@@ -107,6 +107,10 @@ class GLRetroView(
     var portResolver: PortResolver? = null
     var keyMapper: KeyMapper? = null
 
+    @Volatile var netplayTick: (() -> Unit)? = null
+    @Volatile var netplayLocalPort: Int? = null
+    @Volatile var netplayKeyIntercept: ((port: Int, action: Int, keyCode: Int) -> Unit)? = null
+
     private val openGLESVersion: Int
 
     private var isGameLoaded = false
@@ -166,6 +170,12 @@ class GLRetroView(
     }
 
     fun sendKeyEvent(action: Int, keyCode: Int, port: Int = 0) {
+        val intercept = netplayKeyIntercept
+        val gatedPort = netplayLocalPort
+        intercept?.invoke(port, action, keyCode)
+        if (intercept != null && gatedPort != null && port == gatedPort) {
+            return
+        }
         LibretroDroid.onKeyEvent(port, action, keyCode)
     }
 
@@ -472,6 +482,18 @@ class GLRetroView(
         private var bfiShowBlackNext = false
 
         override fun onDrawFrame(gl: GL10) = catchExceptions {
+            val tick = netplayTick
+            if (tick != null) {
+                if (isEmulationReady) {
+                    tick()
+                    lifecycle?.coroutineScope?.launch {
+                        retroGLEventsSubject.emit(GLRetroEvents.FrameRendered)
+                    }
+                } else {
+                    LibretroDroid.renderFrameOnly()
+                }
+                return@catchExceptions
+            }
             if (isEmulationReady) {
                 if (blackFrameInsertion) {
                     if (bfiShowBlackNext) {
