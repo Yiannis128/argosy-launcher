@@ -67,6 +67,7 @@ import com.nendo.argosy.data.netplay.CandidateGatherer
 import com.nendo.argosy.data.netplay.CoreHashCache
 import com.nendo.argosy.data.netplay.NetplayHandshake
 import com.nendo.argosy.data.netplay.NetplaySessionManager
+import com.nendo.argosy.data.netplay.NetplaySessionRules
 import com.nendo.argosy.data.netplay.RomHashComputer
 import com.nendo.argosy.data.social.ArgosSocialService
 import com.nendo.argosy.data.social.NetplayOpenPayload
@@ -79,9 +80,9 @@ import com.nendo.argosy.libretro.ui.cheats.CheatsScreen
 import com.nendo.argosy.libretro.ui.cheats.CheatsTab
 import com.nendo.argosy.libretro.ui.AchievementPopup
 import com.nendo.argosy.libretro.ui.AutoRestorePrompt
-import com.nendo.argosy.libretro.ui.DebugNetplayJoinDialog
 import com.nendo.argosy.libretro.ui.InGameMenu
 import com.nendo.argosy.libretro.ui.InGameMenuAction
+import com.nendo.argosy.libretro.ui.NetplayMenuRole
 import com.nendo.argosy.libretro.ui.InGameStateManager
 import com.nendo.argosy.libretro.ui.StateManagerViewMode
 import com.nendo.argosy.libretro.ui.InGameControlsAction
@@ -199,13 +200,15 @@ class LibretroActivity : ComponentActivity() {
     private var pendingSaveScreenshot: Bitmap? = null
 
     private var netplaySessionManager: NetplaySessionManager? = null
-    private var debugNetplayActive by mutableStateOf(false)
-    private var debugNetplayJoinDialogVisible by mutableStateOf(false)
+    private var netplaySessionRules: NetplaySessionRules? = null
+    private var netplayInSession by mutableStateOf(false)
+    private var netplayRole: NetplayMenuRole? by mutableStateOf(null)
+    private var savedOrientation: Int = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var corePath: String = ""
     private var resolvedCoreId: String? = null
 
     private val isAnyMenuOpen: Boolean
-        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || debugNetplayJoinDialogVisible
+        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -521,6 +524,7 @@ class LibretroActivity : ComponentActivity() {
             scope = lifecycleScope
         )
         cheatManager.setRetroView(retroView)
+        netplaySessionRules?.cheatSessionManager = cheatManager
     }
 
     private fun initializeHotkeyDispatcher() {
@@ -531,15 +535,16 @@ class LibretroActivity : ComponentActivity() {
             getRetroView = { retroView },
             showToast = { msg -> inGameMessage = msg },
             isHardcoreMode = { hardcoreMode },
+            isNetplayInSession = { netplayInSession },
             onShowMenu = ::showMenu,
             onFastForwardChanged = { ff ->
-                if (ff && !isFastForwarding && videoSettings.fastForwardEnabled) {
+                if (!netplayInSession && ff && !isFastForwarding && videoSettings.fastForwardEnabled) {
                     isFastForwarding = true
                     retroView.frameSpeed = videoSettings.fastForwardSpeed
                 }
             },
             onRewindChanged = { rw ->
-                if (rw && !isRewinding) {
+                if (!netplayInSession && rw && !isRewinding) {
                     isRewinding = true
                     retroView.isRewinding = true
                     retroView.frameSpeed = 1
@@ -594,20 +599,9 @@ class LibretroActivity : ComponentActivity() {
                         onFocusChange = { menuFocusIndex = it },
                         onAction = ::handleMenuAction,
                         isHardcoreMode = hardcoreMode,
-                        debugNetplayVisible = isNetplayDebugAvailable(),
-                        debugNetplayActive = debugNetplayActive
-                    )
-                }
-                if (debugNetplayJoinDialogVisible) {
-                    activeMenuHandler = DebugNetplayJoinDialog(
-                        onDismiss = {
-                            debugNetplayJoinDialogVisible = false
-                            menuVisible = true
-                        },
-                        onConfirm = { sessionId, hostId ->
-                            debugNetplayJoinDialogVisible = false
-                            handleDebugNetplayJoin(sessionId, hostId)
-                        }
+                        netplaySupported = isNetplayCoreSupported(),
+                        isInNetplaySession = netplayInSession,
+                        netplayRole = netplayRole
                     )
                 }
                 if (cheatsMenuVisible) {
@@ -704,7 +698,7 @@ class LibretroActivity : ComponentActivity() {
                     activeMenuHandler = null
                 }
                 androidx.compose.runtime.LaunchedEffect(isAnyMenuOpen) {
-                    if (!isAnyMenuOpen) {
+                    if (!isAnyMenuOpen && !netplayInSession) {
                         retroView.suppressAutoResume = false
                         retroView.resumeEmulation()
                     }
@@ -961,39 +955,62 @@ class LibretroActivity : ComponentActivity() {
                 performAutoSaveState()
                 finish()
             }
-            InGameMenuAction.DebugNetplayOpenServer -> {
+            InGameMenuAction.OpenToFriends -> {
                 hideMenu()
-                handleDebugNetplayOpenServer()
+                handleNetplayOpenToFriends()
             }
-            InGameMenuAction.DebugNetplayJoin -> {
-                menuVisible = false
-                debugNetplayJoinDialogVisible = true
-            }
-            InGameMenuAction.DebugNetplayClose -> {
+            InGameMenuAction.InviteFriend -> {
                 hideMenu()
-                handleDebugNetplayClose()
+                inGameMessage = "Friend picker coming soon"
+            }
+            InGameMenuAction.CloseNetplaySession -> {
+                hideMenu()
+                handleNetplayCloseSession()
             }
         }
     }
 
     private fun initializeNetplaySessionManager() {
-        if (!BuildConfig.DEBUG) return
         val handshake = NetplayHandshake(
             candidateGatherer = CandidateGatherer(),
             socialService = argosSocialService
         )
+        val rules = NetplaySessionRules(
+            retroView = retroView,
+            raSessionManager = { raSession },
+            onFastForwardRelease = {
+                if (isFastForwarding) {
+                    isFastForwarding = false
+                    retroView.frameSpeed = 1
+                }
+            }
+        )
+        netplaySessionRules = rules
         val manager = NetplaySessionManager(
             socialService = argosSocialService,
             handshake = handshake,
-            retroView = retroView
+            retroView = retroView,
+            sessionRules = rules
         )
         netplaySessionManager = manager
         lifecycleScope.launch {
             manager.sessionState.collect { state ->
-                debugNetplayActive = when (state) {
-                    is NetplaySessionState.Idle,
-                    is NetplaySessionState.Error -> false
-                    else -> true
+                when (state) {
+                    is NetplaySessionState.Connected -> {
+                        if (!netplayInSession) {
+                            savedOrientation = requestedOrientation
+                            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                        }
+                        netplayInSession = true
+                    }
+                    is NetplaySessionState.Idle -> {
+                        if (netplayInSession) {
+                            requestedOrientation = savedOrientation
+                        }
+                        netplayInSession = false
+                        netplayRole = null
+                    }
+                    else -> { }
                 }
                 if (state is NetplaySessionState.JoinRequestReceived) {
                     launch { manager.acceptJoin(state.fromUserId) }
@@ -1002,8 +1019,7 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun isNetplayDebugAvailable(): Boolean {
-        if (!BuildConfig.DEBUG) return false
+    private fun isNetplayCoreSupported(): Boolean {
         val coreId = resolvedCoreId ?: return false
         val core = LibretroCoreRegistry.getCoreById(coreId) ?: return false
         return core.netplaySupport == NetplaySupportLevel.SUPPORTED
@@ -1023,7 +1039,7 @@ class LibretroActivity : ComponentActivity() {
         )
     }
 
-    private fun handleDebugNetplayOpenServer() {
+    private fun handleNetplayOpenToFriends() {
         val manager = netplaySessionManager ?: run {
             inGameMessage = "Netplay manager unavailable"
             return
@@ -1032,31 +1048,28 @@ class LibretroActivity : ComponentActivity() {
             inGameMessage = "Netplay: failed to compute hashes"
             return
         }
+        netplayRole = NetplayMenuRole.Host
         lifecycleScope.launch {
             val result = manager.openServer(payload)
             inGameMessage = result.fold(
-                onSuccess = { id -> "Netplay opened: ${id.take(8)}" },
-                onFailure = { e -> "Netplay open failed: ${e.message}" }
+                onSuccess = { _ -> "Netplay session opened to friends" },
+                onFailure = { e ->
+                    netplayRole = null
+                    "Netplay open failed: ${e.message}"
+                }
             )
         }
     }
 
-    private fun handleDebugNetplayJoin(sessionId: String, hostUserId: String) {
+    private fun handleNetplayCloseSession() {
         val manager = netplaySessionManager ?: return
+        val role = netplayRole
         lifecycleScope.launch {
-            runCatching { manager.joinSession(sessionId, hostUserId) }
-                .onFailure { inGameMessage = "Join failed: ${it.message}" }
-        }
-    }
-
-    private fun handleDebugNetplayClose() {
-        val manager = netplaySessionManager ?: return
-        lifecycleScope.launch {
-            if (manager.sessionState.value is NetplaySessionState.Waiting ||
-                manager.sessionState.value is NetplaySessionState.Connected ||
-                manager.sessionState.value is NetplaySessionState.Handshaking) {
-                val isHost = true
-                if (isHost) manager.closeServer() else manager.leaveSession()
+            val state = manager.sessionState.value
+            if (state is NetplaySessionState.Waiting ||
+                state is NetplaySessionState.Connected ||
+                state is NetplaySessionState.Handshaking) {
+                if (role == NetplayMenuRole.Guest) manager.leaveSession() else manager.closeServer()
             }
         }
     }
@@ -1289,16 +1302,20 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun showMenu() {
-        retroView.pauseEmulation()
-        retroView.suppressAutoResume = true
+        if (!netplayInSession) {
+            retroView.pauseEmulation()
+            retroView.suppressAutoResume = true
+        }
         menuFocusIndex = 0
         menuVisible = true
     }
 
     private fun hideMenu() {
         menuVisible = false
-        retroView.suppressAutoResume = false
-        retroView.resumeEmulation()
+        if (!netplayInSession) {
+            retroView.suppressAutoResume = false
+            retroView.resumeEmulation()
+        }
     }
 
     private fun enterImmersiveMode() {
@@ -1408,6 +1425,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        gracefullyEndNetplaySessionIfActive()
         if (coreLoadedSuccessfully) {
             performAutoSaveState()
             saveStateManager.saveSram(retroView)
@@ -1417,6 +1435,17 @@ class LibretroActivity : ComponentActivity() {
             retroView.onPause()
         }
         super.onPause()
+    }
+
+    private fun gracefullyEndNetplaySessionIfActive() {
+        val manager = netplaySessionManager ?: return
+        val state = manager.sessionState.value
+        if (state is NetplaySessionState.Idle) return
+        kotlinx.coroutines.runBlocking {
+            kotlinx.coroutines.withTimeoutOrNull(NETPLAY_CLOSE_TIMEOUT_MS) {
+                if (netplayRole == NetplayMenuRole.Guest) manager.leaveSession() else manager.closeServer()
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -1461,6 +1490,7 @@ class LibretroActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "LibretroActivity"
+        private const val NETPLAY_CLOSE_TIMEOUT_MS = 500L
 
         const val EXTRA_ROM_PATH = "rom_path"
         const val EXTRA_CORE_PATH = "core_path"

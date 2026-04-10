@@ -10,6 +10,7 @@ class HotkeyDispatcher(
     private val getRetroView: () -> GLRetroView,
     private val showToast: (String) -> Unit,
     private val isHardcoreMode: () -> Boolean,
+    private val isNetplayInSession: () -> Boolean,
     private val onShowMenu: () -> Unit,
     private val onFastForwardChanged: (Boolean) -> Unit,
     private val onRewindChanged: (Boolean) -> Unit,
@@ -24,7 +25,9 @@ class HotkeyDispatcher(
                 return true
             }
             HotkeyAction.QUICK_SAVE -> {
-                if (isHardcoreMode()) {
+                if (isNetplayInSession()) {
+                    showToast("Save states disabled during netplay")
+                } else if (isHardcoreMode()) {
                     showToast("Save states disabled in Hardcore mode")
                 } else {
                     val rv = getRetroView()
@@ -40,7 +43,9 @@ class HotkeyDispatcher(
                 return true
             }
             HotkeyAction.QUICK_LOAD -> {
-                if (isHardcoreMode()) {
+                if (isNetplayInSession()) {
+                    showToast("Save states disabled during netplay")
+                } else if (isHardcoreMode()) {
                     showToast("Save states disabled in Hardcore mode")
                 } else {
                     if (saveStateManager.performQuickLoad(getRetroView())) {
@@ -53,10 +58,12 @@ class HotkeyDispatcher(
                 return true
             }
             HotkeyAction.FAST_FORWARD -> {
+                if (isNetplayInSession()) return true
                 onFastForwardChanged(true)
                 return true
             }
             HotkeyAction.REWIND -> {
+                if (isNetplayInSession()) return true
                 if (isHardcoreMode()) {
                     showToast("Rewind disabled in Hardcore mode")
                     return true

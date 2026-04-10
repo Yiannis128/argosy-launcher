@@ -36,10 +36,12 @@ sealed class InGameMenuAction {
     data object Settings : InGameMenuAction()
     data object Cheats : InGameMenuAction()
     data object Quit : InGameMenuAction()
-    data object DebugNetplayOpenServer : InGameMenuAction()
-    data object DebugNetplayJoin : InGameMenuAction()
-    data object DebugNetplayClose : InGameMenuAction()
+    data object OpenToFriends : InGameMenuAction()
+    data object InviteFriend : InGameMenuAction()
+    data object CloseNetplaySession : InGameMenuAction()
 }
+
+enum class NetplayMenuRole { Host, Guest }
 
 @Composable
 fun InGameMenu(
@@ -50,25 +52,35 @@ fun InGameMenu(
     onFocusChange: (Int) -> Unit,
     onAction: (InGameMenuAction) -> Unit,
     isHardcoreMode: Boolean = false,
-    debugNetplayVisible: Boolean = false,
-    debugNetplayActive: Boolean = false
+    netplaySupported: Boolean = false,
+    isInNetplaySession: Boolean = false,
+    netplayRole: NetplayMenuRole? = null
 ): InputHandler {
-    val menuItems = remember(cheatsAvailable, statesSupported, isHardcoreMode, debugNetplayVisible, debugNetplayActive) {
+    val menuItems = remember(
+        cheatsAvailable,
+        statesSupported,
+        isHardcoreMode,
+        netplaySupported,
+        isInNetplaySession,
+        netplayRole
+    ) {
         buildList {
             add("Resume" to InGameMenuAction.Resume)
-            if (!isHardcoreMode && statesSupported) {
+            if (!isInNetplaySession && !isHardcoreMode && statesSupported) {
                 add("Manage States" to InGameMenuAction.ManageStates)
             }
+            // TODO(3b): quality indicator row (host name + ping + quality label) when in session
             add("Settings" to InGameMenuAction.Settings)
-            if (cheatsAvailable) {
+            if (!isInNetplaySession && cheatsAvailable) {
                 add("Cheats" to InGameMenuAction.Cheats)
             }
-            if (debugNetplayVisible) {
-                if (debugNetplayActive) {
-                    add("[DEBUG] Close Netplay Session" to InGameMenuAction.DebugNetplayClose)
+            if (netplaySupported) {
+                if (isInNetplaySession) {
+                    val closeLabel = if (netplayRole == NetplayMenuRole.Guest) "Leave Session" else "Close Server"
+                    add(closeLabel to InGameMenuAction.CloseNetplaySession)
                 } else {
-                    add("[DEBUG] Open Netplay Server" to InGameMenuAction.DebugNetplayOpenServer)
-                    add("[DEBUG] Join Netplay..." to InGameMenuAction.DebugNetplayJoin)
+                    add("Open to Friends" to InGameMenuAction.OpenToFriends)
+                    add("Invite Friend..." to InGameMenuAction.InviteFriend)
                 }
             }
             add("Quit Game" to InGameMenuAction.Quit)
