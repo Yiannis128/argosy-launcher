@@ -432,6 +432,10 @@ class SaveCacheManager @Inject constructor(
         saveCacheDao.setNote(cacheId, name?.takeIf { it.isNotBlank() })
     }
 
+    suspend fun channelExists(gameId: Long, channelName: String): Boolean = withContext(Dispatchers.IO) {
+        saveCacheDao.getByGameAndChannel(gameId, channelName) != null
+    }
+
     suspend fun copyToChannel(cacheId: Long, channelName: String): Long? = withContext(Dispatchers.IO) {
         val source = saveCacheDao.getById(cacheId)
         if (source == null) {

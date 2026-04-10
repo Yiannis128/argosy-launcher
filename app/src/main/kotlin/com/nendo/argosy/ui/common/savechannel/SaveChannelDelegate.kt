@@ -409,7 +409,8 @@ class SaveChannelDelegate @Inject constructor(
                                 it.copy(
                                     showRenameDialog = true,
                                     renameEntry = null,
-                                    renameText = ""
+                                    renameText = "",
+                                    renameMode = RenameMode.NEW_SLOT
                                 )
                             }
                             return
@@ -647,12 +648,12 @@ class SaveChannelDelegate @Inject constructor(
         if (state.saveFocusColumn != SaveFocusColumn.HISTORY) return
         val historyItem = state.focusedHistoryItem ?: return
         val entry = findEntryForHistoryItem(historyItem) ?: return
-        if (!entry.canBecomeChannel) return
         _state.update {
             it.copy(
                 showRenameDialog = true,
                 renameEntry = entry,
-                renameText = ""
+                renameText = "",
+                renameMode = RenameMode.SAVE_AS
             )
         }
     }
@@ -672,7 +673,8 @@ class SaveChannelDelegate @Inject constructor(
             it.copy(
                 showRenameDialog = true,
                 renameEntry = entry,
-                renameText = slot.channelName
+                renameText = slot.channelName,
+                renameMode = RenameMode.RENAME
             )
         }
     }
@@ -702,15 +704,34 @@ class SaveChannelDelegate @Inject constructor(
             return
         }
 
-        if (entry == null) {
-            confirmCreateNewSlot(scope, newName)
-            return
-        }
-
-        if (entry.isChannel) {
-            confirmRenameChannel(scope, entry, newName)
-        } else {
-            confirmCreateChannel(scope, entry, newName)
+        when (state.renameMode) {
+            RenameMode.NEW_SLOT -> {
+                scope.launch {
+                    if (saveCacheManager.channelExists(currentGameId, newName)) {
+                        notificationManager.showError("Slot '$newName' already exists")
+                        return@launch
+                    }
+                    confirmCreateNewSlot(scope, newName)
+                }
+            }
+            RenameMode.RENAME -> {
+                if (entry == null) return
+                confirmRenameChannel(scope, entry, newName)
+            }
+            RenameMode.SAVE_AS -> {
+                if (entry == null) return
+                if (newName == entry.channelName) {
+                    notificationManager.showError("New slot name must differ from the source")
+                    return
+                }
+                scope.launch {
+                    if (saveCacheManager.channelExists(currentGameId, newName)) {
+                        notificationManager.showError("Slot '$newName' already exists")
+                        return@launch
+                    }
+                    confirmCreateChannel(scope, entry, newName)
+                }
+            }
         }
     }
 

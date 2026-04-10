@@ -170,8 +170,7 @@ fun SaveChannelModal(
 
         if (state.showRenameDialog) {
             RenameChannelOverlay(
-                isCreate = state.renameEntry == null ||
-                    !state.renameEntry.isChannel,
+                mode = state.renameMode,
                 text = state.renameText,
                 onTextChange = onRenameTextChange
             )
@@ -730,7 +729,7 @@ private fun buildFooterHints(state: SaveChannelState): List<FooterHintItem> {
                 SaveFocusColumn.HISTORY -> {
                     hints.add(FooterHintItem(InputButton.A, "Restore"))
                     if (state.canLockAsSlot) {
-                        hints.add(FooterHintItem(InputButton.Y, "Lock"))
+                        hints.add(FooterHintItem(InputButton.Y, "Save As"))
                     }
                 }
             }
@@ -780,20 +779,29 @@ private fun RestoreConfirmationOverlay() {
 
 @Composable
 private fun RenameChannelOverlay(
-    isCreate: Boolean,
+    mode: RenameMode,
     text: String,
     onTextChange: (String) -> Unit
 ) {
+    val title = when (mode) {
+        RenameMode.SAVE_AS -> "SAVE AS"
+        RenameMode.NEW_SLOT -> "NEW SAVE SLOT"
+        RenameMode.RENAME -> "RENAME SAVE SLOT"
+    }
+    val prompt = when (mode) {
+        RenameMode.SAVE_AS -> "Enter a name for this save slot"
+        RenameMode.NEW_SLOT -> "Enter a name for this save slot"
+        RenameMode.RENAME -> "Enter a new name"
+    }
     NestedModal(
-        title = if (isCreate) "CREATE SAVE SLOT" else "RENAME SAVE SLOT",
+        title = title,
         footerHints = listOf(
             InputButton.A to "Confirm",
             InputButton.B to "Cancel"
         )
     ) {
         Text(
-            text = if (isCreate) "Enter a name for this save slot"
-                else "Enter a new name",
+            text = prompt,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.CenterHorizontally)

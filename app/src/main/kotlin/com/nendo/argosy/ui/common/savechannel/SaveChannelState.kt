@@ -5,6 +5,8 @@ import com.nendo.argosy.domain.model.UnifiedStateEntry
 
 enum class SaveTab { SAVES, STATES }
 
+enum class RenameMode { SAVE_AS, RENAME, NEW_SLOT }
+
 data class SaveChannelState(
     val isVisible: Boolean = false,
     val isLoading: Boolean = false,
@@ -30,6 +32,7 @@ data class SaveChannelState(
     val showRenameDialog: Boolean = false,
     val renameEntry: UnifiedSaveEntry? = null,
     val renameText: String = "",
+    val renameMode: RenameMode = RenameMode.SAVE_AS,
     val showDeleteConfirmation: Boolean = false,
     val deleteSelectedEntry: UnifiedSaveEntry? = null,
     val showVersionMismatchDialog: Boolean = false,
