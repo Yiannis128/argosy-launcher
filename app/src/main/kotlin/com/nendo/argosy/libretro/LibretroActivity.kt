@@ -1117,12 +1117,16 @@ class LibretroActivity : ComponentActivity() {
                     }
                     is NetplaySessionState.Opening -> {
                         if (isGuestJoinedSession) guestSessionEverStarted = true
+                        retroView.suppressAutoResume = false
+                        retroView.resumeEmulation()
                         if (netplayRole == NetplayMenuRole.Guest) {
                             netplayProgressState = NetplayProgressState(NetplayProgressStage.RequestingJoin)
                         }
                     }
                     is NetplaySessionState.Handshaking -> {
                         if (isGuestJoinedSession) guestSessionEverStarted = true
+                        retroView.suppressAutoResume = false
+                        retroView.resumeEmulation()
                         netplayProgressState = NetplayProgressState(NetplayProgressStage.Connecting)
                     }
                     is NetplaySessionState.Reconnecting -> {
@@ -1220,6 +1224,8 @@ class LibretroActivity : ComponentActivity() {
             return
         }
         netplayRole = NetplayMenuRole.Host
+        retroView.suppressAutoResume = false
+        retroView.resumeEmulation()
         lifecycleScope.launch {
             val result = manager.openServer(payload)
             inGameMessage = result.fold(
