@@ -422,8 +422,8 @@ class NetplaySessionManager(
             onSessionEnd = { reason -> scope.launch { handleSessionEnd(reason) } }
         )
         activeDriver = driver
-        retroView.netplayKeyIntercept = { port, action, keyCode ->
-            inputShadow.onAndroidKeyEvent(port, action, keyCode)
+        retroView.netplayKeyIntercept = { _, action, keyCode ->
+            inputShadow.onAndroidKeyEvent(LOCAL_HOST_PORT, action, keyCode)
         }
         retroView.netplayLocalPort = null
         retroView.netplayTick = { driver.tick() }
@@ -459,8 +459,8 @@ class NetplaySessionManager(
             onSessionEnd = { reason -> scope.launch { handleSessionEnd(reason) } }
         )
         activeDriver = driver
-        retroView.netplayKeyIntercept = { port, action, keyCode ->
-            inputShadow.onAndroidKeyEvent(port, action, keyCode)
+        retroView.netplayKeyIntercept = { _, action, keyCode ->
+            inputShadow.onAndroidKeyEvent(GUEST_PORT, action, keyCode)
         }
         retroView.netplayLocalPort = GUEST_PORT
         retroView.netplayTick = { driver.tick() }
