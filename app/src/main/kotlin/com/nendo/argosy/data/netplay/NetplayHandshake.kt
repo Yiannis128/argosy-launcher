@@ -61,7 +61,10 @@ class NetplayHandshake(
         data class Failure(val reason: String) : HandshakeResult()
     }
 
-    suspend fun performHandshake(args: HandshakeArgs): HandshakeResult {
+    suspend fun performHandshake(
+        args: HandshakeArgs,
+        onRttBurstStarted: (() -> Unit)? = null
+    ): HandshakeResult {
         val localCandidates = try {
             candidateGatherer.gatherCandidates(args.localSocket)
         } catch (_: Throwable) {
@@ -125,6 +128,7 @@ class NetplayHandshake(
         }
 
         val (latchedCandidate, peerAddress) = latched
+        onRttBurstStarted?.invoke()
         val burst = runRttBurst(transport, peerAddress)
         if (burst == null) {
             transport.close()

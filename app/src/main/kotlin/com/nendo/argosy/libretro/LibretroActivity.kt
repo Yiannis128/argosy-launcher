@@ -1250,6 +1250,20 @@ class LibretroActivity : ComponentActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            manager.progressHint.collect { hint ->
+                val stage = when (hint) {
+                    NetplaySessionManager.ProgressHint.WaitingForHost -> NetplayProgressStage.WaitingForHost
+                    NetplaySessionManager.ProgressHint.Measuring -> NetplayProgressStage.Measuring
+                    NetplaySessionManager.ProgressHint.LoadingState -> NetplayProgressStage.LoadingState
+                    null -> null
+                }
+                if (stage != null && netplayProgressState?.stage != NetplayProgressStage.Failed) {
+                    netplayProgressState = NetplayProgressState(stage)
+                }
+            }
+        }
+
         val pending = pendingNetplayJoin
         if (pending != null) {
             pendingNetplayJoin = null

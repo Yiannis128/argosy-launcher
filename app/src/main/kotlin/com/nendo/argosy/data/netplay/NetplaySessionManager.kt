@@ -45,6 +45,11 @@ class NetplaySessionManager(
     private val _guestLeftEvents = MutableSharedFlow<GuestLeftEvent>(extraBufferCapacity = 8)
     val guestLeftEvents: SharedFlow<GuestLeftEvent> = _guestLeftEvents.asSharedFlow()
 
+    enum class ProgressHint { WaitingForHost, Measuring, LoadingState }
+
+    private val _progressHint = MutableStateFlow<ProgressHint?>(null)
+    val progressHint: StateFlow<ProgressHint?> = _progressHint.asStateFlow()
+
     data class GuestLeftEvent(val sessionId: String, val guestUserId: String, val reason: String?)
 
     private val inputShadow = NetplayInputShadow()
@@ -164,6 +169,7 @@ class NetplaySessionManager(
             _sessionState.value = NetplaySessionState.Error("send_failed")
             return
         }
+        _progressHint.value = ProgressHint.WaitingForHost
         val ready = when (val outcome = awaitReadyOrError()) {
             is ReadyOutcome.Ready -> outcome.message
             is ReadyOutcome.ServerError -> {
@@ -185,6 +191,7 @@ class NetplaySessionManager(
         activeSessionId = ready.payload.sessionId
         val sessionKey = decodeBase64(ready.payload.sessionKey)
         role = NetplayHandshake.Role.Guest
+        _progressHint.value = null
         _sessionState.value = NetplaySessionState.Handshaking(sessionId = ready.payload.sessionId, peerUserId = hostUserId)
         runHandshakeAsGuest(sessionId = ready.payload.sessionId, sessionKey = sessionKey, hostUserId = hostUserId)
     }
@@ -289,7 +296,8 @@ class NetplaySessionManager(
             punchStartChannel = punchStartChannel,
             scope = scope
         )
-        val result = handshake.performHandshake(args)
+        val result = handshake.performHandshake(args) { _progressHint.value = ProgressHint.Measuring }
+        _progressHint.value = null
         when (result) {
             is NetplayHandshake.HandshakeResult.Failure -> {
                 runCatching { localSocket.close() }
@@ -328,7 +336,8 @@ class NetplaySessionManager(
             punchStartChannel = punchStartChannel,
             scope = scope
         )
-        val result = handshake.performHandshake(args)
+        val result = handshake.performHandshake(args) { _progressHint.value = ProgressHint.Measuring }
+        _progressHint.value = null
         when (result) {
             is NetplayHandshake.HandshakeResult.Failure -> {
                 runCatching { localSocket.close() }
@@ -418,8 +427,10 @@ class NetplaySessionManager(
         scope.launch {
             runCatching {
                 sessionRules?.apply(NetplaySessionRules.ApplyContext(NetplaySessionRules.Role.Host))
+                _progressHint.value = ProgressHint.LoadingState
                 val state = retroView.serializeState()
                 driver.sendInitialSnapshot(state)
+                _progressHint.value = null
                 _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = guestUserId)
                 startSilenceMonitor(NetplaySessionState.PeerRole.Host)
             }.onFailure {
@@ -452,7 +463,9 @@ class NetplaySessionManager(
         scope.launch {
             runCatching {
                 sessionRules?.apply(NetplaySessionRules.ApplyContext(NetplaySessionRules.Role.Guest))
+                _progressHint.value = ProgressHint.LoadingState
                 _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = hostUserId)
+                _progressHint.value = null
                 startSilenceMonitor(NetplaySessionState.PeerRole.Guest)
             }.onFailure {
                 Log.w(TAG, "guest install failed: ${it.message}")
