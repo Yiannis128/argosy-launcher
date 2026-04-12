@@ -217,6 +217,7 @@ class LibretroActivity : ComponentActivity() {
     private var netplaySessionRules: NetplaySessionRules? = null
     private var netplayInSession by mutableStateOf(false)
     private var netplayRole: NetplayMenuRole? by mutableStateOf(null)
+    private var netplaySessionIsReserved by mutableStateOf(false)
     private var netplayProgressState by mutableStateOf<NetplayProgressState?>(null)
     private var netplayReconnecting by mutableStateOf(false)
     private var netplayDisconnectPromptVisible by mutableStateOf(false)
@@ -660,6 +661,7 @@ class LibretroActivity : ComponentActivity() {
                         netplaySupported = isNetplayCoreSupported(),
                         isInNetplaySession = netplayInSession,
                         netplayRole = netplayRole,
+                        netplaySessionIsReserved = netplaySessionIsReserved,
                         netplayQuality = quality
                     )
                 }
@@ -1050,9 +1052,26 @@ class LibretroActivity : ComponentActivity() {
                 hideMenu()
                 handleNetplayInviteFriend()
             }
+            InGameMenuAction.ClearReservation -> {
+                hideMenu()
+                handleNetplayClearReservation()
+            }
             InGameMenuAction.CloseNetplaySession -> {
                 hideMenu()
                 handleNetplayCloseSession()
+            }
+        }
+    }
+
+    private fun handleNetplayClearReservation() {
+        val manager = netplaySessionManager ?: return
+        lifecycleScope.launch {
+            val ok = manager.reserveSession(null)
+            if (ok) {
+                netplaySessionIsReserved = false
+                inGameMessage = "Session open to all friends"
+            } else {
+                inGameMessage = "Failed to clear reservation"
             }
         }
     }
@@ -1107,6 +1126,7 @@ class LibretroActivity : ComponentActivity() {
                         }
                         netplayInSession = false
                         netplayRole = null
+                        netplaySessionIsReserved = false
                         netplayReconnecting = false
                         netplayDisconnectPromptVisible = false
                         if (isGuestJoinedSession && guestSessionEverStarted) {
@@ -1299,6 +1319,7 @@ class LibretroActivity : ComponentActivity() {
         lifecycleScope.launch {
             if (state is NetplaySessionState.Waiting || state is NetplaySessionState.Connected) {
                 val ok = manager.reserveSession(friend.userId)
+                if (ok) netplaySessionIsReserved = true
                 inGameMessage = if (ok) "Invited ${friend.displayName}" else "Invite failed"
             } else {
                 val payload = buildNetplayOpenPayload() ?: run {
@@ -1310,6 +1331,7 @@ class LibretroActivity : ComponentActivity() {
                 result.fold(
                     onSuccess = {
                         val reserved = manager.reserveSession(friend.userId)
+                        if (reserved) netplaySessionIsReserved = true
                         inGameMessage = if (reserved) "Invited ${friend.displayName}" else "Session opened; invite failed"
                     },
                     onFailure = { e ->

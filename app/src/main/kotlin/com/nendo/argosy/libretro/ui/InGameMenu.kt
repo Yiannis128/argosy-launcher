@@ -39,6 +39,7 @@ sealed class InGameMenuAction {
     data object Quit : InGameMenuAction()
     data object OpenToFriends : InGameMenuAction()
     data object InviteFriend : InGameMenuAction()
+    data object ClearReservation : InGameMenuAction()
     data object CloseNetplaySession : InGameMenuAction()
 }
 
@@ -78,6 +79,7 @@ fun InGameMenu(
     netplaySupported: Boolean = false,
     isInNetplaySession: Boolean = false,
     netplayRole: NetplayMenuRole? = null,
+    netplaySessionIsReserved: Boolean = false,
     netplayQuality: NetplayQualityInfo? = null
 ): InputHandler {
     val menuItems = remember(
@@ -86,7 +88,8 @@ fun InGameMenu(
         isHardcoreMode,
         netplaySupported,
         isInNetplaySession,
-        netplayRole
+        netplayRole,
+        netplaySessionIsReserved
     ) {
         buildList {
             add("Resume" to InGameMenuAction.Resume)
@@ -102,6 +105,9 @@ fun InGameMenu(
                 if (isInNetplaySession) {
                     if (netplayRole == NetplayMenuRole.Host) {
                         add("Invite Friend..." to InGameMenuAction.InviteFriend)
+                        if (netplaySessionIsReserved) {
+                            add("Open to All Friends" to InGameMenuAction.ClearReservation)
+                        }
                         add("Close Netplay Server" to InGameMenuAction.CloseNetplaySession)
                     } else {
                         add("Leave Netplay Session" to InGameMenuAction.CloseNetplaySession)
