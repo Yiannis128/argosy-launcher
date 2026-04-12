@@ -147,9 +147,6 @@ class SocialRepository @Inject constructor(
 
     private val _usersCache = mutableMapOf<String, SocialUser>()
 
-    private val _netplaySessionState = MutableStateFlow<NetplaySessionState>(NetplaySessionState.Idle)
-    val netplaySessionState: StateFlow<NetplaySessionState> = _netplaySessionState.asStateFlow()
-
     private val _netplayInvites = MutableSharedFlow<NetplayInvitePayload>(
         replay = 0,
         extraBufferCapacity = 4
@@ -481,15 +478,9 @@ class SocialRepository @Inject constructor(
                     }
                     is ArgosSocialService.IncomingMessage.NetplayJoinRequested -> {
                         Log.d(TAG, "NetplayJoinRequested: sessionId=${message.payload.sessionId}, from=${message.payload.fromUsername}")
-                        _netplaySessionState.value = NetplaySessionState.JoinRequestReceived(
-                            sessionId = message.payload.sessionId,
-                            fromUserId = message.payload.fromUserId,
-                            fromUsername = message.payload.fromUsername
-                        )
                     }
                     is ArgosSocialService.IncomingMessage.NetplayJoinDeclined -> {
                         Log.d(TAG, "NetplayJoinDeclined: sessionId=${message.payload.sessionId}, reason=${message.payload.reason}")
-                        _netplaySessionState.value = NetplaySessionState.Error(message.payload.reason)
                     }
                     is ArgosSocialService.IncomingMessage.NetplayPeerCandidates -> {
                         Log.d(TAG, "NetplayPeerCandidates: sessionId=${message.payload.sessionId}, count=${message.payload.candidates.size}")
@@ -499,15 +490,12 @@ class SocialRepository @Inject constructor(
                     }
                     is ArgosSocialService.IncomingMessage.NetplayHandshakeFailed -> {
                         Log.w(TAG, "NetplayHandshakeFailed: sessionId=${message.payload.sessionId}, reason=${message.payload.reason}")
-                        _netplaySessionState.value = NetplaySessionState.Error(message.payload.reason)
                     }
                     is ArgosSocialService.IncomingMessage.NetplayKicked -> {
                         Log.w(TAG, "NetplayKicked: sessionId=${message.payload.sessionId}, reason=${message.payload.reason}")
-                        _netplaySessionState.value = NetplaySessionState.Idle
                     }
                     is ArgosSocialService.IncomingMessage.NetplaySessionEnded -> {
                         Log.d(TAG, "NetplaySessionEnded: sessionId=${message.payload.sessionId}")
-                        _netplaySessionState.value = NetplaySessionState.Idle
                     }
                     is ArgosSocialService.IncomingMessage.NetplayInvite -> {
                         Log.d(TAG, "NetplayInvite: sessionId=${message.payload.sessionId}, host=${message.payload.hostUsername}")
