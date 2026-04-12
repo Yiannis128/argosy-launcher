@@ -40,6 +40,7 @@ import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.ui.components.MainDrawer
 import com.nendo.argosy.ui.components.QuickSettingsPanel
 import com.nendo.argosy.ui.components.QuickSettingsState
+import com.nendo.argosy.ui.components.NetplayInviteModal
 import com.nendo.argosy.ui.components.SaveConflictModal
 import com.nendo.argosy.ui.components.ScreenDimmerOverlay
 import com.nendo.argosy.ui.components.rememberScreenDimmerState
@@ -124,6 +125,8 @@ fun ArgosyApp(
     val saveConflictButtonIndex by viewModel.saveConflictButtonIndex.collectAsState()
     val backgroundConflictInfo by viewModel.backgroundConflictInfo.collectAsState()
     val backgroundConflictButtonIndex by viewModel.backgroundConflictButtonIndex.collectAsState()
+    val netplayInvitePrompt by viewModel.netplayInvitePrompt.collectAsState()
+    val netplayInviteFocusIndex by viewModel.netplayInviteFocusIndex.collectAsState()
     val screenDimmerState = rememberScreenDimmerState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -451,6 +454,39 @@ fun ArgosyApp(
         }
     }
 
+    val netplayInviteInputHandler = remember(viewModel) {
+        object : InputHandler {
+            override fun onLeft(): InputResult {
+                viewModel.moveNetplayInviteFocus(-1)
+                return InputResult.HANDLED
+            }
+            override fun onRight(): InputResult {
+                viewModel.moveNetplayInviteFocus(1)
+                return InputResult.HANDLED
+            }
+            override fun onUp(): InputResult {
+                viewModel.moveNetplayInviteFocus(-1)
+                return InputResult.HANDLED
+            }
+            override fun onDown(): InputResult {
+                viewModel.moveNetplayInviteFocus(1)
+                return InputResult.HANDLED
+            }
+            override fun onConfirm(): InputResult {
+                if (viewModel.netplayInviteFocusIndex.value == 1) {
+                    viewModel.acceptNetplayInvite()
+                } else {
+                    viewModel.dismissNetplayInvite()
+                }
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+            override fun onBack(): InputResult {
+                viewModel.dismissNetplayInvite()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+        }
+    }
+
     val dualModalInputHandler = remember(activity) {
         object : InputHandler {
             override fun onLeft(): InputResult {
@@ -540,12 +576,19 @@ fun ArgosyApp(
     }
 
     val isDualConflictMode = showDualOverlay || showSwappedInteractive
-    LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, resumeCount) {
+    LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, netplayInvitePrompt, resumeCount) {
         when {
+            netplayInvitePrompt != null -> inputDispatcher.subscribeDrawer(netplayInviteInputHandler)
             dualModalActive -> inputDispatcher.subscribeDrawer(dualModalInputHandler)
             saveConflictInfo != null && !isDualConflictMode -> inputDispatcher.subscribeDrawer(saveConflictInputHandler)
             backgroundConflictInfo != null -> inputDispatcher.subscribeDrawer(backgroundConflictInputHandler)
             else -> inputDispatcher.unsubscribeDrawer()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.netplayInviteLaunch.collect { intent ->
+            context.startActivity(intent)
         }
     }
 
@@ -1481,6 +1524,15 @@ fun ArgosyApp(
                     onKeepLocal = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL) },
                     onKeepServer = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER) },
                     onSkip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) }
+                )
+            }
+
+            netplayInvitePrompt?.let { invite ->
+                NetplayInviteModal(
+                    invite = invite,
+                    focusedButton = netplayInviteFocusIndex,
+                    onJoin = { viewModel.acceptNetplayInvite() },
+                    onDismiss = { viewModel.dismissNetplayInvite() }
                 )
             }
             }
