@@ -218,6 +218,7 @@ class LibretroActivity : ComponentActivity() {
     private var netplayInSession by mutableStateOf(false)
     private var netplayRole: NetplayMenuRole? by mutableStateOf(null)
     private var netplaySessionIsReserved by mutableStateOf(false)
+    private var lastJoinedToastPeerId: String? = null
     private var netplayProgressState by mutableStateOf<NetplayProgressState?>(null)
     private var netplayReconnecting by mutableStateOf(false)
     private var netplayDisconnectPromptVisible by mutableStateOf(false)
@@ -1104,6 +1105,7 @@ class LibretroActivity : ComponentActivity() {
                 when (state) {
                     is NetplaySessionState.Connected -> {
                         if (isGuestJoinedSession) guestSessionEverStarted = true
+                        val wasReconnecting = netplayReconnecting
                         if (!netplayInSession) {
                             savedOrientation = requestedOrientation
                             requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LOCKED
@@ -1111,7 +1113,15 @@ class LibretroActivity : ComponentActivity() {
                         netplayInSession = true
                         netplayReconnecting = false
                         netplayDisconnectPromptVisible = false
-                        netplayPeerDisplayName = resolveFriendDisplayName(state.peerUserId)
+                        val peerName = resolveFriendDisplayName(state.peerUserId)
+                        netplayPeerDisplayName = peerName
+                        if (netplayRole == NetplayMenuRole.Host &&
+                            !wasReconnecting &&
+                            lastJoinedToastPeerId != state.peerUserId
+                        ) {
+                            lastJoinedToastPeerId = state.peerUserId
+                            inGameMessage = "$peerName joined your session"
+                        }
                         if (netplayProgressState?.stage != NetplayProgressStage.Failed) {
                             netplayProgressState = NetplayProgressState(NetplayProgressStage.Ready)
                             delay(800)
@@ -1127,6 +1137,7 @@ class LibretroActivity : ComponentActivity() {
                         netplayInSession = false
                         netplayRole = null
                         netplaySessionIsReserved = false
+                        lastJoinedToastPeerId = null
                         netplayReconnecting = false
                         netplayDisconnectPromptVisible = false
                         if (isGuestJoinedSession && guestSessionEverStarted) {
