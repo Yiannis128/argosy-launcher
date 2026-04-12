@@ -71,6 +71,7 @@ import com.nendo.argosy.data.netplay.NetplaySessionRules
 import com.nendo.argosy.data.netplay.RomHashComputer
 import com.nendo.argosy.data.social.ArgosSocialService
 import com.nendo.argosy.data.social.NetplayOpenPayload
+import com.nendo.argosy.data.social.NetplaySessionMode
 import com.nendo.argosy.data.social.NetplaySessionState
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.ui.screens.common.AchievementUpdateBus
@@ -86,6 +87,8 @@ import com.nendo.argosy.libretro.ui.NetplayConnectionProgressOverlay
 import com.nendo.argosy.libretro.ui.NetplayFriendPickerDialog
 import com.nendo.argosy.libretro.ui.NetplayFriendPickerEntry
 import com.nendo.argosy.libretro.ui.NetplayHostDisconnectPrompt
+import com.nendo.argosy.libretro.ui.NetplayJoinRequestDialog
+import com.nendo.argosy.libretro.ui.NetplayModePickerDialog
 import com.nendo.argosy.libretro.ui.NetplayMenuRole
 import com.nendo.argosy.libretro.ui.NetplayProgressStage
 import com.nendo.argosy.libretro.ui.NetplayProgressState
@@ -226,9 +229,15 @@ class LibretroActivity : ComponentActivity() {
     private var netplayDisconnectPromptVisible by mutableStateOf(false)
     private var netplayDisconnectPromptPeer by mutableStateOf("Friend")
     private var netplayDisconnectPromptFocus by mutableStateOf(0)
+    private var netplayModePickerVisible by mutableStateOf(false)
+    private var netplayModePickerFocus by mutableStateOf(0)
     private var netplayFriendPickerVisible by mutableStateOf(false)
     private var netplayFriendPickerFocus by mutableStateOf(0)
     private var netplayFriendPickerEntries by mutableStateOf<List<NetplayFriendPickerEntry>>(emptyList())
+    private var netplayJoinRequestVisible by mutableStateOf(false)
+    private var netplayJoinRequestFocus by mutableStateOf(0)
+    private var netplayJoinRequestUsername by mutableStateOf("")
+    private var netplayJoinRequestUserId by mutableStateOf("")
     private var netplayPeerDisplayName by mutableStateOf("Friend")
     private var netplayLastRttMs by mutableStateOf<Int?>(null)
     private var netplayQualityWarningVisible by mutableStateOf(false)
@@ -244,7 +253,8 @@ class LibretroActivity : ComponentActivity() {
 
     private val isAnyMenuOpen: Boolean
         get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible ||
-            netplayProgressState != null || netplayDisconnectPromptVisible || netplayFriendPickerVisible || netplayQualityWarningVisible
+            netplayProgressState != null || netplayDisconnectPromptVisible || netplayFriendPickerVisible || netplayQualityWarningVisible ||
+            netplayModePickerVisible || netplayJoinRequestVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -675,6 +685,25 @@ class LibretroActivity : ComponentActivity() {
                         netplayQuality = quality
                     )
                 }
+                if (netplayModePickerVisible) {
+                    activeMenuHandler = NetplayModePickerDialog(
+                        focusedIndex = netplayModePickerFocus,
+                        onFocusChange = { netplayModePickerFocus = it },
+                        onSelectOpen = {
+                            netplayModePickerVisible = false
+                            handleNetplayOpenWithMode(NetplaySessionMode.OPEN)
+                        },
+                        onSelectPrivate = {
+                            netplayModePickerVisible = false
+                            handleNetplayOpenWithMode(NetplaySessionMode.PRIVATE)
+                        },
+                        onSelectInvite = {
+                            netplayModePickerVisible = false
+                            handleNetplayInviteFriend()
+                        },
+                        onDismiss = { netplayModePickerVisible = false }
+                    )
+                }
                 if (netplayFriendPickerVisible) {
                     activeMenuHandler = NetplayFriendPickerDialog(
                         friends = netplayFriendPickerEntries,
@@ -682,6 +711,15 @@ class LibretroActivity : ComponentActivity() {
                         onFocusChange = { netplayFriendPickerFocus = it },
                         onSelect = ::onNetplayFriendPicked,
                         onDismiss = { netplayFriendPickerVisible = false }
+                    )
+                }
+                if (netplayJoinRequestVisible) {
+                    activeMenuHandler = NetplayJoinRequestDialog(
+                        username = netplayJoinRequestUsername,
+                        focusedIndex = netplayJoinRequestFocus,
+                        onFocusChange = { netplayJoinRequestFocus = it },
+                        onAccept = ::handleJoinRequestAccept,
+                        onDecline = ::handleJoinRequestDecline
                     )
                 }
                 if (netplayDisconnectPromptVisible) {
@@ -1067,7 +1105,8 @@ class LibretroActivity : ComponentActivity() {
             }
             InGameMenuAction.OpenToFriends -> {
                 hideMenu()
-                handleNetplayOpenToFriends()
+                netplayModePickerFocus = 0
+                netplayModePickerVisible = true
             }
             InGameMenuAction.InviteFriend -> {
                 hideMenu()
@@ -1090,6 +1129,11 @@ class LibretroActivity : ComponentActivity() {
             val ok = manager.reserveSession(null)
             if (ok) {
                 netplaySessionIsReserved = false
+                manager.sessionMode = NetplaySessionMode.OPEN
+                val head = manager.joinRequestQueue.value.firstOrNull()
+                if (head != null) {
+                    manager.acceptJoin(head.fromUserId)
+                }
                 inGameMessage = "Session open to all friends"
             } else {
                 inGameMessage = "Failed to clear reservation"
@@ -1264,6 +1308,9 @@ class LibretroActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch {
+            manager.joinRequestQueue.collect { updateJoinRequestModal(manager) }
+        }
+        lifecycleScope.launch {
             manager.qualityWarningPending.collect { warning ->
                 if (warning != null) {
                     netplayQualityWarningRttMs = warning.measuredRttMs
@@ -1352,7 +1399,7 @@ class LibretroActivity : ComponentActivity() {
         )
     }
 
-    private fun handleNetplayOpenToFriends() {
+    private fun handleNetplayOpenWithMode(mode: NetplaySessionMode) {
         val manager = netplaySessionManager ?: run {
             inGameMessage = "Netplay manager unavailable"
             return
@@ -1361,13 +1408,21 @@ class LibretroActivity : ComponentActivity() {
             inGameMessage = "Netplay: failed to compute hashes"
             return
         }
+        manager.sessionMode = mode
         netplayRole = NetplayMenuRole.Host
         retroView.suppressAutoResume = false
         retroView.resumeEmulation()
         lifecycleScope.launch {
             val result = manager.openServer(payload)
             inGameMessage = result.fold(
-                onSuccess = { _ -> "Netplay session opened to friends" },
+                onSuccess = { _ ->
+                    val label = when (mode) {
+                        NetplaySessionMode.OPEN -> "open"
+                        NetplaySessionMode.PRIVATE -> "private"
+                        NetplaySessionMode.INVITE_ONLY -> "invite-only"
+                    }
+                    "Netplay session opened ($label)"
+                },
                 onFailure = { e ->
                     netplayRole = null
                     "Netplay open failed: ${e.message}"
@@ -1405,6 +1460,7 @@ class LibretroActivity : ComponentActivity() {
         val state = manager.sessionState.value
         lifecycleScope.launch {
             if (state is NetplaySessionState.Waiting || state is NetplaySessionState.Connected) {
+                manager.sessionMode = NetplaySessionMode.INVITE_ONLY
                 val ok = manager.reserveSession(friend.userId)
                 if (ok) netplaySessionIsReserved = true
                 inGameMessage = if (ok) "Invited ${friend.displayName}" else "Invite failed"
@@ -1413,6 +1469,7 @@ class LibretroActivity : ComponentActivity() {
                     inGameMessage = "Netplay: failed to compute hashes"
                     return@launch
                 }
+                manager.sessionMode = NetplaySessionMode.INVITE_ONLY
                 netplayRole = NetplayMenuRole.Host
                 val result = manager.openServer(payload)
                 result.fold(
@@ -1427,6 +1484,35 @@ class LibretroActivity : ComponentActivity() {
                     }
                 )
             }
+        }
+    }
+
+    private fun handleJoinRequestAccept() {
+        val manager = netplaySessionManager ?: return
+        val userId = netplayJoinRequestUserId
+        netplayJoinRequestVisible = false
+        lifecycleScope.launch { manager.acceptJoin(userId) }
+    }
+
+    private fun handleJoinRequestDecline() {
+        val manager = netplaySessionManager ?: return
+        val userId = netplayJoinRequestUserId
+        manager.declineJoin(userId, "host_declined")
+        updateJoinRequestModal(manager)
+    }
+
+    private fun updateJoinRequestModal(manager: com.nendo.argosy.data.netplay.NetplaySessionManager) {
+        val queue = manager.joinRequestQueue.value
+        val head = queue.firstOrNull()
+        if (head != null && manager.sessionMode == NetplaySessionMode.PRIVATE &&
+            manager.sessionState.value is NetplaySessionState.Waiting
+        ) {
+            netplayJoinRequestUserId = head.fromUserId
+            netplayJoinRequestUsername = head.fromUsername
+            netplayJoinRequestFocus = 0
+            netplayJoinRequestVisible = true
+        } else {
+            netplayJoinRequestVisible = false
         }
     }
 

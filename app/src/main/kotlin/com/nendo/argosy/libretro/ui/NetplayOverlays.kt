@@ -540,6 +540,213 @@ private fun NetplayPromptButton(
     }
 }
 
+@Composable
+fun NetplayModePickerDialog(
+    focusedIndex: Int,
+    onFocusChange: (Int) -> Unit,
+    onSelectOpen: () -> Unit,
+    onSelectPrivate: () -> Unit,
+    onSelectInvite: () -> Unit,
+    onDismiss: () -> Unit
+): InputHandler {
+    val currentFocus = rememberUpdatedState(focusedIndex)
+    val currentOnFocusChange = rememberUpdatedState(onFocusChange)
+    val currentOnSelectOpen = rememberUpdatedState(onSelectOpen)
+    val currentOnSelectPrivate = rememberUpdatedState(onSelectPrivate)
+    val currentOnSelectInvite = rememberUpdatedState(onSelectInvite)
+    val currentOnDismiss = rememberUpdatedState(onDismiss)
+
+    data class ModeOption(val label: String, val description: String, val onSelect: () -> Unit)
+    val options = remember {
+        listOf(
+            ModeOption("Open to Friends", "Anyone can join") { currentOnSelectOpen.value() },
+            ModeOption("Private", "Requires your approval") { currentOnSelectPrivate.value() },
+            ModeOption("Invite Friend...","Pick a specific friend") { currentOnSelectInvite.value() }
+        )
+    }
+
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onUp(): InputResult {
+                val next = (currentFocus.value - 1).mod(options.size)
+                currentOnFocusChange.value(next)
+                return InputResult.HANDLED
+            }
+            override fun onDown(): InputResult {
+                val next = (currentFocus.value + 1).mod(options.size)
+                currentOnFocusChange.value(next)
+                return InputResult.HANDLED
+            }
+            override fun onConfirm(): InputResult {
+                options.getOrNull(currentFocus.value)?.onSelect?.invoke()
+                return InputResult.HANDLED
+            }
+            override fun onBack(): InputResult {
+                currentOnDismiss.value()
+                return InputResult.HANDLED
+            }
+        }
+    }
+
+    NetplayScrim {
+        Surface(
+            modifier = Modifier
+                .widthIn(max = 380.dp)
+                .padding(32.dp)
+                .focusProperties { canFocus = false },
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Open Netplay Server",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    options.forEachIndexed { index, option ->
+                        ModePickerRow(
+                            label = option.label,
+                            description = option.description,
+                            isFocused = index == focusedIndex,
+                            onClick = option.onSelect
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    return inputHandler
+}
+
+@Composable
+private fun ModePickerRow(
+    label: String,
+    description: String,
+    isFocused: Boolean,
+    onClick: () -> Unit
+) {
+    val background = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (isFocused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val descColor = if (isFocused) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(background)
+            .clickableNoFocus(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 16.dp)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (isFocused) FontWeight.Bold else FontWeight.Normal
+        )
+        Text(
+            text = description,
+            color = descColor,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@Composable
+fun NetplayJoinRequestDialog(
+    username: String,
+    focusedIndex: Int,
+    onFocusChange: (Int) -> Unit,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit
+): InputHandler {
+    val currentFocus = rememberUpdatedState(focusedIndex)
+    val currentOnFocusChange = rememberUpdatedState(onFocusChange)
+    val currentOnAccept = rememberUpdatedState(onAccept)
+    val currentOnDecline = rememberUpdatedState(onDecline)
+
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onLeft(): InputResult {
+                if (currentFocus.value != 0) currentOnFocusChange.value(0)
+                return InputResult.HANDLED
+            }
+            override fun onRight(): InputResult {
+                if (currentFocus.value != 1) currentOnFocusChange.value(1)
+                return InputResult.HANDLED
+            }
+            override fun onConfirm(): InputResult {
+                if (currentFocus.value == 0) currentOnAccept.value() else currentOnDecline.value()
+                return InputResult.HANDLED
+            }
+            override fun onBack(): InputResult {
+                currentOnDecline.value()
+                return InputResult.HANDLED
+            }
+        }
+    }
+
+    NetplayScrim {
+        Surface(
+            modifier = Modifier
+                .widthIn(max = 420.dp)
+                .padding(32.dp)
+                .focusProperties { canFocus = false },
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Join Request",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "$username wants to join your session",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    NetplayPromptButton(
+                        text = "Accept",
+                        isFocused = focusedIndex == 0,
+                        onClick = onAccept,
+                        modifier = Modifier.weight(1f)
+                    )
+                    NetplayPromptButton(
+                        text = "Decline",
+                        isFocused = focusedIndex == 1,
+                        onClick = onDecline,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+
+    return inputHandler
+}
+
 fun mapSessionStateToProgress(
     stateName: String,
     errorMessage: String? = null
