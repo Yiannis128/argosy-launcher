@@ -35,8 +35,8 @@ class ArgosSocialService @Inject constructor(
     private val deviceId: String by lazy {
         Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
     }
-    private val deviceManufacturer: String = Build.MANUFACTURER
-    private val deviceModel: String = Build.MODEL
+    private val deviceManufacturer: String = Build.MANUFACTURER ?: ""
+    private val deviceModel: String = Build.MODEL ?: ""
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val moshi = Moshi.Builder().build()
 
@@ -166,6 +166,7 @@ class ArgosSocialService @Inject constructor(
         data class NetplayKicked(val payload: NetplayKickedPayload) : IncomingMessage()
         data class NetplaySessionEnded(val payload: NetplaySessionEndedPayload) : IncomingMessage()
         data class NetplayGuestLeft(val payload: NetplayGuestLeftPayload) : IncomingMessage()
+        data class NetplayInvite(val payload: NetplayInvitePayload) : IncomingMessage()
     }
 
     fun connect(token: String) {
@@ -240,6 +241,8 @@ class ArgosSocialService @Inject constructor(
             }
         })
     }
+
+    internal fun handleMessageForTest(text: String) = handleMessage(text)
 
     private fun handleMessage(text: String) {
         try {
@@ -771,6 +774,27 @@ class ArgosSocialService @Inject constructor(
                                 sessionId = payload.getString("session_id"),
                                 guestId = payload.getString("guest_id"),
                                 reason = payload.optString("reason", null)
+                            )
+                        )
+                    } else null
+                }
+
+                MessageTypes.NETPLAY_INVITE -> {
+                    if (payload != null) {
+                        val igdb = if (payload.has("game_igdb_id") && !payload.isNull("game_igdb_id")) {
+                            payload.getInt("game_igdb_id")
+                        } else null
+                        IncomingMessage.NetplayInvite(
+                            NetplayInvitePayload(
+                                sessionId = payload.getString("session_id"),
+                                hostUserId = payload.getString("host_user_id"),
+                                hostUsername = payload.getString("host_username"),
+                                gameTitle = payload.getString("game_title"),
+                                gameIgdbId = igdb,
+                                coreId = payload.getString("core_id"),
+                                romHashPrefix = payload.getString("rom_hash_prefix"),
+                                coreHash = payload.getString("core_hash"),
+                                protocolVersion = payload.getInt("protocol_version")
                             )
                         )
                     } else null

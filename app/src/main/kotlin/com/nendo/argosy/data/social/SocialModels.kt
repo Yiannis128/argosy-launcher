@@ -258,6 +258,7 @@ object MessageTypes {
     const val NETPLAY_KICKED = "netplay_kicked"
     const val NETPLAY_SESSION_ENDED = "netplay_session_ended"
     const val NETPLAY_GUEST_LEFT = "netplay_guest_left"
+    const val NETPLAY_INVITE = "netplay_invite"
 }
 
 @JsonClass(generateAdapter = true)

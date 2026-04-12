@@ -127,6 +127,19 @@ data class NetplayReserveRequestPayload(
 )
 
 @JsonClass(generateAdapter = true)
+data class NetplayInvitePayload(
+    @Json(name = "session_id") val sessionId: String,
+    @Json(name = "host_user_id") val hostUserId: String,
+    @Json(name = "host_username") val hostUsername: String,
+    @Json(name = "game_title") val gameTitle: String,
+    @Json(name = "game_igdb_id") val gameIgdbId: Int? = null,
+    @Json(name = "core_id") val coreId: String,
+    @Json(name = "rom_hash_prefix") val romHashPrefix: String,
+    @Json(name = "core_hash") val coreHash: String,
+    @Json(name = "protocol_version") val protocolVersion: Int
+)
+
+@JsonClass(generateAdapter = true)
 data class NetplayHandshakeTelemetryPayload(
     val outcome: String,
     @Json(name = "latched_candidate") val latchedCandidate: String? = null,

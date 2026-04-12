@@ -30,8 +30,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -146,6 +149,12 @@ class SocialRepository @Inject constructor(
 
     private val _netplaySessionState = MutableStateFlow<NetplaySessionState>(NetplaySessionState.Idle)
     val netplaySessionState: StateFlow<NetplaySessionState> = _netplaySessionState.asStateFlow()
+
+    private val _netplayInvites = MutableSharedFlow<NetplayInvitePayload>(
+        replay = 0,
+        extraBufferCapacity = 4
+    )
+    val netplayInvites: SharedFlow<NetplayInvitePayload> = _netplayInvites.asSharedFlow()
 
     val authState: StateFlow<SocialAuthManager.AuthState> = authManager.authState
     val serviceConnectionState: StateFlow<ArgosSocialService.ConnectionState> = socialService.connectionState
@@ -499,6 +508,10 @@ class SocialRepository @Inject constructor(
                     is ArgosSocialService.IncomingMessage.NetplaySessionEnded -> {
                         Log.d(TAG, "NetplaySessionEnded: sessionId=${message.payload.sessionId}")
                         _netplaySessionState.value = NetplaySessionState.Idle
+                    }
+                    is ArgosSocialService.IncomingMessage.NetplayInvite -> {
+                        Log.d(TAG, "NetplayInvite: sessionId=${message.payload.sessionId}, host=${message.payload.hostUsername}")
+                        _netplayInvites.tryEmit(message.payload)
                     }
                     else -> {}
                 }
