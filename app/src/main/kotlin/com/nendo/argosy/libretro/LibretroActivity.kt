@@ -1169,13 +1169,18 @@ class LibretroActivity : ComponentActivity() {
                         netplayReconnecting = false
                         netplayDisconnectPromptPeer = resolveFriendDisplayName(state.peerUserId)
                         netplayDisconnectPromptFocus = 0
-                        netplayDisconnectPromptVisible = true
-                        // Guest's tier-3 disconnect: no prompt, just close the emulator.
                         if (isGuestJoinedSession) {
+                            netplayDisconnectPromptVisible = false
+                            netplayProgressState = NetplayProgressState(
+                                NetplayProgressStage.Failed,
+                                "Disconnected from the session"
+                            )
                             launch {
                                 delay(1500)
                                 finish()
                             }
+                        } else {
+                            netplayDisconnectPromptVisible = true
                         }
                     }
                     is NetplaySessionState.Error -> {
