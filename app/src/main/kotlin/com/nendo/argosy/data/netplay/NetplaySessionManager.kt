@@ -284,13 +284,18 @@ class NetplaySessionManager(
         val pending = _qualityWarningPending.value ?: return
         _qualityWarningPending.value = null
         val result = pending.handshakeResult
-        installHostDriver(pending.sessionId, pending.peerUserId, NetplayHandshake.HandshakeResult.Success(
-            latchedCandidate = result.latchedCandidate,
-            transport = result.transport,
-            peerAddress = result.peerAddress,
-            measuredRttMs = result.measuredRttMs,
-            measuredJitterMs = result.measuredJitterMs
-        ))
+        installPeerDriver(
+            sessionId = pending.sessionId,
+            peerUserId = pending.peerUserId,
+            result = NetplayHandshake.HandshakeResult.Success(
+                latchedCandidate = result.latchedCandidate,
+                transport = result.transport,
+                peerAddress = result.peerAddress,
+                measuredRttMs = result.measuredRttMs,
+                measuredJitterMs = result.measuredJitterMs
+            ),
+            isHost = true
+        )
     }
 
     fun declineQualityWarning() {
@@ -346,7 +351,7 @@ class NetplaySessionManager(
                 )
             }
             is NetplayHandshake.HandshakeResult.Success -> {
-                installHostDriver(sessionId, guestUserId, result)
+                installPeerDriver(sessionId, guestUserId, result, isHost = true)
             }
         }
     }
@@ -376,16 +381,21 @@ class NetplaySessionManager(
                 _sessionState.value = NetplaySessionState.Error(result.reason)
             }
             is NetplayHandshake.HandshakeResult.QualityWarning -> {
-                installGuestDriver(sessionId, hostUserId, NetplayHandshake.HandshakeResult.Success(
-                    latchedCandidate = result.latchedCandidate,
-                    transport = result.transport,
-                    peerAddress = result.peerAddress,
-                    measuredRttMs = result.measuredRttMs,
-                    measuredJitterMs = result.measuredJitterMs
-                ))
+                installPeerDriver(
+                    sessionId = sessionId,
+                    peerUserId = hostUserId,
+                    result = NetplayHandshake.HandshakeResult.Success(
+                        latchedCandidate = result.latchedCandidate,
+                        transport = result.transport,
+                        peerAddress = result.peerAddress,
+                        measuredRttMs = result.measuredRttMs,
+                        measuredJitterMs = result.measuredJitterMs
+                    ),
+                    isHost = false
+                )
             }
             is NetplayHandshake.HandshakeResult.Success -> {
-                installGuestDriver(sessionId, hostUserId, result)
+                installPeerDriver(sessionId, hostUserId, result, isHost = false)
             }
         }
     }
@@ -437,66 +447,46 @@ class NetplaySessionManager(
         }
     }
 
-    private fun installHostDriver(sessionId: String, guestUserId: String, result: NetplayHandshake.HandshakeResult.Success) {
+    private fun installPeerDriver(
+        sessionId: String,
+        peerUserId: String,
+        result: NetplayHandshake.HandshakeResult.Success,
+        isHost: Boolean
+    ) {
         initialRttMs = result.measuredRttMs
-        val driver = NetplayHostDriver(
+        val lp = if (isHost) LOCAL_HOST_PORT else GUEST_PORT
+        val rp = if (isHost) GUEST_PORT else LOCAL_HOST_PORT
+        val driver = NetplayPeerDriver(
             retroView = retroView,
             transport = result.transport,
             initialPeerAddress = result.peerAddress,
-            peerUserId = guestUserId,
-            localPort = LOCAL_HOST_PORT,
-            guestPort = GUEST_PORT,
+            peerUserId = peerUserId,
+            localPort = lp,
+            remotePort = rp,
             scope = scope,
             onSessionEnd = { reason -> scope.launch { handleSessionEnd(reason) } }
         )
         activeDriver = driver
         com.swordfish.libretrodroid.LibretroDroid.setNetplayActive(true)
         retroView.netplayTick = { driver.tick() }
-        activePeerUserId = guestUserId
+        activePeerUserId = peerUserId
+        val peerRole = if (isHost) NetplaySessionState.PeerRole.Host else NetplaySessionState.PeerRole.Guest
+        val rulesRole = if (isHost) NetplaySessionRules.Role.Host else NetplaySessionRules.Role.Guest
         scope.launch {
             runCatching {
-                sessionRules?.apply(NetplaySessionRules.ApplyContext(NetplaySessionRules.Role.Host))
+                sessionRules?.apply(NetplaySessionRules.ApplyContext(rulesRole))
                 _progressHint.value = ProgressHint.LoadingState
-                val state = retroView.serializeState()
-                driver.sendInitialSnapshot(state)
+                if (isHost) {
+                    val state = retroView.serializeState()
+                    driver.sendInitialSnapshot(state, driver.currentFrame)
+                }
                 _progressHint.value = null
-                _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = guestUserId)
-                startSilenceMonitor(NetplaySessionState.PeerRole.Host)
+                _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = peerUserId)
+                startSilenceMonitor(peerRole)
             }.onFailure {
-                Log.w(TAG, "host install failed: ${it.message}")
+                Log.w(TAG, "peer install failed (isHost=$isHost): ${it.message}")
                 sessionRules?.release()
-                _sessionState.value = NetplaySessionState.Error("host_install_failed")
-            }
-        }
-    }
-
-    private fun installGuestDriver(sessionId: String, hostUserId: String, result: NetplayHandshake.HandshakeResult.Success) {
-        initialRttMs = result.measuredRttMs
-        val driver = NetplayGuestDriver(
-            retroView = retroView,
-            transport = result.transport,
-            initialPeerAddress = result.peerAddress,
-            peerUserId = hostUserId,
-            localPort = GUEST_PORT,
-            hostPort = LOCAL_HOST_PORT,
-            scope = scope,
-            onSessionEnd = { reason -> scope.launch { handleSessionEnd(reason) } }
-        )
-        activeDriver = driver
-        com.swordfish.libretrodroid.LibretroDroid.setNetplayActive(true)
-        retroView.netplayTick = { driver.tick() }
-        activePeerUserId = hostUserId
-        scope.launch {
-            runCatching {
-                sessionRules?.apply(NetplaySessionRules.ApplyContext(NetplaySessionRules.Role.Guest))
-                _progressHint.value = ProgressHint.LoadingState
-                _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = hostUserId)
-                _progressHint.value = null
-                startSilenceMonitor(NetplaySessionState.PeerRole.Guest)
-            }.onFailure {
-                Log.w(TAG, "guest install failed: ${it.message}")
-                sessionRules?.release()
-                _sessionState.value = NetplaySessionState.Error("guest_install_failed")
+                _sessionState.value = NetplaySessionState.Error(if (isHost) "host_install_failed" else "guest_install_failed")
             }
         }
     }

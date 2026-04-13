@@ -147,7 +147,9 @@ class NetplayHostDriver(
                 }
                 is NetplayPacket.SessionControl.SnapshotAck -> handleSnapshotAck(packet)
                 is NetplayPacket.InputBundle,
-                is NetplayPacket.SnapshotChunk -> {
+                is NetplayPacket.SnapshotChunk,
+                is NetplayPacket.FrameInput,
+                is NetplayPacket.DesyncCheck -> {
                 }
             }
         }

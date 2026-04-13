@@ -51,6 +51,46 @@ sealed class NetplayPacket {
         }
     }
 
+    data class FrameInput(
+        val frameIndex: Long,
+        val playerPort: Int,
+        val bitmask: Int,
+        val redundant: List<Pair<Long, Int>> = emptyList()
+    ) : NetplayPacket() {
+        override val typeByte: Byte get() = TYPE_FRAME_INPUT
+
+        override fun serialize(): ByteArray {
+            val redundantCount = redundant.size
+            val size = 1 + 8 + 1 + 4 + 1 + redundantCount * (8 + 4)
+            val buf = ByteBuffer.allocate(size).order(ByteOrder.BIG_ENDIAN)
+            buf.put(typeByte)
+            buf.putLong(frameIndex)
+            buf.put((playerPort and 0xFF).toByte())
+            buf.putInt(bitmask)
+            buf.put((redundantCount and 0xFF).toByte())
+            for ((frame, mask) in redundant) {
+                buf.putLong(frame)
+                buf.putInt(mask)
+            }
+            return buf.array()
+        }
+    }
+
+    data class DesyncCheck(
+        val frameIndex: Long,
+        val stateHash: Long
+    ) : NetplayPacket() {
+        override val typeByte: Byte get() = TYPE_DESYNC_CHECK
+
+        override fun serialize(): ByteArray {
+            val buf = ByteBuffer.allocate(1 + 8 + 8).order(ByteOrder.BIG_ENDIAN)
+            buf.put(typeByte)
+            buf.putLong(frameIndex)
+            buf.putLong(stateHash)
+            return buf.array()
+        }
+    }
+
     data class SnapshotRequest(
         val reasonCode: Int
     ) : NetplayPacket() {
@@ -174,6 +214,8 @@ sealed class NetplayPacket {
         const val TYPE_PING: Byte = 0x05
         const val TYPE_PONG: Byte = 0x06
         const val TYPE_SESSION_CONTROL: Byte = 0x07
+        const val TYPE_FRAME_INPUT: Byte = 0x08
+        const val TYPE_DESYNC_CHECK: Byte = 0x09
 
         const val SESSION_CONTROL_GOODBYE: Byte = 0x00
         const val SESSION_CONTROL_KICK: Byte = 0x01
@@ -191,6 +233,8 @@ sealed class NetplayPacket {
                     TYPE_PING -> Ping(buf.long)
                     TYPE_PONG -> Pong(buf.long)
                     TYPE_SESSION_CONTROL -> readSessionControl(buf)
+                    TYPE_FRAME_INPUT -> readFrameInput(buf)
+                    TYPE_DESYNC_CHECK -> readDesyncCheck(buf)
                     else -> {
                         @Suppress("UNUSED_VARIABLE")
                         val ignored = type
@@ -235,6 +279,26 @@ sealed class NetplayPacket {
             val payload = ByteArray(chunkLen)
             buf.get(payload)
             return SnapshotChunk(snapshotId, chunkIndex, chunkTotal, payload, frameIndex)
+        }
+
+        private fun readFrameInput(buf: ByteBuffer): FrameInput {
+            val frameIndex = buf.long
+            val playerPort = buf.get().toInt() and 0xFF
+            val bitmask = buf.int
+            val redundantCount = buf.get().toInt() and 0xFF
+            val redundant = ArrayList<Pair<Long, Int>>(redundantCount)
+            repeat(redundantCount) {
+                val frame = buf.long
+                val mask = buf.int
+                redundant.add(frame to mask)
+            }
+            return FrameInput(frameIndex, playerPort, bitmask, redundant)
+        }
+
+        private fun readDesyncCheck(buf: ByteBuffer): DesyncCheck {
+            val frameIndex = buf.long
+            val stateHash = buf.long
+            return DesyncCheck(frameIndex, stateHash)
         }
 
         private fun readSessionControl(buf: ByteBuffer): SessionControl? {

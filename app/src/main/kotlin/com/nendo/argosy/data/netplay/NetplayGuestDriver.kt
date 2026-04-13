@@ -311,7 +311,9 @@ class NetplayGuestDriver(
                 }
                 is NetplayPacket.GuestInput,
                 is NetplayPacket.SnapshotRequest,
-                is NetplayPacket.SessionControl.SnapshotAck -> {
+                is NetplayPacket.SessionControl.SnapshotAck,
+                is NetplayPacket.FrameInput,
+                is NetplayPacket.DesyncCheck -> {
                 }
             }
         }
