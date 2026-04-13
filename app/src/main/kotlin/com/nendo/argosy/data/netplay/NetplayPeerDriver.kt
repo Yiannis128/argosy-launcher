@@ -125,14 +125,9 @@ class NetplayPeerDriver(
         localInputHistory[delayedFrame] = sampledInput
         sendFrameInput(delayedFrame, sampledInput)
 
-        // Frame leash: don't run more than a few frames ahead of the peer.
-        // Tight enough to prevent meaningful drift, loose enough to avoid
-        // constant pause/resume chop from minor tick rate differences.
-        if (remotePeerFrame >= 0 && currentFrame > remotePeerFrame + FRAME_LEASH) {
-            libretroOps.renderFrameOnly()
-            heartbeat()
-            return
-        }
+        // No frame leash — both sides run at their natural display rate.
+        // The input delay + rollback mechanism handles any drift.
+        // A leash causes audio underrun/overflow from pause/resume cycles.
 
         val localInput = localInputHistory[currentFrame] ?: 0
         val remoteInput = resolveRemoteInput(currentFrame)
