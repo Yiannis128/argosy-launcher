@@ -40,11 +40,13 @@ class NetplayPeerDriver(
     @Volatile private var lastHeartbeatNanos: Long = 0L
     @Volatile private var nextTickTargetNanos: Long = System.nanoTime()
     @Volatile private var stopped = false
+    @Volatile private var ready = false
 
     private val localInputHistory = HashMap<Long, Int>(256)
     private val confirmedRemoteInputs = HashMap<Long, Int>(256)
     private var lastConfirmedRemoteInput: Int = 0
     private var lastConfirmedRemoteFrame: Long = -1L
+    @Volatile private var remotePeerFrame: Long = -1L
 
     private class StateEntry(val frame: Long, val state: ByteArray, val predictedRemoteInput: Int)
     private val stateRing = arrayOfNulls<StateEntry>(rollbackWindow)
@@ -86,6 +88,11 @@ class NetplayPeerDriver(
 
     override fun tick() {
         if (stopped) return
+        if (!ready) {
+            drainIncoming()
+            libretroOps.renderFrameOnly()
+            return
+        }
 
         val now = System.nanoTime()
         if (now < nextTickTargetNanos) {
@@ -112,10 +119,20 @@ class NetplayPeerDriver(
             return
         }
 
+        // Sample and send local input immediately (tagged for future frame due to delay)
         val sampledInput = libretroOps.getInputPortBitmask(0)
         val delayedFrame = currentFrame + inputDelay
         localInputHistory[delayedFrame] = sampledInput
         sendFrameInput(delayedFrame, sampledInput)
+
+        // Frame leash: don't run more than a few frames ahead of the peer.
+        // Tight enough to prevent meaningful drift, loose enough to avoid
+        // constant pause/resume chop from minor tick rate differences.
+        if (remotePeerFrame >= 0 && currentFrame > remotePeerFrame + FRAME_LEASH) {
+            libretroOps.renderFrameOnly()
+            heartbeat()
+            return
+        }
 
         val localInput = localInputHistory[currentFrame] ?: 0
         val remoteInput = resolveRemoteInput(currentFrame)
@@ -155,8 +172,11 @@ class NetplayPeerDriver(
         confirmedRemoteInputs.clear()
         lastConfirmedRemoteInput = 0
         lastConfirmedRemoteFrame = -1L
+        remotePeerFrame = -1L
         for (i in stateRing.indices) stateRing[i] = null
         stateRingHead = 0
+        // Host waits for the guest's first FrameInput before ticking.
+        // ready stays false — it will be set when remotePeerFrame goes >= 0.
     }
 
     override fun stop() {
@@ -185,6 +205,7 @@ class NetplayPeerDriver(
                 frameIndex = frame,
                 playerPort = localPort,
                 bitmask = bitmask,
+                senderFrame = currentFrame,
                 redundant = redundant
             )
         )
@@ -316,6 +337,15 @@ class NetplayPeerDriver(
     }
 
     private fun handleFrameInput(packet: NetplayPacket.FrameInput) {
+        if (packet.senderFrame > remotePeerFrame) {
+            remotePeerFrame = packet.senderFrame
+        }
+        if (!ready && remotePeerFrame >= 0) {
+            ready = true
+            nextTickTargetNanos = System.nanoTime()
+            currentFrame = 0
+            Log.d(TAG, "ready: peer is at frame ${remotePeerFrame}, starting from 0")
+        }
         storeConfirmedRemoteInput(packet.frameIndex, packet.bitmask)
         for ((frame, bitmask) in packet.redundant) {
             storeConfirmedRemoteInput(frame, bitmask)
@@ -399,6 +429,8 @@ class NetplayPeerDriver(
         lastConfirmedRemoteFrame = -1L
         for (i in stateRing.indices) stateRing[i] = null
         stateRingHead = 0
+        nextTickTargetNanos = System.nanoTime()
+        ready = true
         catchingUp = false
     }
 
@@ -561,5 +593,6 @@ class NetplayPeerDriver(
         private const val REASSEMBLY_TIMEOUT_NANOS = 1_000_000_000L
         private const val REASON_CATCHUP = 1
         private const val FRAME_PERIOD_NANOS = 16_666_667L
+        private const val FRAME_LEASH = 3L
     }
 }

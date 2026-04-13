@@ -55,18 +55,20 @@ sealed class NetplayPacket {
         val frameIndex: Long,
         val playerPort: Int,
         val bitmask: Int,
+        val senderFrame: Long = 0L,
         val redundant: List<Pair<Long, Int>> = emptyList()
     ) : NetplayPacket() {
         override val typeByte: Byte get() = TYPE_FRAME_INPUT
 
         override fun serialize(): ByteArray {
             val redundantCount = redundant.size
-            val size = 1 + 8 + 1 + 4 + 1 + redundantCount * (8 + 4)
+            val size = 1 + 8 + 1 + 4 + 8 + 1 + redundantCount * (8 + 4)
             val buf = ByteBuffer.allocate(size).order(ByteOrder.BIG_ENDIAN)
             buf.put(typeByte)
             buf.putLong(frameIndex)
             buf.put((playerPort and 0xFF).toByte())
             buf.putInt(bitmask)
+            buf.putLong(senderFrame)
             buf.put((redundantCount and 0xFF).toByte())
             for ((frame, mask) in redundant) {
                 buf.putLong(frame)
@@ -285,6 +287,7 @@ sealed class NetplayPacket {
             val frameIndex = buf.long
             val playerPort = buf.get().toInt() and 0xFF
             val bitmask = buf.int
+            val senderFrame = buf.long
             val redundantCount = buf.get().toInt() and 0xFF
             val redundant = ArrayList<Pair<Long, Int>>(redundantCount)
             repeat(redundantCount) {
@@ -292,7 +295,7 @@ sealed class NetplayPacket {
                 val mask = buf.int
                 redundant.add(frame to mask)
             }
-            return FrameInput(frameIndex, playerPort, bitmask, redundant)
+            return FrameInput(frameIndex, playerPort, bitmask, senderFrame, redundant)
         }
 
         private fun readDesyncCheck(buf: ByteBuffer): DesyncCheck {
