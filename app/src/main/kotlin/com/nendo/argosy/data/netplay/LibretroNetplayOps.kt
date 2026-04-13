@@ -5,12 +5,17 @@ import com.swordfish.libretrodroid.LibretroDroid
 
 interface LibretroNetplayOps {
     fun setInputPortState(port: Int, bitmask: Int)
+    fun getInputPortBitmask(port: Int): Int
     fun stepForNetplay(retroView: GLRetroView)
 }
 
 object RealLibretroNetplayOps : LibretroNetplayOps {
     override fun setInputPortState(port: Int, bitmask: Int) {
         LibretroDroid.setInputPortState(port, bitmask)
+    }
+
+    override fun getInputPortBitmask(port: Int): Int {
+        return LibretroDroid.getInputPortBitmask(port)
     }
 
     override fun stepForNetplay(retroView: GLRetroView) {

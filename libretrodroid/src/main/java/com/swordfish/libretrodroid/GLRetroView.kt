@@ -108,8 +108,6 @@ class GLRetroView(
     var keyMapper: KeyMapper? = null
 
     @Volatile var netplayTick: (() -> Unit)? = null
-    @Volatile var netplayLocalPort: Int? = null
-    @Volatile var netplayKeyIntercept: ((port: Int, action: Int, keyCode: Int) -> Unit)? = null
 
     private val openGLESVersion: Int
 
@@ -170,17 +168,6 @@ class GLRetroView(
     }
 
     fun sendKeyEvent(action: Int, keyCode: Int, port: Int = 0) {
-        val intercept = netplayKeyIntercept
-        val gatedPort = netplayLocalPort
-        intercept?.invoke(port, action, keyCode)
-        if (intercept != null) {
-            // Netplay active. The driver is the sole writer to pads[] via setInputPortState.
-            // Guest (gatedPort != null): block all ports — every port is driver-authoritative.
-            // Host (gatedPort == null): allow port 0 (host's own port, dual-written by
-            // sendKeyEvent + setInputPortState where setInputPortState wins). Block other
-            // ports so a second physical gamepad can't corrupt the guest's network input.
-            if (gatedPort != null || port != 0) return
-        }
         LibretroDroid.onKeyEvent(port, action, keyCode)
     }
 

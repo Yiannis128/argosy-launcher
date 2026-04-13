@@ -22,7 +22,6 @@ class NetplayHostDriverTest {
             peerUserId = "peer",
             localPort = 0,
             guestPort = 1,
-            inputShadow = NetplayInputShadow(),
             scope = scope,
             onSessionEnd = {}
         )
@@ -40,7 +39,6 @@ class NetplayHostDriverTest {
             peerUserId = "host",
             localPort = 1,
             hostPort = 0,
-            inputShadow = NetplayInputShadow(),
             scope = scope,
             onSessionEnd = {}
         )

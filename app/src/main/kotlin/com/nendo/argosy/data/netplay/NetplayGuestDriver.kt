@@ -20,7 +20,6 @@ class NetplayGuestDriver(
     val peerUserId: String,
     private val localPort: Int,
     private val hostPort: Int,
-    val inputShadow: NetplayInputShadow,
     private val scope: CoroutineScope,
     private val onSessionEnd: (reason: String) -> Unit,
     private val catchupThresholdFrames: Int = DEFAULT_CATCHUP_THRESHOLD,
@@ -92,6 +91,7 @@ class NetplayGuestDriver(
         }
 
         drainIncoming()
+        sampleAndSendLocalInput()
 
         if (!catchingUp) {
             var stepped = 0
@@ -117,8 +117,6 @@ class NetplayGuestDriver(
             Log.d(TAG, "requesting catchup snapshot (behind=$framesBehindHost)")
         }
 
-        sampleAndSendLocalInput()
-
         val nowNanos = System.nanoTime()
         if (nowNanos - lastHeartbeatNanos >= HEARTBEAT_INTERVAL_NANOS) {
             lastHeartbeatNanos = nowNanos
@@ -134,7 +132,7 @@ class NetplayGuestDriver(
     }
 
     private fun sampleAndSendLocalInput() {
-        val current = inputShadow.sample(localPort)
+        val current = libretroOps.getInputPortBitmask(0)
         val reassertDue = currentFrame - lastGuestInputFrame >= GUEST_REASSERT_INTERVAL
         if (current != lastLocalBitmask || reassertDue) {
             lastLocalBitmask = current

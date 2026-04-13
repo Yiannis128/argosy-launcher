@@ -29,7 +29,6 @@ class NetplayHostDriverIntegrationTest {
 
     private lateinit var retroView: GLRetroView
     private lateinit var transport: NetplayTransport
-    private lateinit var inputShadow: NetplayInputShadow
     private lateinit var incomingFlow: MutableSharedFlow<NetplayTransport.Incoming>
     private lateinit var sentPackets: MutableList<NetplayPacket>
     private lateinit var fakeOps: FakeLibretroNetplayOps
@@ -52,8 +51,6 @@ class NetplayHostDriverIntegrationTest {
         }
         coEvery { transport.close() } just Runs
 
-        inputShadow = NetplayInputShadow()
-
         return NetplayHostDriver(
             retroView = retroView,
             transport = transport,
@@ -61,7 +58,6 @@ class NetplayHostDriverIntegrationTest {
             peerUserId = "guest",
             localPort = 0,
             guestPort = 1,
-            inputShadow = inputShadow,
             scope = scope,
             onSessionEnd = {},
             libretroOps = fakeOps,
@@ -78,8 +74,10 @@ class NetplayHostDriverIntegrationTest {
     fun `tick produces InputBundle with current frame and port bitmasks`() = runTest(UnconfinedTestDispatcher()) {
         val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
 
-        inputShadow.onKeyDown(0, NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_A)
-        inputShadow.onKeyDown(0, NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_RIGHT)
+        val expectedLocalBits =
+            (1 shl NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_A) or
+            (1 shl NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_RIGHT)
+        fakeOps.setFakeInputBitmask(0, expectedLocalBits)
 
         driver.tick()
         testScheduler.runCurrent()
@@ -91,9 +89,6 @@ class NetplayHostDriverIntegrationTest {
 
         val localState = bundle.ports.find { it.port == 0 }
         assertNotNull(localState)
-        val expectedLocalBits =
-            (1 shl NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_A) or
-            (1 shl NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_RIGHT)
         assertEquals(expectedLocalBits, localState!!.bitmask)
 
         val guestState = bundle.ports.find { it.port == 1 }
@@ -300,7 +295,6 @@ class NetplayHostDriverIntegrationTest {
             peerUserId = "guest",
             localPort = 0,
             guestPort = 1,
-            inputShadow = NetplayInputShadow(),
             scope = scope,
             onSessionEnd = { endedReason = it },
             libretroOps = fakeOps,

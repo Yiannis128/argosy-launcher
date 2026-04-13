@@ -118,6 +118,7 @@ public:
     void onMotionEvent(unsigned int port, unsigned int source, float xAxis, float yAxis);
     void onTouchEvent(float xAxis, float yAxis);
     void setInputPortState(unsigned int port, uint32_t bitmask);
+    uint32_t getInputPortBitmask(unsigned int port);
 
     void refreshAspectRatio();
     float getAspectRatio();

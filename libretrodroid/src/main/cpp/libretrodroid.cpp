@@ -302,6 +302,13 @@ void LibretroDroid::setInputPortState(unsigned int port, uint32_t bitmask) {
     }
 }
 
+uint32_t LibretroDroid::getInputPortBitmask(unsigned int port) {
+    if (input) {
+        return input->getInputPortBitmask(port);
+    }
+    return 0;
+}
+
 void LibretroDroid::create(
     unsigned int GLESVersion,
     const std::string& soFilePath,

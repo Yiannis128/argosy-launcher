@@ -19,7 +19,6 @@ class NetplayHostDriver(
     val peerUserId: String,
     private val localPort: Int,
     private val guestPort: Int,
-    val inputShadow: NetplayInputShadow,
     private val scope: CoroutineScope,
     private val onSessionEnd: (reason: String) -> Unit,
     private val libretroOps: LibretroNetplayOps = RealLibretroNetplayOps,
@@ -71,7 +70,7 @@ class NetplayHostDriver(
 
         drainIncoming()
 
-        val localBitmask = inputShadow.sample(localPort)
+        val localBitmask = libretroOps.getInputPortBitmask(localPort)
         libretroOps.setInputPortState(localPort, localBitmask)
         libretroOps.setInputPortState(guestPort, guestCurrentBitmask)
 

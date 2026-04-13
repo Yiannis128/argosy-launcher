@@ -678,6 +678,16 @@ JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setInputPo
     );
 }
 
+JNIEXPORT jint JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_getInputPortBitmask(
+    JNIEnv* env,
+    jclass obj,
+    jint port
+) {
+    return static_cast<jint>(LibretroDroid::getInstance().getInputPortBitmask(
+        static_cast<unsigned int>(port)
+    ));
+}
+
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setRumbleEnabled(
     JNIEnv* env,
     jclass obj,

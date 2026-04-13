@@ -28,7 +28,6 @@ class NetplayGuestDriverIntegrationTest {
 
     private lateinit var retroView: GLRetroView
     private lateinit var transport: NetplayTransport
-    private lateinit var inputShadow: NetplayInputShadow
     private lateinit var incomingFlow: MutableSharedFlow<NetplayTransport.Incoming>
     private lateinit var sentPackets: MutableList<NetplayPacket>
     private lateinit var fakeOps: FakeLibretroNetplayOps
@@ -52,8 +51,6 @@ class NetplayGuestDriverIntegrationTest {
         }
         coEvery { transport.close() } just Runs
 
-        inputShadow = NetplayInputShadow()
-
         return NetplayGuestDriver(
             retroView = retroView,
             transport = transport,
@@ -61,7 +58,6 @@ class NetplayGuestDriverIntegrationTest {
             peerUserId = "host",
             localPort = 1,
             hostPort = 0,
-            inputShadow = inputShadow,
             scope = scope,
             onSessionEnd = {},
             catchupThresholdFrames = catchupThreshold,
@@ -135,14 +131,14 @@ class NetplayGuestDriverIntegrationTest {
     fun `local input change produces GuestInput packet`() = runTest(UnconfinedTestDispatcher()) {
         val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
 
-        inputShadow.onKeyDown(1, NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_START)
+        val expected = 1 shl NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_START
+        fakeOps.setFakeInputBitmask(0, expected)
         driver.tick()
         testScheduler.runCurrent()
 
         val guestInputs = sentPackets.filterIsInstance<NetplayPacket.GuestInput>()
         assertEquals(1, guestInputs.size)
         assertEquals(1, guestInputs[0].portNumber)
-        val expected = 1 shl NetplayInputShadow.RETRO_DEVICE_ID_JOYPAD_START
         assertEquals(expected, guestInputs[0].bitmask)
 
         driver.stop()

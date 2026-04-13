@@ -174,6 +174,18 @@ void Input::setInputPortState(unsigned int port, uint32_t bitmask) {
     }
 }
 
+uint32_t Input::getInputPortBitmask(unsigned port) {
+    if (port >= 4) return 0;
+    std::lock_guard<std::mutex> lock(inputMutex);
+    uint32_t bitmask = 0;
+    for (unsigned i = 0; i <= RETRO_DEVICE_ID_JOYPAD_R3; i++) {
+        if (pads[port].pressedKeys.count(i) > 0) {
+            bitmask |= (1u << i);
+        }
+    }
+    return bitmask;
+}
+
 void Input::flushPendingReleases() {
     std::lock_guard<std::mutex> lock(inputMutex);
     for (unsigned p = 0; p < 4; p++) {

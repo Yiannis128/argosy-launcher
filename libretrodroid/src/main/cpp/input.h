@@ -65,6 +65,7 @@ public:
     void onMotionEvent(int port, int motionSource, float xAxis, float yAxis);
 
     void setInputPortState(unsigned int port, uint32_t bitmask);
+    uint32_t getInputPortBitmask(unsigned port);
 
 private:
     const int UNKNOWN_KEY = -1;

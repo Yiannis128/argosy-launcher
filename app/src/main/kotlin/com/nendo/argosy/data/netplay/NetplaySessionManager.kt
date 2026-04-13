@@ -62,8 +62,6 @@ class NetplaySessionManager(
 
     data class GuestLeftEvent(val sessionId: String, val guestUserId: String, val reason: String?)
 
-    private val inputShadow = NetplayInputShadow()
-
     data class PendingQualityWarning(
         val sessionId: String,
         val peerUserId: String,
@@ -448,15 +446,10 @@ class NetplaySessionManager(
             peerUserId = guestUserId,
             localPort = LOCAL_HOST_PORT,
             guestPort = GUEST_PORT,
-            inputShadow = inputShadow,
             scope = scope,
             onSessionEnd = { reason -> scope.launch { handleSessionEnd(reason) } }
         )
         activeDriver = driver
-        retroView.netplayKeyIntercept = { _, action, keyCode ->
-            inputShadow.onAndroidKeyEvent(LOCAL_HOST_PORT, action, keyCode)
-        }
-        retroView.netplayLocalPort = null
         retroView.netplayTick = { driver.tick() }
         activePeerUserId = guestUserId
         scope.launch {
@@ -485,15 +478,10 @@ class NetplaySessionManager(
             peerUserId = hostUserId,
             localPort = GUEST_PORT,
             hostPort = LOCAL_HOST_PORT,
-            inputShadow = inputShadow,
             scope = scope,
             onSessionEnd = { reason -> scope.launch { handleSessionEnd(reason) } }
         )
         activeDriver = driver
-        retroView.netplayKeyIntercept = { _, action, keyCode ->
-            inputShadow.onAndroidKeyEvent(GUEST_PORT, action, keyCode)
-        }
-        retroView.netplayLocalPort = GUEST_PORT
         retroView.netplayTick = { driver.tick() }
         activePeerUserId = hostUserId
         scope.launch {
@@ -517,12 +505,7 @@ class NetplaySessionManager(
         val driver = activeDriver
         activeDriver = null
         retroView.netplayTick = null
-        retroView.netplayLocalPort = null
-        retroView.netplayKeyIntercept = null
         driver?.stop()
-        for (port in 0 until NetplayInputShadow.MAX_PORTS) {
-            inputShadow.clear(port)
-        }
         activePeerUserId = null
         sessionRules?.release()
         delay(0)
