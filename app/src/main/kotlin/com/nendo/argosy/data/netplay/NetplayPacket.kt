@@ -68,18 +68,20 @@ sealed class NetplayPacket {
         val snapshotId: Int,
         val chunkIndex: Int,
         val chunkTotal: Int,
-        val payload: ByteArray
+        val payload: ByteArray,
+        val frameIndex: Long = 0L
     ) : NetplayPacket() {
         override val typeByte: Byte get() = TYPE_SNAPSHOT_CHUNK
 
         override fun serialize(): ByteArray {
             val chunkLen = payload.size
-            val buf = ByteBuffer.allocate(1 + 4 + 2 + 2 + 2 + chunkLen).order(ByteOrder.BIG_ENDIAN)
+            val buf = ByteBuffer.allocate(1 + 4 + 2 + 2 + 2 + 8 + chunkLen).order(ByteOrder.BIG_ENDIAN)
             buf.put(typeByte)
             buf.putInt(snapshotId)
             buf.putShort((chunkIndex and 0xFFFF).toShort())
             buf.putShort((chunkTotal and 0xFFFF).toShort())
             buf.putShort((chunkLen and 0xFFFF).toShort())
+            buf.putLong(frameIndex)
             buf.put(payload)
             return buf.array()
         }
@@ -90,6 +92,7 @@ sealed class NetplayPacket {
             return snapshotId == other.snapshotId &&
                 chunkIndex == other.chunkIndex &&
                 chunkTotal == other.chunkTotal &&
+                frameIndex == other.frameIndex &&
                 payload.contentEquals(other.payload)
         }
 
@@ -97,6 +100,7 @@ sealed class NetplayPacket {
             var result = snapshotId
             result = 31 * result + chunkIndex
             result = 31 * result + chunkTotal
+            result = 31 * result + frameIndex.hashCode()
             result = 31 * result + payload.contentHashCode()
             return result
         }
@@ -227,9 +231,10 @@ sealed class NetplayPacket {
             val chunkIndex = buf.short.toInt() and 0xFFFF
             val chunkTotal = buf.short.toInt() and 0xFFFF
             val chunkLen = buf.short.toInt() and 0xFFFF
+            val frameIndex = buf.long
             val payload = ByteArray(chunkLen)
             buf.get(payload)
-            return SnapshotChunk(snapshotId, chunkIndex, chunkTotal, payload)
+            return SnapshotChunk(snapshotId, chunkIndex, chunkTotal, payload, frameIndex)
         }
 
         private fun readSessionControl(buf: ByteBuffer): SessionControl? {
