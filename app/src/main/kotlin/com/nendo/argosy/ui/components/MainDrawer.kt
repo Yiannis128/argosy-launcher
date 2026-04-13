@@ -72,6 +72,7 @@ fun MainDrawer(
     onDismissModal: () -> Unit,
     onRegenerateFriendCode: () -> Unit,
     onAddFriendByCode: (String) -> Unit,
+    onJoinFriendSession: (Friend) -> Unit,
     modifier: Modifier = Modifier
 ) {
     ModalDrawerSheet(modifier = modifier) {
@@ -107,6 +108,7 @@ fun MainDrawer(
                     FriendsContent(
                         friends = drawerState.friends,
                         focusedIndex = drawerState.friendsFocusIndex,
+                        onJoinSession = onJoinFriendSession,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -259,6 +261,7 @@ private fun NavigationContent(
 private fun FriendsContent(
     friends: List<Friend>,
     focusedIndex: Int,
+    onJoinSession: (Friend) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -313,10 +316,11 @@ private fun FriendsContent(
                 item {
                     SectionLabel("ONLINE (${onlineFriends.size})")
                 }
-                itemsIndexed(onlineFriends) { index, friend ->
+                itemsIndexed(onlineFriends, key = { _, f -> f.id }) { index, friend ->
                     FriendItem(
                         friend = friend,
-                        isFocused = index == focusedIndex
+                        isFocused = index == focusedIndex,
+                        onJoinSession = onJoinSession
                     )
                 }
             }
@@ -325,11 +329,12 @@ private fun FriendsContent(
                 item {
                     SectionLabel("OFFLINE (${offlineFriends.size})")
                 }
-                itemsIndexed(offlineFriends) { index, friend ->
+                itemsIndexed(offlineFriends, key = { _, f -> f.id }) { index, friend ->
                     val globalIndex = onlineFriends.size + index
                     FriendItem(
                         friend = friend,
-                        isFocused = globalIndex == focusedIndex
+                        isFocused = globalIndex == focusedIndex,
+                        onJoinSession = onJoinSession
                     )
                 }
             }
@@ -350,7 +355,8 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun FriendItem(
     friend: Friend,
-    isFocused: Boolean
+    isFocused: Boolean,
+    onJoinSession: (Friend) -> Unit
 ) {
     val backgroundColor = if (isFocused) {
         MaterialTheme.colorScheme.primaryContainer
@@ -366,6 +372,7 @@ private fun FriendItem(
 
     val isOnline = friend.presence == PresenceStatus.ONLINE || friend.presence == PresenceStatus.IN_GAME
     val isInGame = friend.presence == PresenceStatus.IN_GAME
+    val isJoinable = friend.currentGame?.netplaySession?.joinable == true
 
     Row(
         modifier = Modifier
@@ -373,6 +380,10 @@ private fun FriendItem(
             .padding(horizontal = Dimens.spacingMd, vertical = 2.dp)
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(backgroundColor)
+            .then(
+                if (isJoinable) Modifier.clickableNoFocus { onJoinSession(friend) }
+                else Modifier
+            )
             .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingSm),
         verticalAlignment = Alignment.CenterVertically
     ) {

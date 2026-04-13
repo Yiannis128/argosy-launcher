@@ -848,7 +848,13 @@ fun ArgosyApp(
                         onShowAddFriend = { viewModel.showAddFriendModal() },
                         onDismissModal = { viewModel.dismissDrawerModal() },
                         onRegenerateFriendCode = { viewModel.regenerateFriendCode() },
-                        onAddFriendByCode = { code -> viewModel.addFriendByCode(code) }
+                        onAddFriendByCode = { code -> viewModel.addFriendByCode(code) },
+                        onJoinFriendSession = { friend ->
+                            inputDispatcher.unsubscribeDrawer()
+                            viewModel.setDrawerOpen(false)
+                            scope.launch { drawerState.close() }
+                            viewModel.joinFriendNetplaySession(friend)
+                        }
                     )
                 }
             ) {

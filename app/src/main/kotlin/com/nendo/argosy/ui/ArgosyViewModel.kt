@@ -652,7 +652,14 @@ class ArgosyViewModel @Inject constructor(
                     InputResult.HANDLED
                 }
                 DrawerTab.FRIENDS -> {
-                    InputResult.UNHANDLED
+                    val friends = drawerUiState.value.friends
+                    val friend = friends.getOrNull(_friendsFocusIndex.value)
+                    val session = friend?.currentGame?.netplaySession
+                    if (friend != null && session != null && session.joinable) {
+                        onDismiss()
+                        joinFriendNetplaySession(friend)
+                    }
+                    InputResult.HANDLED
                 }
             }
         }
@@ -878,6 +885,73 @@ class ArgosyViewModel @Inject constructor(
     fun dismissNetplayInvite() {
         _netplayInvitePrompt.value = null
         _netplayInviteFocusIndex.value = 0
+    }
+
+    fun joinFriendNetplaySession(friend: Friend) {
+        val session = friend.currentGame?.netplaySession ?: return
+        if (!session.joinable) return
+        viewModelScope.launch {
+            val preflight = netplayPreflightChecker.check(session)
+            if (preflight !is NetplayPreflightResult.Joinable) {
+                val reason = when (preflight) {
+                    NetplayPreflightResult.RomNotFound -> "ROM not found"
+                    NetplayPreflightResult.RomVersionMismatch -> "Different ROM version"
+                    NetplayPreflightResult.CoreVersionMismatch -> "Different core version"
+                    NetplayPreflightResult.CoreNotSupported -> "Core unsupported"
+                    is NetplayPreflightResult.Joinable -> return@launch
+                }
+                notificationManager.show(
+                    title = "Can't join ${session.gameTitle}",
+                    subtitle = reason,
+                    type = NotificationType.ERROR,
+                    duration = NotificationDuration.MEDIUM
+                )
+                return@launch
+            }
+            val igdbId = session.gameIgdbId?.toLong() ?: run {
+                notificationManager.show(
+                    title = "Can't join ${session.gameTitle}",
+                    subtitle = "Missing game id for session",
+                    type = NotificationType.ERROR,
+                    duration = NotificationDuration.MEDIUM
+                )
+                return@launch
+            }
+            val game = gameDao.getByIgdbId(igdbId) ?: run {
+                notificationManager.show(
+                    title = "Can't join ${session.gameTitle}",
+                    subtitle = "Local game not found",
+                    type = NotificationType.ERROR,
+                    duration = NotificationDuration.MEDIUM
+                )
+                return@launch
+            }
+            when (val result = launchGameUseCase(gameId = game.id)) {
+                is LaunchResult.Success -> {
+                    val decorated = android.content.Intent(result.intent).apply {
+                        putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_SESSION_ID, session.sessionId)
+                        putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_HOST_USER_ID, friend.id)
+                    }
+                    _netplayInviteLaunch.tryEmit(decorated)
+                }
+                is LaunchResult.Error -> {
+                    notificationManager.show(
+                        title = "Can't join ${session.gameTitle}",
+                        subtitle = result.message,
+                        type = NotificationType.ERROR,
+                        duration = NotificationDuration.MEDIUM
+                    )
+                }
+                else -> {
+                    notificationManager.show(
+                        title = "Can't join ${session.gameTitle}",
+                        subtitle = "Couldn't launch game",
+                        type = NotificationType.ERROR,
+                        duration = NotificationDuration.MEDIUM
+                    )
+                }
+            }
+        }
     }
 
     fun acceptNetplayInvite() {
