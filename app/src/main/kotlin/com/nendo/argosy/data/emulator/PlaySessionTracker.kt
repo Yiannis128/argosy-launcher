@@ -612,7 +612,7 @@ class PlaySessionTracker @Inject constructor(
         )
     }
 
-    suspend fun endSession(stopService: Boolean = true): SessionEndResult {
+    suspend fun endSession(stopService: Boolean = true, skipSaveSync: Boolean = false): SessionEndResult {
         val pendingJob = emulatorBackgroundJob
         emulatorBackgroundJob = null
         if (pendingJob != null && pendingJob != coroutineContext[Job]) {
@@ -700,11 +700,11 @@ class PlaySessionTracker @Inject constructor(
                     val saveJob = async {
                         recordPlayTime(session, Duration.ofMillis(activePlayMs))
                         markGameIncompleteIfNeeded(session, sessionDuration)
-                        syncAndCacheSave(session)
+                        if (!skipSaveSync) syncAndCacheSave(session) else null
                     }
 
                     val stateJob = async {
-                        syncStateData(session)
+                        if (!skipSaveSync) syncStateData(session)
                     }
 
                     val result = saveJob.await()
@@ -944,8 +944,8 @@ class PlaySessionTracker @Inject constructor(
         scope.launch { clearSessionAndBroadcast() }
     }
 
-    fun endSessionInBackground() {
-        scope.launch { endSession() }
+    fun endSessionInBackground(skipSaveSync: Boolean = false) {
+        scope.launch { endSession(skipSaveSync = skipSaveSync) }
     }
 
     fun forceStopService() {

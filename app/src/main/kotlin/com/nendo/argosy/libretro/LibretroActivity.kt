@@ -548,6 +548,7 @@ class LibretroActivity : ComponentActivity() {
                             Log.d(TAG, "[Startup] gameId=$gameId, core=$coreName, hardcore=$hardcoreMode")
                             checkStateSupport()
                             attemptAutoRestore()
+                            triggerPendingNetplayJoin()
                         }
                     }
                 }
@@ -1370,29 +1371,28 @@ class LibretroActivity : ComponentActivity() {
             }
         }
 
-        val pending = pendingNetplayJoin
-        if (pending != null) {
-            pendingNetplayJoin = null
-            netplayRole = NetplayMenuRole.Guest
-            Log.d(TAG, "auto-join: pending sessionId=${pending.sessionId} hostUserId=${pending.hostUserId}")
-            lifecycleScope.launch {
-                Log.d(TAG, "auto-join: waiting for first frame render...")
-                retroView.getGLRetroEvents().first { it is GLRetroView.GLRetroEvents.FrameRendered }
-                Log.d(TAG, "auto-join: emulator ready, waiting for social WS...")
-                argosSocialService.connectionState
-                    .first { it is ArgosSocialService.ConnectionState.Connected }
-                val currentSessionId = socialRepository.friends.value
-                    .firstOrNull { it.id == pending.hostUserId }
-                    ?.currentGame?.netplaySession?.sessionId
-                    ?: pending.sessionId
-                Log.d(TAG, "auto-join: calling joinSession (intent=${pending.sessionId}, current=$currentSessionId)")
-                runCatching {
-                    manager.joinSession(currentSessionId, pending.hostUserId)
-                }.onFailure { err ->
-                    Log.w(TAG, "auto-join from intent failed: ${err.message}")
-                }
-                Log.d(TAG, "auto-join: joinSession returned")
+    }
+
+    private fun triggerPendingNetplayJoin() {
+        val pending = pendingNetplayJoin ?: return
+        val manager = netplaySessionManager ?: return
+        pendingNetplayJoin = null
+        netplayRole = NetplayMenuRole.Guest
+        Log.d(TAG, "auto-join: triggered after first frame, hostUserId=${pending.hostUserId}")
+        lifecycleScope.launch {
+            argosSocialService.connectionState
+                .first { it is ArgosSocialService.ConnectionState.Connected }
+            val currentSessionId = socialRepository.friends.value
+                .firstOrNull { it.id == pending.hostUserId }
+                ?.currentGame?.netplaySession?.sessionId
+                ?: pending.sessionId
+            Log.d(TAG, "auto-join: calling joinSession (intent=${pending.sessionId}, current=$currentSessionId)")
+            runCatching {
+                manager.joinSession(currentSessionId, pending.hostUserId)
+            }.onFailure { err ->
+                Log.w(TAG, "auto-join from intent failed: ${err.message}")
             }
+            Log.d(TAG, "auto-join: joinSession returned")
         }
     }
 
@@ -1993,7 +1993,7 @@ class LibretroActivity : ComponentActivity() {
         if (isFinishing && gameId != -1L) {
             com.nendo.argosy.DualScreenManagerHolder.instance
                 ?.onSessionChanged(-1L)
-            playSessionTracker.endSessionInBackground()
+            playSessionTracker.endSessionInBackground(skipSaveSync = isGuestJoinedSession)
         }
         super.onDestroy()
     }
