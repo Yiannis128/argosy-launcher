@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 class NetplayGuestDriver(
     private val retroView: GLRetroView,
     private val transport: NetplayTransport,
-    private val peerAddress: InetSocketAddress,
+    initialPeerAddress: InetSocketAddress,
     val peerUserId: String,
     private val localPort: Int,
     private val hostPort: Int,
@@ -24,9 +24,11 @@ class NetplayGuestDriver(
     private val scope: CoroutineScope,
     private val onSessionEnd: (reason: String) -> Unit,
     private val catchupThresholdFrames: Int = DEFAULT_CATCHUP_THRESHOLD,
-    private val libretroOps: LibretroNetplayOps = RealLibretroNetplayOps
+    private val libretroOps: LibretroNetplayOps = RealLibretroNetplayOps,
+    private val framePeriodNanos: Long = FRAME_PERIOD_NANOS
 ) : NetplayDriver {
 
+    @Volatile private var peerAddress: InetSocketAddress = initialPeerAddress
     @Volatile private var currentFrame: Long = 0L
     @Volatile private var lastKnownHostFrame: Long = 0L
     @Volatile private var lastLocalBitmask: Int = 0
@@ -38,6 +40,7 @@ class NetplayGuestDriver(
         private set
     @Volatile private var catchingUp: Boolean = false
     @Volatile private var stopped = false
+    @Volatile private var nextTickTargetNanos: Long = System.nanoTime()
 
     @Volatile var shouldSkipRender: Boolean = false
 
@@ -47,16 +50,14 @@ class NetplayGuestDriver(
     private val incomingRing = Channel<NetplayTransport.Incoming>(capacity = 256)
     private val pendingBundles = TreeMap<Long, NetplayPacket.InputBundle>()
     private val reassembly = ConcurrentHashMap<Int, ReassemblyBuffer>()
-    private var activeReassemblyId: Int? = null
+    @Volatile private var activeReassemblyId: Int? = null
     @Volatile private var lastAppliedSnapshotId: Int = -1
     private var lastAckEmitNanos = 0L
 
     private val receiveJob: Job = scope.launch {
         transport.incomingPackets.collect { incoming ->
-            if (incoming.source.address == peerAddress.address &&
-                incoming.source.port == peerAddress.port) {
-                incomingRing.trySend(incoming)
-            }
+            peerAddress = incoming.source
+            incomingRing.trySend(incoming)
         }
     }
 
@@ -83,10 +84,18 @@ class NetplayGuestDriver(
     override fun tick() {
         if (stopped) return
 
+        val now = System.nanoTime()
+        if (now < nextTickTargetNanos) return
+        nextTickTargetNanos += framePeriodNanos
+        if (nextTickTargetNanos < now - framePeriodNanos) {
+            nextTickTargetNanos = now
+        }
+
         drainIncoming()
 
         if (!catchingUp) {
-            while (true) {
+            var stepped = 0
+            while (stepped < MAX_STEPS_PER_TICK) {
                 val bundle = pendingBundles.firstEntry() ?: break
                 if (bundle.key != currentFrame) {
                     if (bundle.key < currentFrame) {
@@ -98,6 +107,7 @@ class NetplayGuestDriver(
                 val entry = pendingBundles.pollFirstEntry() ?: break
                 applyBundle(entry.value)
                 currentFrame++
+                stepped++
             }
         }
 
@@ -207,17 +217,18 @@ class NetplayGuestDriver(
         }
         buffer.addChunk(chunk)
         if (buffer.isComplete()) {
+            val snapshotFrame = buffer.snapshotFrame
             val reassembled = buffer.assemble()
             reassembly.remove(chunk.snapshotId)
             if (activeReassemblyId == chunk.snapshotId) activeReassemblyId = null
             if (reassembled != null) {
-                applySnapshot(chunk.snapshotId, reassembled)
+                applySnapshot(chunk.snapshotId, reassembled, snapshotFrame)
             }
         }
     }
 
-    private fun applySnapshot(snapshotId: Int, bytes: ByteArray) {
-        Log.d(TAG, "applySnapshot: id=$snapshotId size=${bytes.size} currentFrame=$currentFrame hostFrame=$lastKnownHostFrame")
+    private fun applySnapshot(snapshotId: Int, bytes: ByteArray, snapshotFrame: Long) {
+        Log.d(TAG, "applySnapshot: id=$snapshotId snapshotFrame=$snapshotFrame size=${bytes.size} currentFrame=$currentFrame hostFrame=$lastKnownHostFrame")
         try {
             val ok = retroView.unserializeState(bytes)
             if (!ok) {
@@ -229,10 +240,10 @@ class NetplayGuestDriver(
             return
         }
         lastAppliedSnapshotId = snapshotId
-        currentFrame = lastKnownHostFrame + 1
+        currentFrame = if (snapshotFrame == 0L) 0L else snapshotFrame + 1
         pendingBundles.clear()
         catchingUp = false
-        Log.d(TAG, "applySnapshot: done, currentFrame now=$currentFrame (will consume from next host bundle)")
+        Log.d(TAG, "applySnapshot: done, currentFrame now=$currentFrame")
     }
 
     private fun maybeEmitAck() {
@@ -275,11 +286,13 @@ class NetplayGuestDriver(
     ) {
         val received = TreeMap<Int, ByteArray>()
         @Volatile var lastProgressNanos: Long = System.nanoTime()
+        @Volatile var snapshotFrame: Long = 0L
 
         @Synchronized
         fun addChunk(chunk: NetplayPacket.SnapshotChunk) {
             if (chunk.chunkIndex !in received) {
                 received[chunk.chunkIndex] = chunk.payload
+                if (chunk.chunkIndex == 0) snapshotFrame = chunk.frameIndex
                 lastProgressNanos = System.nanoTime()
             }
         }
@@ -313,6 +326,8 @@ class NetplayGuestDriver(
         private const val REASSEMBLY_TICK_MS = 50L
         private const val GUEST_REASSERT_INTERVAL = 10L
         private const val REASON_CATCHUP = 1
+        private const val FRAME_PERIOD_NANOS = 16_666_667L
+        private const val MAX_STEPS_PER_TICK = 2
         const val DEFAULT_CATCHUP_THRESHOLD = 30
     }
 }

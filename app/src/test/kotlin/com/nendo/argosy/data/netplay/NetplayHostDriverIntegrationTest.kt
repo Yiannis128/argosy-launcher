@@ -57,14 +57,15 @@ class NetplayHostDriverIntegrationTest {
         return NetplayHostDriver(
             retroView = retroView,
             transport = transport,
-            peerAddress = peer,
+            initialPeerAddress = peer,
             peerUserId = "guest",
             localPort = 0,
             guestPort = 1,
             inputShadow = inputShadow,
             scope = scope,
             onSessionEnd = {},
-            libretroOps = fakeOps
+            libretroOps = fakeOps,
+            framePeriodNanos = 0L
         )
     }
 
@@ -295,14 +296,15 @@ class NetplayHostDriverIntegrationTest {
         val driver = NetplayHostDriver(
             retroView = retroView,
             transport = transport,
-            peerAddress = peer,
+            initialPeerAddress = peer,
             peerUserId = "guest",
             localPort = 0,
             guestPort = 1,
             inputShadow = NetplayInputShadow(),
             scope = scope,
             onSessionEnd = { endedReason = it },
-            libretroOps = fakeOps
+            libretroOps = fakeOps,
+            framePeriodNanos = 0L
         )
 
         incomingFlow.emit(

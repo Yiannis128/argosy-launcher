@@ -57,7 +57,7 @@ class NetplayGuestDriverIntegrationTest {
         return NetplayGuestDriver(
             retroView = retroView,
             transport = transport,
-            peerAddress = peer,
+            initialPeerAddress = peer,
             peerUserId = "host",
             localPort = 1,
             hostPort = 0,
@@ -65,7 +65,8 @@ class NetplayGuestDriverIntegrationTest {
             scope = scope,
             onSessionEnd = {},
             catchupThresholdFrames = catchupThreshold,
-            libretroOps = fakeOps
+            libretroOps = fakeOps,
+            framePeriodNanos = 0L
         )
     }
 
@@ -121,6 +122,7 @@ class NetplayGuestDriverIntegrationTest {
         }
         testScheduler.runCurrent()
 
+        driver.tick()
         driver.tick()
         testScheduler.runCurrent()
 

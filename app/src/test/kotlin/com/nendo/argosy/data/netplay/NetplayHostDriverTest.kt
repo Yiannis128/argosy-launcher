@@ -18,7 +18,7 @@ class NetplayHostDriverTest {
         val driver = NetplayHostDriver(
             retroView = mockk(relaxed = true),
             transport = mockk(relaxed = true),
-            peerAddress = InetSocketAddress("127.0.0.1", 12345),
+            initialPeerAddress = InetSocketAddress("127.0.0.1", 12345),
             peerUserId = "peer",
             localPort = 0,
             guestPort = 1,
@@ -36,7 +36,7 @@ class NetplayHostDriverTest {
         val driver = NetplayGuestDriver(
             retroView = mockk(relaxed = true),
             transport = mockk(relaxed = true),
-            peerAddress = InetSocketAddress("127.0.0.1", 12345),
+            initialPeerAddress = InetSocketAddress("127.0.0.1", 12345),
             peerUserId = "host",
             localPort = 1,
             hostPort = 0,

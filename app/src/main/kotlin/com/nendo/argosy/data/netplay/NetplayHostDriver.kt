@@ -15,20 +15,22 @@ import java.util.concurrent.atomic.AtomicInteger
 class NetplayHostDriver(
     private val retroView: GLRetroView,
     private val transport: NetplayTransport,
-    private val peerAddress: InetSocketAddress,
+    initialPeerAddress: InetSocketAddress,
     val peerUserId: String,
     private val localPort: Int,
     private val guestPort: Int,
     val inputShadow: NetplayInputShadow,
     private val scope: CoroutineScope,
     private val onSessionEnd: (reason: String) -> Unit,
-    private val libretroOps: LibretroNetplayOps = RealLibretroNetplayOps
+    private val libretroOps: LibretroNetplayOps = RealLibretroNetplayOps,
+    private val framePeriodNanos: Long = FRAME_PERIOD_NANOS
 ) : NetplayDriver {
 
+    @Volatile private var peerAddress: InetSocketAddress = initialPeerAddress
     @Volatile private var currentFrame: Long = 0L
     @Volatile private var guestCurrentBitmask: Int = 0
     @Volatile private var lastHeartbeatNanos: Long = 0L
-    @Volatile private var lastTickNanos: Long = 0L
+    @Volatile private var nextTickTargetNanos: Long = System.nanoTime()
     @Volatile override var lastRttNanos: Long = 0L
         private set
     @Volatile override var lastIncomingNanos: Long = System.nanoTime()
@@ -40,12 +42,10 @@ class NetplayHostDriver(
     private val pendingSnapshots = ConcurrentHashMap<Int, OutboundSnapshot>()
 
     private val receiveJob: Job = scope.launch {
-        Log.d(TAG, "receiveJob: listening for peer ${peerAddress.address.hostAddress}:${peerAddress.port}")
+        Log.d(TAG, "receiveJob: listening (initial peer ${initialPeerAddress.address.hostAddress}:${initialPeerAddress.port})")
         transport.incomingPackets.collect { incoming ->
-            if (incoming.source.address == peerAddress.address &&
-                incoming.source.port == peerAddress.port) {
-                incomingRing.trySend(incoming)
-            }
+            peerAddress = incoming.source
+            incomingRing.trySend(incoming)
         }
     }
 
@@ -63,8 +63,11 @@ class NetplayHostDriver(
         if (stopped) return
 
         val now = System.nanoTime()
-        if (now - lastTickNanos < FRAME_PERIOD_NANOS) return
-        lastTickNanos = now
+        if (now < nextTickTargetNanos) return
+        nextTickTargetNanos += framePeriodNanos
+        if (nextTickTargetNanos < now - framePeriodNanos) {
+            nextTickTargetNanos = now
+        }
 
         drainIncoming()
 
@@ -94,7 +97,7 @@ class NetplayHostDriver(
 
     suspend fun sendInitialSnapshot(state: ByteArray): Int {
         val snapshotId = 0
-        enqueueSnapshot(snapshotId, state)
+        enqueueSnapshot(snapshotId, state, snapshotFrame = 0L)
         return snapshotId
     }
 
@@ -148,19 +151,20 @@ class NetplayHostDriver(
 
     private fun handleSnapshotRequest(packet: NetplayPacket.SnapshotRequest) {
         Log.d(TAG, "received SnapshotRequest reason=${packet.reasonCode}")
+        val snapshotFrame = currentFrame
         scope.launch {
             try {
                 val state = retroView.serializeState()
                 val snapshotId = nextSnapshotId.getAndIncrement()
-                Log.d(TAG, "sending snapshot id=$snapshotId size=${state.size}")
-                enqueueSnapshot(snapshotId, state)
+                Log.d(TAG, "sending snapshot id=$snapshotId frame=$snapshotFrame size=${state.size}")
+                enqueueSnapshot(snapshotId, state, snapshotFrame)
             } catch (t: Throwable) {
                 Log.w(TAG, "serializeState failed: ${t.message}")
             }
         }
     }
 
-    private fun enqueueSnapshot(snapshotId: Int, payload: ByteArray) {
+    private fun enqueueSnapshot(snapshotId: Int, payload: ByteArray, snapshotFrame: Long) {
         val total = ((payload.size + SNAPSHOT_CHUNK_BYTES - 1) / SNAPSHOT_CHUNK_BYTES).coerceAtLeast(1)
         val chunks = ArrayList<NetplayPacket.SnapshotChunk>(total)
         for (i in 0 until total) {
@@ -172,7 +176,8 @@ class NetplayHostDriver(
                     snapshotId = snapshotId,
                     chunkIndex = i,
                     chunkTotal = total,
-                    payload = slice
+                    payload = slice,
+                    frameIndex = if (i == 0) snapshotFrame else 0L
                 )
             )
         }

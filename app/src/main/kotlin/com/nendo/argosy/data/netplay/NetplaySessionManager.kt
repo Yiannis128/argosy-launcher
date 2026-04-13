@@ -444,7 +444,7 @@ class NetplaySessionManager(
         val driver = NetplayHostDriver(
             retroView = retroView,
             transport = result.transport,
-            peerAddress = result.peerAddress,
+            initialPeerAddress = result.peerAddress,
             peerUserId = guestUserId,
             localPort = LOCAL_HOST_PORT,
             guestPort = GUEST_PORT,
@@ -481,7 +481,7 @@ class NetplaySessionManager(
         val driver = NetplayGuestDriver(
             retroView = retroView,
             transport = result.transport,
-            peerAddress = result.peerAddress,
+            initialPeerAddress = result.peerAddress,
             peerUserId = hostUserId,
             localPort = GUEST_PORT,
             hostPort = LOCAL_HOST_PORT,
