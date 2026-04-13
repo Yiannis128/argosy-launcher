@@ -637,15 +637,6 @@ void LibretroDroid::stepForNetplay() {
         input->flushPendingReleases();
     }
 
-    if (rewindEnabled && rewindBuffer) {
-        size_t sz = core->retro_serialize_size();
-        if (sz > 0 && sz <= rewindBuffer->getMaxStateSize()) {
-            if (core->retro_serialize(rewindTempBuffer.data(), sz)) {
-                rewindBuffer->push(rewindTempBuffer.data(), sz);
-            }
-        }
-    }
-
     if (video && video->isHWAccelerated()) {
         video->bindMainContext();
     }
