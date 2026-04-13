@@ -110,30 +110,21 @@ class NetplayGuestDriver(
         sampleAndSendLocalInput()
 
         if (!catchingUp) {
-            while (pendingBundles.isNotEmpty() && pendingBundles.firstKey() < currentFrame) {
+            // Update lastConfirmedP1 from any bundles for past frames
+            while (pendingBundles.isNotEmpty() && pendingBundles.firstKey() < rollbackOldestFrame()) {
                 val staleBundle = pendingBundles.pollFirstEntry().value
                 updateLastConfirmedP1(staleBundle)
             }
 
+            // Check if any past speculative frames need correction
             checkAndRollback()
 
-            val bundle = pendingBundles.remove(currentFrame)
-            val p1: Int
-            val p2: Int
-            val speculative: Boolean
+            // Always step with prediction: P1 = last confirmed, P2 = local
+            // Don't consume the bundle for currentFrame — leave it for validation
+            val p1 = lastConfirmedP1
+            val p2 = lastLocalBitmask
 
-            if (bundle != null) {
-                p1 = extractPortBitmask(bundle, hostPort)
-                p2 = extractPortBitmask(bundle, localPort)
-                lastConfirmedP1 = p1
-                speculative = false
-            } else {
-                p1 = lastConfirmedP1
-                p2 = lastLocalBitmask
-                speculative = true
-            }
-
-            saveRollbackState(currentFrame, p1, p2, speculative)
+            saveRollbackState(currentFrame, p1, p2, speculative = true)
 
             libretroOps.setInputPortState(hostPort, p1)
             libretroOps.setInputPortState(localPort, p2)
@@ -243,6 +234,10 @@ class NetplayGuestDriver(
         }
 
         currentFrame = savedCurrentFrame
+    }
+
+    private fun rollbackOldestFrame(): Long {
+        return if (rollbackBuffer.isNotEmpty()) rollbackBuffer.first().frame else currentFrame
     }
 
     private fun confirmMatchedEntries() {
