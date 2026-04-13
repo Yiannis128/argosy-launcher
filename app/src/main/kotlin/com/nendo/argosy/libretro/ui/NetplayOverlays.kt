@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import com.nendo.argosy.data.social.NetplaySessionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -757,5 +759,80 @@ fun mapSessionStateToProgress(
         "Connected" -> NetplayProgressState(NetplayProgressStage.Ready)
         "Error" -> NetplayProgressState(NetplayProgressStage.Failed, errorMessage ?: "Connection failed")
         else -> null
+    }
+}
+
+@Composable
+fun NetplayBorderHud(
+    sessionMode: NetplaySessionMode,
+    playerCount: Int,
+    averagePingMs: Int?,
+    hostUsername: String,
+    guestUsername: String?,
+    isHost: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val textAlpha = 0.5f
+    val textColor = Color.White.copy(alpha = textAlpha)
+    val tagColor = Color.White.copy(alpha = 0.35f)
+    val textStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = 10.sp,
+        lineHeight = 14.sp
+    )
+
+    val modeLabel = when (sessionMode) {
+        NetplaySessionMode.OPEN -> "Open"
+        NetplaySessionMode.PRIVATE -> "Private"
+        NetplaySessionMode.INVITE_ONLY -> "Invite Only"
+    }
+
+    val pingLabel = if (averagePingMs != null) " | ${averagePingMs}ms" else ""
+    val statusLine = "$modeLabel | $playerCount player${if (playerCount != 1) "s" else ""}$pingLabel"
+
+    val hostLabel = if (isHost) hostUsername else guestUsername ?: hostUsername
+    val guestLabel = if (isHost) guestUsername else hostUsername
+
+    Column(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.3f))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = statusLine,
+            style = textStyle,
+            color = textColor,
+            maxLines = 1
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = "P1", style = textStyle, color = tagColor)
+            Text(
+                text = if (isHost) hostUsername else (guestUsername ?: ""),
+                style = textStyle,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (isHost) {
+                Text(text = "[HOST]", style = textStyle, color = tagColor)
+            }
+        }
+        if (guestLabel != null && playerCount >= 2) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = "P2", style = textStyle, color = tagColor)
+                Text(
+                    text = guestLabel,
+                    style = textStyle,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (!isHost) {
+                    Text(text = "[HOST]", style = textStyle, color = tagColor)
+                }
+            }
+        }
     }
 }

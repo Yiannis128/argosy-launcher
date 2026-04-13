@@ -95,6 +95,7 @@ import com.nendo.argosy.libretro.ui.NetplayProgressState
 import com.nendo.argosy.libretro.ui.NetplayQualityInfo
 import com.nendo.argosy.libretro.ui.NetplayQualityLabel
 import com.nendo.argosy.libretro.ui.NetplayQualityWarningPrompt
+import com.nendo.argosy.libretro.ui.NetplayBorderHud
 import com.nendo.argosy.libretro.ui.NetplayReconnectingOverlay
 import com.nendo.argosy.libretro.ui.InGameStateManager
 import com.nendo.argosy.libretro.ui.StateManagerViewMode
@@ -245,6 +246,13 @@ class LibretroActivity : ComponentActivity() {
     private var netplayQualityWarningJitterMs by mutableStateOf(0)
     private var netplayQualityWarningLabel by mutableStateOf("")
     private var netplayQualityWarningFocus by mutableStateOf(0)
+    private var netplayHudSessionMode by mutableStateOf(NetplaySessionMode.OPEN)
+    private var netplayHudAveragePingMs by mutableStateOf<Int?>(null)
+    private var netplayHudHostUsername by mutableStateOf("")
+    private var netplayPeerConnected by mutableStateOf(false)
+    private val rttRingBuffer = IntArray(RTT_RING_BUFFER_SIZE)
+    private var rttRingIndex = 0
+    private var rttRingCount = 0
     private var lastAnnouncedTier: NetplayQualityLabel? = null
     private var tierChangeTimestamp: Long = 0L
     private var savedOrientation: Int = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -854,6 +862,22 @@ class LibretroActivity : ComponentActivity() {
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
+                    if (netplayInSession && !menuVisible) {
+                        val playerCount = if (netplayPeerConnected) 2 else 1
+                        NetplayBorderHud(
+                            sessionMode = netplayHudSessionMode,
+                            playerCount = playerCount,
+                            averagePingMs = netplayHudAveragePingMs,
+                            hostUsername = if (netplayRole == NetplayMenuRole.Host) netplayHudHostUsername else netplayPeerDisplayName,
+                            guestUsername = if (netplayPeerConnected) {
+                                if (netplayRole == NetplayMenuRole.Host) netplayPeerDisplayName else netplayHudHostUsername
+                            } else null,
+                            isHost = netplayRole == NetplayMenuRole.Host,
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 4.dp)
+                        )
+                    }
                     AchievementPopup(
                         achievement = raSession?.currentAchievementUnlock,
                         onDismiss = { raSession?.showNextUnlock() },
@@ -1131,6 +1155,7 @@ class LibretroActivity : ComponentActivity() {
             if (ok) {
                 netplaySessionIsReserved = false
                 manager.sessionMode = NetplaySessionMode.OPEN
+                netplayHudSessionMode = NetplaySessionMode.OPEN
                 val head = manager.joinRequestQueue.value.firstOrNull()
                 if (head != null) {
                     manager.acceptJoin(head.fromUserId)
@@ -1166,6 +1191,9 @@ class LibretroActivity : ComponentActivity() {
             sessionRules = rules
         )
         netplaySessionManager = manager
+        netplayHudHostUsername = kotlinx.coroutines.runBlocking {
+            preferencesRepository.userPreferences.first()
+        }.let { it.socialDisplayName ?: it.socialUsername ?: "" }
         lifecycleScope.launch {
             manager.sessionState.collect { state ->
                 when (state) {
@@ -1181,6 +1209,7 @@ class LibretroActivity : ComponentActivity() {
                         netplayDisconnectPromptVisible = false
                         val peerName = resolveFriendDisplayName(state.peerUserId)
                         netplayPeerDisplayName = peerName
+                        netplayPeerConnected = true
                         val initRtt = manager.initialRttMs
                         val rttSuffix = if (initRtt != null) " -- ${initRtt}ms" else ""
                         if (netplayRole == NetplayMenuRole.Host &&
@@ -1208,6 +1237,7 @@ class LibretroActivity : ComponentActivity() {
                         }
                         netplayInSession = false
                         netplayRole = null
+                        netplayPeerConnected = false
                         netplaySessionIsReserved = false
                         lastJoinedToastPeerId = null
                         lastAnnouncedTier = null
@@ -1315,8 +1345,15 @@ class LibretroActivity : ComponentActivity() {
                 netplayLastRttMs = rttMs
                 if (!netplayInSession || rttMs == null) {
                     candidateTier = null
+                    rttRingCount = 0
+                    rttRingIndex = 0
+                    netplayHudAveragePingMs = null
                     continue
                 }
+                rttRingBuffer[rttRingIndex] = rttMs
+                rttRingIndex = (rttRingIndex + 1).mod(RTT_RING_BUFFER_SIZE)
+                if (rttRingCount < RTT_RING_BUFFER_SIZE) rttRingCount++
+                netplayHudAveragePingMs = rttRingBuffer.take(rttRingCount).average().toInt()
                 val currentTier = NetplayQualityInfo.labelForRttMs(rttMs)
                 if (currentTier != lastAnnouncedTier) {
                     if (currentTier != candidateTier) {
@@ -1337,6 +1374,7 @@ class LibretroActivity : ComponentActivity() {
                 val name = resolveFriendDisplayName(event.guestUserId)
                 inGameMessage = "$name left your session"
                 netplayPeerDisplayName = "Friend"
+                netplayPeerConnected = false
                 netplayLastRttMs = null
             }
         }
@@ -1456,6 +1494,7 @@ class LibretroActivity : ComponentActivity() {
             return
         }
         manager.sessionMode = mode
+        netplayHudSessionMode = mode
         netplayRole = NetplayMenuRole.Host
         retroView.suppressAutoResume = false
         retroView.resumeEmulation()
@@ -1517,6 +1556,7 @@ class LibretroActivity : ComponentActivity() {
                     return@launch
                 }
                 manager.sessionMode = NetplaySessionMode.INVITE_ONLY
+                netplayHudSessionMode = NetplaySessionMode.INVITE_ONLY
                 netplayRole = NetplayMenuRole.Host
                 val result = manager.openServer(payload)
                 result.fold(
@@ -2024,6 +2064,7 @@ class LibretroActivity : ComponentActivity() {
         private const val TAG = "LibretroActivity"
         private const val NETPLAY_CLOSE_TIMEOUT_MS = 500L
         private const val TIER_CHANGE_DEBOUNCE_MS = 2000L
+        private const val RTT_RING_BUFFER_SIZE = 6
 
         const val EXTRA_ROM_PATH = "rom_path"
         const val EXTRA_CORE_PATH = "core_path"
