@@ -262,6 +262,7 @@ class ArgosSocialService @Inject constructor(
 
                 MessageTypes.PRESENCE_UPDATE -> {
                     if (payload != null) {
+                        val netplay = parseNetplaySession(payload.optJSONObject("netplay_session"))
                         val update = PresenceUpdate(
                             userId = payload.getString("user_id"),
                             status = payload.getString("status"),
@@ -269,7 +270,7 @@ class ArgosSocialService @Inject constructor(
                                 PresenceGameInfo(
                                     title = gameJson.getString("title"),
                                     coverThumb = gameJson.optString("cover_thumb", null),
-                                    netplaySession = parseNetplaySession(gameJson.optJSONObject("netplay_session"))
+                                    netplaySession = netplay
                                 )
                             },
                             deviceName = payload.optString("device_name", null),
@@ -1262,6 +1263,16 @@ class ArgosSocialService @Inject constructor(
                 val obj = array.getJSONObject(i)
                 val userObj = obj.getJSONObject("user")
                 val presenceObj = obj.optJSONObject("presence")
+                val gameTitle = presenceObj?.optString("game_title", null)
+                    ?.takeIf { it.isNotEmpty() }
+                val gameInfo = if (gameTitle != null) {
+                    PresenceGameInfo(
+                        title = gameTitle,
+                        coverThumb = null,
+                        netplaySession = null
+                    )
+                } else null
+
                 Friend(
                     id = userObj.getString("id"),
                     username = userObj.getString("username"),
@@ -1271,13 +1282,7 @@ class ArgosSocialService @Inject constructor(
                     presence = presenceObj?.let {
                         PresenceStatus.fromValue(it.optString("status", "offline"))
                     },
-                    currentGame = presenceObj?.optJSONObject("game")?.let { gameJson ->
-                        PresenceGameInfo(
-                            title = gameJson.getString("title"),
-                            coverThumb = gameJson.optString("cover_thumb", null),
-                            netplaySession = parseNetplaySession(gameJson.optJSONObject("netplay_session"))
-                        )
-                    },
+                    currentGame = gameInfo,
                     deviceName = presenceObj?.optString("device_name", null),
                     isFavorite = obj.optBoolean("is_favorite", false)
                 )
