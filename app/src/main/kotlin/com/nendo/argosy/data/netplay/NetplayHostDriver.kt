@@ -58,14 +58,27 @@ class NetplayHostDriver(
         }
     }
 
+    private var tickCount = 0L
+    private var lastTickLogNanos = 0L
+
     override fun tick() {
         if (stopped) return
 
         val now = System.nanoTime()
-        if (now < nextTickTargetNanos) return
+        if (now < nextTickTargetNanos) {
+            libretroOps.renderFrameOnly()
+            return
+        }
         nextTickTargetNanos += framePeriodNanos
         if (nextTickTargetNanos < now - framePeriodNanos) {
             nextTickTargetNanos = now
+        }
+
+        tickCount++
+        if (now - lastTickLogNanos >= 1_000_000_000L) {
+            Log.d(TAG, "host ticks/sec=$tickCount localBitmask=${libretroOps.getInputPortBitmask(localPort)} guestBitmask=$guestCurrentBitmask")
+            tickCount = 0
+            lastTickLogNanos = now
         }
 
         drainIncoming()

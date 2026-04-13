@@ -41,6 +41,9 @@ class NetplayGuestDriver(
     @Volatile private var stopped = false
     @Volatile private var nextTickTargetNanos: Long = System.nanoTime()
 
+    private val latestHostInputs = mutableMapOf<Int, Int>()
+    @Volatile private var speculativeFrames: Int = 0
+
     @Volatile var shouldSkipRender: Boolean = false
 
     val framesBehindHost: Long
@@ -84,7 +87,10 @@ class NetplayGuestDriver(
         if (stopped) return
 
         val now = System.nanoTime()
-        if (now < nextTickTargetNanos) return
+        if (now < nextTickTargetNanos) {
+            libretroOps.renderFrameOnly()
+            return
+        }
         nextTickTargetNanos += framePeriodNanos
         if (nextTickTargetNanos < now - framePeriodNanos) {
             nextTickTargetNanos = now
@@ -94,20 +100,22 @@ class NetplayGuestDriver(
         sampleAndSendLocalInput()
 
         if (!catchingUp) {
-            var stepped = 0
-            while (stepped < MAX_STEPS_PER_TICK) {
-                val bundle = pendingBundles.firstEntry() ?: break
-                if (bundle.key != currentFrame) {
-                    if (bundle.key < currentFrame) {
-                        pendingBundles.pollFirstEntry()
-                        continue
-                    }
-                    break
+            // Drain stale bundles
+            while (pendingBundles.isNotEmpty() && pendingBundles.firstKey() < currentFrame) {
+                pendingBundles.pollFirstEntry()
+            }
+
+            // Step only when we have the real bundle for this frame
+            if (pendingBundles.isNotEmpty() && pendingBundles.firstKey() == currentFrame) {
+                val bundle = pendingBundles.pollFirstEntry().value
+                bundle.ports.forEach { port ->
+                    libretroOps.setInputPortState(port.port, port.bitmask)
                 }
-                val entry = pendingBundles.pollFirstEntry() ?: break
-                applyBundle(entry.value)
+                libretroOps.stepForNetplay(retroView)
                 currentFrame++
-                stepped++
+            } else {
+                // No bundle yet — re-present current frame (no step, no stutter)
+                libretroOps.renderFrameOnly()
             }
         }
 
@@ -124,12 +132,6 @@ class NetplayGuestDriver(
         }
     }
 
-    private fun applyBundle(bundle: NetplayPacket.InputBundle) {
-        bundle.ports.forEach { port ->
-            libretroOps.setInputPortState(port.port, port.bitmask)
-        }
-        libretroOps.stepForNetplay(retroView)
-    }
 
     private fun sampleAndSendLocalInput() {
         val current = libretroOps.getInputPortBitmask(0)
@@ -325,7 +327,9 @@ class NetplayGuestDriver(
         private const val GUEST_REASSERT_INTERVAL = 10L
         private const val REASON_CATCHUP = 1
         private const val FRAME_PERIOD_NANOS = 16_666_667L
-        private const val MAX_STEPS_PER_TICK = 2
+        private const val MAX_STEPS_PER_TICK = 4
+        private const val BURST_THRESHOLD = 10
+        private const val MAX_SPECULATIVE_FRAMES = 15
         const val DEFAULT_CATCHUP_THRESHOLD = 30
     }
 }

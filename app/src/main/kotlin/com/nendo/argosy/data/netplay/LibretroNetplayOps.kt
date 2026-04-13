@@ -7,6 +7,7 @@ interface LibretroNetplayOps {
     fun setInputPortState(port: Int, bitmask: Int)
     fun getInputPortBitmask(port: Int): Int
     fun stepForNetplay(retroView: GLRetroView)
+    fun renderFrameOnly()
 }
 
 object RealLibretroNetplayOps : LibretroNetplayOps {
@@ -20,5 +21,9 @@ object RealLibretroNetplayOps : LibretroNetplayOps {
 
     override fun stepForNetplay(retroView: GLRetroView) {
         LibretroDroid.stepForNetplay(retroView)
+    }
+
+    override fun renderFrameOnly() {
+        LibretroDroid.renderFrameOnly()
     }
 }

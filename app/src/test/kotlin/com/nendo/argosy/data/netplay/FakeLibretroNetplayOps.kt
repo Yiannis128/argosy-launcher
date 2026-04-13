@@ -22,4 +22,6 @@ internal class FakeLibretroNetplayOps : LibretroNetplayOps {
     override fun stepForNetplay(retroView: GLRetroView) {
         stepCount += 1
     }
+
+    override fun renderFrameOnly() { }
 }
