@@ -478,7 +478,8 @@ class NetplaySessionManager(
                 _progressHint.value = ProgressHint.LoadingState
                 if (isHost) {
                     val state = retroView.serializeState()
-                    driver.sendInitialSnapshot(state, driver.currentFrame)
+                    driver.sendInitialSnapshot(state, 0L)
+                    driver.resetFrameCounter()
                 }
                 _progressHint.value = null
                 _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = peerUserId)

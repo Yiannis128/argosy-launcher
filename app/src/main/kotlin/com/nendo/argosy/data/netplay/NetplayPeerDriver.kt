@@ -149,6 +149,16 @@ class NetplayPeerDriver(
         return snapshotId
     }
 
+    fun resetFrameCounter() {
+        currentFrame = 0
+        localInputHistory.clear()
+        confirmedRemoteInputs.clear()
+        lastConfirmedRemoteInput = 0
+        lastConfirmedRemoteFrame = -1L
+        for (i in stateRing.indices) stateRing[i] = null
+        stateRingHead = 0
+    }
+
     override fun stop() {
         if (stopped) return
         stopped = true
@@ -382,7 +392,7 @@ class NetplayPeerDriver(
             return
         }
         lastAppliedSnapshotId = snapshotId
-        currentFrame = if (snapshotFrame == 0L) 0L else snapshotFrame + 1
+        currentFrame = 0
         localInputHistory.clear()
         confirmedRemoteInputs.clear()
         lastConfirmedRemoteInput = 0
