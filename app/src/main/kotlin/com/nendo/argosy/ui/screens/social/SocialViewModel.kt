@@ -156,7 +156,13 @@ class SocialViewModel @Inject constructor(
 
     fun launchNetplayJoin(friend: Friend, session: NetplaySession) {
         viewModelScope.launch {
+            notificationManager.showPersistent(
+                title = "Joining ${session.gameTitle}",
+                subtitle = "Checking compatibility...",
+                key = "netplay-join"
+            )
             val preflight = netplayPreflightChecker.check(session)
+            notificationManager.dismissByKey("netplay-join")
             if (preflight !is NetplayPreflightResult.Joinable) {
                 _launchEvents.emit(SocialLaunchEvent.LaunchError("This session is not joinable"))
                 return@launch
