@@ -41,7 +41,10 @@ import com.nendo.argosy.ui.screens.settings.components.SavePathModal
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.screens.settings.components.VariantPickerModal
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
+import com.nendo.argosy.libretro.LibretroCoreRegistry
+import com.nendo.argosy.libretro.NetplaySupportLevel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
 
 // -- Item definitions --
@@ -241,12 +244,35 @@ fun PlatformDetailSection(
                         }
                     )
                 }
-                PlatformDetailItem.Core -> CyclePreference(
-                    title = "Core",
-                    value = config.selectedCore ?: "Default",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleCoreForPlatform(config, 1) }
-                )
+                PlatformDetailItem.Core -> {
+                    val platformHasNetplay = config.effectiveEmulatorId == "builtin" &&
+                        LibretroCoreRegistry.getCoresForPlatform(config.platform.slug)
+                            .any { it.netplaySupport == NetplaySupportLevel.SUPPORTED }
+                    val activeCoreId = config.selectedCore
+                        ?: LibretroCoreRegistry.getDefaultCoreForPlatform(config.platform.slug)?.coreId
+                    val activeNetplay = platformHasNetplay &&
+                        activeCoreId != null &&
+                        LibretroCoreRegistry.getCoreById(activeCoreId)?.netplaySupport == NetplaySupportLevel.SUPPORTED
+
+                    CyclePreference(
+                        title = "Core",
+                        value = config.selectedCore ?: "Default",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.cycleCoreForPlatform(config, 1) },
+                        valueFooter = if (platformHasNetplay) {
+                            {
+                                CoreTag(
+                                    text = "Netplay",
+                                    color = if (activeNetplay) {
+                                        LocalLauncherTheme.current.semanticColors.success
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                    }
+                                )
+                            }
+                        } else null
+                    )
+                }
                 PlatformDetailItem.Extension -> CyclePreference(
                     title = "File Extension",
                     value = config.selectedExtension ?: "Default",

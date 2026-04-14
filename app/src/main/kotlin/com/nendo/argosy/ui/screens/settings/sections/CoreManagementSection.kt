@@ -33,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nendo.argosy.ui.components.FocusedScroll
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.screens.settings.CoreChipState
 import com.nendo.argosy.ui.screens.settings.PlatformCoreRow
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -273,6 +275,8 @@ private fun CoreChipContent(
     textColor: Color,
     statusColor: Color
 ) {
+    val semanticColors = LocalLauncherTheme.current.semanticColors
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -306,6 +310,40 @@ private fun CoreChipContent(
             text = core.displayName,
             style = MaterialTheme.typography.labelSmall,
             color = textColor
+        )
+        if (core.netplaySupported) {
+            CoreTag(
+                text = "Netplay",
+                color = semanticColors.info
+            )
+        }
+        if (core.updateAvailable && core.isInstalled) {
+            CoreTag(
+                text = "Update",
+                color = semanticColors.warning
+            )
+        }
+    }
+}
+
+@Composable
+internal fun CoreTag(
+    text: String,
+    color: Color
+) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = color.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(Dimens.radiusSm)
+            )
+            .padding(horizontal = Dimens.spacingXs, vertical = 1.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontSize = 9.sp
         )
     }
 }

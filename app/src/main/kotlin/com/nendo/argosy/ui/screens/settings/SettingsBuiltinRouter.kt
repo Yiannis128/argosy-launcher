@@ -7,6 +7,7 @@ import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
 import com.nendo.argosy.libretro.LibretroBuildbot
 import com.nendo.argosy.data.platform.PlatformWeightRegistry
 import com.nendo.argosy.libretro.LibretroCoreRegistry
+import com.nendo.argosy.libretro.NetplaySupportLevel
 import com.nendo.argosy.libretro.shader.ShaderChainConfig
 import com.nendo.argosy.libretro.shader.ShaderChainManager
 import com.nendo.argosy.libretro.shader.ShaderPreviewRenderer
@@ -658,6 +659,7 @@ internal fun routeLoadCoreManagementState(vm: SettingsViewModel, preserveFocus: 
         val syncEnabledPlatforms = vm.platformRepository.getSyncEnabledPlatforms()
         val coreSelections = vm.preferencesRepository.getBuiltinCoreSelections().first()
         val installedCoreIds = vm.getInstalledCoreIds()
+        val updatableCoreIds = vm.coreManager.getCoreIdsWithUpdatesAvailable()
 
         val platformRows = syncEnabledPlatforms
             .filter { LibretroCoreRegistry.isPlatformSupported(it.slug) }
@@ -675,7 +677,9 @@ internal fun routeLoadCoreManagementState(vm: SettingsViewModel, preserveFocus: 
                             coreId = core.coreId,
                             displayName = core.displayName,
                             isInstalled = core.coreId in installedCoreIds,
-                            isActive = core.coreId == activeCoreId
+                            isActive = core.coreId == activeCoreId,
+                            netplaySupported = core.netplaySupport == NetplaySupportLevel.SUPPORTED,
+                            updateAvailable = core.coreId in updatableCoreIds
                         )
                     }
                 )
@@ -749,6 +753,15 @@ internal fun routeSelectCoreForPlatform(vm: SettingsViewModel) {
             routeDownloadCoreWithNotification(vm, core.coreId)
         } else {
             vm.notificationManager.showError("Cannot download while offline")
+        }
+        return
+    }
+
+    if (core.updateAvailable && core.isActive) {
+        if (state.isOnline) {
+            routeDownloadCoreWithNotification(vm, core.coreId)
+        } else {
+            vm.notificationManager.showError("Cannot update while offline")
         }
         return
     }

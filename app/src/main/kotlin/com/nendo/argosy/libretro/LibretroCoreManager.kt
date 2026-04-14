@@ -93,6 +93,9 @@ class LibretroCoreManager @Inject constructor(
         }
     }
 
+    suspend fun getCoreIdsWithUpdatesAvailable(): Set<String> =
+        coreVersionDao.getWithUpdatesAvailable().map { it.coreId }.toSet()
+
     fun getMissingCoresForPlatforms(platformSlugs: Set<String>): List<LibretroCoreRegistry.CoreInfo> {
         val neededCores = platformSlugs.mapNotNull { LibretroCoreRegistry.getDefaultCoreForPlatform(it) }
             .distinctBy { it.coreId }

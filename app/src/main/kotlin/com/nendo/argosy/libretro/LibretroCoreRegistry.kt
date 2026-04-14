@@ -36,7 +36,8 @@ object LibretroCoreRegistry {
             fileName = "nestopia_libretro_android.so",
             displayName = "Nestopia",
             platforms = setOf("nes", "fds"),
-            estimatedSizeBytes = 1_200_000L
+            estimatedSizeBytes = 1_200_000L,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Nintendo 16-bit
@@ -65,7 +66,8 @@ object LibretroCoreRegistry {
             platforms = setOf("gb", "gbc", "gba"),
             estimatedSizeBytes = 3_000_000L,
             requiresBios = listOf("gba_bios.bin"),
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
         CoreInfo(
             coreId = "gambatte",
@@ -133,7 +135,8 @@ object LibretroCoreRegistry {
             fileName = "picodrive_libretro_android.so",
             displayName = "PicoDrive",
             platforms = setOf("genesis", "megadrive", "sms", "gg", "scd", "segacd", "32x"),
-            estimatedSizeBytes = 1_500_000L
+            estimatedSizeBytes = 1_500_000L,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Sony PlayStation
@@ -182,7 +185,8 @@ object LibretroCoreRegistry {
             displayName = "Stella",
             platforms = setOf("atari2600", "2600"),
             estimatedSizeBytes = 1_000_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // NEC
@@ -192,7 +196,8 @@ object LibretroCoreRegistry {
             displayName = "Beetle PCE",
             platforms = setOf("tg16", "pce", "turbografx16", "pcengine"),
             estimatedSizeBytes = 1_500_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Nintendo DS
@@ -223,7 +228,8 @@ object LibretroCoreRegistry {
             displayName = "Beetle VB",
             platforms = setOf("vb", "virtualboy"),
             estimatedSizeBytes = 1_500_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Atari 5200
@@ -274,7 +280,8 @@ object LibretroCoreRegistry {
             displayName = "Beetle WS",
             platforms = setOf("wonderswan", "wsc"),
             estimatedSizeBytes = 1_000_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Neo Geo Pocket / Color
@@ -284,7 +291,8 @@ object LibretroCoreRegistry {
             displayName = "Beetle NGP",
             platforms = setOf("ngp", "ngpc"),
             estimatedSizeBytes = 1_000_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // ColecoVision
@@ -333,7 +341,8 @@ object LibretroCoreRegistry {
             displayName = "FBNeo",
             platforms = setOf("arcade", "neogeo", "cps1", "cps2", "cps3"),
             estimatedSizeBytes = 15_000_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
         CoreInfo(
             coreId = "mame2003_plus",
@@ -359,7 +368,8 @@ object LibretroCoreRegistry {
             displayName = "vecx",
             platforms = setOf("vectrex"),
             estimatedSizeBytes = 300_000L,
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Odyssey 2
@@ -443,7 +453,8 @@ object LibretroCoreRegistry {
             platforms = setOf("pokemini"),
             estimatedSizeBytes = 500_000L,
             requiresBios = listOf("bios.min"),
-            isDefault = true
+            isDefault = true,
+            netplaySupport = NetplaySupportLevel.SUPPORTED
         ),
 
         // Game & Watch

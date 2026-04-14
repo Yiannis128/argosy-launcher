@@ -136,7 +136,8 @@ fun CyclePreference(
     subtitle: String? = null,
     isCustom: Boolean = false,
     showResetButton: Boolean = false,
-    onReset: (() -> Unit)? = null
+    onReset: (() -> Unit)? = null,
+    valueFooter: (@Composable () -> Unit)? = null
 ) {
     val valueColor = when {
         isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
@@ -171,32 +172,37 @@ fun CyclePreference(
                 )
             }
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            if (showResetButton && onReset != null) {
-                Box(
-                    modifier = Modifier
-                        .size(Dimens.iconMd)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
-                        .clickableNoFocus(onClick = onReset),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Reset to global",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(Dimens.iconSm)
-                    )
+        Column(horizontalAlignment = Alignment.End) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                if (showResetButton && onReset != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(Dimens.iconMd)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                            .clickableNoFocus(onClick = onReset),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Reset to global",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(Dimens.iconSm)
+                        )
+                    }
                 }
+                Text(
+                    text = "< $value >",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = valueColor
+                )
             }
-            Text(
-                text = "< $value >",
-                style = MaterialTheme.typography.bodyMedium,
-                color = valueColor
-            )
+            if (valueFooter != null) {
+                valueFooter()
+            }
         }
     }
 }

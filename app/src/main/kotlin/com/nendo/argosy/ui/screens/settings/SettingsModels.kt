@@ -473,7 +473,9 @@ data class CoreChipState(
     val coreId: String,
     val displayName: String,
     val isInstalled: Boolean,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val netplaySupported: Boolean = false,
+    val updateAvailable: Boolean = false
 )
 
 data class PlatformCoreRow(
