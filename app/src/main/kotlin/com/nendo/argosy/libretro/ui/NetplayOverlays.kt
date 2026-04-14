@@ -766,6 +766,7 @@ fun mapSessionStateToProgress(
 
 @Composable
 fun NetplayBorderHud(
+    gameTitle: String,
     sessionMode: NetplaySessionMode,
     playerCount: Int,
     averagePingMs: Int?,
@@ -773,11 +774,18 @@ fun NetplayBorderHud(
     guestUsername: String?,
     hostAvatarColor: String?,
     guestAvatarColor: String?,
+    observers: List<Pair<String, String?>> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val nameColor = Color.White.copy(alpha = 0.6f)
     val statusColor = Color.White.copy(alpha = 0.4f)
     val tagColor = Color.White.copy(alpha = 0.35f)
+    val headerColor = Color.White.copy(alpha = 0.35f)
+    val accentColor = MaterialTheme.colorScheme.primary
+    val titleStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = 11.sp,
+        lineHeight = 15.sp
+    )
     val nameStyle = MaterialTheme.typography.labelSmall.copy(
         fontSize = 10.sp,
         lineHeight = 14.sp
@@ -791,6 +799,10 @@ fun NetplayBorderHud(
         lineHeight = 13.sp,
         fontFamily = FontFamily.Monospace
     )
+    val sectionHeaderStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = 9.sp,
+        lineHeight = 13.sp
+    )
 
     val hostDotColor = parseAvatarColor(hostAvatarColor)
     val guestDotColor = parseAvatarColor(guestAvatarColor)
@@ -801,8 +813,14 @@ fun NetplayBorderHud(
         NetplaySessionMode.INVITE_ONLY -> "Invite Only"
     }
 
-    val pingLabel = if (averagePingMs != null) " | " else ""
-    val statusPrefix = "$modeLabel | $playerCount player${if (playerCount != 1) "s" else ""}"
+    val pingColor = when {
+        averagePingMs == null -> statusColor
+        averagePingMs < 80 -> Color(0xFF22C55E)
+        averagePingMs < 150 -> Color(0xFFFBBF24)
+        averagePingMs < 200 -> Color(0xFFF97316)
+        averagePingMs < 300 -> Color(0xFFEF4444)
+        else -> Color(0xFFDC2626)
+    }
 
     Row(
         modifier = modifier
@@ -819,23 +837,38 @@ fun NetplayBorderHud(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
+            Text(
+                text = gameTitle,
+                style = titleStyle,
+                color = Color.White.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = statusPrefix,
+                    text = modeLabel,
                     style = statusStyle,
                     color = statusColor,
                     maxLines = 1
                 )
                 if (averagePingMs != null) {
-                    Text(text = pingLabel, style = statusStyle, color = statusColor)
+                    Text(text = " | ", style = statusStyle, color = statusColor)
                     Text(
                         text = "${averagePingMs}ms",
                         style = pingStyle,
-                        color = statusColor,
+                        color = pingColor,
                         maxLines = 1
                     )
                 }
             }
+            Text(
+                text = "$playerCount player${if (playerCount != 1) "s" else ""}",
+                style = statusStyle,
+                color = tagColor,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "P1", style = sectionHeaderStyle, color = headerColor)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -846,7 +879,6 @@ fun NetplayBorderHud(
                         .clip(CircleShape)
                         .background(hostDotColor)
                 )
-                Text(text = "P1", style = nameStyle, color = tagColor)
                 Text(
                     text = hostUsername,
                     style = nameStyle,
@@ -855,9 +887,11 @@ fun NetplayBorderHud(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Text(text = "[HOST]", style = nameStyle, color = tagColor)
+                Text(text = "[HOST]", style = nameStyle, color = accentColor)
             }
             if (guestUsername != null && playerCount >= 2) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = "P2", style = sectionHeaderStyle, color = headerColor)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -868,7 +902,6 @@ fun NetplayBorderHud(
                             .clip(CircleShape)
                             .background(guestDotColor)
                     )
-                    Text(text = "P2", style = nameStyle, color = tagColor)
                     Text(
                         text = guestUsername,
                         style = nameStyle,
@@ -877,6 +910,31 @@ fun NetplayBorderHud(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+                }
+            }
+            if (observers.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "Observers", style = sectionHeaderStyle, color = headerColor)
+                for ((name, avatarColor) in observers) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(parseAvatarColor(avatarColor))
+                        )
+                        Text(
+                            text = name,
+                            style = nameStyle,
+                            color = nameColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                 }
             }
         }

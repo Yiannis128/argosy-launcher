@@ -357,7 +357,7 @@ class LibretroActivity : ComponentActivity() {
 
         if (gameId != -1L) {
             val isNewGame = launchMode == LaunchMode.NEW_CASUAL || launchMode == LaunchMode.NEW_HARDCORE
-            playSessionTracker.startSession(gameId, EmulatorRegistry.BUILTIN_PACKAGE, coreName, hardcoreMode, isNewGame)
+            playSessionTracker.startSession(gameId, EmulatorRegistry.BUILTIN_PACKAGE, coreName, hardcoreMode, isNewGame, isNetplayGuest = isGuestJoinedSession)
             cheatManager.loadCheats(hardcoreMode)
             initializeRASession()
         }
@@ -375,6 +375,7 @@ class LibretroActivity : ComponentActivity() {
         val joinSessionId = intent.getStringExtra(EXTRA_NETPLAY_JOIN_SESSION_ID)
         val joinHostUserId = intent.getStringExtra(EXTRA_NETPLAY_JOIN_HOST_USER_ID)
         if (!joinSessionId.isNullOrEmpty() && !joinHostUserId.isNullOrEmpty()) {
+            Log.d(TAG, "parseIntentExtras: netplay guest join detected | sessionId=$joinSessionId, hostUserId=$joinHostUserId")
             pendingNetplayJoin = PendingNetplayJoin(joinSessionId, joinHostUserId)
             isGuestJoinedSession = true
             // Guests joining a netplay session do not fetch, create, or sync
@@ -868,6 +869,7 @@ class LibretroActivity : ComponentActivity() {
                         val playerCount = if (netplayPeerConnected) 2 else 1
                         val isLocalHost = netplayRole == NetplayMenuRole.Host
                         NetplayBorderHud(
+                            gameTitle = gameName,
                             sessionMode = netplayHudSessionMode,
                             playerCount = playerCount,
                             averagePingMs = netplayHudAveragePingMs,
@@ -877,9 +879,10 @@ class LibretroActivity : ComponentActivity() {
                             } else null,
                             hostAvatarColor = if (isLocalHost) netplayHudHostAvatarColor else netplayHudGuestAvatarColor,
                             guestAvatarColor = if (isLocalHost) netplayHudGuestAvatarColor else netplayHudHostAvatarColor,
+                            observers = emptyList(),
                             modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 4.dp)
+                                .align(Alignment.TopStart)
+                                .padding(start = 4.dp, top = 4.dp)
                         )
                     }
                     AchievementPopup(

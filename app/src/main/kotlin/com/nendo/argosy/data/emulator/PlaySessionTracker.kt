@@ -64,7 +64,8 @@ data class ActiveSession(
     val isHardcore: Boolean = false,
     val isNewGame: Boolean = false,
     val channelName: String? = null,
-    val isOnOlderSave: Boolean = false
+    val isOnOlderSave: Boolean = false,
+    val isNetplayGuest: Boolean = false
 )
 
 sealed class SessionEndResult {
@@ -492,7 +493,7 @@ class PlaySessionTracker @Inject constructor(
         }
     }
 
-    fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false) {
+    fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false, isNetplayGuest: Boolean = false) {
         emulatorBackgroundJob?.cancel()
         emulatorBackgroundJob = null
         endingSession.set(false)
@@ -509,7 +510,8 @@ class PlaySessionTracker @Inject constructor(
             emulatorPackage = emulatorPackage,
             coreName = coreName,
             isHardcore = isHardcore,
-            isNewGame = isNewGame
+            isNewGame = isNewGame,
+            isNetplayGuest = isNetplayGuest
         )
         Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Session started | emulator=$emulatorPackage, core=$coreName, hardcore=$isHardcore, newGame=$isNewGame")
 
@@ -695,16 +697,17 @@ class PlaySessionTracker @Inject constructor(
                 }
             }
 
+            val effectiveSkipSaveSync = skipSaveSync || session.isNetplayGuest
             return try {
                 val cacheResult = coroutineScope {
                     val saveJob = async {
                         recordPlayTime(session, Duration.ofMillis(activePlayMs))
                         markGameIncompleteIfNeeded(session, sessionDuration)
-                        if (!skipSaveSync) syncAndCacheSave(session) else null
+                        if (!effectiveSkipSaveSync) syncAndCacheSave(session) else null
                     }
 
                     val stateJob = async {
-                        if (!skipSaveSync) syncStateData(session)
+                        if (!effectiveSkipSaveSync) syncStateData(session)
                     }
 
                     val result = saveJob.await()
