@@ -891,16 +891,12 @@ class ArgosyViewModel @Inject constructor(
         val session = friend.currentGame?.netplaySession ?: return
         if (!session.joinable) return
         viewModelScope.launch {
-            notificationManager.showPersistent(
+            notificationManager.show(
                 title = "Joining ${session.gameTitle}",
                 subtitle = "Checking compatibility...",
-                key = "netplay-join"
+                duration = NotificationDuration.LONG
             )
-            val preflight = try {
-                netplayPreflightChecker.check(session)
-            } finally {
-                notificationManager.dismissByKey("netplay-join")
-            }
+            val preflight = netplayPreflightChecker.check(session)
             if (preflight !is NetplayPreflightResult.Joinable) {
                 val reason = when (preflight) {
                     NetplayPreflightResult.RomNotFound -> "ROM not found"
