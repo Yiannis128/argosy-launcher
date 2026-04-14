@@ -126,6 +126,13 @@ class NetplayPeerDriver(
         // and sends input for currentFrame+delay, then the next un-paused tick
         // re-samples for the same target frame, causing input divergence.
         if (remotePeerFrame >= 0 && currentFrame > remotePeerFrame + FRAME_LEASH) {
+            // Send a keep-alive FrameInput so the peer's remotePeerFrame stays
+            // current. Use the last sampled input (don't re-sample — that was
+            // the original desync bug). The delayedFrame won't advance since
+            // currentFrame is frozen, and storeConfirmedRemoteInput deduplicates.
+            val keepAliveFrame = currentFrame + inputDelay
+            val lastInput = localInputHistory[keepAliveFrame] ?: 0
+            sendFrameInput(keepAliveFrame, lastInput)
             libretroOps.renderFrameOnly()
             heartbeat()
             return
