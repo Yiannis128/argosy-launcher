@@ -120,20 +120,22 @@ class NetplayPeerDriver(
             return
         }
 
-        // Sample and send local input immediately (tagged for future frame due to delay)
-        val sampledInput = libretroOps.getInputPortBitmask(0)
-        val delayedFrame = currentFrame + inputDelay
-        localInputHistory[delayedFrame] = sampledInput
-        sendFrameInput(delayedFrame, sampledInput)
-
         // Peer-frame leash: only the AHEAD side pauses. Can't deadlock
         // because the behind side always keeps running and sending input.
-        // 3-frame tolerance accounts for network latency on senderFrame.
-        if (remotePeerFrame >= 0 && currentFrame > remotePeerFrame + 3) {
+        // Must check BEFORE sampling input — otherwise a paused tick samples
+        // and sends input for currentFrame+delay, then the next un-paused tick
+        // re-samples for the same target frame, causing input divergence.
+        if (remotePeerFrame >= 0 && currentFrame > remotePeerFrame + FRAME_LEASH) {
             libretroOps.renderFrameOnly()
             heartbeat()
             return
         }
+
+        // Sample and send local input (tagged for future frame due to delay)
+        val sampledInput = libretroOps.getInputPortBitmask(0)
+        val delayedFrame = currentFrame + inputDelay
+        localInputHistory[delayedFrame] = sampledInput
+        sendFrameInput(delayedFrame, sampledInput)
 
         val localInput = localInputHistory[currentFrame] ?: 0
         val remoteInput = resolveRemoteInput(currentFrame)
