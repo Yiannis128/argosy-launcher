@@ -364,9 +364,18 @@ class NetplaySessionManager(
         when (result) {
             is NetplayHandshake.HandshakeResult.Failure -> {
                 runCatching { localSocket.close() }
-                Log.d(TAG, "host handshake failed (${result.reason}), kicking stale guest and reverting to Waiting")
-                runCatching { socialService.sendNetplayKick(sessionId, guestUserId, "handshake_failed") }
-                _sessionState.value = NetplaySessionState.Waiting(sessionId = sessionId, gameTitle = "")
+                Log.d(TAG, "host handshake failed (${result.reason}), closing session and reopening")
+                runCatching { socialService.sendNetplayClose(sessionId) }
+                activeSessionId = null
+                pendingReadyPayload = null
+                _sessionState.value = NetplaySessionState.Idle
+                val payload = lastOpenPayload
+                if (payload != null) {
+                    val reopenResult = openServer(payload)
+                    if (reopenResult.isFailure) {
+                        Log.w(TAG, "reopen after handshake failure failed: ${reopenResult.exceptionOrNull()?.message}")
+                    }
+                }
             }
             is NetplayHandshake.HandshakeResult.QualityWarning -> {
                 _qualityWarningPending.value = PendingQualityWarning(
@@ -438,6 +447,12 @@ class NetplaySessionManager(
                 if (state !is NetplaySessionState.Connected && state !is NetplaySessionState.Reconnecting) {
                     continue
                 }
+                // Don't trigger silence detection until we've received at least
+                // one FrameInput (remotePeerFrame >= 0 on the peer driver).
+                // During startup, the snapshot transfer can take several seconds
+                // and no FrameInput packets flow until both sides are ready.
+                val peerDriver = driver as? NetplayPeerDriver
+                if (peerDriver != null && peerDriver.remotePeerFrame < 0) continue
                 val silenceNanos = System.nanoTime() - driver.lastIncomingNanos
                 val silenceMs = silenceNanos / 1_000_000L
                 when {

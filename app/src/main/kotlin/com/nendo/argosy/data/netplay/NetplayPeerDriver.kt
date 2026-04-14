@@ -46,7 +46,8 @@ class NetplayPeerDriver(
     private val confirmedRemoteInputs = HashMap<Long, Int>(256)
     private var lastConfirmedRemoteInput: Int = 0
     private var lastConfirmedRemoteFrame: Long = -1L
-    @Volatile private var remotePeerFrame: Long = -1L
+    @Volatile var remotePeerFrame: Long = -1L
+        private set
 
     private class StateEntry(val frame: Long, val state: ByteArray, val predictedRemoteInput: Int)
     private val stateRing = arrayOfNulls<StateEntry>(rollbackWindow)
