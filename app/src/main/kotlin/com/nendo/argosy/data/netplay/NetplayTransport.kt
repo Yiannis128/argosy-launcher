@@ -5,6 +5,7 @@ import com.goterl.lazysodium.interfaces.AEAD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -57,7 +58,7 @@ class NetplayTransport(
         socket.soTimeout = 0
         val buffer = ByteArray(MAX_DATAGRAM_SIZE)
         val dgram = DatagramPacket(buffer, buffer.size)
-        while (scopeActive()) {
+        while (currentCoroutineContext().isActive && !socket.isClosed) {
             try {
                 socket.receive(dgram)
             } catch (_: SocketException) {
@@ -90,8 +91,6 @@ class NetplayTransport(
         }
         _incomingPackets.emit(Incoming(source, packet))
     }
-
-    private fun scopeActive(): Boolean = receiveJob.isActive
 
     override fun close() {
         try {
