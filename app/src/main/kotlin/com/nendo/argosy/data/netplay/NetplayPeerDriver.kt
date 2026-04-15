@@ -22,6 +22,7 @@ class NetplayPeerDriver(
     private val remotePort: Int,
     private val scope: CoroutineScope,
     private val onSessionEnd: (reason: String) -> Unit,
+    private val onReady: () -> Unit = {},
     private val inputDelay: Int = DEFAULT_INPUT_DELAY,
     private val rollbackWindow: Int = DEFAULT_ROLLBACK_WINDOW,
     private val desyncCheckInterval: Int = DEFAULT_DESYNC_CHECK_INTERVAL,
@@ -393,6 +394,7 @@ class NetplayPeerDriver(
             nextTickTargetNanos = System.nanoTime()
             currentFrame = 0
             Log.d(TAG, "ready: peer is at frame ${remotePeerFrame}, starting from 0")
+            onReady()
         }
         storeConfirmedRemoteInput(packet.frameIndex, packet.bitmask)
         for ((frame, bitmask) in packet.redundant) {
@@ -438,6 +440,7 @@ class NetplayPeerDriver(
     }
 
     private fun handleSnapshotChunk(chunk: NetplayPacket.SnapshotChunk) {
+        Log.d(TAG, "handleSnapshotChunk: id=${chunk.snapshotId} idx=${chunk.chunkIndex}/${chunk.chunkTotal} size=${chunk.payload.size}")
         if (chunk.chunkTotal <= 0 || chunk.chunkTotal > NetplaySecurityBounds.MAX_CHUNKS_PER_SNAPSHOT) return
         if (chunk.chunkIndex < 0 || chunk.chunkIndex >= chunk.chunkTotal) return
         val nowNanos = System.nanoTime()
@@ -488,10 +491,12 @@ class NetplayPeerDriver(
         for (i in stateRing.indices) stateRing[i] = null
         stateRingHead = 0
         nextTickTargetNanos = System.nanoTime()
+        val wasReady = ready
         ready = true
         catchingUp = false
         catchupActive = false
         catchupObservationStartNanos = 0L
+        if (!wasReady) onReady()
     }
 
     private fun handleSnapshotAck(ack: NetplayPacket.SessionControl.SnapshotAck) {
