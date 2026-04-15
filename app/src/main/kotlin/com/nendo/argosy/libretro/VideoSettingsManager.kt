@@ -506,7 +506,9 @@ class VideoSettingsManager(
         private const val TAG = "VideoSettingsManager"
 
         private val PLATFORM_TEXTURE_CROP = mapOf(
-            "3do" to RectF(0f, 25f / 240f, 0f, 0f)
+            // 3DO opera core emits ~16 VBI lines as black at the top of the 240-line frame.
+            // 25 rows was clipping a sliver of real game content on some titles.
+            "3do" to RectF(0f, 16f / 240f, 0f, 0f)
         )
 
         fun parseRotation(value: String): Int = when (value) {
