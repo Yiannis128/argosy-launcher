@@ -233,22 +233,8 @@ object ZipExtractor {
                 // Only exception would be arcade, but arcade ROMs use zip not 7z
                 if (!zipIsRomFormat) true else shouldExtractSevenZInternal(archiveFile)
             }
-            isZipFile(archiveFile) -> !zipIsRomFormat && shouldExtractZipInternal(archiveFile)
+            isZipFile(archiveFile) -> !zipIsRomFormat
             else -> false
-        }
-    }
-
-    private fun shouldExtractZipInternal(zipFile: File): Boolean {
-        return try {
-            ZipFile.builder().setFile(zipFile).get().use { zip ->
-                val entries = zip.entries.toList().filter { !it.isDirectory }
-                val hasMultipleFiles = entries.size > 1
-                val hasFolderStructure = entries.any { it.name.contains("/") || it.name.contains("\\") }
-                hasMultipleFiles || hasFolderStructure
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to inspect zip: ${e.message}")
-            false
         }
     }
 

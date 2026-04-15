@@ -411,11 +411,27 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `shouldExtractArchive returns false for single file at root`() {
+    fun `shouldExtractArchive returns false for arcade zip when platform uses zip as ROM`() {
         val zipFile = File(tempDir, "mame_rom.zip")
         createTestZip(zipFile, mapOf("game.bin" to "arcade rom content"))
 
-        assertFalse(ZipExtractor.shouldExtractArchive(zipFile))
+        assertFalse(ZipExtractor.shouldExtractArchive(zipFile, "mame"))
+    }
+
+    @Test
+    fun `shouldExtractArchive returns true for single-file switch zip`() {
+        val zipFile = File(tempDir, "switch_game.zip")
+        createTestZip(zipFile, mapOf("game.nsp" to "switch rom"))
+
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "switch"))
+    }
+
+    @Test
+    fun `shouldExtractArchive returns true for single-file ps2 chd zip`() {
+        val zipFile = File(tempDir, "ps2_game.zip")
+        createTestZip(zipFile, mapOf("game.chd" to "chd content"))
+
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "ps2"))
     }
 
     @Test
@@ -426,7 +442,7 @@ class ZipExtractorTest {
             "game.bin" to "bin file"
         ))
 
-        assertTrue(ZipExtractor.shouldExtractArchive(zipFile))
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "psx"))
     }
 
     @Test
@@ -434,7 +450,7 @@ class ZipExtractorTest {
         val zipFile = File(tempDir, "nsw_game.zip")
         createTestZip(zipFile, mapOf("update/patch.nsp" to "update content"))
 
-        assertTrue(ZipExtractor.shouldExtractArchive(zipFile))
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "switch"))
     }
 
     @Test
@@ -446,7 +462,7 @@ class ZipExtractorTest {
             "dlc/bonus.nsp" to "dlc"
         ))
 
-        assertTrue(ZipExtractor.shouldExtractArchive(zipFile))
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "switch"))
     }
 
     @Test
@@ -476,7 +492,7 @@ class ZipExtractorTest {
         val zipFile = File(tempDir, "pacman.zip")
         createTestZip(zipFile, mapOf("pacman.rom" to "arcade rom data"))
 
-        assertFalse(ZipExtractor.shouldExtractArchive(zipFile))
+        assertFalse(ZipExtractor.shouldExtractArchive(zipFile, "mame"))
     }
 
     @Test
@@ -488,7 +504,7 @@ class ZipExtractorTest {
             "Final Fantasy VII (Disc 3).chd" to "disc3"
         ))
 
-        assertTrue(ZipExtractor.shouldExtractArchive(zipFile))
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "psx"))
     }
 
     private fun createTestZip(zipFile: File, entries: Map<String, String>) {
