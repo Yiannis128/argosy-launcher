@@ -483,10 +483,10 @@ class PlaySessionTracker @Inject constructor(
 
     fun onEmulatorBackgrounded() {
         val session = _activeSession.value ?: return
-        Logger.debug(TAG, "Emulator BACKGROUNDED -- scheduling session end in 10s")
+        Logger.debug(TAG, "Emulator BACKGROUNDED -- scheduling session end in 30s")
         emulatorBackgroundJob?.cancel()
         emulatorBackgroundJob = scope.launch {
-            delay(10_000L)
+            delay(30_000L)
             Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Ending session via onEmulatorBackgrounded (bypasses GameLaunchDelegate conflict UI)")
             Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | isOnOlderSave=${session.isOnOlderSave}, channel=${session.channelName}, emulator=${session.emulatorPackage}")
             endSession()
