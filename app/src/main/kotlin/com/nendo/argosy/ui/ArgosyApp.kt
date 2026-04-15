@@ -41,6 +41,10 @@ import com.nendo.argosy.ui.components.MainDrawer
 import com.nendo.argosy.ui.components.QuickSettingsPanel
 import com.nendo.argosy.ui.components.QuickSettingsState
 import com.nendo.argosy.ui.components.NetplayInviteModal
+import com.nendo.argosy.ui.components.NetplayJoinModal
+import com.nendo.argosy.ui.input.NetplayJoinInputHandler
+import com.nendo.argosy.data.netplay.NetplayJoinState
+import com.nendo.argosy.data.netplay.VerifySubState
 import com.nendo.argosy.ui.components.SaveConflictModal
 import com.nendo.argosy.ui.components.ScreenDimmerOverlay
 import com.nendo.argosy.ui.components.rememberScreenDimmerState
@@ -127,6 +131,7 @@ fun ArgosyApp(
     val backgroundConflictButtonIndex by viewModel.backgroundConflictButtonIndex.collectAsState()
     val netplayInvitePrompt by viewModel.netplayInvitePrompt.collectAsState()
     val netplayInviteFocusIndex by viewModel.netplayInviteFocusIndex.collectAsState()
+    val netplayJoinState by viewModel.netplayJoinState.collectAsState()
     val screenDimmerState = rememberScreenDimmerState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -576,8 +581,24 @@ fun ArgosyApp(
     }
 
     val isDualConflictMode = showDualOverlay || showSwappedInteractive
-    LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, netplayInvitePrompt, resumeCount) {
+    val netplayJoinNeedsInput = netplayJoinState.let {
+        it is NetplayJoinState.VerifyingGame &&
+            (it.sub is VerifySubState.AmbiguousCandidates || it.sub is VerifySubState.HashMismatchVariants)
+    }
+    val netplayJoinModalActive = netplayJoinState !is NetplayJoinState.Idle &&
+        netplayJoinState !is NetplayJoinState.Cancelled &&
+        netplayJoinState !is NetplayJoinState.LaunchReady
+
+    val netplayJoinInputHandler = remember(viewModel) {
+        NetplayJoinInputHandler(
+            service = viewModel.netplayJoinService(),
+            onDismiss = { viewModel.cancelNetplayJoin() }
+        )
+    }
+
+    LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, netplayInvitePrompt, netplayJoinModalActive, netplayJoinNeedsInput, resumeCount) {
         when {
+            netplayJoinNeedsInput || netplayJoinModalActive -> inputDispatcher.subscribeDrawer(netplayJoinInputHandler)
             netplayInvitePrompt != null -> inputDispatcher.subscribeDrawer(netplayInviteInputHandler)
             dualModalActive -> inputDispatcher.subscribeDrawer(dualModalInputHandler)
             saveConflictInfo != null && !isDualConflictMode -> inputDispatcher.subscribeDrawer(saveConflictInputHandler)
@@ -589,6 +610,14 @@ fun ArgosyApp(
     LaunchedEffect(viewModel) {
         viewModel.netplayInviteLaunch.collect { intent ->
             context.startActivity(intent)
+        }
+    }
+
+    LaunchedEffect(netplayJoinState) {
+        val s = netplayJoinState
+        if (s is NetplayJoinState.LaunchReady) {
+            context.startActivity(s.intent)
+            viewModel.resetNetplayJoin()
         }
     }
 
@@ -1541,6 +1570,11 @@ fun ArgosyApp(
                     onDismiss = { viewModel.dismissNetplayInvite() }
                 )
             }
+
+            NetplayJoinModal(
+                state = netplayJoinState,
+                onDismiss = { viewModel.cancelNetplayJoin() }
+            )
             }
         }
     }

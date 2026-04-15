@@ -295,17 +295,27 @@ class SocialRepository @Inject constructor(
                                 val oldPresence = friend.presence
                                 val oldGame = friend.currentGame
 
+                                // Server sometimes emits IN_GAME presence refreshes without re-sending
+                                // the game/netplay_session payload. Replacing blindly flips the UI to
+                                // "Online" mid-session; preserve old game info when the new payload is
+                                // silent about it but status still implies play.
+                                val mergedGame = if (newPresence == PresenceStatus.IN_GAME && update.game == null) {
+                                    oldGame
+                                } else {
+                                    update.game
+                                }
+
                                 showPresenceNotificationIfNeeded(
                                     friend = friend,
                                     oldPresence = oldPresence,
                                     newPresence = newPresence,
                                     oldGame = oldGame,
-                                    newGame = update.game
+                                    newGame = mergedGame
                                 )
 
                                 friend.copy(
                                     presence = newPresence,
-                                    currentGame = update.game,
+                                    currentGame = mergedGame,
                                     deviceName = update.deviceName
                                 )
                             } else {

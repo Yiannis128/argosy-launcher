@@ -131,6 +131,7 @@ class SocialViewModel @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val gameDao: GameDao,
     private val netplayPreflightChecker: NetplayPreflightChecker,
+    private val netplayJoinService: com.nendo.argosy.data.netplay.NetplayJoinService,
     private val launchGameUseCase: LaunchGameUseCase,
     val notificationManager: NotificationManager
 ) : ViewModel() {
@@ -155,6 +156,11 @@ class SocialViewModel @Inject constructor(
     }
 
     fun launchNetplayJoin(friend: Friend, session: NetplaySession) {
+        netplayJoinService.start(session, friend)
+    }
+
+    @Suppress("unused")
+    private fun legacyLaunchNetplayJoin(friend: Friend, session: NetplaySession) {
         viewModelScope.launch {
             notificationManager.show(
                 title = "Joining ${session.gameTitle}",

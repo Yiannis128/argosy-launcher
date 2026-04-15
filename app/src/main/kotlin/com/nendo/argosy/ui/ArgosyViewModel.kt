@@ -171,9 +171,16 @@ class ArgosyViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     private val netplayPreflightChecker: NetplayPreflightChecker,
+    private val netplayJoinService: com.nendo.argosy.data.netplay.NetplayJoinService,
     private val launchGameUseCase: LaunchGameUseCase,
     private val gameDao: GameDao
 ) : ViewModel() {
+
+    val netplayJoinState: StateFlow<com.nendo.argosy.data.netplay.NetplayJoinState> get() = netplayJoinService.state
+
+    fun cancelNetplayJoin() = netplayJoinService.cancel()
+    fun resetNetplayJoin() = netplayJoinService.reset()
+    fun netplayJoinService(): com.nendo.argosy.data.netplay.NetplayJoinService = netplayJoinService
 
     private val contentResolver get() = application.contentResolver
     private val fanSpeedFile = File("/sys/class/gpio5_pwm2/speed")
@@ -888,6 +895,13 @@ class ArgosyViewModel @Inject constructor(
     }
 
     fun joinFriendNetplaySession(friend: Friend) {
+        val session = friend.currentGame?.netplaySession ?: return
+        if (!session.joinable) return
+        netplayJoinService.start(session, friend)
+    }
+
+    @Suppress("unused")
+    private fun legacyJoinFriendNetplaySession(friend: Friend) {
         val session = friend.currentGame?.netplaySession ?: return
         if (!session.joinable) return
         viewModelScope.launch {

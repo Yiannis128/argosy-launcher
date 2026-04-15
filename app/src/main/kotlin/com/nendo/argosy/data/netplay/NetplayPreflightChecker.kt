@@ -25,6 +25,22 @@ sealed class NetplayPreflightResult {
     data object CoreNotSupported : NetplayPreflightResult()
 }
 
+sealed class CoreResolveResult {
+    data class Ready(val corePath: String) : CoreResolveResult()
+    data class NeedsDownload(val coreId: String) : CoreResolveResult()
+    data object Unsupported : CoreResolveResult()
+    data object VersionMismatch : CoreResolveResult()
+}
+
+sealed class GameVerifyResult {
+    data class Matched(
+        val gameId: Long,
+        val localPath: String
+    ) : GameVerifyResult()
+    data class NoMatch(val gameId: Long) : GameVerifyResult()
+    data class NeedsDownload(val gameId: Long) : GameVerifyResult()
+}
+
 interface RomHashProvider {
     fun computeRomHashPrefix(file: File): String?
 }
@@ -140,6 +156,81 @@ class NetplayPreflightChecker(
 
         android.util.Log.d("NetplayPreflight", "SUCCESS via game_files path")
         return resolveCore(session, resolved.localPath!!, game.id)
+    }
+
+    suspend fun resolveCoreStep(session: NetplaySession): CoreResolveResult {
+        val coreInfo = coreRegistry.findCore(session.coreId) ?: return CoreResolveResult.Unsupported
+        if (coreInfo.netplaySupport != NetplaySupportLevel.SUPPORTED) return CoreResolveResult.Unsupported
+        if (coreManager == null) return CoreResolveResult.Ready("")
+        val hash = session.coreHash
+        if (hash.isNullOrEmpty()) {
+            return coreManager.getCorePathForCoreId(session.coreId)?.let(CoreResolveResult::Ready)
+                ?: CoreResolveResult.NeedsDownload(session.coreId)
+        }
+        return when (val resolution = coreManager.resolveNetplayCorePath(session.coreId, hash)) {
+            is NetplayCoreResolution.Matched -> CoreResolveResult.Ready(resolution.corePath)
+            is NetplayCoreResolution.Updated -> CoreResolveResult.Ready(resolution.corePath)
+            is NetplayCoreResolution.CompatFound -> CoreResolveResult.Ready(resolution.corePath)
+            NetplayCoreResolution.Unresolvable -> CoreResolveResult.VersionMismatch
+        }
+    }
+
+    suspend fun findCandidatesStep(session: NetplaySession): List<com.nendo.argosy.data.local.entity.GameEntity> {
+        val igdbId = session.gameIgdbId?.toLong() ?: return emptyList()
+        val coreInfo = coreRegistry.findCore(session.coreId) ?: return emptyList()
+        val candidates = gameDao.getAllByIgdbId(igdbId)
+        return candidates.filter { game ->
+            val platform = platformDao?.getById(game.platformId)
+            val visible = platform?.isVisible != false
+            val syncEnabled = platform?.syncEnabled != false
+            val platformSupported = game.platformSlug.isEmpty() || coreInfo.supportsPlatform(game.platformSlug)
+            visible && syncEnabled && platformSupported
+        }
+    }
+
+    suspend fun verifyGameStep(
+        game: com.nendo.argosy.data.local.entity.GameEntity,
+        expectedHashPrefix: String?
+    ): GameVerifyResult {
+        if (expectedHashPrefix.isNullOrEmpty()) {
+            val legacyPath = game.localPath
+            if (!legacyPath.isNullOrEmpty() && File(legacyPath).exists()) {
+                return GameVerifyResult.Matched(game.id, legacyPath)
+            }
+            return GameVerifyResult.NeedsDownload(game.id)
+        }
+
+        val files = gameFileDao.getFilesForGame(game.id).filter { !it.localPath.isNullOrEmpty() }
+        for (file in files) {
+            val localPath = file.localPath ?: continue
+            val existing = file.romHashPrefix
+            val hash = existing ?: run {
+                val computed = romHashProvider.computeRomHashPrefix(File(localPath)) ?: return@run null
+                gameFileDao.updateRomHashPrefix(file.id, computed)
+                computed
+            } ?: continue
+            if (hash.equals(expectedHashPrefix, ignoreCase = true)) {
+                return GameVerifyResult.Matched(game.id, localPath)
+            }
+        }
+
+        if (files.isEmpty() && !game.localPath.isNullOrEmpty()) {
+            val legacyFile = File(game.localPath!!)
+            if (legacyFile.exists()) {
+                val hash = romHashProvider.computeRomHashPrefix(legacyFile)
+                if (hash != null && hash.equals(expectedHashPrefix, ignoreCase = true)) {
+                    return GameVerifyResult.Matched(game.id, game.localPath!!)
+                }
+            } else {
+                return GameVerifyResult.NeedsDownload(game.id)
+            }
+        }
+
+        if (files.isEmpty() && game.localPath.isNullOrEmpty()) {
+            return GameVerifyResult.NeedsDownload(game.id)
+        }
+
+        return GameVerifyResult.NoMatch(game.id)
     }
 
     private suspend fun selectBestCandidate(candidates: List<com.nendo.argosy.data.local.entity.GameEntity>): com.nendo.argosy.data.local.entity.GameEntity {
