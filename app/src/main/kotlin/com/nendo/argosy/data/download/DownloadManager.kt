@@ -752,11 +752,17 @@ class DownloadManager @Inject constructor(
                                 var lastBytesForSpeed: Long = startOffset
                                 var currentSpeed: Long = 0
 
+                                var pauseLogCountdown = 0
                                 while (true) {
                                     coroutineContext.ensureActive()
 
                                     val thermalStatus = thermalManager.get().thermalStatus.value
                                     if (thermalStatus.state == ThermalState.PAUSED) {
+                                        if (pauseLogCountdown <= 0) {
+                                            Log.w(TAG, "Download paused on thermal state: cpu=${thermalStatus.cpuTemp}C bat=${thermalStatus.batteryTemp}C")
+                                            pauseLogCountdown = 6
+                                        }
+                                        pauseLogCountdown--
                                         delay(5000)
                                         continue
                                     }

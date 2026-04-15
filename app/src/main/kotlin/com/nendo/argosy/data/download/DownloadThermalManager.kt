@@ -229,12 +229,19 @@ class DownloadThermalManager @Inject constructor(
     }
 
     private fun calculateThermalStatus(cpuTemp: Float, batteryTemp: Float): ThermalStatus {
+        val cpuSane = cpuTemp in PLAUSIBLE_CPU_RANGE
+        val batSane = batteryTemp in PLAUSIBLE_BATTERY_RANGE
+        if (!cpuSane || !batSane) {
+            Log.w(TAG, "Implausible thermal reading, treating as NORMAL (cpu=$cpuTemp bat=$batteryTemp)")
+        }
         val cpuState = when {
+            !cpuSane -> ThermalState.NORMAL
             cpuTemp >= CPU_PAUSE_TEMP -> ThermalState.PAUSED
             cpuTemp >= CPU_THROTTLE_TEMP -> ThermalState.THROTTLED
             else -> ThermalState.NORMAL
         }
         val batteryState = when {
+            !batSane -> ThermalState.NORMAL
             batteryTemp >= BATTERY_PAUSE_TEMP -> ThermalState.PAUSED
             batteryTemp >= BATTERY_THROTTLE_TEMP -> ThermalState.THROTTLED
             else -> ThermalState.NORMAL
@@ -282,6 +289,9 @@ class DownloadThermalManager @Inject constructor(
         private const val CPU_PAUSE_TEMP = 90f
         private const val BATTERY_THROTTLE_TEMP = 38f
         private const val BATTERY_PAUSE_TEMP = 43f
+
+        private val PLAUSIBLE_CPU_RANGE = 0f..120f
+        private val PLAUSIBLE_BATTERY_RANGE = 0f..70f
 
         private const val FAN_DUTY_MIN = 8000
         private const val FAN_DUTY_MAX = 30000
