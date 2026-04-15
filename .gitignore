@@ -30,6 +30,7 @@ captures/
 *.log
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
+!libs/maven/**/*.jar
 *.war
 *.nar
 *.ear
