@@ -64,6 +64,24 @@ private val ZIP_AS_ROM_PLATFORMS = setOf(
     "dos"
 )
 
+// Modern and disc-based platforms where zip is never the playable format.
+// Disc images (CHD/RVZ/ISO) are already compressed, and modern console emulators
+// do not accept zipped ROMs the way RetroArch cores for 8/16-bit consoles do.
+private val ALWAYS_EXTRACT_ZIP_PLATFORMS = setOf(
+    "switch", "nsw",
+    "ps2",
+    "ps3",
+    "psp",
+    "3ds", "nintendo-3ds",
+    "ds", "nds", "nintendo-ds",
+    "wii",
+    "wiiu", "wii-u",
+    "gc", "gamecube", "nintendo-gamecube",
+    "dc", "dreamcast",
+    "saturn",
+    "psx", "ps1", "ps", "playstation"
+)
+
 data class PlatformExtractConfig(
     val platformSlugs: Set<String>,
     val gameExtensions: Set<String>,
@@ -225,7 +243,9 @@ object ZipExtractor {
     fun shouldExtractArchive(archiveFile: File, platformSlug: String? = null): Boolean {
         if (archiveFile.extension.equals("apk", ignoreCase = true)) return false
 
-        val zipIsRomFormat = platformSlug?.let { usesZipAsRomFormat(it) } ?: false
+        val slug = platformSlug?.lowercase()
+        val zipIsRomFormat = slug?.let { it in ZIP_AS_ROM_PLATFORMS } ?: false
+        val alwaysExtract = slug?.let { it in ALWAYS_EXTRACT_ZIP_PLATFORMS } ?: false
 
         return when {
             isSevenZFile(archiveFile) -> {
@@ -233,8 +253,26 @@ object ZipExtractor {
                 // Only exception would be arcade, but arcade ROMs use zip not 7z
                 if (!zipIsRomFormat) true else shouldExtractSevenZInternal(archiveFile)
             }
-            isZipFile(archiveFile) -> !zipIsRomFormat
+            isZipFile(archiveFile) -> when {
+                zipIsRomFormat -> false
+                alwaysExtract -> true
+                else -> shouldExtractZipInternal(archiveFile)
+            }
             else -> false
+        }
+    }
+
+    private fun shouldExtractZipInternal(zipFile: File): Boolean {
+        return try {
+            ZipFile.builder().setFile(zipFile).get().use { zip ->
+                val entries = zip.entries.toList().filter { !it.isDirectory }
+                val hasMultipleFiles = entries.size > 1
+                val hasFolderStructure = entries.any { it.name.contains("/") || it.name.contains("\\") }
+                hasMultipleFiles || hasFolderStructure
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to inspect zip: ${e.message}")
+            false
         }
     }
 

@@ -411,7 +411,7 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `shouldExtractArchive returns false for arcade zip when platform uses zip as ROM`() {
+    fun `shouldExtractArchive keeps arcade zip zipped because zip is the rom format`() {
         val zipFile = File(tempDir, "mame_rom.zip")
         createTestZip(zipFile, mapOf("game.bin" to "arcade rom content"))
 
@@ -419,7 +419,7 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `shouldExtractArchive returns true for single-file switch zip`() {
+    fun `shouldExtractArchive extracts single-file switch zip because switch cannot read zipped roms`() {
         val zipFile = File(tempDir, "switch_game.zip")
         createTestZip(zipFile, mapOf("game.nsp" to "switch rom"))
 
@@ -427,7 +427,7 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `shouldExtractArchive returns true for single-file ps2 chd zip`() {
+    fun `shouldExtractArchive extracts single-file ps2 chd because chd should never be zipped`() {
         val zipFile = File(tempDir, "ps2_game.zip")
         createTestZip(zipFile, mapOf("game.chd" to "chd content"))
 
@@ -435,18 +435,42 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `shouldExtractArchive returns true for multiple files at root`() {
+    fun `shouldExtractArchive keeps single-file nes zip zipped because retroarch extracts at runtime`() {
+        val zipFile = File(tempDir, "mario.zip")
+        createTestZip(zipFile, mapOf("mario.nes" to "nes rom"))
+
+        assertFalse(ZipExtractor.shouldExtractArchive(zipFile, "nes"))
+    }
+
+    @Test
+    fun `shouldExtractArchive keeps single-file snes zip zipped because retroarch extracts at runtime`() {
+        val zipFile = File(tempDir, "smw.zip")
+        createTestZip(zipFile, mapOf("smw.sfc" to "snes rom"))
+
+        assertFalse(ZipExtractor.shouldExtractArchive(zipFile, "snes"))
+    }
+
+    @Test
+    fun `shouldExtractArchive keeps single-file genesis zip zipped because retroarch extracts at runtime`() {
+        val zipFile = File(tempDir, "sonic.zip")
+        createTestZip(zipFile, mapOf("sonic.md" to "genesis rom"))
+
+        assertFalse(ZipExtractor.shouldExtractArchive(zipFile, "genesis"))
+    }
+
+    @Test
+    fun `shouldExtractArchive extracts multi-file zip even on retro platform`() {
         val zipFile = File(tempDir, "multi_disc.zip")
         createTestZip(zipFile, mapOf(
             "game.cue" to "cue file",
             "game.bin" to "bin file"
         ))
 
-        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "psx"))
+        assertTrue(ZipExtractor.shouldExtractArchive(zipFile, "segacd"))
     }
 
     @Test
-    fun `shouldExtractArchive returns true for file in subfolder`() {
+    fun `shouldExtractArchive extracts file in subfolder on switch`() {
         val zipFile = File(tempDir, "nsw_game.zip")
         createTestZip(zipFile, mapOf("update/patch.nsp" to "update content"))
 
@@ -454,7 +478,7 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `shouldExtractArchive returns true for mixed root and subfolder files`() {
+    fun `shouldExtractArchive extracts mixed root and subfolder files on switch`() {
         val zipFile = File(tempDir, "nsw_complete.zip")
         createTestZip(zipFile, mapOf(
             "game.xci" to "main game",
