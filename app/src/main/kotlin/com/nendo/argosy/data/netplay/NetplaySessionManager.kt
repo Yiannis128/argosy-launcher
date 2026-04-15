@@ -532,21 +532,17 @@ class NetplaySessionManager(
         scope.launch {
             runCatching {
                 sessionRules?.apply(NetplaySessionRules.ApplyContext(rulesRole))
-                Log.d(TAG, "install: rules applied, isHost=$isHost")
                 _progressHint.value = ProgressHint.LoadingState
                 if (isHost) {
-                    Log.d(TAG, "install: waiting for guest driver to subscribe")
                     delay(SUBSCRIBE_SETTLE_MS)
-                    Log.d(TAG, "install: calling serializeState")
                     val state = retroView.serializeState()
-                    Log.d(TAG, "install: serializeState returned ${state.size} bytes")
                     driver.sendInitialSnapshot(state, 0L)
-                    Log.d(TAG, "install: sendInitialSnapshot done, waiting for guest FrameInput")
                     driver.resetFrameCounter()
+                    Log.d(TAG, "install: host sent initial snapshot (${state.size} bytes), awaiting guest FrameInput")
                 }
                 _progressHint.value = null
                 _sessionState.value = NetplaySessionState.Connected(sessionId = sessionId, peerUserId = peerUserId)
-                Log.d(TAG, "install: state=Connected, starting silence monitor")
+                Log.d(TAG, "install: state=Connected isHost=$isHost")
                 startSilenceMonitor(peerRole)
             }.onFailure {
                 Log.w(TAG, "peer install failed (isHost=$isHost): ${it.message}")

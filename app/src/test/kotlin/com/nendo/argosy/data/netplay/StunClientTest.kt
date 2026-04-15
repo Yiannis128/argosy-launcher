@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -76,6 +77,51 @@ class StunClientTest {
         val outTxid = ByteArray(12)
         buf.get(outTxid)
         assertEquals(txid.toList(), outTxid.toList())
+    }
+
+    @Test
+    fun newShuffledServerList_containsAllPrimaries() {
+        val list = StunClient.newShuffledServerList()
+        for (primary in StunClient.PRIMARY_STUN_SERVERS) {
+            assertTrue("missing primary $primary", list.contains(primary))
+        }
+    }
+
+    @Test
+    fun newShuffledServerList_containsFallback() {
+        val list = StunClient.newShuffledServerList()
+        val fallback = InetSocketAddress.createUnresolved("stun.nextcloud.com", 443)
+        assertTrue("fallback should be present", list.contains(fallback))
+    }
+
+    @Test
+    fun newShuffledServerList_fallbackIsAfterAllPrimaries() {
+        repeat(5) {
+            val list = StunClient.newShuffledServerList()
+            val fallbackIdx = list.indexOfFirst { it.hostString == "stun.nextcloud.com" && it.port == 443 }
+            assertTrue("fallback not found", fallbackIdx >= 0)
+            val lastPrimaryIdx = list.indices
+                .filter { idx -> StunClient.PRIMARY_STUN_SERVERS.contains(list[idx]) }
+                .maxOrNull() ?: -1
+            assertTrue(
+                "fallback ($fallbackIdx) should come after all primaries (last=$lastPrimaryIdx)",
+                fallbackIdx > lastPrimaryIdx
+            )
+        }
+    }
+
+    @Test
+    fun newShuffledServerList_actuallyShuffles() {
+        val baseline = StunClient.newShuffledServerList()
+        var sawDifferent = false
+        repeat(10) {
+            val next = StunClient.newShuffledServerList()
+            if (next != baseline) {
+                sawDifferent = true
+                return@repeat
+            }
+        }
+        assertTrue("expected at least one different ordering across 10 shuffles", sawDifferent)
     }
 
     @Test

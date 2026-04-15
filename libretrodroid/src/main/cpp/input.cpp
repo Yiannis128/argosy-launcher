@@ -71,7 +71,7 @@ int16_t Input::getInputState(unsigned port, unsigned device, unsigned index, uns
         }
 
         case RETRO_DEVICE_POINTER: {
-            // TODO... Here we should hanlde multitouch...
+            // TODO: handle multitouch
             if (index > 0) {
                 return 0;
             }

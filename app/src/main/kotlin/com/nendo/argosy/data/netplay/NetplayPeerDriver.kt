@@ -402,7 +402,7 @@ class NetplayPeerDriver(
         }
     }
 
-    private fun storeConfirmedRemoteInput(frame: Long, bitmask: Int) {
+    internal fun storeConfirmedRemoteInput(frame: Long, bitmask: Int) {
         val cur = currentFrame
         val minAcceptable = cur - rollbackWindow - REDUNDANT_INPUT_COUNT - NetplaySecurityBounds.MAX_FRAME_LOOKBACK_EXTRA
         val maxAcceptable = cur + NetplaySecurityBounds.MAX_FRAME_LOOKAHEAD
@@ -414,6 +414,32 @@ class NetplayPeerDriver(
             lastConfirmedRemoteFrame = frame
             lastConfirmedRemoteInput = bitmask
         }
+    }
+
+    internal fun confirmedRemoteInputSizeForTest(): Int = confirmedRemoteInputs.size
+
+    internal fun lastConfirmedRemoteFrameForTest(): Long = lastConfirmedRemoteFrame
+
+    internal fun setCurrentFrameForTest(frame: Long) {
+        currentFrame = frame
+    }
+
+    internal fun fillConfirmedRemoteInputsForTest(count: Int) {
+        repeat(count) { i ->
+            confirmedRemoteInputs[(-100_000L - i)] = 0
+        }
+    }
+
+    internal fun setCatchupObservationStartNanosForTest(value: Long) {
+        catchupObservationStartNanos = value
+    }
+
+    internal fun reassemblySizeForTest(): Int = reassembly.size
+
+    internal fun reassemblyContainsForTest(snapshotId: Int): Boolean = reassembly.containsKey(snapshotId)
+
+    internal fun injectReassemblyBufferForTest(snapshotId: Int, total: Int, createdNanos: Long) {
+        reassembly[snapshotId] = ReassemblyBuffer(snapshotId, total, createdNanos)
     }
 
     private fun handleDesyncCheck(packet: NetplayPacket.DesyncCheck) {
@@ -440,10 +466,12 @@ class NetplayPeerDriver(
     }
 
     private fun handleSnapshotChunk(chunk: NetplayPacket.SnapshotChunk) {
-        Log.d(TAG, "handleSnapshotChunk: id=${chunk.snapshotId} idx=${chunk.chunkIndex}/${chunk.chunkTotal} size=${chunk.payload.size}")
+        handleSnapshotChunkAt(System.nanoTime(), chunk)
+    }
+
+    internal fun handleSnapshotChunkAt(nowNanos: Long, chunk: NetplayPacket.SnapshotChunk) {
         if (chunk.chunkTotal <= 0 || chunk.chunkTotal > NetplaySecurityBounds.MAX_CHUNKS_PER_SNAPSHOT) return
         if (chunk.chunkIndex < 0 || chunk.chunkIndex >= chunk.chunkTotal) return
-        val nowNanos = System.nanoTime()
         reassembly.entries.removeAll { (_, buf) -> nowNanos - buf.createdNanos > NetplaySecurityBounds.REASSEMBLY_TTL_NANOS }
         if (!reassembly.containsKey(chunk.snapshotId) && reassembly.size >= NetplaySecurityBounds.MAX_CONCURRENT_SNAPSHOTS) return
         if (chunk.snapshotId <= lastAppliedSnapshotId) return
@@ -607,12 +635,12 @@ class NetplayPeerDriver(
 
     internal class ReassemblyBuffer(
         val snapshotId: Int,
-        val total: Int
+        val total: Int,
+        val createdNanos: Long = System.nanoTime()
     ) {
         val received = java.util.TreeMap<Int, ByteArray>()
         @Volatile var lastProgressNanos: Long = System.nanoTime()
         @Volatile var snapshotFrame: Long = 0L
-        val createdNanos: Long = System.nanoTime()
 
         @Synchronized
         fun addChunk(chunk: NetplayPacket.SnapshotChunk) {

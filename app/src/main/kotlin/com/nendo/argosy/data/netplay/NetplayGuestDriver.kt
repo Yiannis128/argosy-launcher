@@ -329,9 +329,12 @@ class NetplayGuestDriver(
     }
 
     private fun handleSnapshotChunk(chunk: NetplayPacket.SnapshotChunk) {
+        handleSnapshotChunkAt(System.nanoTime(), chunk)
+    }
+
+    internal fun handleSnapshotChunkAt(nowNanos: Long, chunk: NetplayPacket.SnapshotChunk) {
         if (chunk.chunkTotal <= 0 || chunk.chunkTotal > NetplaySecurityBounds.MAX_CHUNKS_PER_SNAPSHOT) return
         if (chunk.chunkIndex < 0 || chunk.chunkIndex >= chunk.chunkTotal) return
-        val nowNanos = System.nanoTime()
         reassembly.entries.removeAll { (_, buf) -> nowNanos - buf.createdNanos > NetplaySecurityBounds.REASSEMBLY_TTL_NANOS }
         if (!reassembly.containsKey(chunk.snapshotId) && reassembly.size >= NetplaySecurityBounds.MAX_CONCURRENT_SNAPSHOTS) return
         if (chunk.snapshotId <= lastAppliedSnapshotId) return
@@ -413,14 +416,22 @@ class NetplayGuestDriver(
         }
     }
 
+    internal fun reassemblySizeForTest(): Int = reassembly.size
+
+    internal fun reassemblyContainsForTest(snapshotId: Int): Boolean = reassembly.containsKey(snapshotId)
+
+    internal fun injectReassemblyBufferForTest(snapshotId: Int, total: Int, createdNanos: Long) {
+        reassembly[snapshotId] = ReassemblyBuffer(snapshotId, total, createdNanos)
+    }
+
     internal class ReassemblyBuffer(
         val snapshotId: Int,
-        val total: Int
+        val total: Int,
+        val createdNanos: Long = System.nanoTime()
     ) {
         val received = TreeMap<Int, ByteArray>()
         @Volatile var lastProgressNanos: Long = System.nanoTime()
         @Volatile var snapshotFrame: Long = 0L
-        val createdNanos: Long = System.nanoTime()
 
         @Synchronized
         fun addChunk(chunk: NetplayPacket.SnapshotChunk) {

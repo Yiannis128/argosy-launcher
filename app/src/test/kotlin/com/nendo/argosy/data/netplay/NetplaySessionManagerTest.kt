@@ -33,6 +33,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -756,6 +757,160 @@ class NetplaySessionManagerTest {
 
         verify { svc.sendNetplayJoinResponse(match { it.guestId == "guest-A" && it.accept }) }
         assertTrue(manager.joinRequestQueue.value.isEmpty())
+        manager.shutdown()
+    }
+
+    @Test
+    fun inviteOnlyAcceptsMatchingReservation() = runTest(StandardTestDispatcher()) {
+        val incoming = MutableSharedFlow<ArgosSocialService.IncomingMessage>(replay = 0, extraBufferCapacity = 16)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val svc = fakeService(incoming)
+        val manager = NetplaySessionManager(
+            socialService = svc,
+            handshake = fakeHandshake(),
+            retroView = mockk(relaxed = true),
+            scope = scope
+        )
+        manager.sessionMode = NetplaySessionMode.INVITE_ONLY
+        openAndWait(manager, incoming, this)
+
+        val ok = manager.reserveSession("friend-7")
+        assertTrue(ok)
+        advanceUntilIdle()
+
+        incoming.emit(
+            ArgosSocialService.IncomingMessage.NetplayJoinRequested(
+                NetplayJoinRequestedPayload("sess-1", "friend-7", "friend7")
+            )
+        )
+        advanceUntilIdle()
+
+        verify { svc.sendNetplayJoinResponse(match { it.guestId == "friend-7" && it.accept }) }
+        manager.shutdown()
+    }
+
+    @Test
+    fun inviteOnlyDeclinesNonMatchingUser() = runTest(StandardTestDispatcher()) {
+        val incoming = MutableSharedFlow<ArgosSocialService.IncomingMessage>(replay = 0, extraBufferCapacity = 16)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val svc = fakeService(incoming)
+        val manager = NetplaySessionManager(
+            socialService = svc,
+            handshake = fakeHandshake(),
+            retroView = mockk(relaxed = true),
+            scope = scope
+        )
+        manager.sessionMode = NetplaySessionMode.INVITE_ONLY
+        openAndWait(manager, incoming, this)
+
+        manager.reserveSession("friend-7")
+        advanceUntilIdle()
+
+        incoming.emit(
+            ArgosSocialService.IncomingMessage.NetplayJoinRequested(
+                NetplayJoinRequestedPayload("sess-1", "stranger-9", "stranger9")
+            )
+        )
+        advanceUntilIdle()
+
+        verify {
+            svc.sendNetplayJoinResponse(match {
+                it.guestId == "stranger-9" && !it.accept && it.reason == "not_invited"
+            })
+        }
+        manager.shutdown()
+    }
+
+    @Test
+    fun inviteOnlyDeclinesWhenNoReservation() = runTest(StandardTestDispatcher()) {
+        val incoming = MutableSharedFlow<ArgosSocialService.IncomingMessage>(replay = 0, extraBufferCapacity = 16)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val svc = fakeService(incoming)
+        val manager = NetplaySessionManager(
+            socialService = svc,
+            handshake = fakeHandshake(),
+            retroView = mockk(relaxed = true),
+            scope = scope
+        )
+        manager.sessionMode = NetplaySessionMode.INVITE_ONLY
+        openAndWait(manager, incoming, this)
+
+        incoming.emit(
+            ArgosSocialService.IncomingMessage.NetplayJoinRequested(
+                NetplayJoinRequestedPayload("sess-1", "guest-A", "guestA")
+            )
+        )
+        advanceUntilIdle()
+
+        verify {
+            svc.sendNetplayJoinResponse(match {
+                it.guestId == "guest-A" && !it.accept && it.reason == "not_invited"
+            })
+        }
+        manager.shutdown()
+    }
+
+    @Test
+    fun reserveSessionSetsReservationOnSuccess() = runTest(StandardTestDispatcher()) {
+        val incoming = MutableSharedFlow<ArgosSocialService.IncomingMessage>(replay = 0, extraBufferCapacity = 16)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val svc = fakeService(incoming)
+        val manager = NetplaySessionManager(
+            socialService = svc,
+            handshake = fakeHandshake(),
+            retroView = mockk(relaxed = true),
+            scope = scope
+        )
+        manager.sessionMode = NetplaySessionMode.INVITE_ONLY
+        openAndWait(manager, incoming, this)
+
+        assertTrue(manager.reserveSession("friend-new"))
+        advanceUntilIdle()
+
+        // Confirm reservation took effect: matching user is accepted.
+        incoming.emit(
+            ArgosSocialService.IncomingMessage.NetplayJoinRequested(
+                NetplayJoinRequestedPayload("sess-1", "friend-new", "friendNew")
+            )
+        )
+        advanceUntilIdle()
+        verify { svc.sendNetplayJoinResponse(match { it.guestId == "friend-new" && it.accept }) }
+        manager.shutdown()
+    }
+
+    @Test
+    fun reserveSessionRollsBackReservationOnSendFailure() = runTest(StandardTestDispatcher()) {
+        val incoming = MutableSharedFlow<ArgosSocialService.IncomingMessage>(replay = 0, extraBufferCapacity = 16)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val svc = fakeService(incoming)
+        val manager = NetplaySessionManager(
+            socialService = svc,
+            handshake = fakeHandshake(),
+            retroView = mockk(relaxed = true),
+            scope = scope
+        )
+        manager.sessionMode = NetplaySessionMode.INVITE_ONLY
+        openAndWait(manager, incoming, this)
+
+        // First reservation succeeds: "friend-A" becomes the authorized user.
+        assertTrue(manager.reserveSession("friend-A"))
+        advanceUntilIdle()
+
+        // Second reservation attempt with send failure must roll back to "friend-A".
+        every { svc.sendNetplayReserve(any()) } returns false
+        assertFalse(manager.reserveSession("friend-B"))
+        advanceUntilIdle()
+
+        // Observe rollback: "friend-A" (previous reservation) is still accepted,
+        // and "friend-B" is declined.
+        incoming.emit(
+            ArgosSocialService.IncomingMessage.NetplayJoinRequested(
+                NetplayJoinRequestedPayload("sess-1", "friend-A", "friendA")
+            )
+        )
+        advanceUntilIdle()
+        verify { svc.sendNetplayJoinResponse(match { it.guestId == "friend-A" && it.accept }) }
+
         manager.shutdown()
     }
 

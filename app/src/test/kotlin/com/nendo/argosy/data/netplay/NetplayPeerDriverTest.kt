@@ -533,11 +533,7 @@ class NetplayPeerDriverTest {
             1, fakeOps.stepCount
         )
 
-        // Simulate 500ms+ passing by calling tick many times
-        // (framePeriodNanos=0 so each tick passes the timer gate)
-        // The observation needs real nanoTime to elapse, so we
-        // advance the remote peer further to sustain the gap
-        Thread.sleep(510)
+        driver.setCatchupObservationStartNanosForTest(System.nanoTime() - 510_000_000L)
         emitRemoteFrameInput(senderFrame = 20, frameIndex = 20)
         testScheduler.runCurrent()
 
@@ -565,7 +561,6 @@ class NetplayPeerDriverTest {
         emitRemoteFrameInput(senderFrame = 10, frameIndex = 10)
         testScheduler.runCurrent()
 
-        // Wait for observation window
         Thread.sleep(510)
         emitRemoteFrameInput(senderFrame = 10, frameIndex = 11)
         testScheduler.runCurrent()
@@ -617,6 +612,139 @@ class NetplayPeerDriverTest {
             0, fakeOps.stepCount
         )
 
+        driver.stop()
+    }
+
+    @Test
+    fun `storeConfirmedRemoteInput accepts frame within window`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val before = driver.confirmedRemoteInputSizeForTest()
+        driver.storeConfirmedRemoteInput(5L, 0xAB)
+        assertEquals(before + 1, driver.confirmedRemoteInputSizeForTest())
+        assertEquals(5L, driver.lastConfirmedRemoteFrameForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `storeConfirmedRemoteInput rejects frame beyond MAX_FRAME_LOOKAHEAD`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val before = driver.confirmedRemoteInputSizeForTest()
+        val tooFarAhead = NetplaySecurityBounds.MAX_FRAME_LOOKAHEAD + 1L
+        driver.storeConfirmedRemoteInput(tooFarAhead, 0xAB)
+        assertEquals(before, driver.confirmedRemoteInputSizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `storeConfirmedRemoteInput rejects frame beyond MAX_FRAME_LOOKBACK_EXTRA`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        driver.setCurrentFrameForTest(1000L)
+        // minAcceptable = 1000 - 12 - 3 - 60 = 925
+        val tooFarBehind = 924L
+        val before = driver.confirmedRemoteInputSizeForTest()
+        driver.storeConfirmedRemoteInput(tooFarBehind, 0xAB)
+        assertEquals(before, driver.confirmedRemoteInputSizeForTest())
+        // Sanity: frame at minAcceptable boundary is accepted
+        driver.storeConfirmedRemoteInput(925L, 0xAB)
+        assertEquals(before + 1, driver.confirmedRemoteInputSizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `storeConfirmedRemoteInput rejects when map at MAX_INPUT_MAP_ENTRIES`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        driver.fillConfirmedRemoteInputsForTest(NetplaySecurityBounds.MAX_INPUT_MAP_ENTRIES)
+        val filled = driver.confirmedRemoteInputSizeForTest()
+        assertEquals(NetplaySecurityBounds.MAX_INPUT_MAP_ENTRIES, filled)
+        // In-range frame should now be rejected due to capacity
+        driver.storeConfirmedRemoteInput(5L, 0xAB)
+        assertEquals(filled, driver.confirmedRemoteInputSizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `handleSnapshotChunk drops chunkTotal zero`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val chunk = NetplayPacket.SnapshotChunk(
+            snapshotId = 1, chunkIndex = 0, chunkTotal = 0, payload = byteArrayOf(1), frameIndex = 0L
+        )
+        driver.handleSnapshotChunkAt(0L, chunk)
+        assertEquals(0, driver.reassemblySizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `handleSnapshotChunk drops chunkTotal above MAX_CHUNKS_PER_SNAPSHOT`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val chunk = NetplayPacket.SnapshotChunk(
+            snapshotId = 2,
+            chunkIndex = 0,
+            chunkTotal = NetplaySecurityBounds.MAX_CHUNKS_PER_SNAPSHOT + 1,
+            payload = byteArrayOf(1),
+            frameIndex = 0L
+        )
+        driver.handleSnapshotChunkAt(0L, chunk)
+        assertEquals(0, driver.reassemblySizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `handleSnapshotChunk drops chunkIndex at or above chunkTotal`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val chunk = NetplayPacket.SnapshotChunk(
+            snapshotId = 3, chunkIndex = 4, chunkTotal = 4, payload = byteArrayOf(1), frameIndex = 0L
+        )
+        driver.handleSnapshotChunkAt(0L, chunk)
+        assertEquals(0, driver.reassemblySizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `handleSnapshotChunk drops negative chunkIndex`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val chunk = NetplayPacket.SnapshotChunk(
+            snapshotId = 4, chunkIndex = -1, chunkTotal = 4, payload = byteArrayOf(1), frameIndex = 0L
+        )
+        driver.handleSnapshotChunkAt(0L, chunk)
+        assertEquals(0, driver.reassemblySizeForTest())
+        driver.stop()
+    }
+
+    @Test
+    fun `handleSnapshotChunk drops third concurrent snapshot`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val now = 1_000_000_000L
+        driver.injectReassemblyBufferForTest(snapshotId = 10, total = 4, createdNanos = now)
+        driver.injectReassemblyBufferForTest(snapshotId = 11, total = 4, createdNanos = now)
+        assertEquals(2, driver.reassemblySizeForTest())
+        val chunk = NetplayPacket.SnapshotChunk(
+            snapshotId = 12, chunkIndex = 0, chunkTotal = 4, payload = byteArrayOf(1), frameIndex = 0L
+        )
+        driver.handleSnapshotChunkAt(now, chunk)
+        assertEquals(2, driver.reassemblySizeForTest())
+        assertTrue(!driver.reassemblyContainsForTest(12))
+        driver.stop()
+    }
+
+    @Test
+    fun `handleSnapshotChunk evicts stale reassembly entry before processing`() = runTest(UnconfinedTestDispatcher()) {
+        val driver = buildDriver(CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job()))
+        val staleCreated = 0L
+        val now = NetplaySecurityBounds.REASSEMBLY_TTL_NANOS + 1L
+        driver.injectReassemblyBufferForTest(snapshotId = 20, total = 4, createdNanos = staleCreated)
+        assertEquals(1, driver.reassemblySizeForTest())
+        val chunk = NetplayPacket.SnapshotChunk(
+            snapshotId = 21, chunkIndex = 0, chunkTotal = 4, payload = byteArrayOf(1), frameIndex = 0L
+        )
+        driver.handleSnapshotChunkAt(now, chunk)
+        assertTrue(
+            "stale snapshot 20 should have been evicted",
+            !driver.reassemblyContainsForTest(20)
+        )
+        assertTrue(
+            "new snapshot 21 should be accepted after eviction",
+            driver.reassemblyContainsForTest(21)
+        )
         driver.stop()
     }
 
