@@ -169,63 +169,8 @@ class GameRepository @Inject constructor(
         return null
     }
 
-    private suspend fun isGamePathValid(path: String, platformSlug: String): Boolean {
-        val file = File(path)
-        if (file.exists()) return true
-
-        val parentFolder = file.parentFile ?: return false
-        if (!parentFolder.exists() || !parentFolder.isDirectory) return false
-
-        val platformFolder = parentFolder.parentFile
-        if (platformFolder == null || !platformFolder.exists()) return false
-
-        return isFolderValid(parentFolder, platformSlug)
-    }
-
-    private suspend fun isFolderValid(folder: File, platformSlug: String): Boolean {
-        val rootFiles = folder.listFiles()?.filter { it.isFile } ?: return false
-        if (rootFiles.isEmpty()) {
-            Log.d(TAG, "Folder empty: ${folder.name}")
-            return false
-        }
-
-        val m3uFile = rootFiles.find { it.extension.lowercase() == "m3u" }
-        if (m3uFile != null) {
-            val isComplete = M3uManager.isM3uComplete(m3uFile)
-            if (!isComplete) {
-                Log.d(TAG, "Folder incomplete: ${folder.name} - m3u has missing discs")
-                return false
-            }
-            Log.d(TAG, "Folder valid (m3u): ${folder.name}")
-            return true
-        }
-
-        val cueFile = rootFiles.find { it.extension.lowercase() == "cue" }
-        if (cueFile != null) {
-            val isComplete = M3uManager.isCueComplete(cueFile)
-            if (!isComplete) {
-                Log.d(TAG, "Folder incomplete: ${folder.name} - cue has missing bins")
-                return false
-            }
-            Log.d(TAG, "Folder valid (cue): ${folder.name}")
-            return true
-        }
-
-        val platform = platformDao.getBySlug(platformSlug) ?: return false
-        val validExtensions = platform.romExtensions
-            .split(",")
-            .map { it.trim().lowercase() }
-            .filter { it.isNotEmpty() }
-            .toSet()
-
-        val hasValidRom = rootFiles.any { it.extension.lowercase() in validExtensions }
-        if (hasValidRom) {
-            Log.d(TAG, "Folder valid (rom): ${folder.name}")
-            return true
-        }
-
-        Log.d(TAG, "Folder invalid: ${folder.name} - no valid ROM files")
-        return false
+    private fun isGamePathValid(path: String, platformSlug: String): Boolean {
+        return File(path).exists()
     }
 
     suspend fun discoverLocalFiles(): Int = withContext(Dispatchers.IO) {

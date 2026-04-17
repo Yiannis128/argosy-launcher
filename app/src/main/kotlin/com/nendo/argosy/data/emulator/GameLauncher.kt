@@ -151,8 +151,9 @@ class GameLauncher @Inject constructor(
 
         var romFile = File(romPath)
         if (!romFile.exists()) {
+            gameDao.clearLocalPath(game.id)
             return LaunchResult.NoRomFile(romPath).also {
-                Logger.warn(TAG, "launch() failed: ROM file missing: ${romFile.name}, fullPath=$romPath")
+                Logger.warn(TAG, "launch() failed: ROM file missing; cleared localPath for ${romFile.name}, fullPath=$romPath")
             }
         }
 
