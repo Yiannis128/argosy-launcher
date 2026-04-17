@@ -1017,8 +1017,24 @@ class DownloadManager @Inject constructor(
                 result
             }
             else -> {
-                Log.d(TAG, "processDownloadedFile: BRANCH=PASSTHROUGH (no processing)")
-                targetFile.absolutePath
+                // RomM occasionally flags a ROM as hasNestedSingleFile but streams
+                // the nested file's raw bytes without wrapping in a zip container.
+                // Detect that (via content magic) and rename the misleading .zip
+                // extension to the real ROM extension so emulators can open it.
+                val detected = ZipExtractor.detectRomFormatByMagic(targetFile)
+                if (detected != null && !targetFile.extension.equals(detected, ignoreCase = true)) {
+                    val renamed = File(targetFile.parentFile, "${targetFile.nameWithoutExtension}.$detected")
+                    Log.d(TAG, "processDownloadedFile: BRANCH=RENAME_BY_MAGIC (detected=$detected, ${targetFile.name} -> ${renamed.name})")
+                    if (targetFile.renameTo(renamed)) {
+                        renamed.absolutePath
+                    } else {
+                        Log.w(TAG, "processDownloadedFile: rename failed, falling back to original path")
+                        targetFile.absolutePath
+                    }
+                } else {
+                    Log.d(TAG, "processDownloadedFile: BRANCH=PASSTHROUGH (no processing)")
+                    targetFile.absolutePath
+                }
             }
         }
 

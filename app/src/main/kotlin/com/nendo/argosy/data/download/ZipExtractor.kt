@@ -53,6 +53,7 @@ private val DLC_FILENAME_PATTERNS = listOf("[DLC]")
 private val DISC_EXTENSIONS = setOf("bin", "cue", "chd", "iso", "img", "mdf", "gdi", "cdi")
 private val ZIP_MAGIC_BYTES = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 private val SEVEN_Z_MAGIC_BYTES = byteArrayOf(0x37, 0x7A, 0xBC.toByte(), 0xAF.toByte(), 0x27, 0x1C)
+private val CHD_MAGIC_BYTES = "MComprHD".toByteArray(Charsets.US_ASCII)
 
 private val ZIP_AS_ROM_PLATFORMS = setOf(
     "arcade", "mame", "fbneo", "fba",
@@ -169,6 +170,24 @@ object ZipExtractor {
     }
 
     fun isArchiveFile(file: File): Boolean = isZipFile(file) || isSevenZFile(file)
+
+    /**
+     * Sniff magic bytes and return the canonical ROM extension ("chd", ...) if the
+     * content is a known ready-to-play ROM format masquerading under another
+     * extension. Used to recover when RomM advertises a download as a folder rom
+     * but streams the nested file's raw bytes without zip-wrapping.
+     */
+    fun detectRomFormatByMagic(file: File): String? {
+        if (!file.isFile || file.length() < 8) return null
+        return file.inputStream().use { stream ->
+            val header = ByteArray(8)
+            if (stream.read(header) != 8) return@use null
+            when {
+                header.contentEquals(CHD_MAGIC_BYTES) -> "chd"
+                else -> null
+            }
+        }
+    }
 
     sealed class ArchiveValidationResult {
         data object Valid : ArchiveValidationResult()
