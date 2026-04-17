@@ -173,7 +173,8 @@ class ArgosyViewModel @Inject constructor(
     private val netplayPreflightChecker: NetplayPreflightChecker,
     private val netplayJoinService: com.nendo.argosy.data.netplay.NetplayJoinService,
     private val launchGameUseCase: LaunchGameUseCase,
-    private val gameDao: GameDao
+    private val gameDao: GameDao,
+    private val homeLibraryDelegate: com.nendo.argosy.ui.screens.home.delegates.HomeLibraryDelegate
 ) : ViewModel() {
 
     val netplayJoinState: StateFlow<com.nendo.argosy.data.netplay.NetplayJoinState> get() = netplayJoinService.state
@@ -330,6 +331,9 @@ class ArgosyViewModel @Inject constructor(
                 emulatorUpdateManager.checkIfNeeded()
 
                 runWeeklyIntegrityCheckIfDue()
+
+                _startupStatus.value = "Preparing home..."
+                homeLibraryDelegate.ensureInitialLoad(viewModelScope)
             } else {
                 android.util.Log.w("ArgosyViewModel", "Storage not ready after timeout, scheduling retry")
                 _startupStatus.value = "Waiting for storage..."

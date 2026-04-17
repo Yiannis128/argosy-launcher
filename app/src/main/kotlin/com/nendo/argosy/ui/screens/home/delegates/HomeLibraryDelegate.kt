@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.DayOfWeek
@@ -41,6 +43,7 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
+import javax.inject.Singleton
 
 private const val PLATFORM_GAMES_LIMIT = 20
 private const val MAX_DISPLAYED_RECOMMENDATIONS = 8
@@ -74,6 +77,7 @@ private data class RecentGamesCache(
     val version: Long
 )
 
+@Singleton
 class HomeLibraryDelegate @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val gameRepository: GameRepository,
@@ -93,76 +97,108 @@ class HomeLibraryDelegate @Inject constructor(
     private var cachedPlatformDisplayNames: Map<Long, String> = emptyMap()
     private val pendingCoverRepairs = mutableSetOf<Long>()
 
+    private val initialLoadMutex = Mutex()
+    @Volatile
+    var initialLoadComplete: Boolean = false
+        private set
+    @Volatile
+    var cachedStartRow: HomeRow = HomeRow.Continue
+        private set
+
+    /**
+     * Runs the first-time data load once and caches the resolved start row. Subsequent
+     * callers block on the mutex only long enough to read the cached row, so both the
+     * startup waterfall and HomeViewModel.init can invoke this without double-fetching.
+     */
+    suspend fun ensureInitialLoad(scope: CoroutineScope): HomeRow {
+        val startRow = initialLoadMutex.withLock {
+            if (initialLoadComplete) return@withLock cachedStartRow
+            val resolved = runInitialLoad()
+            cachedStartRow = resolved
+            initialLoadComplete = true
+            resolved
+        }
+        startBackgroundFollowUp(scope, startRow)
+        return startRow
+    }
+
     fun loadInitialData(scope: CoroutineScope, onStartRowResolved: (HomeRow) -> Unit) {
         scope.launch {
-            gameRepository.awaitStorageReady()
-            val prefs = preferencesRepository.userPreferences.first()
-            val installedOnly = prefs.installedOnlyHome
+            val startRow = ensureInitialLoad(scope)
+            onStartRowResolved(startRow)
+        }
+    }
 
-            val allPlatforms = platformRepository.getPlatformsWithGames()
-            val platforms = allPlatforms.filter { it.id != LocalPlatformIds.STEAM && it.id != LocalPlatformIds.ANDROID }
-            cachedPlatformDisplayNames = allPlatforms.associate { it.id to it.getDisplayName() }
-            var favorites = gameRepository.getFavorites()
-            val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
-            val steamGames = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
+    private suspend fun runInitialLoad(): HomeRow {
+        gameRepository.awaitStorageReady()
+        val prefs = preferencesRepository.userPreferences.first()
+        val installedOnly = prefs.installedOnlyHome
 
-            val newThreshold = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
-            var recentlyPlayed = gameRepository.getRecentlyPlayed(RECENT_GAMES_CANDIDATE_POOL)
-            var newlyAdded = gameRepository.getNewlyAddedPlayable(newThreshold, RECENT_GAMES_CANDIDATE_POOL)
-            var allCandidates = (recentlyPlayed + newlyAdded).distinctBy { it.id }
+        val allPlatforms = platformRepository.getPlatformsWithGames()
+        val platforms = allPlatforms.filter { it.id != LocalPlatformIds.STEAM && it.id != LocalPlatformIds.ANDROID }
+        cachedPlatformDisplayNames = allPlatforms.associate { it.id to it.getDisplayName() }
+        var favorites = gameRepository.getFavorites()
+        val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
+        val steamGames = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
 
-            val allDisplayed = (favorites + allCandidates).distinctBy { it.id }
-            if (discoverGamesIfNeeded(allDisplayed)) {
-                favorites = gameRepository.getFavorites()
-                recentlyPlayed = gameRepository.getRecentlyPlayed(RECENT_GAMES_CANDIDATE_POOL)
-                newlyAdded = gameRepository.getNewlyAddedPlayable(newThreshold, RECENT_GAMES_CANDIDATE_POOL)
-                allCandidates = (recentlyPlayed + newlyAdded).distinctBy { it.id }
-            }
+        val newThreshold = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
+        var recentlyPlayed = gameRepository.getRecentlyPlayed(RECENT_GAMES_CANDIDATE_POOL)
+        var newlyAdded = gameRepository.getNewlyAddedPlayable(newThreshold, RECENT_GAMES_CANDIDATE_POOL)
+        var allCandidates = (recentlyPlayed + newlyAdded).distinctBy { it.id }
 
-            if (installedOnly) {
-                favorites = filterPlayable(favorites)
-            }
+        val allDisplayed = (favorites + allCandidates).distinctBy { it.id }
+        if (discoverGamesIfNeeded(allDisplayed)) {
+            favorites = gameRepository.getFavorites()
+            recentlyPlayed = gameRepository.getRecentlyPlayed(RECENT_GAMES_CANDIDATE_POOL)
+            newlyAdded = gameRepository.getNewlyAddedPlayable(newThreshold, RECENT_GAMES_CANDIDATE_POOL)
+            allCandidates = (recentlyPlayed + newlyAdded).distinctBy { it.id }
+        }
 
-            val playableGames = filterPlayable(allCandidates)
-            val sortedRecent = sortRecentGamesWithNewPriority(playableGames)
-            val validatedRecent = sortedRecent.take(RECENT_GAMES_LIMIT).map { it.toUi() }
-            recentGamesCache.set(RecentGamesCache(validatedRecent, recentGamesCache.get().version))
+        if (installedOnly) {
+            favorites = filterPlayable(favorites)
+        }
 
-            val platformUis = platforms.map { it.toHomePlatformUi(emulatorDetector) }
-            val favoriteUis = favorites.map { it.toUi() }
-            val androidGameUis = androidGames.map { it.toUi() }
-            val steamGameUis = steamGames.map { it.toUi() }
+        val playableGames = filterPlayable(allCandidates)
+        val sortedRecent = sortRecentGamesWithNewPriority(playableGames)
+        val validatedRecent = sortedRecent.take(RECENT_GAMES_LIMIT).map { it.toUi() }
+        recentGamesCache.set(RecentGamesCache(validatedRecent, recentGamesCache.get().version))
 
-            val startRow = when {
-                validatedRecent.isNotEmpty() -> HomeRow.Continue
-                favoriteUis.isNotEmpty() -> HomeRow.Favorites
-                androidGameUis.isNotEmpty() -> HomeRow.Android
-                steamGameUis.isNotEmpty() -> HomeRow.Steam
-                platformUis.isNotEmpty() -> HomeRow.Platform(0)
-                else -> HomeRow.Continue
-            }
+        val platformUis = platforms.map { it.toHomePlatformUi(emulatorDetector) }
+        val favoriteUis = favorites.map { it.toUi() }
+        val androidGameUis = androidGames.map { it.toUi() }
+        val steamGameUis = steamGames.map { it.toUi() }
 
-            _state.update {
-                it.copy(
-                    platforms = platformUis,
-                    recentGames = validatedRecent,
-                    favoriteGames = favoriteUis,
-                    androidGames = androidGameUis,
-                    steamGames = steamGameUis
-                )
-            }
+        val startRow = when {
+            validatedRecent.isNotEmpty() -> HomeRow.Continue
+            favoriteUis.isNotEmpty() -> HomeRow.Favorites
+            androidGameUis.isNotEmpty() -> HomeRow.Android
+            steamGameUis.isNotEmpty() -> HomeRow.Steam
+            platformUis.isNotEmpty() -> HomeRow.Platform(0)
+            else -> HomeRow.Continue
+        }
 
+        _state.update {
+            it.copy(
+                platforms = platformUis,
+                recentGames = validatedRecent,
+                favoriteGames = favoriteUis,
+                androidGames = androidGameUis,
+                steamGames = steamGameUis
+            )
+        }
+
+        return startRow
+    }
+
+    private fun startBackgroundFollowUp(scope: CoroutineScope, startRow: HomeRow) {
+        scope.launch {
             if (startRow is HomeRow.Platform) {
-                val platform = platforms.getOrNull(startRow.index)
+                val platform = _state.value.platforms.getOrNull(startRow.index)
                 if (platform != null) {
                     loadGamesForPlatformInternal(platform.id, startRow.index)
                 }
             }
-
             loadRecommendations()
-
-            onStartRowResolved(startRow)
-
             validateInstalledGamesInBackground(scope)
         }
     }

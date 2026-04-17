@@ -169,8 +169,18 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun restoreInitialState(): HomeUiState {
-        val (row, gameIndex) = navigationDelegate.restoreInitialRow(savedStateHandle)
-        return HomeUiState(currentRow = row, focusedGameIndex = gameIndex)
+        val (savedRow, gameIndex) = navigationDelegate.restoreInitialRow(savedStateHandle)
+        val preloaded = libraryDelegate.initialLoadComplete
+        val effectiveRow = if (preloaded && savedRow == HomeRow.Continue) {
+            libraryDelegate.cachedStartRow
+        } else {
+            savedRow
+        }
+        return HomeUiState(
+            currentRow = effectiveRow,
+            focusedGameIndex = gameIndex,
+            isLoading = !preloaded
+        )
     }
 
     private fun saveCurrentState() {
