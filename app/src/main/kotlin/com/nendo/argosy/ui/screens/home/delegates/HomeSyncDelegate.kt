@@ -63,6 +63,7 @@ class HomeSyncDelegate @Inject constructor(
             when (val result = syncLibraryUseCase(initializeFirst = true)) {
                 is SyncLibraryResult.Error -> notificationManager.showError(result.message)
                 is SyncLibraryResult.Success -> onSyncComplete()
+                SyncLibraryResult.AlreadyInProgress -> Unit
             }
         }
     }

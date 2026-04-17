@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -181,6 +180,7 @@ fun FirstRunScreen(
     ) {
         AnimatedContent(
             targetState = uiState.currentStep,
+            modifier = Modifier.fillMaxSize(),
             transitionSpec = {
                 fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(150))
             },
@@ -211,6 +211,7 @@ fun FirstRunScreen(
                     onUrlChange = viewModel::setRommUrl,
                     onPairingCodeChange = viewModel::setRommPairingCode,
                     onClearPairingCode = { viewModel.clearRommPairingCode() },
+                    onCodeComplete = { viewModel.setFocusedIndex(2) },
                     onConnect = { viewModel.connectToRomm() },
                     onScan = { viewModel.showScanner() },
                     onBack = { viewModel.previousStep() },
@@ -249,11 +250,6 @@ fun FirstRunScreen(
                     onChooseFolder = chooseImageCacheFolder,
                     onContinue = { viewModel.proceedFromImageCache() },
                     onSkip = { viewModel.skipImageCachePath() }
-                )
-                FirstRunStep.SAVE_SYNC -> SaveSyncStep(
-                    focusedIndex = uiState.focusedIndex,
-                    onEnable = { viewModel.enableSaveSync() },
-                    onSkip = { viewModel.skipSaveSync() }
                 )
                 FirstRunStep.PLATFORM_SELECT -> PlatformSelectStep(
                     platforms = uiState.platforms,
@@ -369,6 +365,7 @@ private fun RommLoginStep(
     onUrlChange: (String) -> Unit,
     onPairingCodeChange: (String) -> Unit,
     onClearPairingCode: () -> Unit,
+    onCodeComplete: () -> Unit,
     onConnect: () -> Unit,
     onScan: () -> Unit,
     onBack: () -> Unit,
@@ -403,6 +400,7 @@ private fun RommLoginStep(
         if (codeComplete) {
             keyboard?.hide()
             focusManager.clearFocus()
+            onCodeComplete()
         }
     }
 
@@ -774,50 +772,6 @@ private fun ImageCacheStep(
             text = "Images will be stored in an 'argosy_images' subfolder.",
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun SaveSyncStep(
-    focusedIndex: Int,
-    onEnable: () -> Unit,
-    onSkip: () -> Unit
-) {
-    StepColumn {
-        StepHeader(title = "Save Data Sync")
-        Spacer(modifier = Modifier.height(Dimens.spacingMd))
-        Text(
-            text = "Sync your game saves with your RomM server to continue playing across multiple devices.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingSm))
-        Text(
-            text = "Saves are uploaded when you stop playing and downloaded when needed.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingLg))
-        FocusableButton(
-            text = "Enable Save Sync",
-            isFocused = focusedIndex == 0,
-            icon = Icons.Default.Sync,
-            onClick = onEnable
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingSm))
-        FocusableOutlinedButton(
-            text = "Skip for Now",
-            isFocused = focusedIndex == 1,
-            onClick = onSkip
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingSm))
-        Text(
-            text = "You can enable this later in Settings.",
-            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

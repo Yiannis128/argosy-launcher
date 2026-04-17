@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,6 +46,8 @@ fun PermissionCard(
         isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
+    val leadingIcon = if (isGranted) Icons.Default.CheckCircle else icon
+    val leadingTint = if (isGranted) MaterialTheme.colorScheme.primary else contentColor
 
     Row(
         modifier = Modifier
@@ -56,12 +57,12 @@ fun PermissionCard(
             .clickableNoFocus(onClick = onClick)
             .background(backgroundColor, shape)
             .padding(Dimens.spacingMd),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = contentColor,
+            imageVector = leadingIcon,
+            contentDescription = if (isGranted) "Granted" else null,
+            tint = leadingTint,
             modifier = Modifier.size(Dimens.iconMd)
         )
         Spacer(modifier = Modifier.width(Dimens.spacingMd))
@@ -77,36 +78,6 @@ fun PermissionCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryColor
             )
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isGranted) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(Dimens.iconSm)
-                    )
-                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
-                    Text(
-                        text = "Granted",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(Dimens.iconSm)
-                    )
-                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
-                    Text(
-                        text = "Tap to grant",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
         }
     }
 }

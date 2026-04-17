@@ -22,6 +22,7 @@ private const val NOTIFICATION_KEY = "romm-sync"
 sealed class SyncLibraryResult {
     data class Success(val result: SyncResult) : SyncLibraryResult()
     data class Error(val message: String) : SyncLibraryResult()
+    data object AlreadyInProgress : SyncLibraryResult()
 }
 
 class SyncLibraryUseCase @Inject constructor(
@@ -88,7 +89,7 @@ class SyncLibraryUseCase @Inject constructor(
                         if (result.errors.singleOrNull() == "Sync already in progress") {
                             Logger.info(TAG, "invoke: sync already in progress, returning silently")
                             notificationManager.dismissByKey(NOTIFICATION_KEY)
-                            return@withContext SyncLibraryResult.Error("Sync already in progress")
+                            return@withContext SyncLibraryResult.AlreadyInProgress
                         }
 
                         Logger.info(TAG, "invoke: syncing favorites")

@@ -36,7 +36,6 @@ enum class FirstRunStep {
     PERMISSIONS,
     ROM_PATH,
     IMAGE_CACHE,
-    SAVE_SYNC,
     PLATFORM_SELECT,
     CORE_PROMPT,
     CORE_DOWNLOAD,
@@ -72,7 +71,6 @@ data class FirstRunUiState(
     val imageCachePath: String? = null,
     val imageCacheFolderSelected: Boolean = false,
     val launchImageCachePicker: Boolean = false,
-    val saveSyncEnabled: Boolean = false,
     val hasStoragePermission: Boolean = false,
     val hasNotificationPermission: Boolean = false,
     val hasOverlayPermission: Boolean = false,
@@ -112,8 +110,7 @@ class FirstRunViewModel @Inject constructor(
                 FirstRunStep.ROMM_SUCCESS -> FirstRunStep.PERMISSIONS
                 FirstRunStep.PERMISSIONS -> FirstRunStep.ROM_PATH
                 FirstRunStep.ROM_PATH -> FirstRunStep.IMAGE_CACHE
-                FirstRunStep.IMAGE_CACHE -> FirstRunStep.SAVE_SYNC
-                FirstRunStep.SAVE_SYNC -> {
+                FirstRunStep.IMAGE_CACHE -> {
                     if (state.rommPlatformCount > 10) FirstRunStep.PLATFORM_SELECT
                     else FirstRunStep.CORE_PROMPT
                 }
@@ -142,11 +139,10 @@ class FirstRunViewModel @Inject constructor(
                 FirstRunStep.PERMISSIONS -> FirstRunStep.ROMM_SUCCESS
                 FirstRunStep.ROM_PATH -> FirstRunStep.PERMISSIONS
                 FirstRunStep.IMAGE_CACHE -> FirstRunStep.ROM_PATH
-                FirstRunStep.SAVE_SYNC -> FirstRunStep.IMAGE_CACHE
-                FirstRunStep.PLATFORM_SELECT -> FirstRunStep.SAVE_SYNC
+                FirstRunStep.PLATFORM_SELECT -> FirstRunStep.IMAGE_CACHE
                 FirstRunStep.CORE_PROMPT -> {
                     if (state.rommPlatformCount > 10) FirstRunStep.PLATFORM_SELECT
-                    else FirstRunStep.SAVE_SYNC
+                    else FirstRunStep.IMAGE_CACHE
                 }
                 FirstRunStep.CORE_DOWNLOAD -> FirstRunStep.CORE_PROMPT
                 FirstRunStep.COMPLETE -> FirstRunStep.CORE_DOWNLOAD
@@ -318,7 +314,6 @@ class FirstRunViewModel @Inject constructor(
             FirstRunStep.PERMISSIONS -> 4
             FirstRunStep.ROM_PATH -> if (state.folderSelected) 1 else 0
             FirstRunStep.IMAGE_CACHE -> 1
-            FirstRunStep.SAVE_SYNC -> 1
             FirstRunStep.PLATFORM_SELECT -> state.platforms.size
             FirstRunStep.CORE_PROMPT -> 1
             FirstRunStep.CORE_DOWNLOAD -> 1
@@ -336,6 +331,10 @@ class FirstRunViewModel @Inject constructor(
         }
         _uiState.update { it.copy(focusedIndex = newIndex) }
         return true
+    }
+
+    fun setFocusedIndex(index: Int) {
+        _uiState.update { it.copy(focusedIndex = index) }
     }
 
     fun moveButtonFocus(delta: Int): Boolean {
@@ -502,16 +501,6 @@ class FirstRunViewModel @Inject constructor(
         nextStep()
     }
 
-    fun enableSaveSync() {
-        _uiState.update { it.copy(saveSyncEnabled = true) }
-        nextStep()
-    }
-
-    fun skipSaveSync() {
-        _uiState.update { it.copy(saveSyncEnabled = false) }
-        nextStep()
-    }
-
     fun refreshAllPermissions() {
         val hasStorage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
@@ -556,8 +545,8 @@ class FirstRunViewModel @Inject constructor(
                         preferencesRepository.setImageCachePath(path)
                     }
                 }
-                preferencesRepository.setSaveSyncEnabled(state.saveSyncEnabled)
             }
+            preferencesRepository.setSaveSyncEnabled(true)
             preferencesRepository.setAccuratePlayTimeEnabled(true)
             preferencesRepository.setFirstRunComplete()
             onDone()
@@ -613,9 +602,6 @@ class FirstRunViewModel @Inject constructor(
                     if (state.focusedIndex == 0) onChooseImageCacheFolder()
                     else skipImageCachePath()
                 }
-            }
-            FirstRunStep.SAVE_SYNC -> {
-                if (state.focusedIndex == 0) enableSaveSync() else skipSaveSync()
             }
             FirstRunStep.PLATFORM_SELECT -> {
                 if (state.focusedIndex >= state.platforms.size) {

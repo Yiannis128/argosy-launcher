@@ -699,6 +699,7 @@ internal fun routeSyncRomm(vm: SettingsViewModel) {
         when (val result = vm.syncLibraryUseCase()) {
             is SyncLibraryResult.Error -> vm.notificationManager.showError(result.message)
             is SyncLibraryResult.Success -> vm.loadSettings()
+            SyncLibraryResult.AlreadyInProgress -> Unit
         }
     }
 }
