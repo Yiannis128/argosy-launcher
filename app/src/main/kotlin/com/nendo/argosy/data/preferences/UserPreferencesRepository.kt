@@ -332,6 +332,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBuiltinCoreForPlatform(platformSlug: String, coreId: String) = builtinPrefs.setBuiltinCoreForPlatform(platformSlug, coreId)
     suspend fun setBuiltinFastForwardEnabled(enabled: Boolean) = builtinPrefs.setBuiltinFastForwardEnabled(enabled)
     suspend fun setBuiltinFastForwardSpeed(speed: Int) = builtinPrefs.setBuiltinFastForwardSpeed(speed)
+    suspend fun setBuiltinFastForwardMode(mode: com.nendo.argosy.data.local.entity.FastForwardMode) = builtinPrefs.setBuiltinFastForwardMode(mode)
     suspend fun setBuiltinRotation(rotation: Int) = builtinPrefs.setBuiltinRotation(rotation)
     suspend fun setBuiltinOverscanCrop(crop: Int) = builtinPrefs.setBuiltinOverscanCrop(crop)
     suspend fun setBuiltinRewindEnabled(enabled: Boolean) = builtinPrefs.setBuiltinRewindEnabled(enabled)
@@ -415,6 +416,7 @@ data class BuiltinEmulatorSettings(
     val dpadAsAnalog: Boolean = false,
     val fastForwardEnabled: Boolean = true,
     val fastForwardSpeed: Int = 4,
+    val fastForwardMode: com.nendo.argosy.data.local.entity.FastForwardMode = com.nendo.argosy.data.local.entity.FastForwardMode.HOLD,
     val rotation: Int = -1,
     val overscanCrop: Int = 0,
     val rewindEnabled: Boolean = true,

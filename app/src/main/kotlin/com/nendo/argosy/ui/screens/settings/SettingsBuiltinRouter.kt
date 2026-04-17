@@ -35,7 +35,12 @@ internal fun routeSetBuiltinFramesEnabled(vm: SettingsViewModel, enabled: Boolea
     }
 }
 
-private val ARCHITECTURE_OPTIONS = listOf("Universal", "ARMv7 (32-bit)", "ARMv8 (64-bit)")
+private val ARCHITECTURE_OPTIONS: List<String>
+    get() = buildList {
+        add("Universal")
+        if (LibretroBuildbot.processIs64Bit) add("ARMv8 (64-bit)")
+        else add("ARMv7 (32-bit)")
+    }
 
 private fun architectureDisplayToAbi(display: String): String? = when (display) {
     "ARMv7 (32-bit)" -> "armeabi-v7a"
@@ -50,10 +55,11 @@ internal fun architectureAbiToDisplay(abi: String?): String = when (abi) {
 }
 
 internal fun routeCycleBuiltinArchitecture(vm: SettingsViewModel, direction: Int) {
+    val options = ARCHITECTURE_OPTIONS
     val current = vm._uiState.value.emulators.architectureDisplay
-    val currentIndex = ARCHITECTURE_OPTIONS.indexOf(current).coerceAtLeast(0)
-    val nextIndex = (currentIndex + direction + ARCHITECTURE_OPTIONS.size) % ARCHITECTURE_OPTIONS.size
-    routeSetBuiltinArchitecture(vm, ARCHITECTURE_OPTIONS[nextIndex])
+    val currentIndex = options.indexOf(current).coerceAtLeast(0)
+    val nextIndex = (currentIndex + direction + options.size) % options.size
+    routeSetBuiltinArchitecture(vm, options[nextIndex])
 }
 
 internal fun routeSetBuiltinArchitecture(vm: SettingsViewModel, value: String) {
@@ -347,6 +353,13 @@ internal fun routeSetBuiltinLimitHotkeysToPlayer1(vm: SettingsViewModel, enabled
     vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(limitHotkeysToPlayer1 = enabled)) }
     vm.viewModelScope.launch {
         vm.preferencesRepository.setBuiltinLimitHotkeysToPlayer1(enabled)
+    }
+}
+
+internal fun routeSetBuiltinFastForwardMode(vm: SettingsViewModel, mode: com.nendo.argosy.data.local.entity.FastForwardMode) {
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(fastForwardMode = mode)) }
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setBuiltinFastForwardMode(mode)
     }
 }
 

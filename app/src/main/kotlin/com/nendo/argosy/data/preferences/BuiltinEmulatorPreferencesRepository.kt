@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.nendo.argosy.data.local.entity.FastForwardMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -32,6 +33,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_CORE_SELECTIONS = stringPreferencesKey("builtin_core_selections")
         val BUILTIN_FAST_FORWARD_ENABLED = booleanPreferencesKey("builtin_fast_forward_enabled")
         val BUILTIN_FAST_FORWARD_SPEED = intPreferencesKey("builtin_fast_forward_speed")
+        val BUILTIN_FAST_FORWARD_MODE = stringPreferencesKey("builtin_fast_forward_mode")
         val BUILTIN_ROTATION = intPreferencesKey("builtin_rotation")
         val BUILTIN_OVERSCAN_CROP = intPreferencesKey("builtin_overscan_crop")
         val BUILTIN_REWIND_ENABLED = booleanPreferencesKey("builtin_rewind_enabled")
@@ -68,6 +70,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             dpadAsAnalog = prefs[Keys.BUILTIN_DPAD_AS_ANALOG] ?: false,
             fastForwardEnabled = prefs[Keys.BUILTIN_FAST_FORWARD_ENABLED] ?: true,
             fastForwardSpeed = prefs[Keys.BUILTIN_FAST_FORWARD_SPEED] ?: 4,
+            fastForwardMode = FastForwardMode.fromString(prefs[Keys.BUILTIN_FAST_FORWARD_MODE]),
             rotation = prefs[Keys.BUILTIN_ROTATION] ?: -1,
             overscanCrop = prefs[Keys.BUILTIN_OVERSCAN_CROP] ?: 0,
             rewindEnabled = prefs[Keys.BUILTIN_REWIND_ENABLED] ?: true,
@@ -175,6 +178,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinFastForwardSpeed(speed: Int) {
         dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_SPEED] = speed.coerceIn(2, 8) }
+    }
+
+    suspend fun setBuiltinFastForwardMode(mode: FastForwardMode) {
+        dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_MODE] = mode.name }
     }
 
     suspend fun setBuiltinRotation(rotation: Int) {

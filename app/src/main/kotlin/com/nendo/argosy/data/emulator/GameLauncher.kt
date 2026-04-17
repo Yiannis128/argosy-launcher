@@ -52,7 +52,7 @@ sealed class LaunchResult {
     data class NoRomFile(val gamePath: String?) : LaunchResult()
     data class NoSteamLauncher(val launcherPackage: String) : LaunchResult()
     data class NoAndroidApp(val packageName: String) : LaunchResult()
-    data class NoCore(val platformSlug: String) : LaunchResult()
+    data class NoCore(val platformSlug: String, val reason: String? = null) : LaunchResult()
     data class MissingDiscs(val missingDiscNumbers: List<Int>) : LaunchResult()
     data class NoScummVMGameId(val gameName: String) : LaunchResult()
     data class Error(val message: String) : LaunchResult()
@@ -86,6 +86,9 @@ class GameLauncher @Inject constructor(
             false
         }
     }
+
+    @Volatile
+    private var lastCoreDownloadError: String? = null
 
     suspend fun launch(
         gameId: Long,
@@ -199,7 +202,7 @@ class GameLauncher @Inject constructor(
         val intent = buildIntent(emulator, romFile, game, forResume)
             ?: return when (emulator.launchConfig) {
                 is LaunchConfig.RetroArch, is LaunchConfig.BuiltIn -> {
-                    LaunchResult.NoCore(game.platformSlug).also {
+                    LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError).also {
                         Logger.warn(TAG, "launch() failed: no core for platform=${game.platformSlug}")
                     }
                 }
@@ -244,7 +247,7 @@ class GameLauncher @Inject constructor(
             val m3u = variant.m3uPath?.let { File(it) }
             if (m3u != null && m3u.exists()) {
                 val emulator = resolveEmulator(game) ?: return LaunchResult.NoEmulator(game.platformSlug)
-                val intent = buildIntent(emulator, m3u, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug)
+                val intent = buildIntent(emulator, m3u, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError)
                 gameDao.recordPlayStart(game.id, java.time.Instant.now())
                 val alreadyLaunched = intent.getBooleanExtra(EXTRA_ALREADY_LAUNCHED, false)
                 return LaunchResult.Success(intent, alreadyLaunched = alreadyLaunched)
@@ -254,7 +257,7 @@ class GameLauncher @Inject constructor(
 
         // Single-file variant.
         val emulator = resolveEmulator(game) ?: return LaunchResult.NoEmulator(game.platformSlug)
-        val intent = buildIntent(emulator, variantFile, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug)
+        val intent = buildIntent(emulator, variantFile, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError)
         gameDao.recordPlayStart(game.id, java.time.Instant.now())
         val alreadyLaunched = intent.getBooleanExtra(EXTRA_ALREADY_LAUNCHED, false)
         return LaunchResult.Success(intent, alreadyLaunched = alreadyLaunched)
@@ -333,7 +336,7 @@ class GameLauncher @Inject constructor(
 
         val intent = buildIntent(emulator, launchFile, game, forResume)
             ?: return if (emulator.launchConfig is LaunchConfig.RetroArch) {
-                LaunchResult.NoCore(game.platformSlug).also {
+                LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError).also {
                     Logger.warn(TAG, "launchMultiDiscGame() failed: no core for platform=${game.platformSlug}")
                 }
             } else {
@@ -411,13 +414,16 @@ class GameLauncher @Inject constructor(
 
     private suspend fun buildBuiltInIntent(romFile: File, game: GameEntity): Intent? {
         Logger.debug(TAG, "[BuiltIn] Preparing launch: rom=${romFile.name}, platform=${game.platformSlug}")
+        lastCoreDownloadError = null
 
         var corePath = libretroCoreMgr.getCorePathForPlatform(game.platformSlug)
         if (corePath == null) {
             Logger.info(TAG, "[BuiltIn] Core not downloaded for ${game.platformSlug}, attempting download...")
-            corePath = libretroCoreMgr.downloadCoreForPlatform(game.platformSlug)
-            if (corePath == null) {
-                Logger.error(TAG, "[BuiltIn] Failed to download core for platform: ${game.platformSlug}")
+            val downloadResult = libretroCoreMgr.downloadCoreForPlatform(game.platformSlug)
+            corePath = downloadResult.getOrElse { err ->
+                val reason = err.message ?: "Unknown error"
+                lastCoreDownloadError = com.nendo.argosy.libretro.formatCoreDownloadError(reason)
+                Logger.error(TAG, "[BuiltIn] Failed to download core for platform ${game.platformSlug}: $reason")
                 return null
             }
             Logger.info(TAG, "[BuiltIn] Successfully downloaded core for ${game.platformSlug}")

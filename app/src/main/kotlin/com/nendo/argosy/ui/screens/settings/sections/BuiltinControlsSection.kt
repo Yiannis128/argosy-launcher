@@ -53,6 +53,7 @@ internal sealed class BuiltinControlsItem(
     data object DpadAsAnalog : BuiltinControlsItem("dpadAsAnalog", "sticks", { it.showStickMappings && it.showDpadAsAnalog })
     data object Hotkeys : BuiltinControlsItem("hotkeys", "hotkeys")
     data object LimitHotkeysToPlayer1 : BuiltinControlsItem("limitHotkeys", "hotkeys")
+    data object ToggleFastForward : BuiltinControlsItem("toggleFastForward", "hotkeys")
     data object ResetAllToGlobal : BuiltinControlsItem("resetAllToGlobal", "hotkeys", { it.showResetAll })
 
     companion object {
@@ -71,6 +72,7 @@ internal sealed class BuiltinControlsItem(
             HotkeysHeader,
             Hotkeys,
             LimitHotkeysToPlayer1,
+            ToggleFastForward,
             ResetAllToGlobal
         )
     }
@@ -239,6 +241,19 @@ fun BuiltinControlsSection(
                     isEnabled = controlsState.limitHotkeysToPlayer1,
                     isFocused = isFocused(item),
                     onToggle = { viewModel.setBuiltinLimitHotkeysToPlayer1(it) }
+                )
+
+                BuiltinControlsItem.ToggleFastForward -> SwitchPreference(
+                    title = "Toggle Fast Forward",
+                    subtitle = "Press once to start, again to stop (off = hold to fast forward)",
+                    isEnabled = controlsState.fastForwardMode == com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE,
+                    isFocused = isFocused(item),
+                    onToggle = { enabled ->
+                        viewModel.setBuiltinFastForwardMode(
+                            if (enabled) com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE
+                            else com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
+                        )
+                    }
                 )
 
                 BuiltinControlsItem.ResetAllToGlobal -> {

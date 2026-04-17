@@ -196,7 +196,9 @@ class GameLaunchDelegate @Inject constructor(
                             onLaunchFailed()
                         }
                         is LaunchResult.NoCore -> {
-                            notificationManager.showError("No core available for ${result.platformSlug}")
+                            val base = "No core available for ${result.platformSlug}"
+                            val message = result.reason?.let { "$base: $it" } ?: base
+                            notificationManager.showError(message)
                             onLaunchFailed()
                         }
                         is LaunchResult.MissingDiscs -> {
@@ -391,7 +393,9 @@ class GameLaunchDelegate @Inject constructor(
                         onLaunchFailed()
                     }
                     is LaunchResult.NoCore -> {
-                        notificationManager.showError("No core available for ${result.platformSlug}")
+                        val base = "No core available for ${result.platformSlug}"
+                        val message = result.reason?.let { "$base: $it" } ?: base
+                        notificationManager.showError(message)
                         onLaunchFailed()
                     }
                     is LaunchResult.MissingDiscs -> {

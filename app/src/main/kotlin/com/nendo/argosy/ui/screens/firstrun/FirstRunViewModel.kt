@@ -12,6 +12,7 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.libretro.LibretroCoreRegistry
+import com.nendo.argosy.libretro.formatCoreDownloadError
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.util.PermissionHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,7 +42,8 @@ data class CoreDownloadState(
     val coreId: String,
     val displayName: String,
     val platforms: Set<String>,
-    val status: CoreDownloadStatus = CoreDownloadStatus.PENDING
+    val status: CoreDownloadStatus = CoreDownloadStatus.PENDING,
+    val errorMessage: String? = null
 )
 
 enum class CoreDownloadStatus {
@@ -221,10 +223,11 @@ class FirstRunViewModel @Inject constructor(
 
                 val result = coreManager.downloadCoreById(core.coreId)
                 val newStatus = if (result.isSuccess) CoreDownloadStatus.COMPLETE else CoreDownloadStatus.FAILED
+                val errorMessage = result.exceptionOrNull()?.let { formatCoreDownloadError(it.message ?: "Unknown error") }
 
                 _uiState.update { state ->
                     val updatedCores = state.coreDownloads.map {
-                        if (it.coreId == core.coreId) it.copy(status = newStatus)
+                        if (it.coreId == core.coreId) it.copy(status = newStatus, errorMessage = errorMessage)
                         else it
                     }
                     val allComplete = updatedCores.all { it.status == CoreDownloadStatus.COMPLETE || it.status == CoreDownloadStatus.FAILED }
@@ -243,7 +246,7 @@ class FirstRunViewModel @Inject constructor(
             _uiState.update { state ->
                 state.copy(
                     coreDownloads = state.coreDownloads.map {
-                        if (it.coreId == coreId) it.copy(status = CoreDownloadStatus.DOWNLOADING)
+                        if (it.coreId == coreId) it.copy(status = CoreDownloadStatus.DOWNLOADING, errorMessage = null)
                         else it
                     },
                     coreDownloadComplete = false
@@ -252,10 +255,11 @@ class FirstRunViewModel @Inject constructor(
 
             val result = coreManager.downloadCoreById(coreId)
             val newStatus = if (result.isSuccess) CoreDownloadStatus.COMPLETE else CoreDownloadStatus.FAILED
+            val errorMessage = result.exceptionOrNull()?.let { formatCoreDownloadError(it.message ?: "Unknown error") }
 
             _uiState.update { state ->
                 val updatedCores = state.coreDownloads.map {
-                    if (it.coreId == coreId) it.copy(status = newStatus)
+                    if (it.coreId == coreId) it.copy(status = newStatus, errorMessage = errorMessage)
                     else it
                 }
                 val allComplete = updatedCores.all { it.status == CoreDownloadStatus.COMPLETE || it.status == CoreDownloadStatus.FAILED }

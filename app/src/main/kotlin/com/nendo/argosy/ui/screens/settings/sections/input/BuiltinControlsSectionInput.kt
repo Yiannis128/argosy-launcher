@@ -35,6 +35,15 @@ internal class BuiltinControlsSectionInput(
                 viewModel.setBuiltinLimitHotkeysToPlayer1(!state.builtinControls.limitHotkeysToPlayer1)
                 InputResult.handled(SoundType.TOGGLE)
             }
+            BuiltinControlsItem.ToggleFastForward -> {
+                val next = if (state.builtinControls.fastForwardMode == com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE) {
+                    com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
+                } else {
+                    com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE
+                }
+                viewModel.setBuiltinFastForwardMode(next)
+                InputResult.handled(SoundType.TOGGLE)
+            }
             BuiltinControlsItem.AnalogAsDpad -> {
                 if (state.builtinVideo.isGlobalContext) {
                     viewModel.setBuiltinAnalogAsDpad(!state.builtinControls.analogAsDpad)

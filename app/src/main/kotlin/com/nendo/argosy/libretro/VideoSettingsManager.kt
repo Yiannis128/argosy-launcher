@@ -53,6 +53,7 @@ class VideoSettingsManager(
     var aspectRatioMode: String = "Auto"
     var fastForwardEnabled: Boolean = true
     var fastForwardSpeed: Int = 4
+    var fastForwardMode: com.nendo.argosy.data.local.entity.FastForwardMode = com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
     var overscanCrop: Int = 0
     var rotationDegrees: Int = -1
     var rewindEnabled: Boolean = false
@@ -67,6 +68,7 @@ class VideoSettingsManager(
         aspectRatioMode = settings.aspectRatio
         fastForwardEnabled = settings.fastForwardEnabled
         fastForwardSpeed = settings.fastForwardSpeed
+        fastForwardMode = settings.fastForwardMode
         overscanCrop = settings.overscanCrop
         rotationDegrees = settings.rotation
         rewindEnabled = settings.rewindEnabled

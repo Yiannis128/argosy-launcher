@@ -372,6 +372,7 @@ class SettingsViewModel @Inject constructor(
     fun confirmAppPickerSelection() = routeConfirmAppPickerSelection(this)
     fun setBuiltinRumbleEnabled(enabled: Boolean) = routeSetBuiltinRumbleEnabled(this, enabled)
     fun setBuiltinLimitHotkeysToPlayer1(enabled: Boolean) = routeSetBuiltinLimitHotkeysToPlayer1(this, enabled)
+    fun setBuiltinFastForwardMode(mode: com.nendo.argosy.data.local.entity.FastForwardMode) = routeSetBuiltinFastForwardMode(this, mode)
     fun setBuiltinAnalogAsDpad(enabled: Boolean) = routeSetBuiltinAnalogAsDpad(this, enabled)
     fun setBuiltinDpadAsAnalog(enabled: Boolean) = routeSetBuiltinDpadAsAnalog(this, enabled)
     fun showControllerOrderModal() = routeShowControllerOrderModal(this)

@@ -627,6 +627,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 builtinControls = BuiltinControlsState(
                     rumbleEnabled = builtinSettings.rumbleEnabled,
                     limitHotkeysToPlayer1 = builtinSettings.limitHotkeysToPlayer1,
+                    fastForwardMode = builtinSettings.fastForwardMode,
                     analogAsDpad = builtinSettings.analogAsDpad,
                     dpadAsAnalog = builtinSettings.dpadAsAnalog
                 )

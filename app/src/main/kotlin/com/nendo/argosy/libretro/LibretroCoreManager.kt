@@ -102,15 +102,10 @@ class LibretroCoreManager @Inject constructor(
         return neededCores.filter { !isCoreInstalled(it.coreId) }
     }
 
-    suspend fun downloadCoreForPlatform(platformSlug: String): String? {
-        val coreInfo = LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug) ?: return null
-        return downloadCore(coreInfo).fold(
-            onSuccess = { it.absolutePath },
-            onFailure = { e ->
-                Log.e(TAG, "Failed to download core: ${e.message}", e)
-                null
-            }
-        )
+    suspend fun downloadCoreForPlatform(platformSlug: String): Result<String> {
+        val coreInfo = LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug)
+            ?: return Result.failure(IllegalArgumentException("No core registered for platform $platformSlug"))
+        return downloadCore(coreInfo).map { it.absolutePath }
     }
 
     suspend fun downloadCoreById(coreId: String): Result<File> {

@@ -1308,6 +1308,13 @@ private fun CoreDownloadItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (core.status == CoreDownloadStatus.FAILED && core.errorMessage != null) {
+                Text(
+                    text = core.errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
 
         when (core.status) {

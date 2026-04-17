@@ -623,9 +623,16 @@ class LibretroActivity : ComponentActivity() {
             getNetplayRole = { netplayRole },
             onShowMenu = ::showMenu,
             onFastForwardChanged = { ff ->
-                if (!netplayInSession && ff && !isFastForwarding && videoSettings.fastForwardEnabled) {
-                    isFastForwarding = true
-                    retroView.frameSpeed = videoSettings.fastForwardSpeed
+                if (!netplayInSession && ff && videoSettings.fastForwardEnabled) {
+                    val toggleMode = videoSettings.fastForwardMode ==
+                        com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE
+                    if (toggleMode && isFastForwarding) {
+                        isFastForwarding = false
+                        retroView.frameSpeed = 1
+                    } else if (!isFastForwarding) {
+                        isFastForwarding = true
+                        retroView.frameSpeed = videoSettings.fastForwardSpeed
+                    }
                 }
             },
             onRewindChanged = { rw ->
@@ -1958,7 +1965,9 @@ class LibretroActivity : ComponentActivity() {
 
         inputConfig.hotkeyManager.onKeyUp(keyCode)
 
-        if (!inputConfig.hotkeyManager.isHotkeyActive(HotkeyAction.FAST_FORWARD) && isFastForwarding) {
+        val holdMode = videoSettings.fastForwardMode ==
+            com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
+        if (holdMode && !inputConfig.hotkeyManager.isHotkeyActive(HotkeyAction.FAST_FORWARD) && isFastForwarding) {
             isFastForwarding = false
             retroView.frameSpeed = 1
         }

@@ -95,8 +95,14 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         downloadServiceController.start()
         syncServiceController.start()
         appScope.launch {
-            builtinPrefs.getArchitectureOverride().first()?.let {
-                LibretroBuildbot.abiOverride = it
+            val storedOverride = builtinPrefs.getArchitectureOverride().first()
+            if (storedOverride != null) {
+                if (LibretroBuildbot.isAbiCompatibleWithProcess(storedOverride)) {
+                    LibretroBuildbot.abiOverride = storedOverride
+                } else {
+                    android.util.Log.w("ALauncherApp", "Stored ABI override '$storedOverride' is incompatible with process bitness; clearing")
+                    builtinPrefs.setArchitectureOverride(null)
+                }
             }
             coreManager.migrateAbiIfNeeded()
             coreManager.checkAndUpdateCoresIfDue()
