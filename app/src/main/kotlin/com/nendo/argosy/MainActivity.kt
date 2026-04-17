@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker
     @Inject lateinit var repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
     @Inject lateinit var steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
+    @Inject lateinit var gameRepository: com.nendo.argosy.data.repository.GameRepository
     @Inject lateinit var presenceManager: com.nendo.argosy.data.social.PresenceManager
     @Inject lateinit var discordPresenceManager: com.nendo.argosy.data.social.discord.DiscordPresenceManager
 
@@ -333,6 +334,7 @@ class MainActivity : ComponentActivity() {
         dualScreenManager.broadcastForegroundState(true)
 
         cleanupStaleSession()
+        revalidateDownloadedFiles()
 
         if (hasResumedBefore) {
             romMRepository.onAppResumed()
@@ -518,6 +520,19 @@ class MainActivity : ComponentActivity() {
      * path was too eager and occasionally pulled the user into a phantom session
      * on cold start.
      */
+    /**
+     * Re-checks localPath for every downloaded game whenever the user returns to
+     * the launcher. Catches manual deletions performed outside the app (e.g. via
+     * a file manager) so stale "installed" badges clear without requiring a cold
+     * restart. Cost is one File.exists per downloaded game; acceptable on resume.
+     */
+    private fun revalidateDownloadedFiles() {
+        activityScope.launch(Dispatchers.IO) {
+            runCatching { gameRepository.validateLocalFiles() }
+                .onFailure { Log.w(TAG, "revalidateDownloadedFiles failed", it) }
+        }
+    }
+
     private fun cleanupStaleSession() {
         activityScope.launch {
             if (!::dualScreenManager.isInitialized) return@launch
