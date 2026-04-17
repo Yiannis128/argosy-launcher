@@ -1,7 +1,11 @@
 package com.nendo.argosy.ui.screens.firstrun
 
+import android.Manifest
 import android.os.Build
 import android.os.Environment
+import android.content.pm.PackageManager
+import android.provider.Settings
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.app.Application
@@ -11,7 +15,6 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.libretro.LibretroCoreManager
-import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.formatCoreDownloadError
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.util.PermissionHelper
@@ -28,10 +31,10 @@ enum class FirstRunStep {
     WELCOME,
     ROMM_LOGIN,
     ROMM_SUCCESS,
+    PERMISSIONS,
     ROM_PATH,
     IMAGE_CACHE,
     SAVE_SYNC,
-    USAGE_STATS,
     PLATFORM_SELECT,
     CORE_PROMPT,
     CORE_DOWNLOAD,
@@ -54,12 +57,9 @@ data class FirstRunUiState(
     val currentStep: FirstRunStep = FirstRunStep.WELCOME,
     val focusedIndex: Int = 0,
     val rommUrl: String = "",
-    val rommAuthMethod: com.nendo.argosy.ui.screens.settings.RomMAuthMethod = com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PAIRING_CODE,
     val rommPairingCode: String = "",
     val rommShowScanner: Boolean = false,
     val rommHasCamera: Boolean = false,
-    val rommUsername: String = "",
-    val rommPassword: String = "",
     val isConnecting: Boolean = false,
     val connectionError: String? = null,
     val rommGameCount: Int = 0,
@@ -72,6 +72,8 @@ data class FirstRunUiState(
     val launchImageCachePicker: Boolean = false,
     val saveSyncEnabled: Boolean = false,
     val hasStoragePermission: Boolean = false,
+    val hasNotificationPermission: Boolean = false,
+    val hasOverlayPermission: Boolean = false,
     val hasUsageStatsPermission: Boolean = false,
     val rommFocusField: Int? = null,
     val platforms: List<PlatformEntity> = emptyList(),
@@ -104,11 +106,11 @@ class FirstRunViewModel @Inject constructor(
             val nextStep = when (state.currentStep) {
                 FirstRunStep.WELCOME -> FirstRunStep.ROMM_LOGIN
                 FirstRunStep.ROMM_LOGIN -> FirstRunStep.ROMM_SUCCESS
-                FirstRunStep.ROMM_SUCCESS -> FirstRunStep.ROM_PATH
+                FirstRunStep.ROMM_SUCCESS -> FirstRunStep.PERMISSIONS
+                FirstRunStep.PERMISSIONS -> FirstRunStep.ROM_PATH
                 FirstRunStep.ROM_PATH -> FirstRunStep.IMAGE_CACHE
                 FirstRunStep.IMAGE_CACHE -> FirstRunStep.SAVE_SYNC
-                FirstRunStep.SAVE_SYNC -> FirstRunStep.USAGE_STATS
-                FirstRunStep.USAGE_STATS -> {
+                FirstRunStep.SAVE_SYNC -> {
                     if (state.rommPlatformCount > 10) FirstRunStep.PLATFORM_SELECT
                     else FirstRunStep.CORE_PROMPT
                 }
@@ -134,14 +136,14 @@ class FirstRunViewModel @Inject constructor(
                 FirstRunStep.WELCOME -> FirstRunStep.WELCOME
                 FirstRunStep.ROMM_LOGIN -> FirstRunStep.WELCOME
                 FirstRunStep.ROMM_SUCCESS -> FirstRunStep.ROMM_LOGIN
-                FirstRunStep.ROM_PATH -> FirstRunStep.ROMM_SUCCESS
+                FirstRunStep.PERMISSIONS -> FirstRunStep.ROMM_SUCCESS
+                FirstRunStep.ROM_PATH -> FirstRunStep.PERMISSIONS
                 FirstRunStep.IMAGE_CACHE -> FirstRunStep.ROM_PATH
                 FirstRunStep.SAVE_SYNC -> FirstRunStep.IMAGE_CACHE
-                FirstRunStep.USAGE_STATS -> FirstRunStep.SAVE_SYNC
-                FirstRunStep.PLATFORM_SELECT -> FirstRunStep.USAGE_STATS
+                FirstRunStep.PLATFORM_SELECT -> FirstRunStep.SAVE_SYNC
                 FirstRunStep.CORE_PROMPT -> {
                     if (state.rommPlatformCount > 10) FirstRunStep.PLATFORM_SELECT
-                    else FirstRunStep.USAGE_STATS
+                    else FirstRunStep.SAVE_SYNC
                 }
                 FirstRunStep.CORE_DOWNLOAD -> FirstRunStep.CORE_PROMPT
                 FirstRunStep.COMPLETE -> FirstRunStep.CORE_DOWNLOAD
@@ -303,25 +305,17 @@ class FirstRunViewModel @Inject constructor(
         return when (state.currentStep) {
             FirstRunStep.WELCOME -> 0
             FirstRunStep.ROMM_LOGIN -> {
-                val isPairingCode = state.rommAuthMethod == com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PAIRING_CODE
-                val hasScanButton = isPairingCode && state.rommHasCamera
-                when {
-                    isPairingCode && hasScanButton -> 5
-                    isPairingCode -> 4
-                    else -> 5
-                }
+                val hasScanButton = state.rommHasCamera
+                val connectIndex = 2
+                val scanIndex = if (hasScanButton) connectIndex + 1 else -1
+                val backIndex = if (hasScanButton) scanIndex + 1 else connectIndex + 1
+                backIndex
             }
             FirstRunStep.ROMM_SUCCESS -> 0
-            FirstRunStep.ROM_PATH -> {
-                when {
-                    !state.hasStoragePermission -> 0
-                    state.folderSelected -> 1
-                    else -> 0
-                }
-            }
+            FirstRunStep.PERMISSIONS -> 4
+            FirstRunStep.ROM_PATH -> if (state.folderSelected) 1 else 0
             FirstRunStep.IMAGE_CACHE -> 1
             FirstRunStep.SAVE_SYNC -> 1
-            FirstRunStep.USAGE_STATS -> if (state.hasUsageStatsPermission) 0 else 1
             FirstRunStep.PLATFORM_SELECT -> state.platforms.size
             FirstRunStep.CORE_PROMPT -> 1
             FirstRunStep.CORE_DOWNLOAD -> 1
@@ -360,20 +354,8 @@ class FirstRunViewModel @Inject constructor(
         _uiState.update { it.copy(rommUrl = url, connectionError = null) }
     }
 
-    fun setRommUsername(username: String) {
-        _uiState.update { it.copy(rommUsername = username, connectionError = null) }
-    }
-
-    fun setRommPassword(password: String) {
-        _uiState.update { it.copy(rommPassword = password, connectionError = null) }
-    }
-
     fun setRommPairingCode(code: String) {
         _uiState.update { it.copy(rommPairingCode = code, connectionError = null) }
-    }
-
-    fun setRommAuthMethod(method: com.nendo.argosy.ui.screens.settings.RomMAuthMethod) {
-        _uiState.update { it.copy(rommAuthMethod = method, connectionError = null) }
     }
 
     fun showScanner() {
@@ -389,8 +371,7 @@ class FirstRunViewModel @Inject constructor(
             it.copy(
                 rommShowScanner = false,
                 rommUrl = origin,
-                rommPairingCode = code,
-                rommAuthMethod = com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PAIRING_CODE
+                rommPairingCode = code
             )
         }
         connectToRomm()
@@ -399,47 +380,32 @@ class FirstRunViewModel @Inject constructor(
     fun connectToRomm() {
         viewModelScope.launch {
             _uiState.update { it.copy(isConnecting = true, connectionError = null) }
-
             val state = _uiState.value
-            val isPairingCode = state.rommAuthMethod == com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PAIRING_CODE
-
-            if (isPairingCode) {
-                connectWithPairingCode(state.rommUrl, state.rommPairingCode)
-            } else {
-                connectWithPassword(state.rommUrl, state.rommUsername, state.rommPassword)
-            }
+            connectWithPairingCode(state.rommUrl, state.rommPairingCode)
         }
     }
 
     private suspend fun connectWithPairingCode(url: String, rawCode: String) {
         val code = rawCode.replace("-", "").replace(" ", "")
         if (code.length != 8) {
-            _uiState.update { it.copy(isConnecting = false, connectionError = "Enter the full 8-character pairing code") }
+            _uiState.update {
+                it.copy(
+                    isConnecting = false,
+                    connectionError = "Enter the full 8-character pairing code"
+                )
+            }
             return
         }
 
         when (val result = romMRepository.exchangePairingCode(url, code)) {
             is RomMResult.Success -> onAuthSuccess()
             is RomMResult.Error -> {
-                _uiState.update { it.copy(isConnecting = false, connectionError = result.message) }
-            }
-        }
-    }
-
-    private suspend fun connectWithPassword(url: String, username: String, password: String) {
-        val connectResult = romMRepository.connect(url)
-        if (connectResult is RomMResult.Error) {
-            _uiState.update { it.copy(isConnecting = false, connectionError = "Could not connect to server: ${connectResult.message}") }
-            return
-        }
-
-        val workingUrl = (connectResult as RomMResult.Success).data
-        _uiState.update { it.copy(rommUrl = workingUrl.trimEnd('/')) }
-
-        when (val loginResult = romMRepository.login(username, password)) {
-            is RomMResult.Success -> onAuthSuccess()
-            is RomMResult.Error -> {
-                _uiState.update { it.copy(isConnecting = false, connectionError = "Login failed: ${loginResult.message}") }
+                _uiState.update {
+                    it.copy(
+                        isConnecting = false,
+                        connectionError = result.message
+                    )
+                }
             }
         }
     }
@@ -460,7 +426,12 @@ class FirstRunViewModel @Inject constructor(
                 }
             }
             is RomMResult.Error -> {
-                _uiState.update { it.copy(isConnecting = false, connectionError = "Failed to fetch library: ${summary.message}") }
+                _uiState.update {
+                    it.copy(
+                        isConnecting = false,
+                        connectionError = "Failed to fetch library: ${summary.message}"
+                    )
+                }
             }
         }
     }
@@ -484,7 +455,7 @@ class FirstRunViewModel @Inject constructor(
 
     fun proceedFromRomPath() {
         val state = _uiState.value
-        if (state.hasStoragePermission && state.folderSelected) {
+        if (state.folderSelected) {
             nextStep()
         }
     }
@@ -525,16 +496,34 @@ class FirstRunViewModel @Inject constructor(
         nextStep()
     }
 
-    fun checkUsageStatsPermission() {
-        val hasPermission = permissionHelper.hasUsageStatsPermission(application)
-        _uiState.update { it.copy(hasUsageStatsPermission = hasPermission) }
+    fun refreshAllPermissions() {
+        val hasStorage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            true
+        }
+        val hasNotification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                application,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        val hasOverlay = Settings.canDrawOverlays(application)
+        val hasUsageStats = permissionHelper.hasUsageStatsPermission(application)
+
+        _uiState.update {
+            it.copy(
+                hasStoragePermission = hasStorage,
+                hasNotificationPermission = hasNotification,
+                hasOverlayPermission = hasOverlay,
+                hasUsageStatsPermission = hasUsageStats
+            )
+        }
     }
 
-    fun proceedFromUsageStats() {
-        nextStep()
-    }
-
-    fun skipUsageStats() {
+    fun proceedFromPermissions() {
         nextStep()
     }
 
@@ -542,7 +531,7 @@ class FirstRunViewModel @Inject constructor(
         val state = _uiState.value
 
         viewModelScope.launch {
-            if (state.hasStoragePermission && state.folderSelected) {
+            if (state.folderSelected) {
                 state.romStoragePath?.let { path ->
                     preferencesRepository.setRomStoragePath(path)
                 }
@@ -553,59 +542,47 @@ class FirstRunViewModel @Inject constructor(
                 }
                 preferencesRepository.setSaveSyncEnabled(state.saveSyncEnabled)
             }
+            preferencesRepository.setAccuratePlayTimeEnabled(true)
             preferencesRepository.setFirstRunComplete()
             onDone()
         }
     }
 
-    fun checkStoragePermission() {
-        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            true
-        }
-        _uiState.update { it.copy(hasStoragePermission = hasPermission) }
-    }
-
-    fun onStoragePermissionResult(granted: Boolean) {
-        _uiState.update { it.copy(hasStoragePermission = granted) }
-    }
-
     fun handleConfirm(
-        onRequestPermission: () -> Unit,
+        onRequestStorage: () -> Unit,
+        onRequestNotifications: () -> Unit,
+        onRequestOverlay: () -> Unit,
+        onRequestUsageStats: () -> Unit,
         onChooseFolder: () -> Unit,
-        onChooseImageCacheFolder: () -> Unit,
-        onRequestUsageStats: () -> Unit
+        onChooseImageCacheFolder: () -> Unit
     ) {
         val state = _uiState.value
         when (state.currentStep) {
             FirstRunStep.WELCOME -> nextStep()
             FirstRunStep.ROMM_LOGIN -> {
-                val isPairingCode = state.rommAuthMethod == com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PAIRING_CODE
-                val hasScanButton = isPairingCode && state.rommHasCamera
-                val connectIndex = if (isPairingCode) 3 else 4
+                val hasScanButton = state.rommHasCamera
+                val connectIndex = 2
                 val scanIndex = if (hasScanButton) connectIndex + 1 else -1
                 val backIndex = if (hasScanButton) scanIndex + 1 else connectIndex + 1
                 when (state.focusedIndex) {
-                    1 -> {
-                        val next = if (isPairingCode) {
-                            com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PASSWORD
-                        } else {
-                            com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PAIRING_CODE
-                        }
-                        setRommAuthMethod(next)
-                    }
-                    connectIndex -> if (!state.isConnecting && state.rommUrl.isNotBlank()) connectToRomm()
+                    connectIndex -> if (!state.isConnecting && canConnect(state)) connectToRomm()
                     scanIndex -> showScanner()
                     backIndex -> previousStep()
                     else -> setRommFocusField(state.focusedIndex)
                 }
             }
             FirstRunStep.ROMM_SUCCESS -> nextStep()
+            FirstRunStep.PERMISSIONS -> {
+                when (state.focusedIndex) {
+                    0 -> if (!state.hasStoragePermission) onRequestStorage()
+                    1 -> if (!state.hasNotificationPermission) onRequestNotifications()
+                    2 -> if (!state.hasOverlayPermission) onRequestOverlay()
+                    3 -> if (!state.hasUsageStatsPermission) onRequestUsageStats()
+                    4 -> proceedFromPermissions()
+                }
+            }
             FirstRunStep.ROM_PATH -> {
-                if (!state.hasStoragePermission) {
-                    onRequestPermission()
-                } else if (state.folderSelected) {
+                if (state.folderSelected) {
                     if (state.focusedIndex == 0) proceedFromRomPath()
                     else onChooseFolder()
                 } else {
@@ -623,17 +600,6 @@ class FirstRunViewModel @Inject constructor(
             }
             FirstRunStep.SAVE_SYNC -> {
                 if (state.focusedIndex == 0) enableSaveSync() else skipSaveSync()
-            }
-            FirstRunStep.USAGE_STATS -> {
-                if (state.focusedIndex == 0) {
-                    if (!state.hasUsageStatsPermission) {
-                        onRequestUsageStats()
-                    } else {
-                        proceedFromUsageStats()
-                    }
-                } else {
-                    skipUsageStats()
-                }
             }
             FirstRunStep.PLATFORM_SELECT -> {
                 if (state.focusedIndex >= state.platforms.size) {
@@ -656,15 +622,31 @@ class FirstRunViewModel @Inject constructor(
         }
     }
 
+    private fun canConnect(state: FirstRunUiState): Boolean {
+        val normalized = state.rommPairingCode.replace("-", "").replace(" ", "")
+        return state.rommUrl.isNotBlank() && normalized.length == 8
+    }
+
     fun proceedFromPlatformSelect() {
         nextStep()
     }
 
     fun createInputHandler(
         onComplete: () -> Unit,
-        onRequestPermission: () -> Unit,
+        onRequestStorage: () -> Unit,
+        onRequestNotifications: () -> Unit,
+        onRequestOverlay: () -> Unit,
+        onRequestUsageStats: () -> Unit,
         onChooseFolder: () -> Unit,
-        onChooseImageCacheFolder: () -> Unit,
-        onRequestUsageStats: () -> Unit
-    ) = FirstRunInputHandler(this, onComplete, onRequestPermission, onChooseFolder, onChooseImageCacheFolder, onRequestUsageStats)
+        onChooseImageCacheFolder: () -> Unit
+    ) = FirstRunInputHandler(
+        this,
+        onComplete,
+        onRequestStorage,
+        onRequestNotifications,
+        onRequestOverlay,
+        onRequestUsageStats,
+        onChooseFolder,
+        onChooseImageCacheFolder
+    )
 }

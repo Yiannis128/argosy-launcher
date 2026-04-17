@@ -6,10 +6,12 @@ import com.nendo.argosy.ui.input.InputResult
 class FirstRunInputHandler(
     private val viewModel: FirstRunViewModel,
     private val onComplete: () -> Unit,
-    private val onRequestPermission: () -> Unit,
+    private val onRequestStorage: () -> Unit,
+    private val onRequestNotifications: () -> Unit,
+    private val onRequestOverlay: () -> Unit,
+    private val onRequestUsageStats: () -> Unit,
     private val onChooseFolder: () -> Unit,
-    private val onChooseImageCacheFolder: () -> Unit,
-    private val onRequestUsageStats: () -> Unit
+    private val onChooseImageCacheFolder: () -> Unit
 ) : InputHandler {
 
     override fun onUp(): InputResult {
@@ -34,7 +36,14 @@ class FirstRunInputHandler(
             viewModel.completeSetup(onDone = onComplete)
             return InputResult.HANDLED
         }
-        viewModel.handleConfirm(onRequestPermission, onChooseFolder, onChooseImageCacheFolder, onRequestUsageStats)
+        viewModel.handleConfirm(
+            onRequestStorage = onRequestStorage,
+            onRequestNotifications = onRequestNotifications,
+            onRequestOverlay = onRequestOverlay,
+            onRequestUsageStats = onRequestUsageStats,
+            onChooseFolder = onChooseFolder,
+            onChooseImageCacheFolder = onChooseImageCacheFolder
+        )
         return InputResult.HANDLED
     }
 
