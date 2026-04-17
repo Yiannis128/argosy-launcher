@@ -100,7 +100,6 @@ class MainActivity : ComponentActivity() {
     }
     private val activityScope = SafeCoroutineScope(Dispatchers.Main, "MainActivity")
 
-    private lateinit var emulatorSessionPolicy: EmulatorSessionPolicy
     private lateinit var preferencesObserver: MainActivityPreferencesObserver
 
 
@@ -203,20 +202,6 @@ class MainActivity : ComponentActivity() {
                 .setLaunchDisplayId(display!!.displayId)
                 .toBundle()
             startActivity(companionIntent, options)
-            finish()
-            return
-        }
-
-        emulatorSessionPolicy = EmulatorSessionPolicy(
-            preferencesRepository = preferencesRepository,
-            permissionHelper = permissionHelper,
-            sessionStateStore = sessionStateStore,
-            displayAffinityHelper = displayAffinityHelper,
-            playSessionTracker = playSessionTracker
-        )
-
-        if (emulatorSessionPolicy.shouldYieldToEmulator(this, intent)) {
-            Log.d(TAG, "Persisted session found - finishing to avoid stealing focus")
             finish()
             return
         }
@@ -347,23 +332,7 @@ class MainActivity : ComponentActivity() {
 
         dualScreenManager.broadcastForegroundState(true)
 
-        if (emulatorSessionPolicy.shouldYieldOnResume(
-                this, hasResumedBefore, focusLostTime, packageName
-            )
-        ) {
-            Log.d(TAG, "Persisted session found on resume - yielding to emulator")
-            moveTaskToBack(true)
-            return
-        }
-
-        emulatorSessionPolicy.clearStaleSession(this, dualScreenManager)
-
-        if (::dualScreenManager.isInitialized) {
-            val emulatorDisplay = dualScreenManager.emulatorDisplayId
-            if (emulatorDisplay != null && emulatorDisplay != display?.displayId) {
-                dualScreenManager.restoreEmulatorFocus()
-            }
-        }
+        cleanupStaleSession()
 
         if (hasResumedBefore) {
             romMRepository.onAppResumed()
@@ -541,6 +510,32 @@ class MainActivity : ComponentActivity() {
     }
 
     // --- Private Helpers ---
+
+    /**
+     * Best-effort housekeeping when we come back to the launcher: if a persisted
+     * session exists but the emulator is no longer in the foreground, clear it so
+     * stale state doesn't linger. Does not resume or yield to the emulator -- that
+     * path was too eager and occasionally pulled the user into a phantom session
+     * on cold start.
+     */
+    private fun cleanupStaleSession() {
+        activityScope.launch {
+            if (!::dualScreenManager.isInitialized) return@launch
+            if (dualScreenManager.isLaunchingGame) return@launch
+            if (dualScreenManager.emulatorDisplayId != null) {
+                val emulatorPkg = sessionStateStore.getEmulatorPackage() ?: return@launch
+                if (permissionHelper.isPackageInForeground(this@MainActivity, emulatorPkg, 15_000)) return@launch
+            }
+            if (preferencesRepository.getPersistedSession() == null) return@launch
+
+            dualScreenManager.emulatorDisplayId = null
+            playSessionTracker.endSessionInBackground()
+            dualScreenManager.broadcastSessionCleared()
+            if (displayAffinityHelper.hasSecondaryDisplay) {
+                com.nendo.argosy.hardware.RecoveryDisplayService.stop(this@MainActivity)
+            }
+        }
+    }
 
     private fun initCacheAndPreferences() {
         activityScope.launch {
