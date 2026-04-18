@@ -117,11 +117,10 @@ class SteamPathResolver @Inject constructor(
 
     fun findGnStoragePath(): String? {
         val primary = Environment.getExternalStorageDirectory().absolutePath
-        val removables = storageVolumeDetector.detectStorageVolumes()
-            .map { it.path }
-            .filter { it != primary }
+        val removables = storageVolumeDetector.detectStorageVolumes().map { it.path }
+        val roots = (removables + primary).distinct()
 
-        for (root in removables) {
+        for (root in roots) {
             val packageDir = "$root/Android/data/$GN_PACKAGE"
             val basePath = "$packageDir/files"
 
@@ -223,31 +222,23 @@ class SteamPathResolver @Inject constructor(
     }
 
     fun getAvailableVolumes(): List<SteamInstallVolume> {
-        val primaryPath = Environment.getExternalStorageDirectory().absolutePath
-        // Internal is intentionally excluded. We can write there, but GN indexes
-        // internal installs by DB only -- no filesystem scan on launch -- so games
-        // we drop on internal have no GN DB row and fail to launch via intent.
-        // SD card installs round-trip because GN scans the filesystem on that path.
-        return storageVolumeDetector.detectStorageVolumes()
-            .filter { it.path != primaryPath }
-            .map { vol ->
-                val target = SteamInstallTarget.CustomVolume(vol.path)
-                SteamInstallVolume(
-                    path = vol.path,
-                    label = vol.displayName,
-                    freeBytes = vol.availableBytes,
-                    hasGnPath = gnInstallProbe.probe(target).writable,
-                    target = target
-                )
-            }
+        return storageVolumeDetector.detectStorageVolumes().map { vol ->
+            val target = SteamInstallTarget.CustomVolume(vol.path)
+            SteamInstallVolume(
+                path = vol.path,
+                label = vol.displayName,
+                freeBytes = vol.availableBytes,
+                hasGnPath = gnInstallProbe.probe(target).writable,
+                target = target
+            )
+        }
     }
 
     private suspend fun getConfiguredInstallBase(): String? {
         val target = getConfiguredTarget()
-        if (target is SteamInstallTarget.ExternalAuto) return null
         val base = resolveBaseForTarget(target)
         if (base == null) {
-            Log.w(TAG, "Configured target $target has no resolvable package root; will NOT fall back to auto-detect")
+            Log.w(TAG, "Configured target $target has no resolvable package root; will fall back to auto-detect")
         }
         return base
     }
