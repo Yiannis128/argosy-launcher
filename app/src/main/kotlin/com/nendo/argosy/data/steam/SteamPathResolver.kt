@@ -224,13 +224,10 @@ class SteamPathResolver @Inject constructor(
 
     fun getAvailableVolumes(): List<SteamInstallVolume> {
         val primaryPath = Environment.getExternalStorageDirectory().absolutePath
-        // NOTE: removed Internal (/storage/emulated/0/Android/data/app.gamenative/) from
-        // selectable targets. GN's library scan (SteamService.allInstallPaths) skips the
-        // primary external volume explicitly and scans /data/user/0/app.gamenative/ for
-        // "internal" -- which is private app data we cannot write to. Files we drop on
-        // primary external are orphaned from GN's POV. Only non-primary removable volumes
-        // round-trip cleanly through GN. Re-enable once GN gains an external scan path
-        // we can target, or we find a GN-compatible internal write location.
+        // Internal is intentionally excluded. We can write there, but GN indexes
+        // internal installs by DB only -- no filesystem scan on launch -- so games
+        // we drop on internal have no GN DB row and fail to launch via intent.
+        // SD card installs round-trip because GN scans the filesystem on that path.
         return storageVolumeDetector.detectStorageVolumes()
             .filter { it.path != primaryPath }
             .map { vol ->
