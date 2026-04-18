@@ -420,6 +420,7 @@ class SteamLibraryManager @Inject constructor(
 
     private suspend fun createNewGame(appId: Int, name: String, kv: KeyValue) {
         val common = kv["common"]
+        val installDir = kv["config"]?.get("installdir")?.asString()?.takeIf { it.isNotBlank() }
 
         val libraryCapsuleUrl = "https://steamcdn-a.akamaihd.net/steam/apps/$appId/library_600x900.jpg"
         val libraryHeroUrl = "https://steamcdn-a.akamaihd.net/steam/apps/$appId/library_hero.jpg"
@@ -442,6 +443,7 @@ class SteamLibraryManager @Inject constructor(
             igdbId = null,
             steamAppId = appId.toLong(),
             steamLauncher = "native",
+            steamInstallDir = installDir,
             source = GameSource.STEAM,
             coverPath = libraryCapsuleUrl,
             backgroundPath = libraryHeroUrl,
@@ -466,6 +468,7 @@ class SteamLibraryManager @Inject constructor(
 
     private suspend fun updateExistingGame(existing: GameEntity, kv: KeyValue) {
         val common = kv["common"]
+        val installDir = kv["config"]?.get("installdir")?.asString()?.takeIf { it.isNotBlank() }
 
         val updated = if (wasForceOverwrite) {
             val appId = existing.steamAppId ?: return
@@ -489,6 +492,7 @@ class SteamLibraryManager @Inject constructor(
                 releaseYear = releaseYear ?: existing.releaseYear,
                 genre = genres ?: existing.genre,
                 steamLauncher = existing.steamLauncher ?: "native",
+                steamInstallDir = installDir ?: existing.steamInstallDir,
                 storeEnrichStatus = GameEntity.STORE_NOT_ATTEMPTED,
                 igdbId = null
             ).also {
@@ -496,7 +500,8 @@ class SteamLibraryManager @Inject constructor(
             }
         } else {
             existing.copy(
-                steamLauncher = existing.steamLauncher ?: "native"
+                steamLauncher = existing.steamLauncher ?: "native",
+                steamInstallDir = installDir ?: existing.steamInstallDir
             )
         }
 

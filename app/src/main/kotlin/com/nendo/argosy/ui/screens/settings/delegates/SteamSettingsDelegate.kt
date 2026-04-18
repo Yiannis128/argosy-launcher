@@ -49,7 +49,6 @@ import java.io.File
 import javax.inject.Inject
 
 private const val GN_PACKAGE = "app.gamenative"
-private const val GN_STEAM_SUBPATH = "Android/data/$GN_PACKAGE/files/Steam/steamapps"
 
 class SteamSettingsDelegate @Inject constructor(
     private val steamRepository: SteamRepository,
@@ -125,7 +124,7 @@ class SteamSettingsDelegate @Inject constructor(
         bindScope = scope
         scope.launch {
             val gnInstalled = isGnInstalled(context)
-            val gnStoragePath = withContext(Dispatchers.IO) { findGnStoragePath() }
+            val gnStoragePath = withContext(Dispatchers.IO) { steamPathResolver.findGnStoragePath() }
             val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 Environment.isExternalStorageManager()
             } else true
@@ -177,6 +176,10 @@ class SteamSettingsDelegate @Inject constructor(
                         username = savedAccount.username
                     )
                 }
+            }
+
+            if (gnStoragePath != null) {
+                withContext(Dispatchers.IO) { steamContentManager.discoverLocalSteamGames() }
             }
 
             if (!bound) {
@@ -610,28 +613,4 @@ class SteamSettingsDelegate @Inject constructor(
         }
     }
 
-    private fun findGnStoragePath(): String? {
-        val volumes = mutableListOf<String>()
-
-        // Check internal storage
-        val internal = android.os.Environment.getExternalStorageDirectory().absolutePath
-        volumes.add(internal)
-
-        // Check SD card / removable volumes
-        try {
-            File("/storage").listFiles()?.forEach { vol ->
-                if (vol.isDirectory && vol.name != "emulated" && vol.name != "self") {
-                    volumes.add(vol.absolutePath)
-                }
-            }
-        } catch (_: Exception) {}
-
-        for (root in volumes) {
-            val path = "$root/$GN_STEAM_SUBPATH"
-            if (androidDataAccessor.exists(path) || File(path).exists()) {
-                return "$root/Android/data/$GN_PACKAGE/files"
-            }
-        }
-        return null
-    }
 }

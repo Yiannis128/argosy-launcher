@@ -116,24 +116,19 @@ class SteamPathResolver @Inject constructor(
     }
 
     fun findGnStoragePath(): String? {
-        val volumes = mutableListOf(android.os.Environment.getExternalStorageDirectory().absolutePath)
-        try {
-            File("/storage").listFiles()?.forEach { vol ->
-                if (vol.isDirectory && vol.name != "emulated" && vol.name != "self") {
-                    volumes.add(vol.absolutePath)
-                }
-            }
-        } catch (_: Exception) {}
+        val primary = Environment.getExternalStorageDirectory().absolutePath
+        val removables = storageVolumeDetector.detectStorageVolumes()
+            .map { it.path }
+            .filter { it != primary }
 
-        for (root in volumes) {
-            val basePath = "$root/Android/data/$GN_PACKAGE/files"
-            val steamappsPath = "$basePath/Steam/steamapps"
+        for (root in removables) {
+            val packageDir = "$root/Android/data/$GN_PACKAGE"
+            val basePath = "$packageDir/files"
 
-            if (File(steamappsPath).exists()) {
+            if (File(packageDir).exists()) {
                 return basePath
             }
-
-            if (androidDataAccessor.exists(steamappsPath)) {
+            if (androidDataAccessor.exists(packageDir)) {
                 return androidDataAccessor.transformPath(basePath)
             }
         }

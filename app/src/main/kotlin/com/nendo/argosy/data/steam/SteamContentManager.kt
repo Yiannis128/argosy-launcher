@@ -1304,14 +1304,14 @@ class SteamContentManager @Inject constructor(
             val commonDir = File("$gnBasePath/Steam/steamapps/common")
             if (commonDir.exists()) {
                 val gameDirs = commonDir.listFiles { file ->
-                    file.isDirectory && File(file, ".download_complete").exists()
+                    file.isDirectory && (file.listFiles()?.isNotEmpty() == true)
                 } ?: emptyArray()
 
                 val steamGames = gameDao.getAllWithSteamAppId()
                 for (gameDir in gameDirs) {
                     val dirName = gameDir.name
-                    // Match by sanitized title, or by Steam installdir from queue table
                     val match = steamGames.find { game ->
+                        if (game.steamInstallDir == dirName) return@find true
                         if (pathResolver.sanitizeGameName(game.title) == dirName) return@find true
                         val appId = game.steamAppId ?: return@find false
                         val queueEntry = steamDownloadQueueDao.getByAppId(appId)
@@ -1325,6 +1325,13 @@ class SteamContentManager @Inject constructor(
                         }
                         Log.d(TAG, "Discovered GN game: ${match.title} at ${gameDir.absolutePath}")
                         discovered++
+                    } else if (match == null) {
+                        Log.d(TAG, "No DB match for GN dir '$dirName'")
+                    }
+                    val marker = File(gameDir, ".download_complete")
+                    if (!marker.exists()) {
+                        runCatching { marker.createNewFile() }
+                            .onFailure { Log.w(TAG, "Could not write completion marker at ${gameDir.absolutePath}: ${it.message}") }
                     }
                 }
             }

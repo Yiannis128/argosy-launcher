@@ -116,7 +116,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamCompletedDepotEntity::class,
         EmulatorLaunchArgsEntity::class
     ],
-    version = 102,
+    version = 103,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1503,6 +1503,12 @@ abstract class ALauncherDatabase : RoomDatabase() {
         val MIGRATION_101_102 = object : Migration(101, 102) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE game_files ADD COLUMN romHashPrefix TEXT")
+            }
+        }
+
+        val MIGRATION_102_103 = object : Migration(102, 103) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN steamInstallDir TEXT")
             }
         }
 
