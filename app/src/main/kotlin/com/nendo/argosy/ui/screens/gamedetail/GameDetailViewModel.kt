@@ -107,6 +107,7 @@ class GameDetailViewModel @Inject constructor(
     private val moreOptionsDelegate: MoreOptionsDelegate,
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
+    private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
     private val variantScanner: com.nendo.argosy.data.scanner.VariantScanner,
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
     private val downloadManager: com.nendo.argosy.data.download.DownloadManager
@@ -454,6 +455,7 @@ class GameDetailViewModel @Inject constructor(
             val downloadStatus = when {
                 game.source == GameSource.ANDROID_APP -> GameDownloadStatus.DOWNLOADED
                 isAndroidApp && fileExists && game.packageName == null -> GameDownloadStatus.NEEDS_INSTALL
+                isSteamGame && game.isManagedByGn -> GameDownloadStatus.DOWNLOADED
                 isSteamGame && game.localPath != null &&
                     File(game.localPath, ".download_complete").exists() -> GameDownloadStatus.DOWNLOADED
                 isSteamGame && game.localPath != null &&
@@ -738,11 +740,7 @@ class GameDetailViewModel @Inject constructor(
     fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
 
     fun downloadSteamGame() {
-        viewModelScope.launch {
-            val game = gameRepository.getById(currentGameId) ?: return@launch
-            val steamAppId = game.steamAppId ?: return@launch
-            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.coverPath)
-        }
+        steamDownloadPromptController.requestSteamDownload(currentGameId)
     }
 
     fun downloadUpdateFile(file: UpdateFileUi) {

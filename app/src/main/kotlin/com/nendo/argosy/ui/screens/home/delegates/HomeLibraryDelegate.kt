@@ -626,6 +626,7 @@ class HomeLibraryDelegate @Inject constructor(
         return candidates.filter { game ->
             when {
                 game.source == GameSource.ANDROID_APP -> true
+                game.source == GameSource.STEAM && game.isManagedByGn -> true
                 game.localPath != null -> File(game.localPath).exists()
                 else -> false
             }
@@ -671,6 +672,7 @@ class HomeLibraryDelegate @Inject constructor(
             isFavorite = isFavorite,
             isDownloaded = when {
                 source == GameSource.ANDROID_APP -> true
+                steamAppId != null && isManagedByGn -> true
                 steamAppId != null && localPath != null -> java.io.File(localPath, ".download_complete").exists()
                 else -> localPath != null
             },

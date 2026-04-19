@@ -60,6 +60,11 @@ class LaunchViewModel @Inject constructor(
     val hasActiveSession: StateFlow<Boolean> = playSessionTracker.hasActiveSession
 
     fun startLaunchFlow(gameId: Long, channelName: String?, discId: Long?) {
+        if (hasLaunchedEmulator) {
+            android.util.Log.d("LaunchViewModel", "startLaunchFlow skipped: already launched this gameId=$gameId (route restore)")
+            _isSessionEnded.value = true
+            return
+        }
         viewModelScope.launch {
             val game = gameRepository.getById(gameId)
             _gameTitle.value = game?.title ?: "Game"

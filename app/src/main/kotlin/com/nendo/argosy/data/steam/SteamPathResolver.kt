@@ -115,23 +115,25 @@ class SteamPathResolver @Inject constructor(
         return File(path, ".download_complete").exists() || androidDataAccessor.exists("$path/.download_complete")
     }
 
-    fun findGnStoragePath(): String? {
+    fun findGnStoragePath(): String? = findAllGnStoragePaths().firstOrNull()
+
+    fun findAllGnStoragePaths(): List<String> {
         val primary = Environment.getExternalStorageDirectory().absolutePath
         val removables = storageVolumeDetector.detectStorageVolumes().map { it.path }
         val roots = (removables + primary).distinct()
 
+        val results = mutableListOf<String>()
         for (root in roots) {
             val packageDir = "$root/Android/data/$GN_PACKAGE"
             val basePath = "$packageDir/files"
 
             if (File(packageDir).exists()) {
-                return basePath
-            }
-            if (androidDataAccessor.exists(packageDir)) {
-                return androidDataAccessor.transformPath(basePath)
+                results += basePath
+            } else if (androidDataAccessor.exists(packageDir)) {
+                results += androidDataAccessor.transformPath(basePath)
             }
         }
-        return null
+        return results.distinct()
     }
 
     fun sanitizeGameName(name: String): String {

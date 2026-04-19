@@ -119,6 +119,42 @@ class FileAccessLayerImpl @Inject constructor(
         return dir.listFiles()?.map { it.toFileInfo() }
     }
 
+    override fun listFilesUnion(path: String): List<FileInfo> {
+        val byName = linkedMapOf<String, FileInfo>()
+
+        if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
+            androidDataAccessor.listFiles(path)?.forEach { file ->
+                val info = file.toFileInfo()
+                byName.putIfAbsent(info.name, info)
+            }
+        }
+
+        if (isRestrictedPath(path)) {
+            extractVolumeAndPath(path)?.let { (volumeId, relativePath) ->
+                managedStorageAccessor.listFiles(volumeId, relativePath)?.forEach { doc ->
+                    byName.putIfAbsent(
+                        doc.displayName,
+                        FileInfo(
+                            path = "$path/${doc.displayName}",
+                            name = doc.displayName,
+                            isDirectory = doc.isDirectory,
+                            isFile = !doc.isDirectory,
+                            size = doc.size,
+                            lastModified = doc.lastModified
+                        )
+                    )
+                }
+            }
+        }
+
+        directListFiles(path)?.forEach { info ->
+            byName.putIfAbsent(info.name, info)
+        }
+
+        Logger.verbose(TAG) { "[Union] listFiles=${byName.size} | path=$path" }
+        return byName.values.toList()
+    }
+
     override fun mkdirs(path: String): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val result = androidDataAccessor.mkdirs(path)

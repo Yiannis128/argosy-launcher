@@ -47,6 +47,7 @@ data class GameEntity(
     val steamAppId: Long? = null,
     val steamLauncher: String? = null,
     val steamInstallDir: String? = null,
+    val isManagedByGn: Boolean = false,
     val packageName: String? = null,
     val launcherSetManually: Boolean = false,
     val source: GameSource,
@@ -144,6 +145,7 @@ data class GameListItem(
     val rommId: Long?,
     val steamAppId: Long?,
     val packageName: String?,
+    val isManagedByGn: Boolean,
     val playCount: Int,
     val playTimeMinutes: Int,
     val lastPlayed: Instant?,
@@ -155,7 +157,7 @@ data class GameListItem(
     val releaseYear: Int?,
     val addedAt: Instant
 ) {
-    val isDownloaded: Boolean get() = localPath != null
+    val isDownloaded: Boolean get() = localPath != null || isManagedByGn
 }
 
 data class GameCategoryInfo(

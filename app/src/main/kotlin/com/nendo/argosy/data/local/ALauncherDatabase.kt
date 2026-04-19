@@ -116,7 +116,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamCompletedDepotEntity::class,
         EmulatorLaunchArgsEntity::class
     ],
-    version = 104,
+    version = 105,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1519,6 +1519,12 @@ abstract class ALauncherDatabase : RoomDatabase() {
                         "WHERE emulatorId IN ('nethersx2', 'aethersx2', 'duckstation') " +
                         "AND extraBinding = 'FILE_PROVIDER'"
                 )
+            }
+        }
+
+        val MIGRATION_104_105 = object : Migration(104, 105) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN isManagedByGn INTEGER NOT NULL DEFAULT 0")
             }
         }
 

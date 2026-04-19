@@ -459,6 +459,39 @@ fun ArgosyApp(
         }
     }
 
+    val steamDownloadPromptInputHandler = remember(viewModel) {
+        object : InputHandler {
+            override fun onLeft(): InputResult {
+                viewModel.steamDownloadPromptController.moveFocus(-1)
+                return InputResult.HANDLED
+            }
+            override fun onRight(): InputResult {
+                viewModel.steamDownloadPromptController.moveFocus(1)
+                return InputResult.HANDLED
+            }
+            override fun onUp(): InputResult {
+                viewModel.steamDownloadPromptController.moveFocus(-1)
+                return InputResult.HANDLED
+            }
+            override fun onDown(): InputResult {
+                viewModel.steamDownloadPromptController.moveFocus(1)
+                return InputResult.HANDLED
+            }
+            override fun onConfirm(): InputResult {
+                if (viewModel.steamDownloadPromptController.focusIndex.value == 0) {
+                    viewModel.steamDownloadPromptController.confirmDownloadToSd()
+                } else {
+                    viewModel.steamDownloadPromptController.confirmManagedByGn()
+                }
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+            override fun onBack(): InputResult {
+                viewModel.steamDownloadPromptController.dismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+        }
+    }
+
     val netplayInviteInputHandler = remember(viewModel) {
         object : InputHandler {
             override fun onLeft(): InputResult {
@@ -596,8 +629,11 @@ fun ArgosyApp(
         )
     }
 
-    LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, netplayInvitePrompt, netplayJoinModalActive, netplayJoinNeedsInput, resumeCount) {
+    val steamDownloadPrompt by viewModel.steamDownloadPromptController.prompt.collectAsState()
+
+    LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, netplayInvitePrompt, netplayJoinModalActive, netplayJoinNeedsInput, steamDownloadPrompt, resumeCount) {
         when {
+            steamDownloadPrompt != null -> inputDispatcher.subscribeDrawer(steamDownloadPromptInputHandler)
             netplayJoinNeedsInput || netplayJoinModalActive -> inputDispatcher.subscribeDrawer(netplayJoinInputHandler)
             netplayInvitePrompt != null -> inputDispatcher.subscribeDrawer(netplayInviteInputHandler)
             dualModalActive -> inputDispatcher.subscribeDrawer(dualModalInputHandler)
@@ -1575,6 +1611,17 @@ fun ArgosyApp(
                 state = netplayJoinState,
                 onDismiss = { viewModel.cancelNetplayJoin() }
             )
+
+            val steamDownloadFocusIndex by viewModel.steamDownloadPromptController.focusIndex.collectAsState()
+            steamDownloadPrompt?.let { prompt ->
+                com.nendo.argosy.ui.components.SteamDownloadLocationModal(
+                    prompt = prompt,
+                    focusIndex = steamDownloadFocusIndex,
+                    onDownloadToSd = { viewModel.steamDownloadPromptController.confirmDownloadToSd() },
+                    onFlagAsManagedByGn = { viewModel.steamDownloadPromptController.confirmManagedByGn() },
+                    onDismiss = { viewModel.steamDownloadPromptController.dismiss() }
+                )
+            }
             }
         }
     }

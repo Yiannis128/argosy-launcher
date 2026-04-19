@@ -32,6 +32,10 @@ interface FileAccessLayer {
     // List
     fun listFiles(path: String): List<FileInfo>?
 
+    // Union of alt-access, managed-access, and direct listings -- for Android/data paths
+    // where per-UID mount views can return incomplete subsets.
+    fun listFilesUnion(path: String): List<FileInfo>
+
     // Create
     fun mkdirs(path: String): Boolean
 

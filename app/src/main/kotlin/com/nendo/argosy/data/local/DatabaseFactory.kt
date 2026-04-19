@@ -123,7 +123,8 @@ object DatabaseFactory {
                 ALauncherDatabase.MIGRATION_100_101,
                 ALauncherDatabase.MIGRATION_101_102,
                 ALauncherDatabase.MIGRATION_102_103,
-                ALauncherDatabase.MIGRATION_103_104
+                ALauncherDatabase.MIGRATION_103_104,
+                ALauncherDatabase.MIGRATION_104_105
             )
             .enableMultiInstanceInvalidation()
             .build()

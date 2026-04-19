@@ -309,7 +309,8 @@ class LibraryViewModel @Inject constructor(
     private val modalResetSignal: ModalResetSignal,
     private val gradientExtractionDelegate: GradientExtractionDelegate,
     private val emulatorDetector: EmulatorDetector,
-    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
+    private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -1149,17 +1150,7 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun downloadSteamGame(gameId: Long) {
-        viewModelScope.launch {
-            val game = gameRepository.getById(gameId) ?: return@launch
-            val steamAppId = game.steamAppId ?: return@launch
-            try {
-                notificationManager.show("Preparing Steam download: ${game.title}")
-                val appInfo = steamContentManager.fetchAppInfo(steamAppId.toInt())
-                steamContentManager.queueDownload(steamAppId, game.title, appInfo, game.coverPath)
-            } catch (e: Exception) {
-                notificationManager.showError("Steam download failed: ${e.message}")
-            }
-        }
+        steamDownloadPromptController.requestSteamDownload(gameId)
     }
 
     fun installApk(gameId: Long) {

@@ -69,7 +69,8 @@ class HomeViewModel @Inject constructor(
     val syncDelegate: HomeSyncDelegate,
     val videoPreviewDelegate: HomeVideoPreviewDelegate,
     val gameMenuDelegate: HomeGameMenuDelegate,
-    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
+    private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController
 ) : ViewModel(), HomeInputActions {
 
     private val _uiState = MutableStateFlow(restoreInitialState())
@@ -562,11 +563,7 @@ class HomeViewModel @Inject constructor(
     }
 
     override fun queueSteamDownload(gameId: Long) {
-        viewModelScope.launch {
-            val game = gameRepository.getById(gameId) ?: return@launch
-            val steamAppId = game.steamAppId ?: return@launch
-            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.coverPath)
-        }
+        steamDownloadPromptController.requestSteamDownload(gameId)
     }
 
     override fun installApk(gameId: Long) {

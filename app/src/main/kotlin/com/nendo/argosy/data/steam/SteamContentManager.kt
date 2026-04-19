@@ -41,7 +41,6 @@ import javax.inject.Singleton
 
 private const val TAG = "SteamContentManager"
 private const val DOWNLOAD_INFO_DIR = ".DownloadInfo"
-private const val GN_PACKAGE_PATH = "/Android/data/app.gamenative/"
 
 sealed class SteamDownloadState {
     data object Idle : SteamDownloadState()
@@ -106,7 +105,8 @@ class SteamContentManager @Inject constructor(
     val depotManager: SteamDepotManager,
     val pathResolver: SteamPathResolver,
     private val progressTracker: SteamProgressTracker,
-    private val downloadTracker: SteamDownloadTracker
+    private val downloadTracker: SteamDownloadTracker,
+    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val heartbeatDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
@@ -1276,19 +1276,32 @@ class SteamContentManager @Inject constructor(
     )
 
     private suspend fun reclaimStrandedInstalls() {
+        val primaryGnTree = "${android.os.Environment.getExternalStorageDirectory().absolutePath}/Android/data/app.gamenative/"
+        val argosyFallbackFragment = "/com.nendo.argosy"
         val steamGames = gameDao.getAllWithSteamAppId()
         var attempted = 0
         for (game in steamGames) {
             val appId = game.steamAppId ?: continue
+            val installDirName = game.steamInstallDir ?: continue
             val current = game.localPath ?: continue
-            if (current.contains(GN_PACKAGE_PATH)) continue
+
+            val isInPrimaryGnTree = current.startsWith(primaryGnTree)
+            val isInArgosyFallback = current.contains(argosyFallbackFragment) && current.contains("/steam/")
+            if (!isInPrimaryGnTree && !isInArgosyFallback) continue
 
             val source = File(current)
             if (!source.exists() || !source.isDirectory) continue
+            if (source.name != installDirName) {
+                Log.d(TAG, "Skipping reclaim for ${game.title}: folder '${source.name}' != steamInstallDir '$installDirName'")
+                continue
+            }
             if (!File(source, ".download_complete").exists()) {
                 Log.d(TAG, "Skipping reclaim for ${game.title}: no .download_complete at $current")
                 continue
             }
+
+            val target = pathResolver.snapshotInstallDirAtEnqueue(appId, installDirName)
+            if (target.absolutePath == current) continue
 
             if (_activeDownload.value?.appId == appId) {
                 Log.w(TAG, "Cancelling in-progress download for ${game.title} before reclaim")
@@ -1296,8 +1309,6 @@ class SteamContentManager @Inject constructor(
                 kotlinx.coroutines.delay(500)
             }
 
-            val target = pathResolver.snapshotInstallDirAtEnqueue(appId, game.steamInstallDir)
-            if (target.absolutePath == current) continue
             if (target.exists() && target.listFiles()?.isNotEmpty() == true) {
                 Log.w(TAG, "Skipping reclaim for ${game.title}: destination non-empty at ${target.absolutePath}")
                 continue
@@ -1330,7 +1341,6 @@ class SteamContentManager @Inject constructor(
     }
 
     suspend fun discoverLocalSteamGames(): Int = withContext(Dispatchers.IO) {
-        reclaimStrandedInstalls()
         var discovered = 0
 
         val steamDir = pathResolver.getSteamDir()
@@ -1355,17 +1365,19 @@ class SteamContentManager @Inject constructor(
             }
         }
 
-        val gnBasePath = pathResolver.findGnStoragePath()
-        if (gnBasePath != null) {
-            val commonDir = File("$gnBasePath/Steam/steamapps/common")
-            if (commonDir.exists()) {
-                val gameDirs = commonDir.listFiles { file ->
-                    file.isDirectory && (file.listFiles()?.isNotEmpty() == true)
-                } ?: emptyArray()
+        val gnBasePaths = pathResolver.findAllGnStoragePaths()
+        if (gnBasePaths.isNotEmpty()) {
+            val steamGames = gameDao.getAllWithSteamAppId()
+            for (gnBasePath in gnBasePaths) {
+                val commonPath = "$gnBasePath/Steam/steamapps/common"
+                if (!fileAccessLayer.exists(commonPath)) continue
+                val entries = fileAccessLayer.listFilesUnion(commonPath)
+                val gameDirs = entries.filter { it.isDirectory }
+                Log.d(TAG, "Scanning $commonPath via FAL union: ${gameDirs.size} dirs")
 
-                val steamGames = gameDao.getAllWithSteamAppId()
                 for (gameDir in gameDirs) {
                     val dirName = gameDir.name
+                    val gameDirPath = gameDir.path
                     val match = steamGames.find { game ->
                         if (game.steamInstallDir == dirName) return@find true
                         if (pathResolver.sanitizeGameName(game.title) == dirName) return@find true
@@ -1374,26 +1386,28 @@ class SteamContentManager @Inject constructor(
                         queueEntry?.installDir == dirName
                     }
                     if (match != null && match.localPath == null) {
-                        gameDao.update(match.copy(localPath = gameDir.absolutePath, source = GameSource.STEAM))
+                        gameDao.update(match.copy(localPath = gameDirPath, source = GameSource.STEAM))
                         match.steamAppId?.let { appId ->
                             steamDownloadQueueDao.updateState(appId, SteamDownloadDbState.COMPLETED.name)
-                            steamDownloadQueueDao.updateInstallPath(appId, gameDir.absolutePath)
+                            steamDownloadQueueDao.updateInstallPath(appId, gameDirPath)
                         }
-                        Log.d(TAG, "Discovered GN game: ${match.title} at ${gameDir.absolutePath}")
+                        Log.d(TAG, "Discovered GN game: ${match.title} at $gameDirPath")
                         discovered++
                     } else if (match == null) {
-                        Log.d(TAG, "No DB match for GN dir '$dirName'")
+                        Log.d(TAG, "No DB match for GN dir '$dirName' at $gnBasePath")
                     }
-                    val marker = File(gameDir, ".download_complete")
-                    if (!marker.exists()) {
-                        runCatching { marker.createNewFile() }
-                            .onFailure { Log.w(TAG, "Could not write completion marker at ${gameDir.absolutePath}: ${it.message}") }
+                    val markerPath = "$gameDirPath/.download_complete"
+                    if (!fileAccessLayer.exists(markerPath)) {
+                        if (!fileAccessLayer.writeBytes(markerPath, ByteArray(0))) {
+                            Log.w(TAG, "Could not write completion marker at $gameDirPath")
+                        }
                     }
                 }
             }
         }
 
         Log.d(TAG, "Steam discovery complete: $discovered games recovered")
+        reclaimStrandedInstalls()
         discovered
     }
 

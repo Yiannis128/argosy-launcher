@@ -67,6 +67,7 @@ class SteamLibraryManager @Inject constructor(
     private val drmHazardManager: DrmHazardManager,
     private val steamRepository: dagger.Lazy<SteamRepository>,
     private val steamIgdbResolver: dagger.Lazy<com.nendo.argosy.data.repository.SteamIgdbResolver>,
+    private val steamContentManager: dagger.Lazy<SteamContentManager>,
     private val preferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -365,6 +366,11 @@ class SteamLibraryManager @Inject constructor(
 
             if (wasForceSync) {
                 gameDao.resetFailedStoreEnrichment()
+            }
+
+            scope.launch {
+                val discovered = steamContentManager.get().discoverLocalSteamGames()
+                Log.d(TAG, "Post-sync discovery linked $discovered installed games")
             }
 
             val existing = enrichmentJob
