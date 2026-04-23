@@ -490,11 +490,7 @@ fun ArgosyApp(
                 return InputResult.HANDLED
             }
             override fun onConfirm(): InputResult {
-                if (viewModel.steamDownloadPromptController.focusIndex.value == 0) {
-                    viewModel.steamDownloadPromptController.confirmDownloadToSd()
-                } else {
-                    viewModel.steamDownloadPromptController.confirmManagedByGn()
-                }
+                viewModel.steamDownloadPromptController.confirmFocused()
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onBack(): InputResult {
@@ -1625,12 +1621,14 @@ fun ArgosyApp(
             )
 
             val steamDownloadFocusIndex by viewModel.steamDownloadPromptController.focusIndex.collectAsState()
+            val steamMarkOptions by viewModel.steamDownloadPromptController.markOptions.collectAsState()
             steamDownloadPrompt?.let { prompt ->
                 com.nendo.argosy.ui.components.SteamDownloadLocationModal(
                     prompt = prompt,
                     focusIndex = steamDownloadFocusIndex,
+                    markOptions = steamMarkOptions,
                     onDownloadToSd = { viewModel.steamDownloadPromptController.confirmDownloadToSd() },
-                    onFlagAsManagedByGn = { viewModel.steamDownloadPromptController.confirmManagedByGn() },
+                    onMarkAsInstalled = { pkg -> viewModel.steamDownloadPromptController.confirmMarkInstalled(pkg) },
                     onDismiss = { viewModel.steamDownloadPromptController.dismiss() }
                 )
             }

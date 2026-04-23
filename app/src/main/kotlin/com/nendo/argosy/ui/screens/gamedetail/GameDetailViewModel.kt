@@ -455,7 +455,7 @@ class GameDetailViewModel @Inject constructor(
             val downloadStatus = when {
                 game.source == GameSource.ANDROID_APP -> GameDownloadStatus.DOWNLOADED
                 isAndroidApp && fileExists && game.packageName == null -> GameDownloadStatus.NEEDS_INSTALL
-                isSteamGame && game.isManagedByGn -> GameDownloadStatus.DOWNLOADED
+                isSteamGame && game.isExternallyManaged -> GameDownloadStatus.DOWNLOADED
                 isSteamGame && game.localPath != null &&
                     File(game.localPath, ".download_complete").exists() -> GameDownloadStatus.DOWNLOADED
                 isSteamGame && game.localPath != null &&
@@ -626,8 +626,22 @@ class GameDetailViewModel @Inject constructor(
     private fun observeGameEntity(gameId: Long) {
         gameEntityObserverJob?.cancel()
         gameEntityObserverJob = viewModelScope.launch {
+            var lastSeenLauncher: String? = null
+            var launcherInitialized = false
             gameRepository.observeById(gameId).collect { updatedGame ->
                 if (updatedGame == null) return@collect
+
+                // Launcher flip (Mark-as-Installed / Unlink) needs a full re-derivation
+                // so downloadStatus and launcher-dependent UI props refresh without
+                // requiring the user to back out and re-enter.
+                val launcherChanged = launcherInitialized && lastSeenLauncher != updatedGame.steamLauncher
+                lastSeenLauncher = updatedGame.steamLauncher
+                launcherInitialized = true
+                if (launcherChanged) {
+                    loadGame(gameId)
+                    return@collect
+                }
+
                 _uiState.update { state ->
                     val currentGame = state.game ?: return@update state
                     val gameUpdated = currentGame.titleId != updatedGame.titleId
@@ -920,12 +934,20 @@ class GameDetailViewModel @Inject constructor(
             MoreOptionAction.AddToCollection -> showAddToCollectionModal()
             MoreOptionAction.Delete -> {
                 toggleMoreOptions()
-                if (isAndroidApp) {
-                    val pkg = _uiState.value.game?.packageName ?: return
-                    downloadDelegate.uninstallAndroidApp(viewModelScope, pkg)
-                } else {
-                    val isSteam = _uiState.value.game?.isSteamGame == true
-                    downloadDelegate.deleteLocalFile(viewModelScope, currentGameId, isSteam) { loadGame(currentGameId) }
+                val gameUi = _uiState.value.game
+                when {
+                    isAndroidApp -> {
+                        val pkg = gameUi?.packageName ?: return
+                        downloadDelegate.uninstallAndroidApp(viewModelScope, pkg)
+                    }
+                    gameUi?.isExternallyManaged == true -> {
+                        steamDownloadPromptController.unlinkLauncher(currentGameId)
+                        viewModelScope.launch { loadGame(currentGameId) }
+                    }
+                    else -> {
+                        val isSteam = gameUi?.isSteamGame == true
+                        downloadDelegate.deleteLocalFile(viewModelScope, currentGameId, isSteam) { loadGame(currentGameId) }
+                    }
                 }
             }
             MoreOptionAction.ToggleHide -> { toggleHideGame(); onBack() }

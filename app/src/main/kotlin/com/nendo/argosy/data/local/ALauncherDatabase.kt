@@ -116,7 +116,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         SteamCompletedDepotEntity::class,
         EmulatorLaunchArgsEntity::class
     ],
-    version = 105,
+    version = 106,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1525,6 +1525,19 @@ abstract class ALauncherDatabase : RoomDatabase() {
         val MIGRATION_104_105 = object : Migration(104, 105) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE games ADD COLUMN isManagedByGn INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_105_106 = object : Migration(105, 106) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Legacy isManagedByGn rows without an explicit launcher get promoted
+                // to the GameNative package so steamLauncher becomes the single source
+                // of truth for "who manages this install".
+                db.execSQL(
+                    "UPDATE games SET steamLauncher = 'app.gamenative' " +
+                        "WHERE isManagedByGn = 1 AND (steamLauncher IS NULL OR steamLauncher = 'native')"
+                )
+                db.execSQL("ALTER TABLE games DROP COLUMN isManagedByGn")
             }
         }
 

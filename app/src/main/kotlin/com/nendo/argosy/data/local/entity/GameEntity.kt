@@ -47,7 +47,6 @@ data class GameEntity(
     val steamAppId: Long? = null,
     val steamLauncher: String? = null,
     val steamInstallDir: String? = null,
-    val isManagedByGn: Boolean = false,
     val packageName: String? = null,
     val launcherSetManually: Boolean = false,
     val source: GameSource,
@@ -123,10 +122,23 @@ data class GameEntity(
 ) {
     val effectiveRaId: Long? get() = if (raIdVerified) verifiedRaId else (verifiedRaId ?: raId)
 
+    val isExternallyManaged: Boolean
+        get() = steamLauncher != null && steamLauncher != LAUNCHER_UNSPECIFIED
+
+    val isDownloaded: Boolean
+        get() = localPath != null || isExternallyManaged
+
     companion object {
         const val STORE_NOT_ATTEMPTED = 0
         const val STORE_SUCCESS = 1
         const val STORE_FAILED = 2
+
+        /**
+         * Sentinel for manually-added Steam games where the user did not specify a
+         * launcher at add time. Preserved for legacy rows; new AddManual flows are
+         * per-launcher and write the actual package name.
+         */
+        const val LAUNCHER_UNSPECIFIED = "native"
     }
 }
 
@@ -145,7 +157,7 @@ data class GameListItem(
     val rommId: Long?,
     val steamAppId: Long?,
     val packageName: String?,
-    val isManagedByGn: Boolean,
+    val steamLauncher: String?,
     val playCount: Int,
     val playTimeMinutes: Int,
     val lastPlayed: Instant?,
@@ -157,7 +169,11 @@ data class GameListItem(
     val releaseYear: Int?,
     val addedAt: Instant
 ) {
-    val isDownloaded: Boolean get() = localPath != null || isManagedByGn
+    val isExternallyManaged: Boolean
+        get() = steamLauncher != null && steamLauncher != GameEntity.LAUNCHER_UNSPECIFIED
+
+    val isDownloaded: Boolean
+        get() = localPath != null || isExternallyManaged
 }
 
 data class GameCategoryInfo(

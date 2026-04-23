@@ -124,7 +124,8 @@ object DatabaseFactory {
                 ALauncherDatabase.MIGRATION_101_102,
                 ALauncherDatabase.MIGRATION_102_103,
                 ALauncherDatabase.MIGRATION_103_104,
-                ALauncherDatabase.MIGRATION_104_105
+                ALauncherDatabase.MIGRATION_104_105,
+                ALauncherDatabase.MIGRATION_105_106
             )
             .enableMultiInstanceInvalidation()
             .build()

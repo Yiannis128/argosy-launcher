@@ -92,10 +92,15 @@ fun MoreOptionsModal(
         add(MoreMenuEntry.Divider)
 
         if (isDownloaded || game.isAndroidApp) {
+            val label = when {
+                game.isAndroidApp -> "Uninstall"
+                game.isExternallyManaged -> "Unlink from ${game.managingLauncherDisplayName ?: "Launcher"}"
+                else -> "Delete Download"
+            }
             add(MoreMenuEntry.Option(
                 icon = Icons.Default.DeleteOutline,
-                label = if (game.isAndroidApp) "Uninstall" else "Delete Download",
-                isDangerous = true,
+                label = label,
+                isDangerous = !game.isExternallyManaged,
                 action = MoreOptionAction.Delete
             ))
         }

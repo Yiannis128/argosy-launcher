@@ -484,7 +484,18 @@ class SteamSettingsDelegate @Inject constructor(
         _state.update { it.copy(addGameAppId = appId, addGameError = null) }
     }
 
-    fun confirmAddSteamGame(context: Context, scope: CoroutineScope) {
+    /**
+     * Adds a Steam game by App ID under a specific managing launcher. Called from each
+     * per-launcher Settings section so the resulting GameEntity is linked to that
+     * launcher (e.g. GameNative's section passes GameNativeLauncher.packageName). The
+     * launcher string is stored in GameEntity.steamLauncher and drives the launch
+     * intent as well as the Unlink-from-X affordance.
+     */
+    fun confirmAddSteamGame(
+        context: Context,
+        scope: CoroutineScope,
+        launcherPackage: String = com.nendo.argosy.data.launcher.GameNativeLauncher.packageName
+    ) {
         val appIdStr = _state.value.addGameAppId.trim()
         val appId = appIdStr.toLongOrNull()
 
@@ -496,7 +507,7 @@ class SteamSettingsDelegate @Inject constructor(
         scope.launch {
             _state.update { it.copy(isAddingGame = true, addGameError = null) }
 
-            when (val result = steamRepository.addGame(appId, "native")) {
+            when (val result = steamRepository.addGame(appId, launcherPackage)) {
                 is SteamResult.Success -> {
                     notificationManager.show("Added: ${result.data.title}")
                     dismissAddSteamGameDialog()

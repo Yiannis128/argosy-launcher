@@ -5,6 +5,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import com.nendo.argosy.data.storage.AndroidDataAccessor
 
+data class ScannedSteamGame(
+    val appId: Long,
+    val name: String
+)
+
 interface SteamLauncher {
     val packageName: String
     val displayName: String

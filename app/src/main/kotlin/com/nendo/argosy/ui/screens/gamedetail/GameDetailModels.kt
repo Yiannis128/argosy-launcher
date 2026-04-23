@@ -104,6 +104,8 @@ data class GameDetailUi(
     val canManageSaves: Boolean = false,
     val isSteamGame: Boolean = false,
     val steamLauncherName: String? = null,
+    val isExternallyManaged: Boolean = false,
+    val managingLauncherDisplayName: String? = null,
     val isAndroidApp: Boolean = false,
     val packageName: String? = null,
     val isHidden: Boolean = false,

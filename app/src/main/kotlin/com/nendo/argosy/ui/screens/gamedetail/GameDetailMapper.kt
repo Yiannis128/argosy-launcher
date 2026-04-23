@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.gamedetail
 
+import com.nendo.argosy.data.launcher.SteamLaunchers
 import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
@@ -62,6 +63,10 @@ fun GameEntity.toGameDetailUi(
         canManageSaves = canManageSaves,
         isSteamGame = source == GameSource.STEAM || steamAppId != null,
         steamLauncherName = steamLauncherName,
+        isExternallyManaged = isExternallyManaged,
+        managingLauncherDisplayName = steamLauncher
+            ?.takeIf { it != GameEntity.LAUNCHER_UNSPECIFIED }
+            ?.let { SteamLaunchers.displayNameForPackage(it) },
         isAndroidApp = source == GameSource.ANDROID_APP || platformSlug == "android",
         packageName = packageName,
         isHidden = isHidden,

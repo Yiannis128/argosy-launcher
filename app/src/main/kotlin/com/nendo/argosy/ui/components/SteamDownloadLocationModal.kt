@@ -23,12 +23,18 @@ data class SteamDownloadLocationPrompt(
     val coverPath: String? = null
 )
 
+data class SteamMarkOption(
+    val launcherPackage: String,
+    val displayName: String
+)
+
 @Composable
 fun SteamDownloadLocationModal(
     prompt: SteamDownloadLocationPrompt,
     focusIndex: Int,
+    markOptions: List<SteamMarkOption>,
     onDownloadToSd: () -> Unit,
-    onFlagAsManagedByGn: () -> Unit,
+    onMarkAsInstalled: (launcherPackage: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     Modal(
@@ -47,13 +53,15 @@ fun SteamDownloadLocationModal(
                     onClick = onDownloadToSd
                 )
             }
-            item {
-                SteamLocationRow(
-                    label = "Mark as Installed",
-                    subtitle = "Managed by GameNative internal storage",
-                    isFocused = focusIndex == 1,
-                    onClick = onFlagAsManagedByGn
-                )
+            markOptions.forEachIndexed { index, option ->
+                item {
+                    SteamLocationRow(
+                        label = "Mark as Installed",
+                        subtitle = "Managed by ${option.displayName}",
+                        isFocused = focusIndex == index + 1,
+                        onClick = { onMarkAsInstalled(option.launcherPackage) }
+                    )
+                }
             }
         }
     }
