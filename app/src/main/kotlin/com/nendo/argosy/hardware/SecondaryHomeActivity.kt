@@ -281,6 +281,7 @@ class SecondaryHomeActivity :
     }
 
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        if (::dsm.isInitialized && !dsm.claimInput(event)) return true
         if (event.repeatCount == 0) {
             val conflictEvent = mapKeycodeToGamepadEvent(keyCode, swapAB, swapXY, swapStartSelect)
             if (conflictEvent != null) {

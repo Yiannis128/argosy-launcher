@@ -298,8 +298,8 @@ internal fun routeCycleDisplayRoleOverride(vm: SettingsViewModel, direction: Int
             vm.displayAffinityHelper, sessionStore
         )
         val newSwapped = resolver.isSwapped
-        if (newSwapped != dsm.isRolesSwapped) {
-            dsm.isRolesSwapped = newSwapped
+        if (newSwapped != dsm.isRolesSwapped.value) {
+            dsm.setRolesSwapped(newSwapped)
             dsm.sessionStateStore.setRolesSwapped(newSwapped)
             dsm.onRoleSwapped?.invoke(newSwapped)
             dsm.companionHost?.onRoleSwapped(newSwapped)

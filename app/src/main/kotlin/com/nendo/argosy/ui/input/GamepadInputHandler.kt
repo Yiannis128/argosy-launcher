@@ -22,7 +22,11 @@ interface RawInputInterceptor {
     fun mapKeyToEvent(keyCode: Int): GamepadEvent?
 }
 
-data class GamepadInput(val event: GamepadEvent, val isRepeat: Boolean = false)
+data class GamepadInput(
+    val event: GamepadEvent,
+    val isRepeat: Boolean = false,
+    val signature: InputSignature? = null
+)
 
 sealed interface GamepadEvent {
     data object Up : GamepadEvent
@@ -230,27 +234,33 @@ class GamepadInputHandler @Inject constructor(
 
         val isRepeat = event.repeatCount > 0
 
+        val signature = InputSignature.of(event)
+
         // While Select is held, check combo map before normal dispatch
         if (modifierState == ModifierState.HELD || modifierState == ModifierState.COMBO_FIRED) {
             val comboEvent = comboMap[gamepadEvent]
             if (comboEvent != null) {
                 modifierState = ModifierState.COMBO_FIRED
-                emitWithDebounce(comboEvent, isRepeat)
+                emitWithDebounce(comboEvent, isRepeat, signature)
                 return true
             }
         }
 
-        emitWithDebounce(gamepadEvent, isRepeat)
+        emitWithDebounce(gamepadEvent, isRepeat, signature)
         return true
     }
 
-    private fun emitWithDebounce(event: GamepadEvent, isRepeat: Boolean = false) {
+    private fun emitWithDebounce(
+        event: GamepadEvent,
+        isRepeat: Boolean = false,
+        signature: InputSignature? = null
+    ) {
         val currentTime = System.currentTimeMillis()
         if (currentTime < inputBlockedUntil) return
         val lastTime = lastInputTimes[event] ?: 0L
         if (currentTime - lastTime < inputDebounceMs) return
         lastInputTimes[event] = currentTime
-        _events.tryEmit(GamepadInput(event, isRepeat))
+        _events.tryEmit(GamepadInput(event, isRepeat, signature))
     }
 
     override fun mapKeyToEvent(keyCode: Int): GamepadEvent? =

@@ -67,6 +67,15 @@ class InputDispatcher(
         drawerHandler = null
     }
 
+    /**
+     * Drops any handler waiting on a route match. Call after a dual-screen topology
+     * change so a handler subscribed for a route that will never become active doesn't
+     * remain parked indefinitely.
+     */
+    fun clearPendingViewSubscription() {
+        pendingViewSubscription = null
+    }
+
     fun subscribeDrawer(handler: InputHandler) {
         clearModals()
         drawerHandler = handler

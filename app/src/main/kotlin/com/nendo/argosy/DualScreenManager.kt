@@ -37,6 +37,8 @@ import com.nendo.argosy.ui.dualscreen.home.DualCollectionShowcaseState
 import com.nendo.argosy.ui.dualscreen.home.DualHomeShowcaseState
 import com.nendo.argosy.ui.dualscreen.home.DualHomeViewModel
 import com.nendo.argosy.ui.dualscreen.home.toShowcaseState
+import com.nendo.argosy.ui.input.InputDedupBuffer
+import com.nendo.argosy.ui.input.InputSignature
 import com.nendo.argosy.ui.notification.showError
 import com.nendo.argosy.ui.notification.showSuccess
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
@@ -88,12 +90,41 @@ class DualScreenManager(
     internal val playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker,
     internal val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     internal val repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase? = null,
-    var isRolesSwapped: Boolean = false
+    initialRolesSwapped: Boolean = false
 ) {
 
     private val appContext: Context = context.applicationContext
     private var preGameRolesSwapped: Boolean? = null
     private var activityContext: Context = context
+
+    private val _isRolesSwapped = MutableStateFlow(initialRolesSwapped)
+    val isRolesSwapped: StateFlow<Boolean> = _isRolesSwapped
+
+    fun setRolesSwapped(value: Boolean) {
+        _isRolesSwapped.value = value
+    }
+
+    private val _isDualScreenDevice = MutableStateFlow(displayAffinityHelper.hasSecondaryDisplay)
+    val isDualScreenDevice: StateFlow<Boolean> = _isDualScreenDevice
+
+    fun setDualScreenDevice(value: Boolean) {
+        _isDualScreenDevice.value = value
+    }
+
+    /**
+     * Dedups raw Android input events seen across all dispatch paths (primary activity,
+     * companion activity, libretro activity, and forwarded keys). The first path to
+     * [claimInput] wins; parallel deliveries of the same physical event get dropped.
+     */
+    private val inputDedup = InputDedupBuffer()
+
+    fun claimInput(event: android.view.KeyEvent): Boolean =
+        inputDedup.claim(InputSignature.of(event))
+
+    fun claimInput(event: android.view.MotionEvent): Boolean =
+        inputDedup.claim(InputSignature.of(event))
+
+    fun claimInput(signature: InputSignature): Boolean = inputDedup.claim(signature)
 
     fun rebind(activity: android.app.Activity, newScope: CoroutineScope) {
         activityContext = activity
@@ -152,7 +183,6 @@ class DualScreenManager(
         get() = displayAffinityHelper.secondaryDisplayType == SecondaryDisplayType.EXTERNAL
 
     var onRoleSwapped: ((Boolean) -> Unit)? = null
-    var onDisplayChanged: ((Boolean) -> Unit)? = null
 
     private val _dualScreenShowcase = MutableStateFlow(DualHomeShowcaseState())
     val dualScreenShowcase: StateFlow<DualHomeShowcaseState> = _dualScreenShowcase
@@ -349,13 +379,13 @@ class DualScreenManager(
             if (!displayAffinityHelper.isPhysicalDisplay(displayId)) return
             val resolver = DisplayRoleResolver(displayAffinityHelper, sessionStateStore)
             val newSwapped = resolver.isSwapped
-            if (newSwapped != isRolesSwapped) {
-                isRolesSwapped = newSwapped
+            if (newSwapped != _isRolesSwapped.value) {
+                _isRolesSwapped.value = newSwapped
                 sessionStateStore.setRolesSwapped(newSwapped)
                 onRoleSwapped?.invoke(newSwapped)
                 companionHost?.onRoleSwapped(newSwapped)
             }
-            onDisplayChanged?.invoke(true)
+            _isDualScreenDevice.value = true
             CompanionGuardService.start(appContext)
             ensureCompanionLaunched()
         }
@@ -365,7 +395,7 @@ class DualScreenManager(
             companionLaunchJob = null
             _isCompanionActive.value = false
             CompanionGuardService.stop(appContext)
-            onDisplayChanged?.invoke(false)
+            _isDualScreenDevice.value = displayAffinityHelper.hasSecondaryDisplay
             cleanupSwappedState()
         }
 
@@ -373,14 +403,14 @@ class DualScreenManager(
     }
 
     private fun cleanupSwappedState() {
-        if (!isRolesSwapped) return
+        if (!_isRolesSwapped.value) return
 
         val hadEmulatorOnSecondary = emulatorDisplayId != null &&
             emulatorDisplayId != android.view.Display.DEFAULT_DISPLAY
 
         emulatorDisplayId = null
         sessionStateStore.setDisplayRoleOverride("AUTO")
-        isRolesSwapped = false
+        _isRolesSwapped.value = false
         sessionStateStore.setRolesSwapped(false)
 
         _swappedGameDetailViewModel = null
@@ -428,6 +458,7 @@ class DualScreenManager(
         companionPausedPending = false
         companionWatchdogJob?.cancel()
         _isCompanionActive.value = true
+        if (!_isDualScreenDevice.value) _isDualScreenDevice.value = true
         resyncCompanionState()
     }
 
@@ -708,7 +739,7 @@ class DualScreenManager(
                 else -> s?.copy(modalType = ActiveModal.NONE)
             }
         }
-        if (!isRolesSwapped) {
+        if (!_isRolesSwapped.value) {
             companionHost?.refocusSelf()
         }
     }
@@ -866,13 +897,13 @@ class DualScreenManager(
             else resyncShowcaseFromHome()
             val savedSwapped = preGameRolesSwapped
             if (savedSwapped != null) {
-                isRolesSwapped = savedSwapped
+                _isRolesSwapped.value = savedSwapped
                 preGameRolesSwapped = null
             }
             Handler(Looper.getMainLooper()).post {
                 if (savedSwapped != null) onRoleSwapped?.invoke(savedSwapped)
                 companionHost?.onSessionEnded()
-                companionHost?.onRoleSwapped(isRolesSwapped)
+                companionHost?.onRoleSwapped(_isRolesSwapped.value)
             }
         }
     }
@@ -887,8 +918,8 @@ class DualScreenManager(
         val resolver = com.nendo.argosy.util.DisplayRoleResolver(
             displayAffinityHelper, sessionStateStore
         )
-        isRolesSwapped = resolver.isSwapped
-        onRoleSwapped?.invoke(isRolesSwapped)
+        _isRolesSwapped.value = resolver.isSwapped
+        onRoleSwapped?.invoke(_isRolesSwapped.value)
     }
 
     // --- Modal Operations ---
@@ -1207,7 +1238,7 @@ class DualScreenManager(
             val effectiveSwapped = if (platformId != null) {
                 resolveEmulatorDisplaySwapped(platformId)
             } else {
-                isRolesSwapped
+                _isRolesSwapped.value
             }
 
             gameLaunchDelegate.launchGame(
@@ -1231,9 +1262,9 @@ class DualScreenManager(
                     if (options != null) activityContext.startActivity(intent, options)
                     else activityContext.startActivity(intent)
 
-                    if (effectiveSwapped != isRolesSwapped) {
-                        preGameRolesSwapped = isRolesSwapped
-                        isRolesSwapped = effectiveSwapped
+                    if (effectiveSwapped != _isRolesSwapped.value) {
+                        preGameRolesSwapped = _isRolesSwapped.value
+                        _isRolesSwapped.value = effectiveSwapped
                         onRoleSwapped?.invoke(effectiveSwapped)
                         companionHost?.onRoleSwapped(effectiveSwapped)
                     }
@@ -1243,13 +1274,13 @@ class DualScreenManager(
     }
 
     private suspend fun resolveEmulatorDisplaySwapped(platformId: Long): Boolean {
-        if (!displayAffinityHelper.hasSecondaryDisplay) return isRolesSwapped
+        if (!displayAffinityHelper.hasSecondaryDisplay) return _isRolesSwapped.value
         val target = EmulatorDisplayTarget.fromString(
             emulatorConfigDao.getDisplayTargetForPlatform(platformId)
         )
         return when (target) {
-            EmulatorDisplayTarget.HERO -> isRolesSwapped
-            EmulatorDisplayTarget.LIBRARY -> !isRolesSwapped
+            EmulatorDisplayTarget.HERO -> _isRolesSwapped.value
+            EmulatorDisplayTarget.LIBRARY -> !_isRolesSwapped.value
             EmulatorDisplayTarget.TOP -> false
             EmulatorDisplayTarget.BOTTOM -> true
         }
@@ -1553,13 +1584,13 @@ class DualScreenManager(
             "SWAPPED" -> "STANDARD"
             "STANDARD" -> "SWAPPED"
             else -> {
-                if (isRolesSwapped) "STANDARD" else "SWAPPED"
+                if (_isRolesSwapped.value) "STANDARD" else "SWAPPED"
             }
         }
         sessionStateStore.setDisplayRoleOverride(newOverride)
         val newSwapped = newOverride == "SWAPPED" ||
             (newOverride == "AUTO" && displayAffinityHelper.secondaryDisplayType == SecondaryDisplayType.EXTERNAL)
-        isRolesSwapped = newSwapped
+        _isRolesSwapped.value = newSwapped
         sessionStateStore.setRolesSwapped(newSwapped)
         onRoleSwapped?.invoke(newSwapped)
         companionHost?.onRoleSwapped(newSwapped)

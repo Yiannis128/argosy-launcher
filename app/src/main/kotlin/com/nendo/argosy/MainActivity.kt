@@ -16,6 +16,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -110,10 +111,6 @@ class MainActivity : ComponentActivity() {
     private val _pendingDeepLink = MutableStateFlow<android.net.Uri?>(null)
     val pendingDeepLink: StateFlow<android.net.Uri?> = _pendingDeepLink
 
-    var isRolesSwapped by mutableStateOf(false)
-        private set
-    var isDualScreenDevice by mutableStateOf(false)
-        private set
     var isOnHomeScreen = false
 
     // --- Delegated properties for external consumers (ArgosyApp.kt) ---
@@ -214,15 +211,14 @@ class MainActivity : ComponentActivity() {
 
         displayAffinityHelper.dualScreenEnabled = sessionStateStore.isDualScreenEnabled()
         val resolver = DisplayRoleResolver(displayAffinityHelper, sessionStateStore)
-        isRolesSwapped = resolver.isSwapped
-        isDualScreenDevice = displayAffinityHelper.hasSecondaryDisplay
-        sessionStateStore.setRolesSwapped(isRolesSwapped)
+        val initialSwapped = resolver.isSwapped
+        sessionStateStore.setRolesSwapped(initialSwapped)
 
         val existingDsm = DualScreenManagerHolder.instance
         if (existingDsm != null) {
             dualScreenManager = existingDsm
             dualScreenManager.rebind(this, activityScope)
-            dualScreenManager.isRolesSwapped = isRolesSwapped
+            dualScreenManager.setRolesSwapped(initialSwapped)
         } else {
             dualScreenManager = DualScreenManager(
                 context = this,
@@ -251,36 +247,25 @@ class MainActivity : ComponentActivity() {
                 playSessionTracker = playSessionTracker,
                 steamContentManager = steamContentManager,
                 repairImageCacheUseCase = repairImageCacheUseCase,
-                isRolesSwapped = isRolesSwapped
+                initialRolesSwapped = initialSwapped
             )
             DualScreenManagerHolder.instance = dualScreenManager
         }
 
-        if (isRolesSwapped) {
+        if (initialSwapped) {
             dualScreenManager.initSwappedViewModel()
         }
 
         dualScreenManager.onRoleSwapped = { swapped ->
-            isRolesSwapped = swapped
             if (swapped && dualScreenManager.swappedDualHomeViewModel == null) {
                 dualScreenManager.initSwappedViewModel()
             }
-        }
-        dualScreenManager.onDisplayChanged = { hasDisplay ->
-            isDualScreenDevice = hasDisplay
         }
         dualScreenManager.onOverlayFocusChanged = { _ -> }
         dualScreenManager.onEmulatorDispatcherChanged = { }
         dualScreenManager.registerReceivers()
         dualScreenManager.ensureCompanionLaunched()
         dualScreenManager.startStartupGuard()
-        activityScope.launch {
-            dualScreenManager.isCompanionActive.collect { active ->
-                if (active && !isDualScreenDevice) {
-                    isDualScreenDevice = true
-                }
-            }
-        }
         initCacheAndPreferences()
 
 
@@ -292,7 +277,7 @@ class MainActivity : ComponentActivity() {
             sessionStateStore = sessionStateStore,
             dualScreenManager = dualScreenManager,
             displayAffinityHelper = displayAffinityHelper,
-            onDualScreenChanged = { isDualScreenDevice = it },
+            onDualScreenChanged = { dualScreenManager.setDualScreenDevice(it) },
             hasWindowFocus = ::hasWindowFocus
         )
         preferencesObserver.collectIn(activityScope)
@@ -300,9 +285,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             ALauncherTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val rolesSwappedState = dualScreenManager.isRolesSwapped.collectAsState()
+                    val dualScreenDeviceState = dualScreenManager.isDualScreenDevice.collectAsState()
                     ArgosyApp(
-                        isDualScreenDevice = isDualScreenDevice,
-                        isRolesSwapped = isRolesSwapped,
+                        isDualScreenDevice = dualScreenDeviceState.value,
+                        isRolesSwapped = rolesSwappedState.value,
                         isCompanionActive = isCompanionActive,
                         dualScreenShowcase = dualScreenShowcase,
                         dualGameDetailState = dualGameDetailState,
@@ -329,7 +316,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         onDimmerActivity?.invoke()
-        Log.d(TAG, "onResume: swapped=$isRolesSwapped gameActive=${if (::dualScreenManager.isInitialized) dualScreenManager.swappedIsGameActive.value else "N/A"} hasResumedBefore=$hasResumedBefore")
+        Log.d(TAG, "onResume: swapped=${dualScreenManager.isRolesSwapped.value} gameActive=${if (::dualScreenManager.isInitialized) dualScreenManager.swappedIsGameActive.value else "N/A"} hasResumedBefore=$hasResumedBefore")
 
         dualScreenManager.broadcastForegroundState(true)
 
@@ -341,7 +328,7 @@ class MainActivity : ComponentActivity() {
             activityScope.launch { romMRepository.initialize() }
             ambientAudioManager.fadeIn()
         } else {
-            if (displayAffinityHelper.hasSecondaryDisplay && !isRolesSwapped) {
+            if (displayAffinityHelper.hasSecondaryDisplay && !dualScreenManager.isRolesSwapped.value) {
                 window.decorView.postDelayed({
                     dualScreenManager.companionHost?.refocusSelf()
                 }, 500)
@@ -372,8 +359,9 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!dualScreenManager.claimInput(event)) return true
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-            Log.d(TAG, "dispatchKeyEvent: key=${event.keyCode} isHome=$isOnHomeScreen swapped=$isRolesSwapped gameOnSecondary=${dualScreenManager.swappedIsGameActive.value} companion=${dualScreenManager.isCompanionActive.value} overlay=$isOverlayFocused")
+            Log.d(TAG, "dispatchKeyEvent: key=${event.keyCode} isHome=$isOnHomeScreen swapped=${dualScreenManager.isRolesSwapped.value} gameOnSecondary=${dualScreenManager.swappedIsGameActive.value} companion=${dualScreenManager.isCompanionActive.value} overlay=$isOverlayFocused")
             if (dualScreenManager.handleConflictInput(
                     event.keyCode,
                     sessionStateStore.getSwapAB(),
@@ -392,7 +380,7 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
-        if (!isRolesSwapped &&
+        if (!dualScreenManager.isRolesSwapped.value &&
             isOnHomeScreen &&
             dualScreenManager.isCompanionActive.value &&
             !isOverlayFocused
@@ -436,6 +424,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (!dualScreenManager.claimInput(event)) return true
         if (dualScreenManager.swappedIsGameActive.value && !isOverlayFocused) {
             val emulatorDispatcher = dualScreenManager.emulatorMotionDispatcher
             if (emulatorDispatcher != null) {
@@ -446,7 +435,7 @@ class MainActivity : ComponentActivity() {
 
         val stickEvent = gamepadInputHandler.processStickMotion(event)
         if (stickEvent != null) {
-            if (!isRolesSwapped &&
+            if (!dualScreenManager.isRolesSwapped.value &&
                 isOnHomeScreen &&
                 dualScreenManager.isCompanionActive.value &&
                 !isOverlayFocused
@@ -478,7 +467,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("NewApi")
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        Log.d(TAG, "onWindowFocusChanged: hasFocus=$hasFocus swapped=$isRolesSwapped gameActive=${if (::dualScreenManager.isInitialized) dualScreenManager.swappedIsGameActive.value else "N/A"}")
+        Log.d(TAG, "onWindowFocusChanged: hasFocus=$hasFocus swapped=${if (::dualScreenManager.isInitialized) dualScreenManager.isRolesSwapped.value else "N/A"} gameActive=${if (::dualScreenManager.isInitialized) dualScreenManager.swappedIsGameActive.value else "N/A"}")
         if (hasFocus) {
             val timeSinceFocusLost = System.currentTimeMillis() - focusLostTime
             if (hadFocusBefore && focusLostTime > 0 && timeSinceFocusLost < 1000) {
@@ -557,7 +546,7 @@ class MainActivity : ComponentActivity() {
             val prefs = preferencesRepository.preferences.first()
             displayAffinityHelper.dualScreenEnabled = prefs.dualScreenEnabled
             sessionStateStore.setDualScreenEnabled(prefs.dualScreenEnabled)
-            isDualScreenDevice = displayAffinityHelper.hasSecondaryDisplay
+            dualScreenManager.setDualScreenDevice(displayAffinityHelper.hasSecondaryDisplay)
             imageCacheManager.setCustomCachePath(prefs.imageCachePath)
 
             if (imageCacheManager.needsFlatToShardedMigration()) {

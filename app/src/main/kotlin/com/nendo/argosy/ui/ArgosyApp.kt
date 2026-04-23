@@ -268,6 +268,18 @@ fun ArgosyApp(
         try { rootFocusRequester.requestFocus() } catch (_: Exception) {}
     }
 
+    // When dual-screen topology changes (role swap, companion attach/detach, game moves
+    // between displays), drop any lingering modal/drawer state and clear the deferred
+    // view subscription so the newly-active screen's input handler gets a clean slot.
+    val dsmForTopology = activity?.dualScreenManager
+    if (dsmForTopology != null) {
+        val swappedGameActive by dsmForTopology.swappedIsGameActive.collectAsState()
+        LaunchedEffect(isRolesSwapped, companionActive, swappedGameActive) {
+            inputDispatcher.resetToMainView()
+            inputDispatcher.clearPendingViewSubscription()
+        }
+    }
+
     val startDestination = remember(uiState.isLoading) {
         when {
             uiState.isFirstRun -> Screen.FirstRun.route
