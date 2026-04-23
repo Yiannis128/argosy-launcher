@@ -540,7 +540,8 @@ class SavePathResolver @Inject constructor(
         }
 
         val raConfig = retroArchConfigParser.parse(packageName)
-        val coreName = SavePathRegistry.getRetroArchCore(platformSlug) ?: return null
+        val coreName = SavePathRegistry.getRetroArchCore(platformSlug, raConfig?.lastLoadedCore)
+            ?: return null
         val saveConfig = SavePathRegistry.getConfig(emulatorId) ?: return null
         val extension = saveConfig.saveExtensions.firstOrNull() ?: "srm"
 

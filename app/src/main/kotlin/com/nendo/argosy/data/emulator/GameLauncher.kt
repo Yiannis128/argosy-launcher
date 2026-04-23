@@ -420,10 +420,11 @@ class GameLauncher @Inject constructor(
         Logger.debug(TAG, "[BuiltIn] Preparing launch: rom=${romFile.name}, platform=${game.platformSlug}")
         lastCoreDownloadError = null
 
-        var corePath = libretroCoreMgr.getCorePathForPlatform(game.platformSlug)
+        val selectedCoreId = userPreferencesRepository.getBuiltinCoreSelections().first()[game.platformSlug]
+        var corePath = libretroCoreMgr.getCorePathForPlatform(game.platformSlug, selectedCoreId)
         if (corePath == null) {
-            Logger.info(TAG, "[BuiltIn] Core not downloaded for ${game.platformSlug}, attempting download...")
-            val downloadResult = libretroCoreMgr.downloadCoreForPlatform(game.platformSlug)
+            Logger.info(TAG, "[BuiltIn] Core not downloaded for ${game.platformSlug} (selected=$selectedCoreId), attempting download...")
+            val downloadResult = libretroCoreMgr.downloadCoreForPlatform(game.platformSlug, selectedCoreId)
             corePath = downloadResult.getOrElse { err ->
                 val reason = err.message ?: "Unknown error"
                 lastCoreDownloadError = com.nendo.argosy.libretro.formatCoreDownloadError(reason)

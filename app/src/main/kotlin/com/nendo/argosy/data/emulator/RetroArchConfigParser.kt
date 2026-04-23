@@ -11,7 +11,8 @@ data class RetroArchSaveConfig(
     val savefileDirectory: String?,
     val savefilesInContentDir: Boolean,
     val sortByContentDirectory: Boolean,
-    val sortByCore: Boolean
+    val sortByCore: Boolean,
+    val lastLoadedCore: String? = null
 )
 
 data class RetroArchStateConfig(
@@ -86,12 +87,16 @@ class RetroArchConfigParser @Inject constructor() {
         val sortByCore = config["sort_savefiles_enable"] == "true"
         // sort_savefiles_by_content_enable = "Sort into folders by Content Directory" (ROM's parent folder)
         val sortByContentDir = config["sort_savefiles_by_content_enable"] == "true"
+        val lastLoadedCore = config["libretro_path"]
+            ?.takeIf { it.isNotBlank() && it != "default" }
+            ?.let { File(it).nameWithoutExtension.removeSuffix("_android").removeSuffix("_libretro") }
 
         return RetroArchSaveConfig(
             savefileDirectory = savefileDirectory,
             savefilesInContentDir = savefilesInContentDir,
             sortByContentDirectory = sortByContentDir,
-            sortByCore = sortByCore
+            sortByCore = sortByCore,
+            lastLoadedCore = lastLoadedCore
         )
     }
 

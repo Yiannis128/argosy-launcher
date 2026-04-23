@@ -51,23 +51,24 @@ class LibretroCoreManager @Inject constructor(
         }
     }
 
-    fun getCorePathForPlatform(platformSlug: String): String? {
-        val coreInfo = LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug) ?: return null
+    fun getCorePathForPlatform(platformSlug: String): String? =
+        getCorePathForPlatform(platformSlug, null)
+
+    fun getCorePathForPlatform(platformSlug: String, selectedCoreId: String?): String? {
+        val coreInfo = resolveCoreForPlatform(platformSlug, selectedCoreId) ?: return null
         return getCorePath(coreInfo.fileName)
     }
 
-    fun getCorePathForPlatform(platformSlug: String, selectedCoreId: String?): String? {
-        val coreInfo = if (selectedCoreId != null) {
-            val selectedCore = LibretroCoreRegistry.getCoreById(selectedCoreId)
-            if (selectedCore != null && platformSlug in selectedCore.platforms) {
-                selectedCore
-            } else {
-                LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug)
-            }
+    private fun resolveCoreForPlatform(
+        platformSlug: String,
+        selectedCoreId: String?
+    ): LibretroCoreRegistry.CoreInfo? {
+        val selected = selectedCoreId?.let { LibretroCoreRegistry.getCoreById(it) }
+        return if (selected != null && platformSlug in selected.platforms) {
+            selected
         } else {
             LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug)
-        } ?: return null
-        return getCorePath(coreInfo.fileName)
+        }
     }
 
     fun getCorePathForCoreId(coreId: String): String? {
@@ -102,8 +103,11 @@ class LibretroCoreManager @Inject constructor(
         return neededCores.filter { !isCoreInstalled(it.coreId) }
     }
 
-    suspend fun downloadCoreForPlatform(platformSlug: String): Result<String> {
-        val coreInfo = LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug)
+    suspend fun downloadCoreForPlatform(platformSlug: String): Result<String> =
+        downloadCoreForPlatform(platformSlug, null)
+
+    suspend fun downloadCoreForPlatform(platformSlug: String, selectedCoreId: String?): Result<String> {
+        val coreInfo = resolveCoreForPlatform(platformSlug, selectedCoreId)
             ?: return Result.failure(IllegalArgumentException("No core registered for platform $platformSlug"))
         return downloadCore(coreInfo).map { it.absolutePath }
     }

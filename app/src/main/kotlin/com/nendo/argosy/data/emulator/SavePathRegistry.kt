@@ -549,6 +549,12 @@ object SavePathRegistry {
         return EmulatorRegistry.getRetroArchCorePatterns()[canonical]?.firstOrNull()
     }
 
+    fun getRetroArchCore(platformId: String, preferredCore: String?): String? {
+        val canonical = PlatformDefinitions.getCanonicalSlug(platformId)
+        val cores = EmulatorRegistry.getRetroArchCorePatterns()[canonical] ?: return null
+        return preferredCore?.takeIf { it in cores } ?: cores.firstOrNull()
+    }
+
     @Suppress("DEPRECATION")
     private fun getExternalStoragePath(): String {
         return Environment.getExternalStorageDirectory().absolutePath
