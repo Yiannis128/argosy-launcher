@@ -1530,14 +1530,147 @@ abstract class ALauncherDatabase : RoomDatabase() {
 
         val MIGRATION_105_106 = object : Migration(105, 106) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Legacy isManagedByGn rows without an explicit launcher get promoted
-                // to the GameNative package so steamLauncher becomes the single source
-                // of truth for "who manages this install".
+                // Drop isManagedByGn in favor of steamLauncher as the single source of
+                // truth. ALTER TABLE DROP COLUMN needs SQLite 3.35+ (Android 14+); we
+                // use the portable rebuild idiom so this works on Android 13 too.
+                // Legacy rows with isManagedByGn=1 get promoted to "app.gamenative" in
+                // the INSERT so the flip is atomic with the schema change.
                 db.execSQL(
-                    "UPDATE games SET steamLauncher = 'app.gamenative' " +
-                        "WHERE isManagedByGn = 1 AND (steamLauncher IS NULL OR steamLauncher = 'native')"
+                    """
+                    CREATE TABLE IF NOT EXISTS `games_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `platformId` INTEGER NOT NULL,
+                        `platformSlug` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `sortTitle` TEXT NOT NULL,
+                        `localPath` TEXT,
+                        `rommId` INTEGER,
+                        `rommFileName` TEXT,
+                        `igdbId` INTEGER,
+                        `raId` INTEGER,
+                        `steamAppId` INTEGER,
+                        `steamLauncher` TEXT,
+                        `steamInstallDir` TEXT,
+                        `packageName` TEXT,
+                        `launcherSetManually` INTEGER NOT NULL,
+                        `source` TEXT NOT NULL,
+                        `coverPath` TEXT,
+                        `gradientColors` TEXT,
+                        `backgroundPath` TEXT,
+                        `screenshotPaths` TEXT,
+                        `cachedScreenshotPaths` TEXT,
+                        `developer` TEXT,
+                        `publisher` TEXT,
+                        `releaseYear` INTEGER,
+                        `genre` TEXT,
+                        `description` TEXT,
+                        `players` TEXT,
+                        `rating` REAL,
+                        `regions` TEXT,
+                        `languages` TEXT,
+                        `gameModes` TEXT,
+                        `franchises` TEXT,
+                        `userRating` INTEGER NOT NULL,
+                        `userDifficulty` INTEGER NOT NULL,
+                        `completion` INTEGER NOT NULL,
+                        `status` TEXT,
+                        `backlogged` INTEGER NOT NULL,
+                        `nowPlaying` INTEGER NOT NULL,
+                        `isFavorite` INTEGER NOT NULL,
+                        `isHidden` INTEGER NOT NULL,
+                        `playCount` INTEGER NOT NULL,
+                        `playTimeMinutes` INTEGER NOT NULL,
+                        `lastPlayed` INTEGER,
+                        `addedAt` INTEGER NOT NULL,
+                        `isMultiDisc` INTEGER NOT NULL,
+                        `lastPlayedDiscId` INTEGER,
+                        `m3uPath` TEXT,
+                        `activeVariantFileId` INTEGER,
+                        `lastPlayedFileId` INTEGER,
+                        `achievementCount` INTEGER NOT NULL,
+                        `earnedAchievementCount` INTEGER NOT NULL,
+                        `activeSaveChannel` TEXT,
+                        `activeSaveTimestamp` INTEGER,
+                        `activeSaveApplied` INTEGER NOT NULL,
+                        `pendingDeviceSyncSaveId` INTEGER,
+                        `titleId` TEXT,
+                        `titleIdLocked` INTEGER NOT NULL,
+                        `storeEnrichStatus` INTEGER NOT NULL,
+                        `titleIdCandidates` TEXT,
+                        `youtubeVideoId` TEXT,
+                        `cheatsFetched` INTEGER NOT NULL,
+                        `cheatsFetchedAt` INTEGER,
+                        `cheatsSelectedRegion` TEXT,
+                        `cheatsSelectedVersion` TEXT,
+                        `achievementsFetchedAt` INTEGER,
+                        `romHash` TEXT,
+                        `verifiedRaId` INTEGER,
+                        `raIdVerified` INTEGER NOT NULL,
+                        `fileSizeBytes` INTEGER,
+                        `syncDirty` INTEGER NOT NULL,
+                        FOREIGN KEY(`platformId`) REFERENCES `platforms`(`id`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
                 )
-                db.execSQL("ALTER TABLE games DROP COLUMN isManagedByGn")
+                db.execSQL(
+                    """
+                    INSERT INTO games_new (
+                        id, platformId, platformSlug, title, sortTitle, localPath,
+                        rommId, rommFileName, igdbId, raId, steamAppId, steamLauncher,
+                        steamInstallDir, packageName, launcherSetManually, source,
+                        coverPath, gradientColors, backgroundPath, screenshotPaths,
+                        cachedScreenshotPaths, developer, publisher, releaseYear,
+                        genre, description, players, rating, regions, languages,
+                        gameModes, franchises, userRating, userDifficulty, completion,
+                        status, backlogged, nowPlaying, isFavorite, isHidden,
+                        playCount, playTimeMinutes, lastPlayed, addedAt, isMultiDisc,
+                        lastPlayedDiscId, m3uPath, activeVariantFileId, lastPlayedFileId,
+                        achievementCount, earnedAchievementCount, activeSaveChannel,
+                        activeSaveTimestamp, activeSaveApplied, pendingDeviceSyncSaveId,
+                        titleId, titleIdLocked, storeEnrichStatus, titleIdCandidates,
+                        youtubeVideoId, cheatsFetched, cheatsFetchedAt,
+                        cheatsSelectedRegion, cheatsSelectedVersion, achievementsFetchedAt,
+                        romHash, verifiedRaId, raIdVerified, fileSizeBytes, syncDirty
+                    )
+                    SELECT
+                        id, platformId, platformSlug, title, sortTitle, localPath,
+                        rommId, rommFileName, igdbId, raId, steamAppId,
+                        CASE
+                            WHEN isManagedByGn = 1 AND (steamLauncher IS NULL OR steamLauncher = 'native')
+                                THEN 'app.gamenative'
+                            ELSE steamLauncher
+                        END,
+                        steamInstallDir, packageName, launcherSetManually, source,
+                        coverPath, gradientColors, backgroundPath, screenshotPaths,
+                        cachedScreenshotPaths, developer, publisher, releaseYear,
+                        genre, description, players, rating, regions, languages,
+                        gameModes, franchises, userRating, userDifficulty, completion,
+                        status, backlogged, nowPlaying, isFavorite, isHidden,
+                        playCount, playTimeMinutes, lastPlayed, addedAt, isMultiDisc,
+                        lastPlayedDiscId, m3uPath, activeVariantFileId, lastPlayedFileId,
+                        achievementCount, earnedAchievementCount, activeSaveChannel,
+                        activeSaveTimestamp, activeSaveApplied, pendingDeviceSyncSaveId,
+                        titleId, titleIdLocked, storeEnrichStatus, titleIdCandidates,
+                        youtubeVideoId, cheatsFetched, cheatsFetchedAt,
+                        cheatsSelectedRegion, cheatsSelectedVersion, achievementsFetchedAt,
+                        romHash, verifiedRaId, raIdVerified, fileSizeBytes, syncDirty
+                    FROM games
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE games")
+                db.execSQL("ALTER TABLE games_new RENAME TO games")
+
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_platformId` ON `games` (`platformId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_title` ON `games` (`title`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_lastPlayed` ON `games` (`lastPlayed`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_source` ON `games` (`source`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_rommId` ON `games` (`rommId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_steamAppId` ON `games` (`steamAppId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_packageName` ON `games` (`packageName`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_regions` ON `games` (`regions`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_gameModes` ON `games` (`gameModes`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_franchises` ON `games` (`franchises`)")
             }
         }
 
