@@ -35,6 +35,7 @@ class HotkeyDispatcherTest {
             onShowMenu = {},
             onFastForwardChanged = {},
             onRewindChanged = {},
+            onResetGame = {},
             onAutoSaveState = {},
             onQuit = {}
         )

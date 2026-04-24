@@ -83,6 +83,7 @@ class GameLauncherTest {
         gameFileDao = mockk(relaxed = true)
 
         every { userPreferencesRepository.userPreferences } returns flowOf(UserPreferences())
+        every { userPreferencesRepository.getBuiltinCoreSelections() } returns flowOf(emptyMap())
         every { emulatorDetector.installedEmulators } returns mockk {
             every { value } returns emptyList()
         }
