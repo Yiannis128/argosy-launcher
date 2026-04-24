@@ -593,6 +593,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun configureRetroView(settings: com.nendo.argosy.data.preferences.BuiltinEmulatorSettings) {
         retroView.audioEnabled = true
+        retroView.pitchPreservationEnabled = settings.fastForwardPreservePitch
         retroView.filterMode = settings.filterMode
         retroView.blackFrameInsertion = settings.blackFrameInsertion
         retroView.portResolver = portResolver
@@ -994,6 +995,8 @@ class LibretroActivity : ComponentActivity() {
                 analogAsDpad = videoSettings.currentAnalogAsDpad,
                 dpadAsAnalog = videoSettings.currentDpadAsAnalog,
                 limitHotkeysToPlayer1 = limitHotkeysToPlayer1,
+                fastForwardMode = videoSettings.fastForwardMode,
+                fastForwardPreservePitch = videoSettings.fastForwardPreservePitch,
                 controllerOrderCount = inputConfig.controllerOrderCount
             ),
             onControlsAction = ::handleControlsAction,
@@ -1902,6 +1905,19 @@ class LibretroActivity : ComponentActivity() {
                 inputConfig.hotkeyManager.setLimitToPlayer1(action.enabled)
                 lifecycleScope.launch {
                     preferencesRepository.setBuiltinLimitHotkeysToPlayer1(action.enabled)
+                }
+            }
+            is InGameControlsAction.SetFastForwardMode -> {
+                videoSettings.fastForwardMode = action.mode
+                lifecycleScope.launch {
+                    preferencesRepository.setBuiltinFastForwardMode(action.mode)
+                }
+            }
+            is InGameControlsAction.SetFastForwardPreservePitch -> {
+                videoSettings.fastForwardPreservePitch = action.enabled
+                retroView.pitchPreservationEnabled = action.enabled
+                lifecycleScope.launch {
+                    preferencesRepository.setBuiltinFastForwardPreservePitch(action.enabled)
                 }
             }
             InGameControlsAction.ShowControllerOrder,

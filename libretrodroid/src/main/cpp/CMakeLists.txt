@@ -13,6 +13,23 @@ include_directories (${OBOE_DIR}/src)
 
 include_directories("libretro/libretro-common/include")
 
+# SoundTouch time-stretch (LGPL 2.1) for pitch-preserving fast forward
+set(SOUNDTOUCH_DIR ${CMAKE_CURRENT_SOURCE_DIR}/soundtouch)
+include_directories(${SOUNDTOUCH_DIR}/include ${SOUNDTOUCH_DIR}/source)
+set(SOUNDTOUCH_SOURCES
+    ${SOUNDTOUCH_DIR}/source/AAFilter.cpp
+    ${SOUNDTOUCH_DIR}/source/FIFOSampleBuffer.cpp
+    ${SOUNDTOUCH_DIR}/source/FIRFilter.cpp
+    ${SOUNDTOUCH_DIR}/source/InterpolateCubic.cpp
+    ${SOUNDTOUCH_DIR}/source/InterpolateLinear.cpp
+    ${SOUNDTOUCH_DIR}/source/InterpolateShannon.cpp
+    ${SOUNDTOUCH_DIR}/source/PeakFinder.cpp
+    ${SOUNDTOUCH_DIR}/source/RateTransposer.cpp
+    ${SOUNDTOUCH_DIR}/source/SoundTouch.cpp
+    ${SOUNDTOUCH_DIR}/source/TDStretch.cpp
+    ${SOUNDTOUCH_DIR}/source/cpu_detect_x86.cpp
+)
+
 # rcheevos library for RetroAchievements
 set(RCHEEVOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rcheevos)
 include_directories(${RCHEEVOS_DIR}/include)
@@ -130,6 +147,7 @@ add_library(libretrodroid SHARED
         achievements_test.cpp
         ${LIBRETRO_COMMON}
         ${RCHEEVOS_SOURCES}
+        ${SOUNDTOUCH_SOURCES}
         rcheevos_stubs.c
 )
 

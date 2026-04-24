@@ -18,10 +18,18 @@
 #include "log.h"
 
 #include "audio.h"
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
 namespace libretrodroid {
+
+namespace {
+    // Ignore tempo changes within this band of 1.0 -- keeps us on the bypass
+    // path during normal playback and avoids routing samples through SoundTouch
+    // when the user has only nudged the speed by a negligible amount.
+    constexpr double kStretchBypassEpsilon = 0.02;
+}
 
 Audio::Audio(int32_t sampleRate, double refreshRate, bool preferLowLatencyAudio) {
     LOGI("Audio initialization has been called with input sample rate %d", sampleRate);
@@ -56,6 +64,24 @@ bool Audio::initializeStream() {
         fifoBuffer = std::make_unique<oboe::FifoBuffer>(2, audioBufferSize);
         temporaryAudioBuffer = std::unique_ptr<int16_t[]>(new int16_t[audioBufferSize]);
         latencyTuner = std::make_unique<oboe::LatencyTuner>(*stream);
+
+        // SoundTouch operates in stereo float and is configured for the emulator's
+        // native sample rate. The final rate conversion to stream->getSampleRate()
+        // stays in LinearResampler so SoundTouch only does time-stretch.
+        timeStretcher = std::make_unique<soundtouch::SoundTouch>();
+        timeStretcher->setChannels(2);
+        timeStretcher->setSampleRate(inputSampleRate);
+        timeStretcher->setTempo(1.0);
+        timeStretcher->setRate(1.0);
+        timeStretcher->setPitch(1.0);
+        lastStretchTempo = 1.0;
+
+        // audioBufferSize is an int16 sample count (stereo interleaved). Reuse the
+        // same capacity for the float scratch buffers so even worst-case reads at
+        // max playbackSpeed fit.
+        stretchBufferFrameCapacity = audioBufferSize / 2;
+        stretchInputBuffer = std::unique_ptr<float[]>(new float[audioBufferSize]);
+        stretchOutputBuffer = std::unique_ptr<float[]>(new float[audioBufferSize]);
         return true;
     } else {
         LOGE("Failed to create stream. Error: %s", oboe::convertToText(result));
@@ -105,11 +131,22 @@ void Audio::setPlaybackSpeed(const double newPlaybackSpeed) {
     playbackSpeed = newPlaybackSpeed;
 }
 
+void Audio::setPitchPreservation(bool enabled) {
+    // Just flip the flag. The audio-callback thread owns the SoundTouch state and
+    // will pick up the new setting on the next onAudioReady. Calling clear() or
+    // setTempo() here would race with putSamples/receiveSamples.
+    pitchPreservationEnabled = enabled;
+}
+
 void Audio::resetBufferState() {
     errorIntegral = 0.0;
     framesToSubmit = 0.0;
     if (fifoBuffer) {
         fifoBuffer->setReadCounter(fifoBuffer->getWriteCounter());
+    }
+    if (timeStretcher) {
+        timeStretcher->clear();
+        lastStretchTempo = 1.0;
     }
 }
 
@@ -121,23 +158,75 @@ void Audio::updateTiming(int32_t newSampleRate, double newRefreshRate) {
     if (stream != nullptr) {
         baseConversionFactor = (double) inputSampleRate / stream->getSampleRate();
     }
+    if (timeStretcher) {
+        timeStretcher->setSampleRate(inputSampleRate);
+        timeStretcher->clear();
+        lastStretchTempo = 1.0;
+    }
     errorIntegral = 0.0;
     framesToSubmit = 0.0;
 }
 
 oboe::DataCallbackResult Audio::onAudioReady(oboe::AudioStream *oboeStream, void *audioData, int32_t numFrames) {
     double dynamicBufferFactor = computeDynamicBufferConversionFactor(0.001 * numFrames);
-    double finalConversionFactor = baseConversionFactor * dynamicBufferFactor * playbackSpeed;
+    const bool stretchActive = pitchPreservationEnabled && timeStretcher != nullptr &&
+        std::abs(playbackSpeed - 1.0) > kStretchBypassEpsilon;
 
-    // When using low-latency stream, numFrames is very low (~100) and the dynamic buffer scaling doesn't work with rounding.
-    // By keeping track of the "fractional" frames we can keep the error smaller.
-    framesToSubmit += numFrames * finalConversionFactor;
+    // FIFO read rate covers sample-rate conversion, PI-controller buffer balancing, and
+    // tempo. Without stretching, resampling the oversized buffer down to numFrames yields
+    // a speed+pitch-shifted output in one pass. With stretching, SoundTouch folds the
+    // tempo into the time axis (pitch preserved), and the resampler handles only
+    // inputSampleRate -> stream->getSampleRate().
+    double fifoReadFactor = baseConversionFactor * dynamicBufferFactor * playbackSpeed;
+
+    framesToSubmit += numFrames * fifoReadFactor;
     int32_t currentFramesToSubmit = std::round(framesToSubmit);
     framesToSubmit -= currentFramesToSubmit;
+
+    if (currentFramesToSubmit > stretchBufferFrameCapacity) {
+        currentFramesToSubmit = stretchBufferFrameCapacity;
+    }
 
     fifoBuffer->readNow(temporaryAudioBuffer.get(), currentFramesToSubmit * 2);
 
     auto outputArray = reinterpret_cast<int16_t *>(audioData);
+
+    if (stretchActive) {
+        if (std::abs(playbackSpeed - lastStretchTempo) > 1e-6) {
+            timeStretcher->setTempo(playbackSpeed);
+            lastStretchTempo = playbackSpeed;
+        }
+
+        const int32_t sampleCount = currentFramesToSubmit * 2;
+        constexpr float kInt16ToFloat = 1.0f / 32768.0f;
+        for (int32_t i = 0; i < sampleCount; ++i) {
+            stretchInputBuffer[i] = temporaryAudioBuffer[i] * kInt16ToFloat;
+        }
+        timeStretcher->putSamples(stretchInputBuffer.get(), currentFramesToSubmit);
+
+        const int32_t wantedOutputFrames = std::min(
+            (int32_t) std::round(currentFramesToSubmit / playbackSpeed),
+            stretchBufferFrameCapacity
+        );
+        const uint received = timeStretcher->receiveSamples(
+            stretchOutputBuffer.get(),
+            (uint) wantedOutputFrames
+        );
+        const int32_t gotFrames = (int32_t) received;
+
+        const int32_t gotSamples = gotFrames * 2;
+        for (int32_t i = 0; i < gotSamples; ++i) {
+            float s = stretchOutputBuffer[i] * 32768.0f;
+            if (s > 32767.0f) s = 32767.0f;
+            else if (s < -32768.0f) s = -32768.0f;
+            temporaryAudioBuffer[i] = (int16_t) std::lrintf(s);
+        }
+        for (int32_t i = gotSamples; i < wantedOutputFrames * 2; ++i) {
+            temporaryAudioBuffer[i] = 0;
+        }
+        currentFramesToSubmit = wantedOutputFrames;
+    }
+
     resampler.resample(temporaryAudioBuffer.get(), currentFramesToSubmit, outputArray, numFrames);
 
     latencyTuner->tune();

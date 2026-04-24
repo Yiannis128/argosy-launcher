@@ -628,6 +628,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     rumbleEnabled = builtinSettings.rumbleEnabled,
                     limitHotkeysToPlayer1 = builtinSettings.limitHotkeysToPlayer1,
                     fastForwardMode = builtinSettings.fastForwardMode,
+                    fastForwardPreservePitch = builtinSettings.fastForwardPreservePitch,
                     analogAsDpad = builtinSettings.analogAsDpad,
                     dpadAsAnalog = builtinSettings.dpadAsAnalog
                 )

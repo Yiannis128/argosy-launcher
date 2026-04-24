@@ -24,6 +24,7 @@
 #include <oboe/FifoBuffer.h>
 
 #include "resamplers/linearresampler.h"
+#include "SoundTouch.h"
 
 namespace libretrodroid {
 
@@ -55,6 +56,7 @@ public:
 public:
     void write(const int16_t *data, size_t frames);
     void setPlaybackSpeed(const double newPlaybackSpeed);
+    void setPitchPreservation(bool enabled);
     void resetBufferState();
     void updateTiming(int32_t newSampleRate, double newRefreshRate);
 
@@ -91,6 +93,16 @@ private:
     double playbackSpeed = 1.0;
 
     std::unique_ptr<AudioLatencySettings> audioLatencySettings;
+
+    // SoundTouch time-stretcher: preserves pitch when playbackSpeed != 1.0.
+    // Activated only when pitchPreservationEnabled is set AND the tempo actually
+    // differs from 1.0, so normal playback pays zero cost.
+    std::unique_ptr<soundtouch::SoundTouch> timeStretcher;
+    std::unique_ptr<float[]> stretchInputBuffer;
+    std::unique_ptr<float[]> stretchOutputBuffer;
+    int32_t stretchBufferFrameCapacity = 0;
+    bool pitchPreservationEnabled = false;
+    double lastStretchTempo = 1.0;
 };
 
 } // namespace libretrodroid

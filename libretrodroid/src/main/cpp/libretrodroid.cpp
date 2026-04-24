@@ -796,6 +796,13 @@ void LibretroDroid::setAudioEnabled(bool enabled) {
     audioEnabled = enabled;
 }
 
+void LibretroDroid::setPitchPreservationEnabled(bool enabled) {
+    pitchPreservationEnabled = enabled;
+    if (audio) {
+        audio->setPitchPreservation(enabled);
+    }
+}
+
 void LibretroDroid::setShaderConfig(ShaderManager::Config shaderConfig) {
     fragmentShaderConfig = std::move(shaderConfig);
     if (video) {
@@ -943,6 +950,7 @@ void LibretroDroid::afterGameLoad() {
         system_av_info.timing.fps,
         preferLowLatencyAudio
     );
+    audio->setPitchPreservation(pitchPreservationEnabled);
 
     updateAudioSampleRateMultiplier();
 

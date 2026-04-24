@@ -44,6 +44,10 @@ internal class BuiltinControlsSectionInput(
                 viewModel.setBuiltinFastForwardMode(next)
                 InputResult.handled(SoundType.TOGGLE)
             }
+            BuiltinControlsItem.PreserveFastForwardPitch -> {
+                viewModel.setBuiltinFastForwardPreservePitch(!state.builtinControls.fastForwardPreservePitch)
+                InputResult.handled(SoundType.TOGGLE)
+            }
             BuiltinControlsItem.AnalogAsDpad -> {
                 if (state.builtinVideo.isGlobalContext) {
                     viewModel.setBuiltinAnalogAsDpad(!state.builtinControls.analogAsDpad)

@@ -54,6 +54,7 @@ internal sealed class BuiltinControlsItem(
     data object Hotkeys : BuiltinControlsItem("hotkeys", "hotkeys")
     data object LimitHotkeysToPlayer1 : BuiltinControlsItem("limitHotkeys", "hotkeys")
     data object ToggleFastForward : BuiltinControlsItem("toggleFastForward", "hotkeys")
+    data object PreserveFastForwardPitch : BuiltinControlsItem("preserveFastForwardPitch", "hotkeys")
     data object ResetAllToGlobal : BuiltinControlsItem("resetAllToGlobal", "hotkeys", { it.showResetAll })
 
     companion object {
@@ -73,6 +74,7 @@ internal sealed class BuiltinControlsItem(
             Hotkeys,
             LimitHotkeysToPlayer1,
             ToggleFastForward,
+            PreserveFastForwardPitch,
             ResetAllToGlobal
         )
     }
@@ -254,6 +256,14 @@ fun BuiltinControlsSection(
                             else com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
                         )
                     }
+                )
+
+                BuiltinControlsItem.PreserveFastForwardPitch -> SwitchPreference(
+                    title = "Preserve Audio Pitch",
+                    subtitle = "Keep pitch steady while fast forwarding. Uses extra CPU; off by default",
+                    isEnabled = controlsState.fastForwardPreservePitch,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setBuiltinFastForwardPreservePitch(it) }
                 )
 
                 BuiltinControlsItem.ResetAllToGlobal -> {

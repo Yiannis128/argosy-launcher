@@ -77,6 +77,9 @@ data class InGameControlsState(
     val analogAsDpad: Boolean = false,
     val dpadAsAnalog: Boolean = false,
     val limitHotkeysToPlayer1: Boolean = true,
+    val fastForwardMode: com.nendo.argosy.data.local.entity.FastForwardMode =
+        com.nendo.argosy.data.local.entity.FastForwardMode.HOLD,
+    val fastForwardPreservePitch: Boolean = false,
     val controllerOrderCount: Int = 0
 )
 
@@ -85,6 +88,10 @@ sealed class InGameControlsAction {
     data class SetAnalogAsDpad(val enabled: Boolean) : InGameControlsAction()
     data class SetDpadAsAnalog(val enabled: Boolean) : InGameControlsAction()
     data class SetLimitHotkeys(val enabled: Boolean) : InGameControlsAction()
+    data class SetFastForwardMode(
+        val mode: com.nendo.argosy.data.local.entity.FastForwardMode
+    ) : InGameControlsAction()
+    data class SetFastForwardPreservePitch(val enabled: Boolean) : InGameControlsAction()
     data object ShowControllerOrder : InGameControlsAction()
     data object ShowInputMapping : InGameControlsAction()
     data object ShowHotkeys : InGameControlsAction()
@@ -118,6 +125,8 @@ internal sealed class InGameControlsItem(
     data object DpadAsAnalog : InGameControlsItem("dpadAsAnalog", "sticks")
     data object Hotkeys : InGameControlsItem("hotkeys", "hotkeys")
     data object LimitHotkeysToPlayer1 : InGameControlsItem("limitHotkeys", "hotkeys")
+    data object ToggleFastForward : InGameControlsItem("toggleFastForward", "hotkeys")
+    data object PreserveFastForwardPitch : InGameControlsItem("preserveFastForwardPitch", "hotkeys")
 
     companion object {
         val ALL = listOf(
@@ -130,7 +139,9 @@ internal sealed class InGameControlsItem(
             DpadAsAnalog,
             Header("hotkeysHeader", "hotkeys", "Hotkeys"),
             Hotkeys,
-            LimitHotkeysToPlayer1
+            LimitHotkeysToPlayer1,
+            ToggleFastForward,
+            PreserveFastForwardPitch
         )
     }
 }
@@ -214,6 +225,16 @@ fun InGameSettingsScreen(
             InGameControlsItem.DpadAsAnalog -> action(InGameControlsAction.SetDpadAsAnalog(!state.dpadAsAnalog))
             InGameControlsItem.Hotkeys -> showHotkeysModal = true
             InGameControlsItem.LimitHotkeysToPlayer1 -> action(InGameControlsAction.SetLimitHotkeys(!state.limitHotkeysToPlayer1))
+            InGameControlsItem.ToggleFastForward -> {
+                val next = if (state.fastForwardMode == com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE) {
+                    com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
+                } else {
+                    com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE
+                }
+                action(InGameControlsAction.SetFastForwardMode(next))
+            }
+            InGameControlsItem.PreserveFastForwardPitch ->
+                action(InGameControlsAction.SetFastForwardPreservePitch(!state.fastForwardPreservePitch))
             else -> {}
         }
     }
@@ -532,6 +553,27 @@ private fun InGameControlsSection(
                     isEnabled = state.limitHotkeysToPlayer1,
                     isFocused = isFocused(item),
                     onToggle = { onAction(InGameControlsAction.SetLimitHotkeys(it)) }
+                )
+
+                InGameControlsItem.ToggleFastForward -> SwitchPreference(
+                    title = "Toggle Fast Forward",
+                    subtitle = "Press once to start, again to stop (off = hold to fast forward)",
+                    isEnabled = state.fastForwardMode == com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE,
+                    isFocused = isFocused(item),
+                    onToggle = { enabled ->
+                        onAction(InGameControlsAction.SetFastForwardMode(
+                            if (enabled) com.nendo.argosy.data.local.entity.FastForwardMode.TOGGLE
+                            else com.nendo.argosy.data.local.entity.FastForwardMode.HOLD
+                        ))
+                    }
+                )
+
+                InGameControlsItem.PreserveFastForwardPitch -> SwitchPreference(
+                    title = "Preserve Audio Pitch",
+                    subtitle = "Keep pitch steady while fast forwarding. Uses extra CPU; off by default",
+                    isEnabled = state.fastForwardPreservePitch,
+                    isFocused = isFocused(item),
+                    onToggle = { onAction(InGameControlsAction.SetFastForwardPreservePitch(it)) }
                 )
             }
         }

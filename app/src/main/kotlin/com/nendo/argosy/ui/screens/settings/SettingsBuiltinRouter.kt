@@ -363,6 +363,13 @@ internal fun routeSetBuiltinFastForwardMode(vm: SettingsViewModel, mode: com.nen
     }
 }
 
+internal fun routeSetBuiltinFastForwardPreservePitch(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(fastForwardPreservePitch = enabled)) }
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setBuiltinFastForwardPreservePitch(enabled)
+    }
+}
+
 internal fun routeSetBuiltinAnalogAsDpad(vm: SettingsViewModel, enabled: Boolean) {
     vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(analogAsDpad = enabled)) }
     vm.viewModelScope.launch {

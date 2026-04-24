@@ -34,6 +34,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_FAST_FORWARD_ENABLED = booleanPreferencesKey("builtin_fast_forward_enabled")
         val BUILTIN_FAST_FORWARD_SPEED = intPreferencesKey("builtin_fast_forward_speed")
         val BUILTIN_FAST_FORWARD_MODE = stringPreferencesKey("builtin_fast_forward_mode")
+        val BUILTIN_FAST_FORWARD_PRESERVE_PITCH = booleanPreferencesKey("builtin_fast_forward_preserve_pitch")
         val BUILTIN_ROTATION = intPreferencesKey("builtin_rotation")
         val BUILTIN_OVERSCAN_CROP = intPreferencesKey("builtin_overscan_crop")
         val BUILTIN_REWIND_ENABLED = booleanPreferencesKey("builtin_rewind_enabled")
@@ -71,6 +72,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             fastForwardEnabled = prefs[Keys.BUILTIN_FAST_FORWARD_ENABLED] ?: true,
             fastForwardSpeed = prefs[Keys.BUILTIN_FAST_FORWARD_SPEED] ?: 4,
             fastForwardMode = FastForwardMode.fromString(prefs[Keys.BUILTIN_FAST_FORWARD_MODE]),
+            fastForwardPreservePitch = prefs[Keys.BUILTIN_FAST_FORWARD_PRESERVE_PITCH] ?: false,
             rotation = prefs[Keys.BUILTIN_ROTATION] ?: -1,
             overscanCrop = prefs[Keys.BUILTIN_OVERSCAN_CROP] ?: 0,
             rewindEnabled = prefs[Keys.BUILTIN_REWIND_ENABLED] ?: true,
@@ -182,6 +184,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinFastForwardMode(mode: FastForwardMode) {
         dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_MODE] = mode.name }
+    }
+
+    suspend fun setBuiltinFastForwardPreservePitch(enabled: Boolean) {
+        dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_PRESERVE_PITCH] = enabled }
     }
 
     suspend fun setBuiltinRotation(rotation: Int) {
