@@ -420,7 +420,7 @@ class GameLauncher @Inject constructor(
         Logger.debug(TAG, "[BuiltIn] Preparing launch: rom=${romFile.name}, platform=${game.platformSlug}")
         lastCoreDownloadError = null
 
-        val selectedCoreId = userPreferencesRepository.getBuiltinCoreSelections().first()[game.platformSlug]
+        val selectedCoreId = resolveBuiltinCoreId(game)
         var corePath = libretroCoreMgr.getCorePathForPlatform(game.platformSlug, selectedCoreId)
         if (corePath == null) {
             Logger.info(TAG, "[BuiltIn] Core not downloaded for ${game.platformSlug} (selected=$selectedCoreId), attempting download...")
@@ -859,6 +859,35 @@ class GameLauncher @Inject constructor(
         } catch (e: Exception) {
             Logger.warn(TAG, "Failed to kill $packageName", e)
         }
+    }
+
+    /**
+     * Core selection for the built-in libretro path. Walks: game override ->
+     * platform default -> legacy built-in pref -> registry default. Accepts
+     * any non-empty core id; the built-in path downloads from the libretro
+     * buildbot, so membership in [com.nendo.argosy.libretro.LibretroCoreRegistry]
+     * is a metadata hint, not a gate. If the chosen id isn't a real core, the
+     * download will 404 and surface via [lastCoreDownloadError].
+     */
+    private suspend fun resolveBuiltinCoreId(game: GameEntity): String? {
+        emulatorConfigDao.getByGameId(game.id)?.coreName?.takeIf { it.isNotBlank() }?.let {
+            Logger.debug(TAG, "[BuiltIn] core selection: game override -> $it")
+            return it
+        }
+        emulatorConfigDao.getDefaultForPlatform(game.platformId)?.coreName
+            ?.takeIf { it.isNotBlank() }?.let {
+                Logger.debug(TAG, "[BuiltIn] core selection: platform default -> $it")
+                return it
+            }
+        userPreferencesRepository.getBuiltinCoreSelections().first()[game.platformSlug]
+            ?.takeIf { it.isNotBlank() }?.let {
+                Logger.debug(TAG, "[BuiltIn] core selection: legacy pref -> $it")
+                return it
+            }
+        val default = com.nendo.argosy.libretro.LibretroCoreRegistry
+            .getDefaultCoreForPlatform(game.platformSlug)?.coreId
+        Logger.debug(TAG, "[BuiltIn] core selection: registry default -> $default")
+        return default
     }
 
     private suspend fun resolveCoreName(game: GameEntity): String? {

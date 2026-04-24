@@ -705,6 +705,12 @@ class LibretroActivity : ComponentActivity() {
                     } else null
                     activeMenuHandler = InGameMenu(
                         gameName = gameName,
+                        coreName = resolvedCoreId?.let { id ->
+                            LibretroCoreRegistry.getCoreById(id)?.displayName
+                                ?: com.nendo.argosy.data.emulator.EmulatorRegistry
+                                    .getCoresForPlatform(platformSlug).firstOrNull { it.id == id }?.displayName
+                                ?: id
+                        },
                         cheatsAvailable = !hardcoreMode && PlatformWeightRegistry.supportsCheats(platformSlug),
                         statesSupported = statesSupported && !hardcoreMode,
                         focusedIndex = menuFocusIndex,

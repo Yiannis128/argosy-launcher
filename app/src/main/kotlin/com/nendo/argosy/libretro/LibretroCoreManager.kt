@@ -63,12 +63,28 @@ class LibretroCoreManager @Inject constructor(
         platformSlug: String,
         selectedCoreId: String?
     ): LibretroCoreRegistry.CoreInfo? {
-        val selected = selectedCoreId?.let { LibretroCoreRegistry.getCoreById(it) }
-        return if (selected != null && platformSlug in selected.platforms) {
-            selected
-        } else {
-            LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug)
+        if (selectedCoreId == null) {
+            return LibretroCoreRegistry.getDefaultCoreForPlatform(platformSlug)
         }
+        val known = LibretroCoreRegistry.getCoreById(selectedCoreId)
+        if (known != null && platformSlug in known.platforms) return known
+        // Registry is curated metadata (BIOS reqs, size hints, isDefault) not
+        // a capability gate -- Argosy downloads cores from the libretro
+        // buildbot, so the real constraint is whether buildbot ships a
+        // matching ABI. Synthesize a CoreInfo so the download path can run
+        // against an arbitrary libretro core id; display-name falls back to
+        // EmulatorRegistry's broader list.
+        val displayName = com.nendo.argosy.data.emulator.EmulatorRegistry
+            .getCoresForPlatform(platformSlug)
+            .firstOrNull { it.id == selectedCoreId }
+            ?.displayName
+            ?: selectedCoreId
+        return LibretroCoreRegistry.CoreInfo(
+            coreId = selectedCoreId,
+            fileName = "${selectedCoreId}_libretro_android.so",
+            displayName = displayName,
+            platforms = setOf(platformSlug)
+        )
     }
 
     fun getCorePathForCoreId(coreId: String): String? {

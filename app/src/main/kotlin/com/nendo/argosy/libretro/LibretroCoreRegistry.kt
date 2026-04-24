@@ -14,7 +14,10 @@ object LibretroCoreRegistry {
         val fileName: String,
         val displayName: String,
         val platforms: Set<String>,
-        val estimatedSizeBytes: Long,
+        // 0 means "unknown" -- synthesized CoreInfos for buildbot cores we
+        // don't have metadata for; downloadCore skips the size-floor sanity
+        // check in that case.
+        val estimatedSizeBytes: Long = 0L,
         val requiresBios: List<String> = emptyList(),
         val isDefault: Boolean = false,
         val netplaySupport: NetplaySupportLevel = NetplaySupportLevel.UNSUPPORTED

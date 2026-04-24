@@ -70,6 +70,7 @@ data class NetplayQualityInfo(
 @Composable
 fun InGameMenu(
     gameName: String,
+    coreName: String? = null,
     cheatsAvailable: Boolean = false,
     statesSupported: Boolean = false,
     focusedIndex: Int,
@@ -192,14 +193,28 @@ fun InGameMenu(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
-                Text(
-                    text = gameName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = gameName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2
+                    )
+                    if (!coreName.isNullOrBlank()) {
+                        Text(
+                            text = coreName,
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                            maxLines = 1
+                        )
+                    }
+                }
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
