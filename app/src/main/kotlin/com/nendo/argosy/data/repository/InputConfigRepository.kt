@@ -9,6 +9,7 @@ import com.nendo.argosy.data.local.entity.ControllerMappingEntity
 import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.data.local.entity.HotkeyAction
 import com.nendo.argosy.data.local.entity.HotkeyEntity
+import com.nendo.argosy.libretro.HotkeyManager
 import com.nendo.argosy.ui.input.ControllerDetector
 import com.nendo.argosy.ui.input.DetectedLayout
 import com.nendo.argosy.util.Logger
@@ -294,7 +295,8 @@ class InputConfigRepository @Inject constructor(
         enabled: Boolean = true,
         holdMs: Long = 0
     ) = withContext(Dispatchers.IO) {
-        val comboJson = encodeComboJson(keyCodes)
+        val canonicalKeyCodes = HotkeyManager.canonicalizeCombo(keyCodes)
+        val comboJson = encodeComboJson(canonicalKeyCodes)
 
         val existing = hotkeyDao.getByActionAndController(action, controllerId)
         if (existing != null) {
@@ -315,7 +317,7 @@ class InputConfigRepository @Inject constructor(
                 )
             )
         }
-        Logger.info(TAG, "Set hotkey for $action: ${keyCodes.map { KeyEvent.keyCodeToString(it) }}")
+        Logger.info(TAG, "Set hotkey for $action: ${canonicalKeyCodes.map { KeyEvent.keyCodeToString(it) }}")
     }
 
     suspend fun setHotkeyHoldMs(

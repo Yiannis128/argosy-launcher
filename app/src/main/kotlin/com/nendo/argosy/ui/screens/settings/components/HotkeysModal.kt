@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -96,6 +99,8 @@ fun HotkeysModal(
         return hotkeys.find { it.action == action }?.holdMs ?: 0L
     }
 
+    val conflictingActions = remember(hotkeys) { findConflictingActions(hotkeys) }
+
     fun cycleHoldDelay(action: HotkeyAction) {
         val currentHoldMs = getHoldMsForAction(action)
         val currentIdx = HOLD_DELAY_CYCLE.indexOf(currentHoldMs).coerceAtLeast(0)
@@ -103,7 +108,7 @@ fun HotkeysModal(
         scope.launch { onSetHoldMs(action, nextHoldMs) }
     }
 
-    DisposableEffect(state, gamepadInputHandler) {
+    DisposableEffect(state, gamepadInputHandler, hotkeys) {
         val listener: (KeyEvent) -> Boolean = { event ->
             val device = event.device
 
@@ -179,6 +184,7 @@ fun HotkeysModal(
             focusedIndex = currentState.focusedIndex,
             getComboForAction = ::getComboForAction,
             getHoldMsForAction = ::getHoldMsForAction,
+            conflictingActions = conflictingActions,
             onSelectAction = { action -> state = HotkeysState.Recording(action = action) },
             onCycleHoldDelay = ::cycleHoldDelay,
             onDismiss = onDismiss
@@ -214,6 +220,7 @@ private fun ActionListContent(
     focusedIndex: Int,
     getComboForAction: (HotkeyAction) -> List<Int>,
     getHoldMsForAction: (HotkeyAction) -> Long,
+    conflictingActions: Set<HotkeyAction>,
     onSelectAction: (HotkeyAction) -> Unit,
     onCycleHoldDelay: (HotkeyAction) -> Unit,
     onDismiss: () -> Unit
@@ -225,7 +232,7 @@ private fun ActionListContent(
     Modal(
         title = "Hotkeys",
         subtitle = "Configure button shortcuts",
-        baseWidth = 450.dp,
+        baseWidth = 520.dp,
         onDismiss = onDismiss,
         footerHints = listOf(
             InputButton.A to "Record",
@@ -236,7 +243,9 @@ private fun ActionListContent(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.heightIn(max = 400.dp),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .heightIn(max = 400.dp),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
             itemsIndexed(HOTKEY_ACTIONS) { index, action ->
@@ -247,6 +256,7 @@ private fun ActionListContent(
                     combo = combo,
                     holdMs = holdMs,
                     isFocused = index == focusedIndex,
+                    isConflicting = action in conflictingActions,
                     onClick = { onSelectAction(action) },
                     onSecondaryClick = { onCycleHoldDelay(action) }
                 )
@@ -261,23 +271,25 @@ private fun HotkeyRow(
     combo: List<Int>,
     holdMs: Long,
     isFocused: Boolean,
+    isConflicting: Boolean,
     onClick: () -> Unit,
     onSecondaryClick: () -> Unit
 ) {
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
+    val backgroundColor = when {
+        isFocused && isConflicting -> MaterialTheme.colorScheme.errorContainer
+        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        else -> Color.Transparent
     }
-    val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val borderColor = when {
+        isConflicting -> MaterialTheme.colorScheme.error
+        isFocused -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
-    val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
+    val contentColor = when {
+        isFocused && isConflicting -> MaterialTheme.colorScheme.onErrorContainer
+        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isConflicting -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurface
     }
     val secondaryAlpha = if (isFocused) 1.0f else 0.7f
 
@@ -302,12 +314,23 @@ private fun HotkeyRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (holdMs > 0L) {
-                Text(
-                    text = "Hold ${holdMs / 1000}s",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = secondaryAlpha),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickableNoFocus(onClick = onSecondaryClick)
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = "Hold delay",
+                        modifier = Modifier.size(14.dp),
+                        tint = contentColor.copy(alpha = secondaryAlpha)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                    Text(
+                        text = "${holdMs / 1000}s",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = contentColor.copy(alpha = secondaryAlpha)
+                    )
+                }
                 Text(
                     text = "·",
                     style = MaterialTheme.typography.bodySmall,
@@ -465,6 +488,35 @@ private fun getActionDisplayName(action: HotkeyAction): String {
         HotkeyAction.REWIND -> "Rewind"
         HotkeyAction.QUICK_SUSPEND -> "Quick Suspend"
     }
+}
+
+/**
+ * A binding is conflicting when two or more hotkeys map to the same combo and
+ * cannot be resolved by the tap-vs-hold split in [HotkeyManager.onKeyDown].
+ * Legal pairs: exactly one instant (holdMs == 0) and one hold (holdMs > 0)
+ * sharing a combo. Anything else (2+ instant, 2+ hold, or 3+ total) is flagged.
+ */
+private fun findConflictingActions(hotkeys: List<HotkeyEntity>): Set<HotkeyAction> {
+    val grouped = hotkeys
+        .filter { it.buttonComboJson.isNotBlank() }
+        .mapNotNull { entity ->
+            val combo = parseComboJson(entity.buttonComboJson)
+            if (combo.isEmpty()) return@mapNotNull null
+            val key = HotkeyManager.canonicalizeCombo(combo) to entity.controllerId
+            key to entity
+        }
+        .groupBy({ it.first }, { it.second })
+
+    val result = mutableSetOf<HotkeyAction>()
+    for ((_, group) in grouped) {
+        if (group.size < 2) continue
+        val instants = group.count { it.holdMs == 0L }
+        val holds = group.count { it.holdMs > 0L }
+        if (group.size > 2 || instants > 1 || holds > 1) {
+            result.addAll(group.map { it.action })
+        }
+    }
+    return result
 }
 
 private fun parseComboJson(jsonStr: String): List<Int> {

@@ -216,25 +216,40 @@ class HotkeyManager(
          */
         private const val TAP_THRESHOLD_MS = 200L
 
-        private val HOTKEY_KEYS = setOf(
-            KeyEvent.KEYCODE_BUTTON_A,
-            KeyEvent.KEYCODE_BUTTON_B,
-            KeyEvent.KEYCODE_BUTTON_C,
-            KeyEvent.KEYCODE_BUTTON_X,
-            KeyEvent.KEYCODE_BUTTON_Y,
-            KeyEvent.KEYCODE_BUTTON_Z,
-            KeyEvent.KEYCODE_BUTTON_L1,
-            KeyEvent.KEYCODE_BUTTON_R1,
+        private val HOTKEY_ORDER: List<Int> = listOf(
             KeyEvent.KEYCODE_BUTTON_L2,
-            KeyEvent.KEYCODE_BUTTON_R2,
-            KeyEvent.KEYCODE_BUTTON_START,
-            KeyEvent.KEYCODE_BUTTON_SELECT,
+            KeyEvent.KEYCODE_BUTTON_L1,
             KeyEvent.KEYCODE_BUTTON_THUMBL,
+            KeyEvent.KEYCODE_BUTTON_SELECT,
+            KeyEvent.KEYCODE_BUTTON_START,
             KeyEvent.KEYCODE_BUTTON_THUMBR,
+            KeyEvent.KEYCODE_BUTTON_R1,
+            KeyEvent.KEYCODE_BUTTON_R2,
+            KeyEvent.KEYCODE_BUTTON_Y,
+            KeyEvent.KEYCODE_BUTTON_X,
+            KeyEvent.KEYCODE_BUTTON_B,
+            KeyEvent.KEYCODE_BUTTON_A,
+            KeyEvent.KEYCODE_BUTTON_C,
+            KeyEvent.KEYCODE_BUTTON_Z,
             KeyEvent.KEYCODE_BACK
         )
 
+        private val HOTKEY_KEYS: Set<Int> = HOTKEY_ORDER.toSet()
+
         fun isHotkeyKey(keyCode: Int): Boolean = keyCode in HOTKEY_KEYS
+
+        /**
+         * Canonical left-to-right ordering of a combo so Start+Select and
+         * Select+Start persist and render identically. Unknown keycodes (not in
+         * [HOTKEY_ORDER]) sort last by numeric value.
+         */
+        fun canonicalizeCombo(keyCodes: List<Int>): List<Int> =
+            keyCodes.distinct().sortedWith(
+                compareBy(
+                    { HOTKEY_ORDER.indexOf(it).let { idx -> if (idx >= 0) idx else Int.MAX_VALUE } },
+                    { it }
+                )
+            )
 
         fun getKeyName(keyCode: Int): String {
             return when (keyCode) {
@@ -259,7 +274,7 @@ class HotkeyManager(
 
         fun formatCombo(keyCodes: List<Int>): String {
             if (keyCodes.isEmpty()) return "Not set"
-            return keyCodes.joinToString(" + ") { getKeyName(it) }
+            return canonicalizeCombo(keyCodes).joinToString(" + ") { getKeyName(it) }
         }
     }
 }
