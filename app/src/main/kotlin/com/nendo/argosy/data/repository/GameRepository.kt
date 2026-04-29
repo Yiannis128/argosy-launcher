@@ -141,8 +141,8 @@ class GameRepository @Inject constructor(
     }
 
     private suspend fun findPrimaryRomInFolder(folder: File, platformSlug: String): File? {
-        val rootFiles = folder.listFiles()?.filter { it.isFile } ?: return null
-        if (rootFiles.isEmpty()) return null
+        val rootEntries = folder.listFiles() ?: return null
+        val rootFiles = rootEntries.filter { it.isFile }
 
         val m3uFile = rootFiles.find { it.extension.lowercase() == "m3u" }
         if (m3uFile != null) {
@@ -156,9 +156,25 @@ class GameRepository @Inject constructor(
             .filter { it.isNotEmpty() }
             .toSet()
 
-        return rootFiles
+        val topLevelMatch = rootFiles
             .filter { it.extension.lowercase() in validExtensions }
             .maxByOrNull { it.length() }
+        if (topLevelMatch != null) return topLevelMatch
+
+        // Wii U Loadiine layout: <Title>/code/<title>.rpx (+ content/, meta/).
+        // Cemu launches the .rpx directly and reads the surrounding directories
+        // by relative path, so we have to drill one level into code/ to find it.
+        if (platformSlug == "wiiu") {
+            val codeDir = rootEntries.firstOrNull { it.isDirectory && it.name.equals("code", ignoreCase = true) }
+            if (codeDir != null) {
+                val rpx = codeDir.listFiles()
+                    ?.filter { it.isFile && it.extension.equals("rpx", ignoreCase = true) }
+                    ?.maxByOrNull { it.length() }
+                if (rpx != null) return rpx
+            }
+        }
+
+        return null
     }
 
     private suspend fun resolveFileFallback(originalPath: String, platformSlug: String): String? {
