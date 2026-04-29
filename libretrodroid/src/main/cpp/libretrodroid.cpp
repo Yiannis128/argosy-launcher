@@ -223,7 +223,7 @@ size_t LibretroDroid::getMemorySize(unsigned int memoryType) {
 
 void LibretroDroid::onSurfaceChanged(unsigned int width, unsigned int height) {
     LOGD("Performing libretrodroid onSurfaceChanged");
-    video->updateScreenSize(width, height);
+    if (video) video->updateScreenSize(width, height);
 }
 
 void LibretroDroid::onSurfaceCreated() {
@@ -483,18 +483,10 @@ void LibretroDroid::loadGameFromVirtualFiles(std::vector<VFSFile> virtualFiles) 
 void LibretroDroid::destroy() {
     LOGD("Performing libretrodroid destroy");
 
-    if (Environment::getInstance().getHwContextDestroy() != nullptr) {
-        if (video && video->isHWAccelerated()) {
-            video->bindHWContext();
-        }
-        Environment::getInstance().getHwContextDestroy()();
-        if (video && video->isHWAccelerated()) {
-            video->bindMainContext();
-        }
+    if (core) {
+        core->retro_unload_game();
+        core->retro_deinit();
     }
-
-    core->retro_unload_game();
-    core->retro_deinit();
 
     video = nullptr;
     core = nullptr;
@@ -764,7 +756,7 @@ float LibretroDroid::getAspectRatio() {
 }
 
 void LibretroDroid::refreshAspectRatio() {
-    video->updateAspectRatio(getAspectRatio());
+    if (video) video->updateAspectRatio(getAspectRatio());
 }
 
 void LibretroDroid::setAspectRatioOverride(float ratio) {

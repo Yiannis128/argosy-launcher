@@ -7,8 +7,6 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -553,6 +551,9 @@ class LibretroActivity : ComponentActivity() {
                                 retroView.setBackgroundFrame(bitmap)
                             }
                         }
+                        videoSettings.applyAspectRatio()
+                        videoSettings.applyOverscanCrop()
+                        videoSettings.applyRotation()
                     }
                     is GLRetroView.GLRetroEvents.FrameRendered -> {
                         if (!firstFrameRendered) {
@@ -676,12 +677,11 @@ class LibretroActivity : ComponentActivity() {
         container.post {
             videoSettings.setScreenSize(container.width, container.height)
             Log.d(TAG, "Container size: ${container.width}x${container.height}, aspectRatioMode: ${videoSettings.aspectRatioMode}")
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d(TAG, "Applying aspect ratio after delay: ${videoSettings.aspectRatioMode}")
+            if (coreLoadedSuccessfully) {
                 videoSettings.applyAspectRatio()
                 videoSettings.applyOverscanCrop()
                 videoSettings.applyRotation()
-            }, 500)
+            }
         }
     }
 
@@ -1718,6 +1718,11 @@ class LibretroActivity : ComponentActivity() {
             statesSupported = false
             return
         }
+        if (platformSlug in PLATFORMS_WITHOUT_STATE_SUPPORT) {
+            statesSupported = false
+            Log.d(TAG, "State support disabled for platform=$platformSlug")
+            return
+        }
         try {
             statesSupported = retroView.getSerializeSize() > 0
         } catch (_: Exception) {
@@ -2167,5 +2172,7 @@ class LibretroActivity : ComponentActivity() {
             "psp",
             "3do"
         )
+
+        private val PLATFORMS_WITHOUT_STATE_SUPPORT = setOf("psp")
     }
 }
