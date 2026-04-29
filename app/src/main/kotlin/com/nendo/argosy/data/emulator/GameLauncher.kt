@@ -1306,12 +1306,6 @@ class GameLauncher @Inject constructor(
     }
 
     private fun getFileUri(file: File): Uri {
-        // Resolve to canonical path so symlinks like /storage/self/primary are
-        // expanded to the real /storage/emulated/<userId>/... path. The symlink
-        // form is unreliable on multi-user devices and OTG-as-internal setups,
-        // and embedding it in the URI causes receivers to fail with errors like
-        // "Requested filename 'content://.../external/...'" when they try to
-        // resolve the URI back to a file.
         val resolved = try { file.canonicalFile } catch (_: Exception) { file }
         return try {
             FileProvider.getUriForFile(

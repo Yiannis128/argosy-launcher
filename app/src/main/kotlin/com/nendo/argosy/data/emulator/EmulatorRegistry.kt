@@ -402,9 +402,6 @@ object EmulatorRegistry {
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.pixelrespawn.linkboy"
         ),
-        // Closed-source paid Unity app by ZEMU Software Inc. No documented intent API.
-        // Registered for recognition + best-effort launch; intentionally NOT in
-        // getRecommendedEmulators because the user has to pay for it.
         EmulatorDef(
             id = "super_zsnes",
             packageName = "com.zsnes.superzsnes",

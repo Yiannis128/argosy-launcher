@@ -161,9 +161,6 @@ class GameRepository @Inject constructor(
             .maxByOrNull { it.length() }
         if (topLevelMatch != null) return topLevelMatch
 
-        // Wii U Loadiine layout: <Title>/code/<title>.rpx (+ content/, meta/).
-        // Cemu launches the .rpx directly and reads the surrounding directories
-        // by relative path, so we have to drill one level into code/ to find it.
         if (platformSlug == "wiiu") {
             val codeDir = rootEntries.firstOrNull { it.isDirectory && it.name.equals("code", ignoreCase = true) }
             if (codeDir != null) {
