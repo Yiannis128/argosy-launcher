@@ -152,17 +152,19 @@ class RetroArchConfigParser @Inject constructor() {
 
         val baseDirs = getBasePathAlternatives(baseDir)
 
-        if (config == null && coreName != null) {
+        val saveDir = coreName?.let { EmulatorRegistry.getRetroArchSaveDirName(it) }
+
+        if (config == null && saveDir != null) {
             for (base in baseDirs) {
                 val baseDirFile = File(base)
-                val coreDir = File(base, coreName)
+                val coreDir = File(base, saveDir)
 
                 if (coreDir.exists() && coreDir.isDirectory) {
                     paths.add(coreDir.absolutePath)
-                    Log.d(TAG, "resolveSavePaths: config missing, found core folder $coreName")
+                    Log.d(TAG, "resolveSavePaths: config missing, found core folder $saveDir")
                 } else if (baseDirFile.exists() && hasCoreFolders(baseDirFile)) {
                     paths.add(coreDir.absolutePath)
-                    Log.d(TAG, "resolveSavePaths: config missing, base has core folders, using $coreName")
+                    Log.d(TAG, "resolveSavePaths: config missing, base has core folders, using $saveDir")
                 } else {
                     paths.add(base)
                     Log.d(TAG, "resolveSavePaths: config missing, no core folders found, using flat")
@@ -172,7 +174,7 @@ class RetroArchConfigParser @Inject constructor() {
         }
 
         for (base in baseDirs) {
-            paths.add(buildSortedPath(base, contentDirName, coreName, sortByContentDir, sortByCore))
+            paths.add(buildSortedPath(base, contentDirName, saveDir, sortByContentDir, sortByCore))
         }
 
         Log.d(TAG, "resolveSavePaths: ${paths.first()} (sortByContentDir=$sortByContentDir, sortByCore=$sortByCore)")

@@ -585,7 +585,11 @@ object SavePathRegistry {
         filesDir: String? = null
     ): List<String> {
         val canonical = PlatformDefinitions.getCanonicalSlug(platformId)
-        val core = if (config.usesCore) getRetroArchCore(canonical) else null
+        val core = if (config.usesCore) {
+            getRetroArchCore(canonical)?.let { EmulatorRegistry.getRetroArchSaveDirName(it) }
+        } else {
+            null
+        }
 
         val paths = config.defaultPaths.map { path ->
             expandPath(path, core = core, filesDir = filesDir)

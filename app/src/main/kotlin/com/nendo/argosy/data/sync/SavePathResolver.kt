@@ -542,6 +542,7 @@ class SavePathResolver @Inject constructor(
         val raConfig = retroArchConfigParser.parse(packageName)
         val coreName = SavePathRegistry.getRetroArchCore(platformSlug, raConfig?.lastLoadedCore)
             ?: return null
+        val saveDirName = EmulatorRegistry.getRetroArchSaveDirName(coreName)
         val saveConfig = SavePathRegistry.getConfig(emulatorId) ?: return null
         val extension = saveConfig.saveExtensions.firstOrNull() ?: "srm"
 
@@ -551,7 +552,7 @@ class SavePathResolver @Inject constructor(
             }
             raConfig?.savefileDirectory != null -> {
                 if (raConfig.sortByCore) {
-                    "${raConfig.savefileDirectory}/$coreName"
+                    "${raConfig.savefileDirectory}/$saveDirName"
                 } else {
                     raConfig.savefileDirectory
                 }

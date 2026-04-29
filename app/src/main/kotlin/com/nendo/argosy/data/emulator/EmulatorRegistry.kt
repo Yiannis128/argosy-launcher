@@ -87,7 +87,8 @@ sealed class ExtraValue {
 
 data class RetroArchCore(
     val id: String,
-    val displayName: String
+    val displayName: String,
+    val saveDirName: String? = null
 )
 
 data class ExtensionOption(
@@ -400,6 +401,16 @@ object EmulatorRegistry {
                 authority = "emulator"
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.pixelrespawn.linkboy"
+        ),
+        // Closed-source paid Unity app by ZEMU Software Inc. No documented intent API.
+        // Registered for recognition + best-effort launch; intentionally NOT in
+        // getRecommendedEmulators because the user has to pay for it.
+        EmulatorDef(
+            id = "super_zsnes",
+            packageName = "com.zsnes.superzsnes",
+            displayName = "SUPER ZSNES",
+            supportedPlatforms = setOf("snes", "sfc"),
+            downloadUrl = "https://play.google.com/store/apps/details?id=com.zsnes.superzsnes"
         ),
 
         // NOTE: Lemuroid does NOT support intent launching from external apps
@@ -796,7 +807,7 @@ object EmulatorRegistry {
         "gb" to listOf("gambatte", "mgba", "sameboy", "gearboy", "tgbdual"),
         "gbc" to listOf("gambatte", "mgba", "sameboy", "gearboy", "tgbdual"),
         "gba" to listOf("mgba", "vba", "gpsp"),
-        "nds" to listOf("melonds", "desmume"),
+        "nds" to listOf("melondsds", "melonds", "desmume"),
         "3ds" to listOf("citra"),
         "genesis" to listOf("genesis_plus_gx", "picodrive"),
         "sms" to listOf("genesis_plus_gx", "picodrive", "gearsystem"),
@@ -870,7 +881,7 @@ object EmulatorRegistry {
             RetroArchCore("gpsp", "gpSP")
         ),
         "nds" to listOf(
-            RetroArchCore("melondsds", "melonDS DS"),
+            RetroArchCore("melondsds", "melonDS DS", saveDirName = "melonDS DS"),
             RetroArchCore("melonds", "melonDS"),
             RetroArchCore("desmume", "DeSmuME"),
             RetroArchCore("desmume2015", "DeSmuME 2015"),
@@ -1018,6 +1029,21 @@ object EmulatorRegistry {
         val canonical = PlatformDefinitions.getCanonicalSlug(platformId)
         return platformCores[canonical]?.firstOrNull()
     }
+
+    private val coreSaveDirByCoreId: Map<String, String> by lazy {
+        platformCores.values
+            .flatten()
+            .mapNotNull { core -> core.saveDirName?.let { core.id to it } }
+            .toMap()
+    }
+
+    /**
+     * RetroArch creates per-core save subdirectories by display name, not core id, for some
+     * cores (e.g. melondsds saves to "saves/melonDS DS"). Returns the on-disk save folder
+     * name for a given core id, or the id itself when no override is registered.
+     */
+    fun getRetroArchSaveDirName(coreId: String): String =
+        coreSaveDirByCoreId[coreId] ?: coreId
 
     private val emulatorFamilies = listOf(
         EmulatorFamily(
