@@ -62,7 +62,7 @@ class RetroArchConfigParser @Inject constructor() {
         return parseFile(configFile)
     }
 
-    private fun parseFile(file: File): RetroArchSaveConfig {
+    internal fun parseFile(file: File): RetroArchSaveConfig {
         val config = mutableMapOf<String, String>()
 
         try {
@@ -83,10 +83,8 @@ class RetroArchConfigParser @Inject constructor() {
             it != "default" && it.isNotBlank()
         }
         val savefilesInContentDir = config["savefiles_in_content_dir"] == "true"
-        // sort_savefiles_enable = "Sort into folders by Core Name"
-        val sortByCore = config["sort_savefiles_enable"] == "true"
-        // sort_savefiles_by_content_enable = "Sort into folders by Content Directory" (ROM's parent folder)
-        val sortByContentDir = config["sort_savefiles_by_content_enable"] == "true"
+        val sortByCore = config["sort_savefiles_enable"]?.equals("true", ignoreCase = true) ?: true
+        val sortByContentDir = config["sort_savefiles_by_content_enable"]?.equals("true", ignoreCase = true) ?: false
         val lastLoadedCore = config["libretro_path"]
             ?.takeIf { it.isNotBlank() && it != "default" }
             ?.let { File(it).nameWithoutExtension.removeSuffix("_android").removeSuffix("_libretro") }
@@ -236,7 +234,7 @@ class RetroArchConfigParser @Inject constructor() {
         return parseStateConfigFromFile(configFile)
     }
 
-    private fun parseStateConfigFromFile(file: File): RetroArchStateConfig {
+    internal fun parseStateConfigFromFile(file: File): RetroArchStateConfig {
         val config = mutableMapOf<String, String>()
 
         try {
@@ -257,8 +255,8 @@ class RetroArchConfigParser @Inject constructor() {
             it != "default" && it.isNotBlank()
         }
         val savestatesInContentDir = config["savestates_in_content_dir"] == "true"
-        val sortByCore = config["sort_savestates_enable"] == "true"
-        val sortByContentDir = config["sort_savestates_by_content_enable"] == "true"
+        val sortByCore = config["sort_savestates_enable"]?.equals("true", ignoreCase = true) ?: true
+        val sortByContentDir = config["sort_savestates_by_content_enable"]?.equals("true", ignoreCase = true) ?: false
 
         return RetroArchStateConfig(
             savestateDirectory = savestateDirectory,

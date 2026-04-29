@@ -1,17 +1,30 @@
 package com.nendo.argosy.data.emulator
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class RetroArchConfigParserTest {
+
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     private lateinit var parser: RetroArchConfigParser
 
     @Before
     fun setup() {
         parser = RetroArchConfigParser()
+    }
+
+    private fun writeCfg(contents: String): File {
+        val file = tempFolder.newFile("retroarch.cfg")
+        file.writeText(contents)
+        return file
     }
 
     // --- Save paths: non-content-dir mode ---
@@ -326,5 +339,70 @@ class RetroArchConfigParserTest {
         )
         assertTrue(paths.isNotEmpty())
         assertTrue(paths.any { it.contains("RetroArch/saves") })
+    }
+
+    @Test
+    fun `parseFile defaults sortByCore to true when sort_savefiles_enable is absent`() {
+        val cfg = writeCfg("""savefile_directory = "/sdcard/RetroArch/saves"""")
+        val parsed = parser.parseFile(cfg)
+        assertTrue("absent sort_savefiles_enable should default to true", parsed.sortByCore)
+        assertFalse(parsed.sortByContentDirectory)
+    }
+
+    @Test
+    fun `parseFile honors sort_savefiles_enable false`() {
+        val cfg = writeCfg(
+            """
+            savefile_directory = "/sdcard/RetroArch/saves"
+            sort_savefiles_enable = "false"
+            """.trimIndent()
+        )
+        assertFalse(parser.parseFile(cfg).sortByCore)
+    }
+
+    @Test
+    fun `parseFile honors sort_savefiles_enable true explicit`() {
+        val cfg = writeCfg(
+            """
+            savefile_directory = "/sdcard/RetroArch/saves"
+            sort_savefiles_enable = "true"
+            """.trimIndent()
+        )
+        assertTrue(parser.parseFile(cfg).sortByCore)
+    }
+
+    @Test
+    fun `parseStateConfigFromFile defaults sortByCore to true when sort_savestates_enable is absent`() {
+        val cfg = writeCfg("""savestate_directory = "/sdcard/RetroArch/states"""")
+        val parsed = parser.parseStateConfigFromFile(cfg)
+        assertTrue("absent sort_savestates_enable should default to true", parsed.sortByCore)
+        assertFalse(parsed.sortByContentDirectory)
+    }
+
+    @Test
+    fun `parseStateConfigFromFile honors sort_savestates_enable false`() {
+        val cfg = writeCfg(
+            """
+            savestate_directory = "/sdcard/RetroArch/states"
+            sort_savestates_enable = "false"
+            """.trimIndent()
+        )
+        assertFalse(parser.parseStateConfigFromFile(cfg).sortByCore)
+    }
+
+    @Test
+    fun `getRetroArchSaveDirName falls back to core id when no override is registered`() {
+        assertEquals("mesen", EmulatorRegistry.getRetroArchSaveDirName("mesen"))
+        assertEquals("snes9x", EmulatorRegistry.getRetroArchSaveDirName("snes9x"))
+        assertEquals("pcsx_rearmed", EmulatorRegistry.getRetroArchSaveDirName("pcsx_rearmed"))
+    }
+
+    @Test
+    fun `getRetroArchSaveDirName overrides cores whose library_name differs from id by more than case`() {
+        assertEquals("Mupen64Plus-Next", EmulatorRegistry.getRetroArchSaveDirName("mupen64plus_next_gles3"))
+        assertEquals("Mupen64Plus-Next", EmulatorRegistry.getRetroArchSaveDirName("mupen64plus_next_gles2"))
+        assertEquals("VICE x64", EmulatorRegistry.getRetroArchSaveDirName("vice_x64"))
+        assertEquals("VICE x64sc", EmulatorRegistry.getRetroArchSaveDirName("vice_x64sc"))
+        assertEquals("melonDS DS", EmulatorRegistry.getRetroArchSaveDirName("melondsds"))
     }
 }

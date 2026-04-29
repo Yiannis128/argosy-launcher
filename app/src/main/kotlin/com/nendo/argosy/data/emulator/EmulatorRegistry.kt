@@ -853,8 +853,8 @@ object EmulatorRegistry {
             RetroArchCore("mesen-s", "Mesen-S")
         ),
         "n64" to listOf(
-            RetroArchCore("mupen64plus_next_gles3", "Mupen64Plus-Next (GLES3)"),
-            RetroArchCore("mupen64plus_next_gles2", "Mupen64Plus-Next (GLES2)"),
+            RetroArchCore("mupen64plus_next_gles3", "Mupen64Plus-Next (GLES3)", saveDirName = "Mupen64Plus-Next"),
+            RetroArchCore("mupen64plus_next_gles2", "Mupen64Plus-Next (GLES2)", saveDirName = "Mupen64Plus-Next"),
             RetroArchCore("parallel_n64", "ParaLLEl N64")
         ),
         "gb" to listOf(
@@ -992,8 +992,8 @@ object EmulatorRegistry {
             RetroArchCore("mednafen_wswan", "Mednafen WonderSwan")
         ),
         "c64" to listOf(
-            RetroArchCore("vice_x64", "VICE x64"),
-            RetroArchCore("vice_x64sc", "VICE x64 (Accurate)")
+            RetroArchCore("vice_x64", "VICE x64", saveDirName = "VICE x64"),
+            RetroArchCore("vice_x64sc", "VICE x64 (Accurate)", saveDirName = "VICE x64sc")
         ),
         "vic20" to listOf(
             RetroArchCore("vice_xvic", "VICE VIC-20")
@@ -1035,9 +1035,9 @@ object EmulatorRegistry {
     }
 
     /**
-     * RetroArch creates per-core save subdirectories by display name, not core id, for some
-     * cores (e.g. melondsds saves to "saves/melonDS DS"). Returns the on-disk save folder
-     * name for a given core id, or the id itself when no override is registered.
+     * Returns the on-disk save folder name RetroArch uses for the given core id. Defaults to the
+     * core id since Android external storage is case-insensitive, and override only when the
+     * libretro `library_name` differs by more than case (spaces, dashes, decoration, etc.).
      */
     fun getRetroArchSaveDirName(coreId: String): String =
         coreSaveDirByCoreId[coreId] ?: coreId
