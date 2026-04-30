@@ -36,7 +36,6 @@ class SyncNotificationObserver @Inject constructor(
                     }
 
                     detectStateChanges(previous, current)
-                    updateStatusBar(current)
                     isInitialLoad = false
                 }
         }
@@ -57,24 +56,6 @@ class SyncNotificationObserver @Inject constructor(
 
         for (gameId in previousGameIds - currentGameIds) {
             notificationManager.dismissByKey("sync-$gameId")
-        }
-    }
-
-    private fun updateStatusBar(state: SyncQueueState) {
-        val active = state.operations.firstOrNull { it.status == SyncStatus.IN_PROGRESS }
-        if (active != null) {
-            val title = when (active.direction) {
-                SyncDirection.UPLOAD -> "Uploading Save"
-                SyncDirection.DOWNLOAD -> "Downloading Save"
-            }
-            val subtitle = if (active.channelName != null) {
-                "${active.gameName} (${active.channelName})"
-            } else {
-                active.gameName
-            }
-            notificationManager.updateStatus(title = title, subtitle = subtitle)
-        } else if (state.operations.none { it.status == SyncStatus.PENDING }) {
-            notificationManager.clearStatus()
         }
     }
 
