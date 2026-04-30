@@ -6,7 +6,6 @@ import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
-import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.libretro.LibretroCoreRegistry
@@ -285,9 +284,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             }
             val autoResolvedEmulator = vm.emulatorDetector.getPreferredEmulator(platform.slug, prefs.builtinLibretroEnabled)?.def
             val effectiveEmulatorDef = selectedEmulatorDef ?: autoResolvedEmulator
-            val isRetroArch = effectiveEmulatorDef?.launchConfig is LaunchConfig.RetroArch
-            val isBuiltin = effectiveEmulatorDef?.launchConfig is LaunchConfig.BuiltIn
-            val hasCoreSelection = isRetroArch || isBuiltin
+            val hasCoreSelection = effectiveEmulatorDef?.launchConfig?.isCoreSelectable == true
             val availableCores = if (hasCoreSelection) {
                 EmulatorRegistry.getCoresForPlatform(platform.slug)
             } else {

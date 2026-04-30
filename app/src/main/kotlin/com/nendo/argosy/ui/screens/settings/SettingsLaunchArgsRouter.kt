@@ -2,157 +2,10 @@ package com.nendo.argosy.ui.screens.settings
 
 import android.content.Intent
 import androidx.lifecycle.viewModelScope
-import com.nendo.argosy.data.emulator.EmulatorDef
-import com.nendo.argosy.data.emulator.ExtraValue
-import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.LaunchMethod
 import com.nendo.argosy.data.emulator.RomBindingFormat
 import com.nendo.argosy.data.local.entity.EmulatorLaunchArgsEntity
 import kotlinx.coroutines.launch
-
-internal fun defaultFlagsMaskFor(launchConfig: LaunchConfig): Int = when (launchConfig) {
-    is LaunchConfig.FileUri -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or
-        Intent.FLAG_GRANT_READ_URI_PERMISSION
-    is LaunchConfig.FilePathExtra -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-    is LaunchConfig.Custom -> Intent.FLAG_ACTIVITY_NEW_TASK or
-        Intent.FLAG_ACTIVITY_CLEAR_TASK or
-        Intent.FLAG_GRANT_READ_URI_PERMISSION
-    is LaunchConfig.RetroArch -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-    is LaunchConfig.CustomScheme -> Intent.FLAG_ACTIVITY_NEW_TASK or
-        Intent.FLAG_ACTIVITY_CLEAR_TASK or
-        Intent.FLAG_ACTIVITY_NO_HISTORY
-    is LaunchConfig.Vita3K -> Intent.FLAG_ACTIVITY_NEW_TASK or
-        Intent.FLAG_ACTIVITY_CLEAR_TASK or
-        Intent.FLAG_ACTIVITY_NO_HISTORY
-    is LaunchConfig.ScummVM -> Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-    is LaunchConfig.BuiltIn -> Intent.FLAG_ACTIVITY_NEW_TASK
-}
-
-internal fun defaultMimeTypeFor(launchConfig: LaunchConfig): String? = when (launchConfig) {
-    is LaunchConfig.FileUri -> "application/octet-stream"
-    is LaunchConfig.Custom -> launchConfig.mimeTypeOverride ?: "application/octet-stream"
-    else -> null
-}
-
-internal data class BindingDefaults(
-    val data: String,
-    val extras: String,
-    val clipData: String,
-    val dataLocked: Boolean = false,
-    val extrasLocked: Boolean = false
-)
-
-internal fun computeBindingDefaults(emulator: EmulatorDef): BindingDefaults {
-    val config = emulator.launchConfig
-    val action = emulator.launchAction
-
-    return when (config) {
-        is LaunchConfig.FileUri -> BindingDefaults(
-            data = "FileProvider URI",
-            extras = "None",
-            clipData = "FileProvider URI"
-        )
-
-        is LaunchConfig.FilePathExtra -> BindingDefaults(
-            data = "None",
-            extras = "Absolute path (${config.extraKeys.joinToString()})",
-            clipData = "None"
-        )
-
-        is LaunchConfig.Custom -> when {
-            config.useFileUri && action == android.content.Intent.ACTION_VIEW -> BindingDefaults(
-                data = "Absolute path (shell)",
-                extras = "None",
-                clipData = "None"
-            )
-            config.useShellLaunch && action == android.content.Intent.ACTION_VIEW -> BindingDefaults(
-                data = "FileProvider URI (shell)",
-                extras = "None",
-                clipData = "None"
-            )
-            action == android.content.Intent.ACTION_VIEW -> BindingDefaults(
-                data = "FileProvider URI",
-                extras = "None",
-                clipData = "FileProvider URI"
-            )
-            else -> {
-                val hasDocUri = config.intentExtras.values.any { it is ExtraValue.DocumentUri }
-                val hasFileUri = config.intentExtras.values.any { it is ExtraValue.FileUri }
-                val hasFileUriString = config.intentExtras.values.any { it is ExtraValue.FileUriString }
-                val hasFilePath = config.intentExtras.values.any { it is ExtraValue.FilePath }
-                val hasAbsPath = config.useAbsolutePath
-
-                val extrasLabel = when {
-                    hasDocUri -> "Document URI (SAF)"
-                    hasFileUri -> "FileProvider URI"
-                    hasFileUriString -> "FileProvider URI (string)"
-                    hasFilePath || hasAbsPath -> "Absolute path"
-                    else -> "None"
-                }
-                val extraKeys = config.intentExtras.entries
-                    .filter {
-                        it.value is ExtraValue.FilePath ||
-                            it.value is ExtraValue.FileUri ||
-                            it.value is ExtraValue.FileUriString ||
-                            it.value is ExtraValue.DocumentUri
-                    }
-                    .map { it.key }
-                val extrasWithKeys = if (extraKeys.isNotEmpty()) {
-                    "$extrasLabel (${extraKeys.joinToString()})"
-                } else if (hasAbsPath) {
-                    "$extrasLabel (path/file/filePath)"
-                } else {
-                    extrasLabel
-                }
-
-                val clipLabel = when {
-                    hasDocUri -> "Document URI"
-                    hasFileUri -> "FileProvider URI"
-                    else -> "None"
-                }
-
-                BindingDefaults(
-                    data = "None",
-                    extras = extrasWithKeys,
-                    clipData = clipLabel
-                )
-            }
-        }
-
-        is LaunchConfig.RetroArch -> BindingDefaults(
-            data = "None",
-            extras = "Absolute path (ROM)",
-            clipData = "None"
-        )
-
-        is LaunchConfig.CustomScheme -> BindingDefaults(
-            data = "${config.scheme}:// scheme URI",
-            extras = "None",
-            clipData = "None",
-            dataLocked = true
-        )
-
-        is LaunchConfig.Vita3K -> BindingDefaults(
-            data = "None",
-            extras = "Title ID (AppStartParameters)",
-            clipData = "None",
-            extrasLocked = true
-        )
-
-        is LaunchConfig.ScummVM -> BindingDefaults(
-            data = "scummvm: game ID",
-            extras = "None",
-            clipData = "None",
-            dataLocked = true
-        )
-
-        is LaunchConfig.BuiltIn -> BindingDefaults(
-            data = "N/A (in-process)",
-            extras = "N/A (in-process)",
-            clipData = "N/A (in-process)"
-        )
-    }
-}
 
 internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
     vm.viewModelScope.launch {
@@ -162,10 +15,11 @@ internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
         val emulatorDef = vm.emulatorDetector.getByPackage(config.effectiveEmulatorPackage ?: return@launch)
             ?: return@launch
 
-        if (emulatorDef.launchConfig is LaunchConfig.BuiltIn) return@launch
+        val launchConfig = emulatorDef.launchConfig
+        if (launchConfig.isInProcess) return@launch
 
         val override = vm.emulatorLaunchArgsDao.getByPlatformAndEmulator(platformId, emulatorId)
-        val bindings = computeBindingDefaults(emulatorDef)
+        val bindings = launchConfig.bindingDefaults(emulatorDef)
         val state = LaunchArgsModalState(
             platformId = platformId,
             platformName = config.platform.name,
@@ -174,8 +28,8 @@ internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
             focusIndex = 0,
             override = override,
             defaultLaunchMethod = emulatorDef.defaultLaunchMethod.name,
-            defaultFlagsMask = defaultFlagsMaskFor(emulatorDef.launchConfig),
-            defaultMimeType = defaultMimeTypeFor(emulatorDef.launchConfig),
+            defaultFlagsMask = launchConfig.defaultIntentFlags,
+            defaultMimeType = launchConfig.defaultMimeType,
             defaultDataBinding = bindings.data,
             defaultExtraBinding = bindings.extras,
             defaultClipDataBinding = bindings.clipData,

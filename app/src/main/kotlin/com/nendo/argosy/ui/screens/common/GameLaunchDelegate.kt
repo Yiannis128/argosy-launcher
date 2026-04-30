@@ -9,7 +9,6 @@ import com.nendo.argosy.data.emulator.DiscOption
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.ActiveSession
-import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.GameLauncher
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
@@ -132,22 +131,22 @@ class GameLaunchDelegate @Inject constructor(
         scope.launch {
             try {
                 val activeSession = playSessionTracker.activeSession.value
-                val isVita3KSession = activeSession?.let { session ->
+                val sessionRequiresKill = activeSession?.let { session ->
                     val emuId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
-                    emuId?.let { EmulatorRegistry.getById(it) }?.launchConfig is LaunchConfig.Vita3K
+                    emuId?.let { EmulatorRegistry.getById(it) }?.launchConfig?.requiresEmulatorKill == true
                 } ?: false
 
-                // Vita3K doesn't support resume - always end stale sessions
-                if (isVita3KSession) {
-                    android.util.Log.d("GameLaunchDelegate", "Vita3K session active, ending before fresh launch")
+                // Emulators flagged requiresEmulatorKill (e.g. Vita3K) don't support resume -- always end stale sessions
+                if (sessionRequiresKill) {
+                    android.util.Log.d("GameLaunchDelegate", "Session requires emulator kill, ending before fresh launch")
                     playSessionTracker.endSession()
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
 
-                val canResume = !isVita3KSession && playSessionTracker.canResumeSession(gameId)
+                val canResume = !sessionRequiresKill && playSessionTracker.canResumeSession(gameId)
 
                 // Stale session active - end it and kill emulator before fresh launch
-                if (!canResume && activeSession != null && !isVita3KSession) {
+                if (!canResume && activeSession != null && !sessionRequiresKill) {
                     android.util.Log.d("GameLaunchDelegate", "Evicting stale session for game ${activeSession.gameId}, killing ${activeSession.emulatorPackage}")
                     playSessionTracker.endSession()
                     gameLauncher.forceStopEmulator(activeSession.emulatorPackage)
@@ -425,7 +424,7 @@ class GameLaunchDelegate @Inject constructor(
     private fun forceStopIfVita3K(scope: CoroutineScope, session: ActiveSession) {
         val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage) ?: return
         val emulatorDef = EmulatorRegistry.getById(emulatorId) ?: return
-        if (emulatorDef.launchConfig is LaunchConfig.Vita3K) {
+        if (emulatorDef.launchConfig.requiresEmulatorKill) {
             scope.launch {
                 gameLauncher.forceStopEmulator(session.emulatorPackage)
             }

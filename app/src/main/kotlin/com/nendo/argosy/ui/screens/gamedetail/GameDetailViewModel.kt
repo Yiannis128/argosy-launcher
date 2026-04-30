@@ -10,7 +10,6 @@ import com.nendo.argosy.data.emulator.EdenContentManager
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
-import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.launcher.SteamLaunchers
@@ -414,16 +413,15 @@ class GameDetailViewModel @Inject constructor(
 
             val emulatorDef = emulatorConfig?.packageName?.let { emulatorDetector.getByPackage(it) }
                 ?: emulatorDetector.getPreferredEmulator(game.platformSlug, prefs.builtinLibretroEnabled)?.def
-            val isRetroArch = emulatorDef?.launchConfig is LaunchConfig.RetroArch
-            val isBuiltIn = emulatorDef?.launchConfig is LaunchConfig.BuiltIn
+            val isCoreSelectable = emulatorDef?.launchConfig?.isCoreSelectable == true
 
             val platformCores = EmulatorRegistry.getCoresForPlatform(game.platformSlug)
-            val hasMultipleCores = (isRetroArch || isBuiltIn) && platformCores.size > 1
+            val hasMultipleCores = isCoreSelectable && platformCores.size > 1
 
             val selectedCoreId = gameSpecificConfig?.coreName
                 ?: platformDefaultConfig?.coreName
                 ?: EmulatorRegistry.getDefaultCore(game.platformSlug)?.id
-            val selectedCoreName = if (isRetroArch || isBuiltIn) {
+            val selectedCoreName = if (isCoreSelectable) {
                 platformCores.find { it.id == selectedCoreId }?.displayName
             } else null
 

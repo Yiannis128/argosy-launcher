@@ -40,16 +40,82 @@ data class EmulatorFamily(
     val downloadUrl: String? = null
 )
 
+/**
+ * Polymorphic per-subtype defaults for emulator launch dispatch. Centralized here so call sites can
+ * read traits (`defaultIntentFlags`, `isCoreSelectable`, etc.) without re-fanning out a `when` block
+ * over the sealed class.
+ *
+ * Categorical flags:
+ *  - [defaultIntentFlags]: intent flags applied to a fresh launch when no user override is set.
+ *  - [defaultMimeType]: mime applied to data URI when one is set; `null` means "do not set mime".
+ *  - [defaultDataBinding]: ROM binding baked into the default launch (e.g. MelonDualDS needs a
+ *     FileProvider data URI even when the ROM rides via extras).
+ *  - [isInProcess]: this launch runs inside Argosy (the built-in libretro path) -- no external
+ *     intent dispatch, no Launch Args modal.
+ *  - [isCoreSelectable]: launches choose a libretro core (RetroArch + BuiltIn). Drives the
+ *     core-picker UI in game/platform settings.
+ *  - [requiresEmulatorKill]: external emulator that does not accept a fresh-launch intent while
+ *     a prior session is still alive (Vita3K). The session tracker must `forceStop` before relaunch.
+ *  - [bindingDefaults]: per-launch-config binding labels for the Launch Args modal.
+ */
 sealed class LaunchConfig {
-    object FileUri : LaunchConfig()
+
+    abstract val defaultIntentFlags: Int
+
+    open val defaultMimeType: String? get() = null
+
+    open val defaultDataBinding: RomBindingFormat? get() = null
+
+    open val isInProcess: Boolean get() = false
+
+    open val isCoreSelectable: Boolean get() = false
+
+    open val requiresEmulatorKill: Boolean get() = false
+
+    abstract fun bindingDefaults(emulator: EmulatorDef): BindingDefaults
+
+    object FileUri : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+
+        override val defaultMimeType: String = "application/octet-stream"
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "FileProvider URI",
+            extras = "None",
+            clipData = "FileProvider URI"
+        )
+    }
 
     data class FilePathExtra(
         val extraKeys: List<String> = listOf("ROM", "rom", "romPath")
-    ) : LaunchConfig()
+    ) : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "None",
+            extras = "Absolute path (${extraKeys.joinToString()})",
+            clipData = "None"
+        )
+    }
 
     data class RetroArch(
         val activityClass: String = "com.retroarch.browser.retroactivity.RetroActivityFuture"
-    ) : LaunchConfig()
+    ) : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+
+        override val isCoreSelectable: Boolean = true
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "None",
+            extras = "Absolute path (ROM)",
+            clipData = "None"
+        )
+    }
 
     data class Custom(
         val activityClass: String? = null,
@@ -63,23 +129,154 @@ sealed class LaunchConfig {
         // applied when no per-(platform, emulator) override exists. Needed for
         // emulators (e.g. MelonDualDS) that require Intent.setData() with a
         // FileProvider URI alongside their custom action+extras.
-        val defaultDataBinding: RomBindingFormat? = null
-    ) : LaunchConfig()
+        override val defaultDataBinding: RomBindingFormat? = null
+    ) : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+
+        override val defaultMimeType: String
+            get() = mimeTypeOverride ?: "application/octet-stream"
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults {
+            val action = emulator.launchAction
+            return when {
+                useFileUri && action == Intent.ACTION_VIEW -> BindingDefaults(
+                    data = "Absolute path (shell)",
+                    extras = "None",
+                    clipData = "None"
+                )
+                useShellLaunch && action == Intent.ACTION_VIEW -> BindingDefaults(
+                    data = "FileProvider URI (shell)",
+                    extras = "None",
+                    clipData = "None"
+                )
+                action == Intent.ACTION_VIEW -> BindingDefaults(
+                    data = "FileProvider URI",
+                    extras = "None",
+                    clipData = "FileProvider URI"
+                )
+                else -> {
+                    val hasDocUri = intentExtras.values.any { it is ExtraValue.DocumentUri }
+                    val hasFileUri = intentExtras.values.any { it is ExtraValue.FileUri }
+                    val hasFileUriString = intentExtras.values.any { it is ExtraValue.FileUriString }
+                    val hasFilePath = intentExtras.values.any { it is ExtraValue.FilePath }
+                    val hasAbsPath = useAbsolutePath
+
+                    val extrasLabel = when {
+                        hasDocUri -> "Document URI (SAF)"
+                        hasFileUri -> "FileProvider URI"
+                        hasFileUriString -> "FileProvider URI (string)"
+                        hasFilePath || hasAbsPath -> "Absolute path"
+                        else -> "None"
+                    }
+                    val extraKeys = intentExtras.entries
+                        .filter {
+                            it.value is ExtraValue.FilePath ||
+                                it.value is ExtraValue.FileUri ||
+                                it.value is ExtraValue.FileUriString ||
+                                it.value is ExtraValue.DocumentUri
+                        }
+                        .map { it.key }
+                    val extrasWithKeys = if (extraKeys.isNotEmpty()) {
+                        "$extrasLabel (${extraKeys.joinToString()})"
+                    } else if (hasAbsPath) {
+                        "$extrasLabel (path/file/filePath)"
+                    } else {
+                        extrasLabel
+                    }
+
+                    val clipLabel = when {
+                        hasDocUri -> "Document URI"
+                        hasFileUri -> "FileProvider URI"
+                        else -> "None"
+                    }
+
+                    BindingDefaults(
+                        data = "None",
+                        extras = extrasWithKeys,
+                        clipData = clipLabel
+                    )
+                }
+            }
+        }
+    }
 
     data class CustomScheme(
         val scheme: String,
         val authority: String,
         val pathPrefix: String = ""
-    ) : LaunchConfig()
+    ) : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                Intent.FLAG_ACTIVITY_NO_HISTORY
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "$scheme:// scheme URI",
+            extras = "None",
+            clipData = "None",
+            dataLocked = true
+        )
+    }
 
     data class Vita3K(
         val activityClass: String = "org.vita3k.emulator.Emulator"
-    ) : LaunchConfig()
+    ) : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                Intent.FLAG_ACTIVITY_NO_HISTORY
 
-    object BuiltIn : LaunchConfig()
+        override val requiresEmulatorKill: Boolean = true
 
-    object ScummVM : LaunchConfig()
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "None",
+            extras = "Title ID (AppStartParameters)",
+            clipData = "None",
+            extrasLocked = true
+        )
+    }
+
+    object BuiltIn : LaunchConfig() {
+        override val defaultIntentFlags: Int = Intent.FLAG_ACTIVITY_NEW_TASK
+
+        override val isInProcess: Boolean = true
+
+        override val isCoreSelectable: Boolean = true
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "N/A (in-process)",
+            extras = "N/A (in-process)",
+            clipData = "N/A (in-process)"
+        )
+    }
+
+    object ScummVM : LaunchConfig() {
+        override val defaultIntentFlags: Int =
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+        override fun bindingDefaults(emulator: EmulatorDef): BindingDefaults = BindingDefaults(
+            data = "scummvm: game ID",
+            extras = "None",
+            clipData = "None",
+            dataLocked = true
+        )
+    }
 }
+
+/**
+ * Per-launch-config UI labels for the Launch Args modal default-row text. Lives in `data/emulator/`
+ * because each [LaunchConfig] subtype owns its own labels (avoids a separate `when` in UI code).
+ */
+data class BindingDefaults(
+    val data: String,
+    val extras: String,
+    val clipData: String,
+    val dataLocked: Boolean = false,
+    val extrasLocked: Boolean = false
+)
 
 sealed class ExtraValue {
     object FilePath : ExtraValue()

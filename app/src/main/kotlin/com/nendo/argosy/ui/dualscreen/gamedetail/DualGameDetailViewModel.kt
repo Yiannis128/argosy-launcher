@@ -22,7 +22,6 @@ import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.ui.common.appId
 import com.nendo.argosy.data.emulator.InstalledEmulator
-import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.RetroArchCore
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.ui.screens.gamedetail.UpdateFileType
@@ -319,10 +318,9 @@ class DualGameDetailViewModel(
             val emulatorDef = emulatorConfig?.packageName?.let { pkg ->
                 EmulatorRegistry.getByPackage(pkg)
             }
-            val isRetroArch = emulatorDef?.launchConfig is LaunchConfig.RetroArch
-            val isBuiltIn = emulatorDef?.launchConfig is LaunchConfig.BuiltIn
-            val hasMultipleCores = (isRetroArch || isBuiltIn || emulatorDef == null) &&
-                platformCores.size > 1
+            // emulatorDef == null means we haven't resolved an emulator yet (auto-pick); still show core picker if cores exist.
+            val isCoreSelectable = emulatorDef?.launchConfig?.isCoreSelectable ?: true
+            val hasMultipleCores = isCoreSelectable && platformCores.size > 1
 
             val selectedCoreId = gameSpecificConfig?.coreName
                 ?: platformDefaultConfig?.coreName

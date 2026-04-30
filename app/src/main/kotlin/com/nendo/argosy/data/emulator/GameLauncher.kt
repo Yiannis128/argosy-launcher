@@ -168,8 +168,9 @@ class GameLauncher @Inject constructor(
             migrateToExtcontent(game)
         }
 
-        // Extract ZIP/7z archives only for built-in emulator (RetroArch handles archives natively)
-        if (emulator.launchConfig is LaunchConfig.BuiltIn) {
+        // Extract ZIP/7z archives only for the built-in (in-process) emulator. External emulators
+        // such as RetroArch handle archives natively and would receive a wrong file path here.
+        if (emulator.launchConfig.isInProcess) {
             romFile = extractArchiveIfNeeded(romFile, game)
         }
 
@@ -232,7 +233,7 @@ class GameLauncher @Inject constructor(
             append(" | platform=${game.platformSlug}")
             append(" | size=${romFile.length()}b")
             append(" | ext=${romFile.extension}")
-            if (emulator.launchConfig is LaunchConfig.BuiltIn || emulator.launchConfig is LaunchConfig.RetroArch) {
+            if (emulator.launchConfig.isCoreSelectable) {
                 append(" | config=${emulator.launchConfig::class.simpleName}")
             }
         })
@@ -537,7 +538,7 @@ class GameLauncher @Inject constructor(
         val configType = emulator.launchConfig::class.simpleName
         Logger.debug(TAG, "buildIntent: emulator=${emulator.displayName}, config=$configType, rom=${romFile.name}, forResume=$forResume")
 
-        if (emulator.launchConfig is LaunchConfig.BuiltIn) {
+        if (emulator.launchConfig.isInProcess) {
             return buildBuiltInIntent(romFile, game)
         }
 
