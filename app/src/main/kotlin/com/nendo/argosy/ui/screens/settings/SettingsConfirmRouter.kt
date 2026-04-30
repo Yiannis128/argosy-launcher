@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.settings
 
 import androidx.lifecycle.viewModelScope
+import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
@@ -751,7 +752,9 @@ private fun computeMaxFocusIndex(
 
 private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val config = state.emulators.platforms.getOrNull(state.platformDetail.platformIndex) ?: return InputResult.HANDLED
-    val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, state.platformDetail) ?: return InputResult.HANDLED
+    val syncEnabled = state.storage.platformConfigs
+        .find { it.platformId == config.platform.id }?.syncEnabled ?: true
+    val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, state.platformDetail, syncEnabled) ?: return InputResult.HANDLED
     when (item) {
         PlatformDetailItem.Emulator -> {
             val hasInstallableKnown = config.availableEmulators.isNotEmpty() ||
@@ -781,6 +784,7 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
                 ?.syncEnabled ?: true
             vm.togglePlatformSync(config.platform.id, !currentSync)
         }
+        PlatformDetailItem.SyncNow -> vm.syncPlatform(config.platform.id, config.platform.getDisplayName())
         PlatformDetailItem.RemoveFiles -> vm.requestRemoveLocalFiles()
         PlatformDetailItem.BiosDownload -> vm.downloadBiosForPlatform(config.platform.slug)
         PlatformDetailItem.BiosInstall -> vm.distributeBiosForPlatformWithNotification(config.platform.slug)

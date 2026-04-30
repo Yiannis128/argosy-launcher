@@ -21,7 +21,8 @@ internal class PlatformDetailSectionInput(
             ?: return InputResult.UNHANDLED
         val detail = state.platformDetail
         val storageConfig = state.storage.platformConfigs.find { it.platformId == config.platform.id }
-        val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, detail)
+        val syncEnabled = storageConfig?.syncEnabled ?: true
+        val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, detail, syncEnabled)
             ?: return InputResult.UNHANDLED
         return when (item) {
             PlatformDetailItem.RomPath -> {
@@ -72,7 +73,9 @@ internal class PlatformDetailSectionInput(
         val state = viewModel.uiState.value
         val config = state.emulators.platforms.getOrNull(state.platformDetail.platformIndex)
             ?: return InputResult.UNHANDLED
-        val sections = platformDetailSections(config, state.platformDetail)
+        val syncEnabled = state.storage.platformConfigs
+            .find { it.platformId == config.platform.id }?.syncEnabled ?: true
+        val sections = platformDetailSections(config, state.platformDetail, syncEnabled)
         val currentFocus = state.focusedIndex
 
         val target = if (direction > 0) {
@@ -105,7 +108,9 @@ internal class PlatformDetailSectionInput(
         val state = viewModel.uiState.value
         val config = state.emulators.platforms.getOrNull(state.platformDetail.platformIndex)
             ?: return InputResult.UNHANDLED
-        val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, state.platformDetail)
+        val syncEnabled = state.storage.platformConfigs
+            .find { it.platformId == config.platform.id }?.syncEnabled ?: true
+        val item = platformDetailItemAtFocusIndex(state.focusedIndex, config, state.platformDetail, syncEnabled)
             ?: return InputResult.UNHANDLED
 
         return when (item) {

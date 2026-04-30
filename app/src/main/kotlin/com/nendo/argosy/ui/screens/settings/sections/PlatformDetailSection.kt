@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
+import com.nendo.argosy.data.local.entity.getDisplayName
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -76,6 +78,7 @@ internal sealed class PlatformDetailItem(
     data object StatePath : PlatformDetailItem("state_path", "sync", { it.showStatePath })
 
     data object SyncToggle : PlatformDetailItem("sync_toggle", "sync")
+    data object SyncNow : PlatformDetailItem("sync_now", "sync", { it.syncEnabled })
     data object PackagePath : PlatformDetailItem("package_path", "sync", { it.showSavePath })
     data object RemoveFiles : PlatformDetailItem("remove_files", "sync", { it.hasDownloads })
 
@@ -94,7 +97,7 @@ internal sealed class PlatformDetailItem(
             Header("header_bios", "bios", "BIOS", { it.hasBios }),
             InfoItem("info_bios_status", "bios", { it.hasBios }), BiosDownload, BiosInstall, BiosCopy,
             Header("header_sync", "sync", "Storage & Sync"),
-            SyncToggle, InfoItem("info_package_path", "sync", { it.showSavePath && !it.isBuiltin && !it.isRetroArch }),
+            SyncToggle, SyncNow, InfoItem("info_package_path", "sync", { it.showSavePath && !it.isBuiltin && !it.isRetroArch }),
             RomPath, SavePath, StatePath,
             RemoveFiles
         )
@@ -113,13 +116,18 @@ internal data class PlatformDetailVisibility(
     val showSavePath: Boolean = false,
     val showStatePath: Boolean = false,
     val hasDownloads: Boolean = false,
+    val syncEnabled: Boolean = true,
     val hasBios: Boolean = false,
     val biosMissing: Boolean = false,
     val biosDownloaded: Boolean = false,
     val canDistribute: Boolean = false
 ) {
     companion object {
-        fun from(config: PlatformEmulatorConfig, detail: PlatformDetailState) = PlatformDetailVisibility(
+        fun from(
+            config: PlatformEmulatorConfig,
+            detail: PlatformDetailState,
+            syncEnabled: Boolean
+        ) = PlatformDetailVisibility(
             showCore = config.showCoreSelection,
             showExtension = config.showExtensionSelection,
             showDisplayTarget = config.showDisplayTargetOption,
@@ -129,6 +137,7 @@ internal data class PlatformDetailVisibility(
             showSavePath = config.showSavePath,
             showStatePath = detail.supportsStatePath,
             hasDownloads = detail.downloadedGames > 0,
+            syncEnabled = syncEnabled,
             hasBios = detail.hasBiosRequirements,
             biosMissing = detail.biosDownloaded < detail.biosTotal,
             biosDownloaded = detail.biosDownloaded > 0,
@@ -156,7 +165,9 @@ private fun createPlatformDetailLayout() = SettingsLayout<PlatformDetailItem, Pl
 
 internal fun platformDetailMaxFocusIndex(state: SettingsUiState): Int {
     val config = state.emulators.platforms.getOrNull(state.platformDetail.platformIndex) ?: return 0
-    val visibility = PlatformDetailVisibility.from(config, state.platformDetail)
+    val syncEnabled = state.storage.platformConfigs
+        .find { it.platformId == config.platform.id }?.syncEnabled ?: true
+    val visibility = PlatformDetailVisibility.from(config, state.platformDetail, syncEnabled)
     val layout = createPlatformDetailLayout()
     return layout.maxFocusIndex(visibility)
 }
@@ -164,17 +175,19 @@ internal fun platformDetailMaxFocusIndex(state: SettingsUiState): Int {
 internal fun platformDetailItemAtFocusIndex(
     focusIndex: Int,
     config: PlatformEmulatorConfig,
-    detail: PlatformDetailState
+    detail: PlatformDetailState,
+    syncEnabled: Boolean
 ): PlatformDetailItem? {
-    val visibility = PlatformDetailVisibility.from(config, detail)
+    val visibility = PlatformDetailVisibility.from(config, detail, syncEnabled)
     val layout = createPlatformDetailLayout()
     return layout.itemAtFocusIndex(focusIndex, visibility)
 }
 
 internal fun platformDetailSections(
     config: PlatformEmulatorConfig,
-    detail: PlatformDetailState
-) = createPlatformDetailLayout().buildSections(PlatformDetailVisibility.from(config, detail))
+    detail: PlatformDetailState,
+    syncEnabled: Boolean
+) = createPlatformDetailLayout().buildSections(PlatformDetailVisibility.from(config, detail, syncEnabled))
 
 // -- Composable --
 
@@ -194,8 +207,11 @@ fun PlatformDetailSection(
     }
 
     val storageConfig = uiState.storage.platformConfigs.find { it.platformId == config.platform.id }
+    val syncEnabled = storageConfig?.syncEnabled ?: true
 
-    val visibility = remember(config, detail) { PlatformDetailVisibility.from(config, detail) }
+    val visibility = remember(config, detail, syncEnabled) {
+        PlatformDetailVisibility.from(config, detail, syncEnabled)
+    }
     val layout = remember { createPlatformDetailLayout() }
     val visibleItems = remember(visibility) { layout.visibleItems(visibility) }
     val sections = remember(visibility) { layout.buildSections(visibility) }
@@ -456,6 +472,13 @@ fun PlatformDetailSection(
                     isFocused = isFocused(item),
                     onToggle = { viewModel.togglePlatformSync(config.platform.id, it) }
                 )
+                PlatformDetailItem.SyncNow -> ActionPreference(
+                    title = "Sync Now",
+                    subtitle = "Sync this platform with RomM",
+                    isFocused = isFocused(item),
+                    icon = Icons.Default.Sync,
+                    onClick = { viewModel.syncPlatform(config.platform.id, config.platform.getDisplayName()) }
+                )
                 PlatformDetailItem.PackagePath -> {} // rendered as InfoItem
                 PlatformDetailItem.RemoveFiles -> ActionPreference(
                     title = "Remove Local Files",
@@ -608,9 +631,10 @@ private fun formatPath(path: String?): String {
 // Keep old function name for confirm router compatibility
 internal fun buildPlatformDetailFocusItems(
     config: PlatformEmulatorConfig,
-    detail: PlatformDetailState
+    detail: PlatformDetailState,
+    syncEnabled: Boolean
 ): List<PlatformDetailItem> {
-    val visibility = PlatformDetailVisibility.from(config, detail)
+    val visibility = PlatformDetailVisibility.from(config, detail, syncEnabled)
     val layout = createPlatformDetailLayout()
     return layout.focusableItems(visibility)
 }
