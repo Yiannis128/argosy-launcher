@@ -1,5 +1,7 @@
 package com.nendo.argosy.ui.input
 
+import com.nendo.argosy.core.input.SoundType
+
 data class InputResult(
     val handled: Boolean,
     val soundOverride: SoundType? = null

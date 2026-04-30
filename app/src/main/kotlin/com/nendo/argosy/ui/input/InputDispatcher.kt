@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.input
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.preferences.MenuWrapMode
 
 @Stable
