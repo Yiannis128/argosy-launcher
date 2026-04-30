@@ -95,7 +95,7 @@ class SwitchSaveHandler @Inject constructor(
             ExtractResult(true, targetPath)
         }
 
-    fun resolveBasePath(config: SavePathConfig, emulatorPackage: String?): String? {
+    private fun resolveBasePathInternal(config: SavePathConfig, emulatorPackage: String?): String? {
         val resolvedPaths = SavePathRegistry.resolvePathWithPackage(config, emulatorPackage)
         return resolvedPaths.firstOrNull { fal.exists(it) && fal.isDirectory(it) }
             ?: resolvedPaths.firstOrNull()
@@ -105,7 +105,7 @@ class SwitchSaveHandler @Inject constructor(
         if (basePathOverride != null) {
             return resolveOverrideSaveBase(basePathOverride)
         }
-        return resolveBasePath(config, emulatorPackage)
+        return resolveBasePathInternal(config, emulatorPackage)
     }
 
     private fun resolveOverrideSaveBase(overridePath: String): String {
@@ -268,7 +268,7 @@ class SwitchSaveHandler @Inject constructor(
         return zeroProfilePath
     }
 
-    fun findSaveFolderByTitleId(basePath: String, titleId: String): String? {
+    override fun findSaveFolderByTitleId(basePath: String, titleId: String): String? {
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) {
             Logger.debug(TAG, "findSaveFolderByTitleId: base path does not exist | path=$basePath")
             return null

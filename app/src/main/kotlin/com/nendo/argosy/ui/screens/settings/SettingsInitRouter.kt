@@ -284,6 +284,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             }
             val autoResolvedEmulator = vm.emulatorDetector.getPreferredEmulator(platform.slug, prefs.builtinLibretroEnabled)?.def
             val effectiveEmulatorDef = selectedEmulatorDef ?: autoResolvedEmulator
+            val isRetroArch = effectiveEmulatorDef?.launchConfig is com.nendo.argosy.data.emulator.LaunchConfig.RetroArch
             val hasCoreSelection = effectiveEmulatorDef?.launchConfig?.isCoreSelectable == true
             val availableCores = if (hasCoreSelection) {
                 EmulatorRegistry.getCoresForPlatform(platform.slug)

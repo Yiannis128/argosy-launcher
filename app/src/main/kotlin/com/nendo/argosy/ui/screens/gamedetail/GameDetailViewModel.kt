@@ -9,6 +9,7 @@ import com.nendo.argosy.data.download.ZipExtractor
 import com.nendo.argosy.data.emulator.EdenContentManager
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.emulator.EmulatorRegistry
+import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.SavePathRegistry
@@ -521,8 +522,8 @@ class GameDetailViewModel @Inject constructor(
                         platformName = platform?.name ?: "Unknown",
                         emulatorName = emulatorName,
                         canPlay = canPlay,
-                        isRetroArch = isRetroArch,
-                        isBuiltIn = isBuiltIn,
+                        isRetroArch = emulatorDef?.launchConfig is LaunchConfig.RetroArch,
+                        isBuiltIn = emulatorDef?.launchConfig is LaunchConfig.BuiltIn,
                         hasMultipleCores = hasMultipleCores,
                         selectedCoreName = selectedCoreName,
                         achievements = cachedAchievements,

@@ -94,7 +94,7 @@ open class FolderSaveHandler(
         return null
     }
 
-    override fun constructSavePath(baseDir: String, titleId: String): String = "$baseDir/$titleId"
+    override fun constructSavePath(baseDir: String, titleId: String): String? = "$baseDir/$titleId"
 
     override fun resolveBasePath(config: SavePathConfig, basePathOverride: String?): String? {
         if (basePathOverride != null) return basePathOverride
