@@ -75,7 +75,8 @@ class SaveSyncOrchestratorTest {
             savePathResolver = savePathResolver,
             userPreferencesRepository = userPreferencesRepository,
             syncQueueManager = syncQueueManager,
-            apiClient = apiClient
+            apiClient = apiClient,
+            payloadCodec = com.nendo.argosy.data.sync.SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
         )
     }
 

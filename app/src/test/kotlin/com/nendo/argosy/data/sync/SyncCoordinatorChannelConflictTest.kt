@@ -112,7 +112,8 @@ class SyncCoordinatorChannelConflictTest {
             syncQueueManager = syncQueueManager,
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences())
-            }
+            },
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
         )
 
         coordinator.processQueue()
@@ -155,7 +156,8 @@ class SyncCoordinatorChannelConflictTest {
             syncQueueManager = syncQueueManager,
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences())
-            }
+            },
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
         )
 
         coordinator.processQueue()
@@ -207,7 +209,8 @@ class SyncCoordinatorChannelConflictTest {
             syncQueueManager = syncQueueManager,
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences())
-            }
+            },
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
         )
 
         coordinator.processQueue()

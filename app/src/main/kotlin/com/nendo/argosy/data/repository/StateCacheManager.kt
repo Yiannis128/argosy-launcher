@@ -59,7 +59,8 @@ class StateCacheManager @Inject constructor(
     private val coreVersionExtractor: CoreVersionExtractor,
     private val retroArchConfigParser: RetroArchConfigParser,
     private val retroArchPathResolver: com.nendo.argosy.data.emulator.RetroArchPathResolver,
-    private val saveSyncApiClient: SaveSyncApiClient
+    private val saveSyncApiClient: SaveSyncApiClient,
+    private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec
 ) {
     companion object {
         private const val TAG = "StateCacheManager"
@@ -1090,7 +1091,7 @@ class StateCacheManager @Inject constructor(
                 rommId = rommId,
                 syncType = SyncType.SAVE_STATE,
                 priority = SyncPriority.SAVE_STATE,
-                payloadJson = payload.toJson()
+                payloadJson = payloadCodec.encode(payload)
             )
         )
         Log.d(TAG, "[StateSync] QUEUED stateId=$stateCacheId gameId=$gameId")
@@ -1113,7 +1114,7 @@ class StateCacheManager @Inject constructor(
 
         var uploadedCount = 0
         for (item in pending) {
-            val payload = SaveStatePayload.fromJson(item.payloadJson) ?: continue
+            val payload = payloadCodec.decodeSaveState(item.payloadJson) ?: continue
             val state = stateCacheDao.getById(payload.stateCacheId)
             if (state == null) {
                 Log.w(TAG, "[StateSync] UPLOAD itemId=${item.id} | State cache not found, removing from queue")

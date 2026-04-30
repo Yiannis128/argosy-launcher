@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.entity.SyncPriority
 import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.sync.SaveFilePayload
+import com.nendo.argosy.data.sync.SyncPayloadCodec
 import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.SyncDirection
 import com.nendo.argosy.data.sync.SyncOperation
@@ -33,7 +34,8 @@ class SaveSyncOrchestrator @Inject constructor(
     private val savePathResolver: SavePathResolver,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val syncQueueManager: SyncQueueManager,
-    private val apiClient: dagger.Lazy<SaveSyncApiClient>
+    private val apiClient: dagger.Lazy<SaveSyncApiClient>,
+    private val payloadCodec: SyncPayloadCodec
 ) {
     suspend fun queueUpload(gameId: Long, emulatorId: String, localPath: String) {
         val game = gameDao.getById(gameId) ?: return
@@ -47,7 +49,7 @@ class SaveSyncOrchestrator @Inject constructor(
                 rommId = rommId,
                 syncType = SyncType.SAVE_FILE,
                 priority = SyncPriority.SAVE_FILE,
-                payloadJson = payload.toJson()
+                payloadJson = payloadCodec.encode(payload)
             )
         )
     }

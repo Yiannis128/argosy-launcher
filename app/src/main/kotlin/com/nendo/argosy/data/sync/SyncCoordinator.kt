@@ -37,7 +37,8 @@ class SyncCoordinator @Inject constructor(
     private val saveCacheManager: Lazy<SaveCacheManager>,
     private val stateCacheManager: Lazy<StateCacheManager>,
     private val syncQueueManager: SyncQueueManager,
-    private val syncPreferencesRepository: SyncPreferencesRepository
+    private val syncPreferencesRepository: SyncPreferencesRepository,
+    private val payloadCodec: SyncPayloadCodec
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -126,7 +127,7 @@ class SyncCoordinator @Inject constructor(
 
     private suspend fun processSaveFile(item: PendingSyncQueueEntity): Boolean {
         val game = gameDao.getById(item.gameId) ?: return false
-        val payload = SaveFilePayload.fromJson(item.payloadJson) ?: return false
+        val payload = payloadCodec.decodeSaveFile(item.payloadJson) ?: return false
 
         syncQueueManager.addOperation(
             SyncOperation(
@@ -157,7 +158,7 @@ class SyncCoordinator @Inject constructor(
     }
 
     private suspend fun processSaveState(item: PendingSyncQueueEntity): Boolean {
-        val payload = SaveStatePayload.fromJson(item.payloadJson) ?: return false
+        val payload = payloadCodec.decodeSaveState(item.payloadJson) ?: return false
         val state = stateCacheManager.get().getStateById(payload.stateCacheId) ?: return false
         val api = saveSyncRepository.get().getApi() ?: return false
         val game = gameDao.getById(item.gameId)
@@ -186,7 +187,7 @@ class SyncCoordinator @Inject constructor(
     }
 
     private suspend fun processProperty(item: PendingSyncQueueEntity): Boolean {
-        val payload = PropertyPayload.fromJson(item.payloadJson) ?: return false
+        val payload = payloadCodec.decodeProperty(item.payloadJson) ?: return false
 
         return romMRepository.get().updateRomUserProps(
             rommId = item.rommId,
@@ -197,7 +198,7 @@ class SyncCoordinator @Inject constructor(
     }
 
     private suspend fun processFavorite(item: PendingSyncQueueEntity): Boolean {
-        val payload = PropertyPayload.fromJson(item.payloadJson) ?: return false
+        val payload = payloadCodec.decodeProperty(item.payloadJson) ?: return false
         val isFavorite = payload.intValue == 1
 
         return romMRepository.get().syncFavorite(item.rommId, isFavorite)
@@ -439,7 +440,7 @@ class SyncCoordinator @Inject constructor(
                 rommId = rommId,
                 syncType = SyncType.SAVE_STATE,
                 priority = SyncPriority.SAVE_STATE,
-                payloadJson = payload.toJson()
+                payloadJson = payloadCodec.encode(payload)
             )
         )
     }
@@ -454,7 +455,7 @@ class SyncCoordinator @Inject constructor(
                 rommId = rommId,
                 syncType = syncType,
                 priority = SyncPriority.PROPERTY,
-                payloadJson = payload.toJson()
+                payloadJson = payloadCodec.encode(payload)
             )
         )
     }
@@ -464,79 +465,3 @@ class SyncCoordinator @Inject constructor(
     }
 }
 
-// Payload classes for JSON serialization
-data class SaveFilePayload(val emulatorId: String, val channelName: String? = null) {
-    fun toJson(): String {
-        val channel = if (channelName != null) ""","channelName":"$channelName"""" else ""
-        return """{"emulatorId":"$emulatorId"$channel}"""
-    }
-
-    companion object {
-        fun fromJson(json: String): SaveFilePayload? {
-            return try {
-                val emulatorId = json.substringAfter("\"emulatorId\":\"").substringBefore("\"")
-                val channelName = if (json.contains("\"channelName\":"))
-                    json.substringAfter("\"channelName\":\"").substringBefore("\"")
-                else null
-                SaveFilePayload(emulatorId, channelName)
-            } catch (e: Exception) {
-                null
-            }
-        }
-    }
-}
-
-data class SaveStatePayload(val stateCacheId: Long, val emulatorId: String) {
-    fun toJson(): String = """{"stateCacheId":$stateCacheId,"emulatorId":"$emulatorId"}"""
-
-    companion object {
-        fun fromJson(json: String): SaveStatePayload? {
-            return try {
-                val stateCacheId = json.substringAfter("\"stateCacheId\":").substringBefore(",").toLong()
-                val emulatorId = json.substringAfter("\"emulatorId\":\"").substringBefore("\"")
-                SaveStatePayload(stateCacheId, emulatorId)
-            } catch (e: Exception) {
-                null
-            }
-        }
-    }
-}
-
-data class PropertyPayload(val intValue: Int? = null, val stringValue: String? = null) {
-    fun toJson(): String = """{"intValue":${intValue ?: "null"},"stringValue":${stringValue?.let { "\"$it\"" } ?: "null"}}"""
-
-    companion object {
-        fun fromJson(json: String): PropertyPayload? {
-            return try {
-                val intValueStr = json.substringAfter("\"intValue\":").substringBefore(",")
-                val intValue = if (intValueStr == "null") null else intValueStr.toInt()
-                val stringValueStr = json.substringAfter("\"stringValue\":").substringBefore("}")
-                val stringValue = if (stringValueStr == "null") null else stringValueStr.trim('"')
-                PropertyPayload(intValue, stringValue)
-            } catch (e: Exception) {
-                null
-            }
-        }
-    }
-}
-
-data class AchievementPayload(
-    val achievementRaId: Long,
-    val forHardcoreMode: Boolean,
-    val earnedAt: Long
-) {
-    fun toJson(): String = """{"achievementRaId":$achievementRaId,"forHardcoreMode":$forHardcoreMode,"earnedAt":$earnedAt}"""
-
-    companion object {
-        fun fromJson(json: String): AchievementPayload? {
-            return try {
-                val achievementRaId = json.substringAfter("\"achievementRaId\":").substringBefore(",").toLong()
-                val forHardcoreMode = json.substringAfter("\"forHardcoreMode\":").substringBefore(",").toBoolean()
-                val earnedAt = json.substringAfter("\"earnedAt\":").substringBefore("}").toLong()
-                AchievementPayload(achievementRaId, forHardcoreMode, earnedAt)
-            } catch (e: Exception) {
-                null
-            }
-        }
-    }
-}

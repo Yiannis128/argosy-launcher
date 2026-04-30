@@ -46,7 +46,8 @@ sealed class RAAwardResult {
 class RetroAchievementsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val pendingSyncQueueDao: PendingSyncQueueDao,
-    private val prefsRepository: UserPreferencesRepository
+    private val prefsRepository: UserPreferencesRepository,
+    private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec
 ) {
     private val api: RAApi by lazy { createApi() }
 
@@ -218,7 +219,7 @@ class RetroAchievementsRepository @Inject constructor(
             rommId = 0,
             syncType = SyncType.ACHIEVEMENT,
             priority = SyncPriority.PROPERTY,
-            payloadJson = payload.toJson()
+            payloadJson = payloadCodec.encode(payload)
         )
         pendingSyncQueueDao.insert(entity)
         Logger.info(TAG, "Achievement $achievementRaId queued for later submission")
@@ -233,7 +234,7 @@ class RetroAchievementsRepository @Inject constructor(
         var successCount = 0
 
         for (entity in pending) {
-            val payload = AchievementPayload.fromJson(entity.payloadJson) ?: continue
+            val payload = payloadCodec.decodeAchievement(entity.payloadJson) ?: continue
             val validation = generateValidation(payload.achievementRaId, credentials.username, payload.forHardcoreMode)
             val hardcoreInt = if (payload.forHardcoreMode) 1 else 0
 
