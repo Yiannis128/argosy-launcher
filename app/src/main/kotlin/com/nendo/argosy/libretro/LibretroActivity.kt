@@ -3,9 +3,6 @@ package com.nendo.argosy.libretro
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -187,7 +184,7 @@ class LibretroActivity : ComponentActivity() {
 
     private var limitHotkeysToPlayer1 by mutableStateOf(true)
     private var firstFrameRendered = false
-    private var audioFocusRequest: AudioFocusRequest? = null
+    private lateinit var audioController: LibretroAudioController
     private var swapAB by mutableStateOf(false)
     private var swapXY by mutableStateOf(false)
     private var swapStartSelect by mutableStateOf(false)
@@ -326,8 +323,9 @@ class LibretroActivity : ComponentActivity() {
         createRetroView(corePath, systemDir, savesDir, settings, restoredSram)
         initializeNetplaySessionManager()
         setupRetroViewListeners()
+        audioController = LibretroAudioController(this, getRetroView = { retroView })
         configureRetroView(settings)
-        requestAudioFocus()
+        audioController.requestAudioFocus()
         inputConfig = InputConfigCoordinator(
             inputConfigRepository = inputConfigRepository,
             portResolver = portResolver,
@@ -571,31 +569,8 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun requestAudioFocus() {
-        val am = getSystemService(AudioManager::class.java) ?: return
-        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .setOnAudioFocusChangeListener { }
-            .build()
-        audioFocusRequest = request
-        am.requestAudioFocus(request)
-    }
-
-    private fun abandonAudioFocus() {
-        val request = audioFocusRequest ?: return
-        val am = getSystemService(AudioManager::class.java) ?: return
-        am.abandonAudioFocusRequest(request)
-        audioFocusRequest = null
-    }
-
     private fun configureRetroView(settings: com.nendo.argosy.data.preferences.BuiltinEmulatorSettings) {
-        retroView.audioEnabled = true
-        retroView.pitchPreservationEnabled = settings.fastForwardPreservePitch
+        audioController.applyInitialAudioConfig(settings.fastForwardPreservePitch)
         retroView.filterMode = settings.filterMode
         retroView.blackFrameInsertion = settings.blackFrameInsertion
         retroView.portResolver = portResolver
@@ -1931,7 +1906,7 @@ class LibretroActivity : ComponentActivity() {
             }
             is InGameControlsAction.SetFastForwardPreservePitch -> {
                 videoSettings.fastForwardPreservePitch = action.enabled
-                retroView.pitchPreservationEnabled = action.enabled
+                audioController.setPitchPreservationEnabled(action.enabled)
                 lifecycleScope.launch {
                     preferencesRepository.setBuiltinFastForwardPreservePitch(action.enabled)
                 }
@@ -2096,7 +2071,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onDestroy() {
         Log.d(TAG, "onDestroy: isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations")
-        abandonAudioFocus()
+        audioController.abandonAudioFocus()
         com.nendo.argosy.DualScreenManagerHolder.instance?.let { dsm ->
             dsm.emulatorKeyDispatcher = null
             dsm.emulatorMotionDispatcher = null
