@@ -13,6 +13,7 @@ import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.screens.settings.delegates.StorageSettingsDelegate
+import com.nendo.argosy.util.AppPaths
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -607,9 +608,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     autoSaveState = builtinSettings.autoSaveState,
                     autoRestoreState = builtinSettings.autoRestoreState,
                     savePath = builtinSettings.customSavePath
-                        ?: vm.context.filesDir.resolve("libretro/saves").absolutePath,
+                        ?: AppPaths.libretroSavesDir(vm.context.filesDir).absolutePath,
                     statePath = builtinSettings.customStatePath
-                        ?: vm.context.filesDir.resolve("libretro/states").absolutePath,
+                        ?: AppPaths.libretroStatesDir(vm.context.filesDir).absolutePath,
                     isCustomSavePath = builtinSettings.customSavePath != null,
                     isCustomStatePath = builtinSettings.customStatePath != null
                 ),

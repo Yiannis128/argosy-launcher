@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.LEDController
 import com.nendo.argosy.hardware.ScreenCaptureManager
 import com.nendo.argosy.ui.screens.settings.PermissionsState
@@ -25,12 +26,11 @@ class PermissionsSettingsDelegate @Inject constructor(
     private val application: Application,
     private val permissionHelper: PermissionHelper,
     private val screenCaptureManager: ScreenCaptureManager,
-    private val ledController: LEDController
+    private val ledController: LEDController,
+    private val fanController: FanController
 ) {
     private val _state = MutableStateFlow(PermissionsState())
     val state: StateFlow<PermissionsState> = _state.asStateFlow()
-
-    private val fanSpeedFile = java.io.File("/sys/class/gpio5_pwm2/speed")
 
     fun refreshPermissions() {
         val hasStorage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -48,7 +48,7 @@ class PermissionsSettingsDelegate @Inject constructor(
             true
         }
         val hasWriteSettings = Settings.System.canWrite(application)
-        val isDeviceWithFanControl = fanSpeedFile.exists()
+        val isDeviceWithFanControl = fanController.isAvailable()
         val hasScreenCapture = screenCaptureManager.hasPermission.value
         val isLedAvailable = ledController.isAvailable
         val hasDisplayOverlay = Settings.canDrawOverlays(application)
@@ -119,5 +119,5 @@ class PermissionsSettingsDelegate @Inject constructor(
 
     fun hasWriteSettingsPermission(): Boolean = Settings.System.canWrite(application)
 
-    fun isDeviceSettingsSupported(): Boolean = fanSpeedFile.exists()
+    fun isDeviceSettingsSupported(): Boolean = fanController.isAvailable()
 }

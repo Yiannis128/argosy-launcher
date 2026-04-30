@@ -11,6 +11,7 @@ import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
 import `in`.dragonbra.javasteam.steam.handlers.steamcontent.SteamContent
@@ -173,7 +174,7 @@ class SteamContentManager @Inject constructor(
                 steamDownloadQueueDao.updateState(entity.appId, SteamDownloadDbState.PAUSED.name)
                 // Clear localPath if it points to staging so game doesn't appear installed
                 gameDao.getBySteamAppId(entity.appId)?.let { game ->
-                    if (game.localPath?.contains("steam_staging") == true) {
+                    if (game.localPath?.contains(AppPaths.STEAM_STAGING_DIR) == true) {
                         gameDao.update(game.copy(localPath = null))
                     }
                 }
@@ -215,13 +216,13 @@ class SteamContentManager @Inject constructor(
     }
 
     private suspend fun recoverOrphanedStagingDownloads() {
-        val stagingRoot = File(context.filesDir, "steam_staging")
+        val stagingRoot = AppPaths.steamStagingRoot(context.filesDir)
         if (!stagingRoot.exists()) return
 
         val steamGames = gameDao.getAllWithSteamAppId()
         for (game in steamGames) {
             val localPath = game.localPath ?: continue
-            if (!localPath.contains("steam_staging")) continue
+            if (!localPath.contains(AppPaths.STEAM_STAGING_DIR)) continue
 
             val appId = game.steamAppId ?: continue
             val existing = steamDownloadQueueDao.getByAppId(appId)
@@ -252,7 +253,7 @@ class SteamContentManager @Inject constructor(
     private suspend fun resumeInterruptedDeploy(entity: SteamDownloadQueueEntity) {
         val appId = entity.appId
         val gameName = entity.gameName
-        val stagingDir = File(context.filesDir, "steam_staging/$appId")
+        val stagingDir = AppPaths.steamStagingDir(context.filesDir, appId)
 
         // Resolve final path from installDir (Steam name), not installPath (may still point to staging)
         val finalDir = if (entity.installDir != null) {
@@ -721,7 +722,7 @@ class SteamContentManager @Inject constructor(
                 Log.d(TAG, "Install path for $appId: ${installDir.absolutePath}")
 
                 // Migrate old staging downloads to destination
-                val oldStagingDir = File(context.filesDir, "steam_staging/$appId")
+                val oldStagingDir = AppPaths.steamStagingDir(context.filesDir, appId)
                 if (oldStagingDir.exists() && oldStagingDir.listFiles()?.isNotEmpty() == true) {
                     if (!installDir.exists() || installDir.listFiles().isNullOrEmpty()) {
                         Log.d(TAG, "Migrating old staging -> destination: ${oldStagingDir.absolutePath} -> ${installDir.absolutePath}")
@@ -1171,7 +1172,7 @@ class SteamContentManager @Inject constructor(
                 kotlinx.coroutines.delay(3000)
 
                 // Clean old staging directory if it exists (migration period)
-                val oldStagingDir = File(context.filesDir, "steam_staging/$activeAppId")
+                val oldStagingDir = AppPaths.steamStagingDir(context.filesDir, activeAppId)
                 if (oldStagingDir.exists()) {
                     val deleted = oldStagingDir.deleteRecursively()
                     Log.d(TAG, "Deleted old staging dir: $deleted")
@@ -1252,7 +1253,7 @@ class SteamContentManager @Inject constructor(
                 Log.d(TAG, "Deleted game files: ${installDir.absolutePath}")
             }
 
-            val stagingDir = File(context.filesDir, "steam_staging/$appId")
+            val stagingDir = AppPaths.steamStagingDir(context.filesDir, appId)
             if (stagingDir.exists()) {
                 stagingDir.deleteRecursively()
                 Log.d(TAG, "Deleted staging: ${stagingDir.absolutePath}")
@@ -1529,7 +1530,7 @@ class SteamContentManager @Inject constructor(
         val steamDir = pathResolver.getSteamDir()
         pathsToClean.add(File(steamDir, appId.toString()))
 
-        val stagingDir = File(context.filesDir, "steam_staging/$appId")
+        val stagingDir = AppPaths.steamStagingDir(context.filesDir, appId)
 
         Log.d(TAG, "Cleanup paths for $appId:")
         for (dir in pathsToClean) {

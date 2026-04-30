@@ -15,6 +15,7 @@ import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.emulator.LibretroSettingDef
+import com.nendo.argosy.util.AppPaths
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -182,7 +183,7 @@ internal fun routeSetBuiltinSavePath(vm: SettingsViewModel, newPath: String) {
 
 internal fun routeResetBuiltinSavePath(vm: SettingsViewModel) {
     val oldPath = vm._uiState.value.builtinVideo.savePath
-    val defaultPath = vm.context.filesDir.resolve("libretro/saves").absolutePath
+    val defaultPath = AppPaths.libretroSavesDir(vm.context.filesDir).absolutePath
     if (oldPath == defaultPath) return
     initiateBuiltinPathMigration(vm, BuiltinPathType.SAVE, oldPath, defaultPath)
 }
@@ -194,7 +195,7 @@ internal fun routeSetBuiltinStatePath(vm: SettingsViewModel, newPath: String) {
 
 internal fun routeResetBuiltinStatePath(vm: SettingsViewModel) {
     val oldPath = vm._uiState.value.builtinVideo.statePath
-    val defaultPath = vm.context.filesDir.resolve("libretro/states").absolutePath
+    val defaultPath = AppPaths.libretroStatesDir(vm.context.filesDir).absolutePath
     if (oldPath == defaultPath) return
     initiateBuiltinPathMigration(vm, BuiltinPathType.STATE, oldPath, defaultPath)
 }
@@ -255,14 +256,14 @@ private fun commitBuiltinPathChange(
         }
         val isCustom = when (pathType) {
             BuiltinPathType.SAVE -> {
-                val defaultPath = vm.context.filesDir.resolve("libretro/saves").absolutePath
+                val defaultPath = AppPaths.libretroSavesDir(vm.context.filesDir).absolutePath
                 val custom = newPath != defaultPath
                 if (custom) vm.libretroSettingsRepo.setBuiltinCustomSavePath(newPath)
                 else vm.libretroSettingsRepo.setBuiltinCustomSavePath(null)
                 custom
             }
             BuiltinPathType.STATE -> {
-                val defaultPath = vm.context.filesDir.resolve("libretro/states").absolutePath
+                val defaultPath = AppPaths.libretroStatesDir(vm.context.filesDir).absolutePath
                 val custom = newPath != defaultPath
                 if (custom) vm.libretroSettingsRepo.setBuiltinCustomStatePath(newPath)
                 else vm.libretroSettingsRepo.setBuiltinCustomStatePath(null)

@@ -2,6 +2,7 @@ package com.nendo.argosy.data.emulator
 
 import android.os.Environment
 import com.nendo.argosy.data.platform.PlatformDefinitions
+import com.nendo.argosy.util.AppPaths
 import java.io.File
 
 sealed class StateSlotPattern {
@@ -89,7 +90,7 @@ object StatePathRegistry {
     private val configs = mapOf(
         "builtin" to StatePathConfig(
             emulatorId = "builtin",
-            defaultPaths = listOf("{filesDir}/libretro/states"),
+            defaultPaths = listOf("{filesDir}/${AppPaths.LIBRETRO_STATES_SUBDIR}"),
             slotPattern = StateSlotPattern.SuffixNumber(
                 extension = "state",
                 autoSlotSuffix = "auto"

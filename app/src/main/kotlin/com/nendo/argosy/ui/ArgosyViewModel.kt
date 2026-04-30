@@ -41,6 +41,7 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.hardware.BrightnessController
+import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.VolumeController
 import com.nendo.argosy.ui.components.FanMode
 import com.nendo.argosy.ui.components.PerformanceMode
@@ -78,7 +79,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 import javax.inject.Inject
 
 data class ArgosyUiState(
@@ -166,6 +166,7 @@ class ArgosyViewModel @Inject constructor(
     private val syncQueueManager: SyncQueueManager,
     private val brightnessController: BrightnessController,
     private val volumeController: VolumeController,
+    private val fanController: FanController,
     private val syncLibraryUseCase: com.nendo.argosy.domain.usecase.sync.SyncLibraryUseCase,
     private val socialRepository: SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
@@ -183,7 +184,6 @@ class ArgosyViewModel @Inject constructor(
     fun netplayJoinService(): com.nendo.argosy.data.netplay.NetplayJoinService = netplayJoinService
 
     private val contentResolver get() = application.contentResolver
-    private val fanSpeedFile = File("/sys/class/gpio5_pwm2/speed")
 
     private val _backgroundConflictInfo = MutableStateFlow<ConflictInfo?>(null)
     val backgroundConflictInfo: StateFlow<ConflictInfo?> = _backgroundConflictInfo.asStateFlow()
@@ -1080,7 +1080,7 @@ class ArgosyViewModel @Inject constructor(
 
     private fun loadDeviceSettings() {
         viewModelScope.launch {
-            val isSupported = fanSpeedFile.exists()
+            val isSupported = fanController.isAvailable()
             val pserverAvailable = PServerExecutor.isAvailable
 
             if (!isSupported) {

@@ -2,6 +2,7 @@ package com.nendo.argosy.data.emulator
 
 import android.os.Environment
 import com.nendo.argosy.data.platform.PlatformDefinitions
+import com.nendo.argosy.util.AppPaths
 
 data class SavePathConfig(
     val emulatorId: String,
@@ -467,7 +468,7 @@ object SavePathRegistry {
 
         BUILTIN_EMULATOR_ID to SavePathConfig(
             emulatorId = BUILTIN_EMULATOR_ID,
-            defaultPaths = listOf("{filesDir}/libretro/saves"),
+            defaultPaths = listOf("{filesDir}/${AppPaths.LIBRETRO_SAVES_SUBDIR}"),
             saveExtensions = listOf("srm"),
             usesInternalStorage = true
         )

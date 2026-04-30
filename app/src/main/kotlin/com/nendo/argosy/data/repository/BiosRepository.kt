@@ -12,6 +12,7 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMFirmware
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.util.AppPaths
 import com.nendo.argosy.util.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -113,7 +114,7 @@ class BiosRepository @Inject constructor(
     }
 
     fun getLibretroSystemDir(): File {
-        val dir = File(context.filesDir, "libretro/system")
+        val dir = AppPaths.libretroSystemDir(context.filesDir)
         if (!dir.exists()) dir.mkdirs()
         return dir
     }

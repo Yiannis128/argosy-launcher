@@ -11,6 +11,7 @@ import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.data.remote.steam.SteamAppData
 import com.nendo.argosy.data.remote.steam.SteamStoreApi
+import com.nendo.argosy.util.AppPaths
 import com.squareup.moshi.Moshi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -212,7 +213,7 @@ class SteamRepository @Inject constructor(
                 }
 
                 // Delete staging dir if it exists
-                val stagingDir = File(context.filesDir, "steam_staging/$steamAppId")
+                val stagingDir = AppPaths.steamStagingDir(context.filesDir, steamAppId)
                 if (stagingDir.exists()) {
                     stagingDir.deleteRecursively()
                     Log.d(TAG, "Deleted staging dir for $steamAppId")

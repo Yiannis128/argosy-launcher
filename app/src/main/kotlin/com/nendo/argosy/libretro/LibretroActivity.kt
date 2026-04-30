@@ -117,6 +117,7 @@ import com.nendo.argosy.libretro.shader.ShaderPreviewRenderer
 import com.nendo.argosy.libretro.shader.ShaderRegistry
 import com.nendo.argosy.ui.theme.ALauncherTheme
 import com.nendo.argosy.data.preferences.BuiltinEmulatorSettings
+import com.nendo.argosy.util.AppPaths
 import com.swordfish.libretrodroid.GLRetroView
 import com.swordfish.libretrodroid.GLRetroViewData
 import com.swordfish.libretrodroid.LibretroDroid
@@ -283,7 +284,7 @@ class LibretroActivity : ComponentActivity() {
 
         val systemDir = intent.getStringExtra(EXTRA_SYSTEM_DIR)
             ?.let { File(it) }
-            ?: File(filesDir, "libretro/system")
+            ?: AppPaths.libretroSystemDir(filesDir)
         systemDir.mkdirs()
         val savesDir: File
         val statesDir: File
@@ -297,9 +298,9 @@ class LibretroActivity : ComponentActivity() {
             statesDir = File(scratch, "states").apply { mkdirs() }
         } else {
             savesDir = (intent.getStringExtra(EXTRA_SAVES_DIR)?.let { File(it) }
-                ?: File(filesDir, "libretro/saves")).apply { mkdirs() }
+                ?: AppPaths.libretroSavesDir(filesDir)).apply { mkdirs() }
             statesDir = (intent.getStringExtra(EXTRA_STATES_DIR)?.let { File(it) }
-                ?: File(filesDir, "libretro/states")).apply { mkdirs() }
+                ?: AppPaths.libretroStatesDir(filesDir)).apply { mkdirs() }
         }
 
         val game = kotlinx.coroutines.runBlocking { gameDao.getById(gameId) }

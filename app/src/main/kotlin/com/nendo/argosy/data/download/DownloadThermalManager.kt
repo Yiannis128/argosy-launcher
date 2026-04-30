@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.PowerManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,7 +37,8 @@ data class ThermalStatus(
 class DownloadThermalManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadManager: DownloadManager,
-    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
+    private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
+    private val fanController: FanController
 ) {
     private val _thermalStatus = MutableStateFlow(ThermalStatus())
     val thermalStatus: StateFlow<ThermalStatus> = _thermalStatus.asStateFlow()
@@ -185,9 +187,7 @@ class DownloadThermalManager @Inject constructor(
     private fun setFanDuty(duty: Int) {
         if (!fanControlAvailable()) return
         val changed = duty != currentFanDuty
-        runCatching {
-            File(FAN_STATE_PATH).writeText("1")
-            File(FAN_DUTY_PATH).writeText(duty.toString())
+        if (fanController.setSpeed(duty)) {
             fanWasControlled = true
             currentFanDuty = duty
             if (changed) {
@@ -199,8 +199,7 @@ class DownloadThermalManager @Inject constructor(
 
     private fun releaseFanControl() {
         if (!fanWasControlled) return
-        runCatching {
-            File(FAN_STATE_PATH).writeText("0")
+        if (fanController.release()) {
             Log.d(TAG, "Fan control released to system governor")
         }
         fanWasControlled = false
@@ -286,7 +285,7 @@ class DownloadThermalManager @Inject constructor(
         }
     }
 
-    private fun fanControlAvailable() = File(FAN_STATE_PATH).exists()
+    private fun fanControlAvailable() = fanController.isControllable()
 
     companion object {
         private const val TAG = "DownloadThermalManager"
@@ -313,8 +312,6 @@ class DownloadThermalManager @Inject constructor(
         private const val MAX_WAKELOCK_DURATION_MS = 60 * 60 * 1000L
 
         private const val THERMAL_PATH = "/sys/class/thermal/"
-        private const val FAN_STATE_PATH = "/sys/class/gpio5_pwm2/state"
-        private const val FAN_DUTY_PATH = "/sys/class/gpio5_pwm2/duty"
         private const val BATTERY_TEMP_PATH = "/sys/class/power_supply/battery/temp"
     }
 }

@@ -23,6 +23,7 @@ import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMDeleteSavesRequest
 import com.nendo.argosy.data.remote.romm.RomMSave
 import com.nendo.argosy.data.remote.romm.RomMState
+import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -130,7 +131,7 @@ class StateCacheManager @Inject constructor(
             }
             userStateOverride != null -> listOf(userStateOverride)
             emulatorId == "builtin" -> {
-                val baseDir = File(context.filesDir, "libretro/states")
+                val baseDir = AppPaths.libretroStatesDir(context.filesDir)
                 val channelDirs = baseDir.listFiles { f -> f.isDirectory }
                     ?.map { it.absolutePath }
                     ?: listOf(File(baseDir, "default").absolutePath)

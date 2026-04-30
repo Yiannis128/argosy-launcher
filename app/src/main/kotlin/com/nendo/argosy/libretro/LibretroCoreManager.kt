@@ -5,6 +5,7 @@ import android.util.Log
 import com.nendo.argosy.data.emulator.CoreSystemDataManager
 import com.nendo.argosy.data.local.dao.CoreVersionDao
 import com.nendo.argosy.data.local.entity.CoreVersionEntity
+import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -290,7 +291,7 @@ class LibretroCoreManager @Inject constructor(
     }
 
     private val systemDir: File
-        get() = File(context.filesDir, "libretro/system").apply { mkdirs() }
+        get() = AppPaths.libretroSystemDir(context.filesDir).apply { mkdirs() }
 
     fun getDownloadedCores(): List<LibretroCoreRegistry.CoreInfo> {
         val downloadedFiles = downloadedCoresDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
