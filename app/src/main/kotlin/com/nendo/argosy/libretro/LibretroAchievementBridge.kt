@@ -9,7 +9,7 @@ import com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
 import com.nendo.argosy.hardware.AmbientLedManager
 import com.nendo.argosy.libretro.ui.AchievementUnlock
 import com.nendo.argosy.libretro.ui.RAConnectionInfo
-import com.nendo.argosy.ui.screens.common.AchievementUpdateBus
+import com.nendo.argosy.core.event.AchievementUpdateBus
 import com.swordfish.libretrodroid.GLRetroView
 import kotlinx.coroutines.CoroutineScope
 
