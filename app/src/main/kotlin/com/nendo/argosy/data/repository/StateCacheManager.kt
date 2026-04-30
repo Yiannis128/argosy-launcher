@@ -57,6 +57,7 @@ class StateCacheManager @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val coreVersionExtractor: CoreVersionExtractor,
     private val retroArchConfigParser: RetroArchConfigParser,
+    private val retroArchPathResolver: com.nendo.argosy.data.emulator.RetroArchPathResolver,
     private val saveSyncRepository: dagger.Lazy<SaveSyncRepository>
 ) {
     companion object {
@@ -119,15 +120,14 @@ class StateCacheManager @Inject constructor(
             ?.statePathPattern
 
         val statePaths = when {
-            emulatorId.startsWith("retroarch") && emulatorPackage != null -> {
-                val contentDir = romFile.parentFile?.absolutePath
-                val contentDirName = romFile.parentFile?.name
-                retroArchConfigParser.resolveStatePaths(
-                    emulatorPackage, contentDirName, coreName, contentDir,
-                    basePathOverride = userStateOverride
+            com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(emulatorId) -> {
+                val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+                    emulatorId = emulatorId,
+                    coreName = coreName,
+                    romPath = romPath,
                 )
+                retroArchPathResolver.resolveStateDirectories(req)
             }
-            // User overrides take precedence for non-RA emulators regardless of cache structure.
             userStateOverride != null -> listOf(userStateOverride)
             emulatorId == "builtin" -> {
                 val baseDir = File(context.filesDir, "libretro/states")
@@ -539,13 +539,13 @@ class StateCacheManager @Inject constructor(
             ?.statePathPattern
 
         val statePaths = when {
-            emulatorId.startsWith("retroarch") && emulatorPackage != null -> {
-                val contentDir = romFile.parentFile?.absolutePath
-                val contentDirName = romFile.parentFile?.name
-                retroArchConfigParser.resolveStatePaths(
-                    emulatorPackage, contentDirName, coreId, contentDir,
-                    basePathOverride = userStateOverride
+            com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(emulatorId) -> {
+                val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+                    emulatorId = emulatorId,
+                    coreName = coreId,
+                    romPath = romPath,
                 )
+                retroArchPathResolver.resolveStateDirectories(req)
             }
             userStateOverride != null -> listOf(userStateOverride)
             else -> StatePathRegistry.resolvePath(config, platformSlug)

@@ -16,7 +16,8 @@ import javax.inject.Singleton
 class RetroArchSaveHandler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val fal: FileAccessLayer,
-    private val retroArchConfigParser: RetroArchConfigParser
+    private val retroArchConfigParser: RetroArchConfigParser,
+    private val retroArchPathResolver: com.nendo.argosy.data.emulator.RetroArchPathResolver,
 ) : PlatformSaveHandler {
     companion object {
         private const val TAG = "RetroArchSaveHandler"
@@ -60,20 +61,19 @@ class RetroArchSaveHandler @Inject constructor(
             ExtractResult(true, targetPath)
         }
 
-    fun discoverSavePath(context: SaveContext): String? {
-        val packageName = getPackageName(context.emulatorId)
+    suspend fun discoverSavePath(context: SaveContext): String? {
         val coreName = SavePathRegistry.getRetroArchCore(context.platformSlug)
         if (coreName == null) {
             Logger.debug(TAG, "discoverSavePath: No core mapping for platform | platform=${context.platformSlug}")
             return null
         }
 
-        val contentDir = context.romPath?.let { File(it).parent }
-        val contentDirName = context.romPath?.let { File(it).parentFile?.name }
-
-        val paths = retroArchConfigParser.resolveSavePaths(
-            packageName, contentDirName, coreName, contentDir, null
+        val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+            emulatorId = context.emulatorId,
+            coreName = coreName,
+            romPath = context.romPath,
         )
+        val paths = retroArchPathResolver.resolveSaveDirectories(req)
 
         val baseName = buildSaveFileName(context)
 

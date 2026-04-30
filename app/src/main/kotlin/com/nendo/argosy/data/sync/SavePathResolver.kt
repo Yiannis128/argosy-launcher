@@ -37,6 +37,7 @@ class SavePathResolver @Inject constructor(
     private val emulatorSaveConfigDao: EmulatorSaveConfigDao,
     private val gameDao: GameDao,
     private val retroArchConfigParser: RetroArchConfigParser,
+    private val retroArchPathResolver: com.nendo.argosy.data.emulator.RetroArchPathResolver,
     private val titleIdExtractor: TitleIdExtractor,
     private val titleDbRepository: TitleDbRepository,
     private val saveArchiver: SaveArchiver,
@@ -147,25 +148,16 @@ class SavePathResolver @Inject constructor(
             }
         }
 
-        val basePathOverride = if (isRetroArch && userConfig?.isUserOverride == true) {
-            userConfig.savePathPattern
-        } else null
-
         val paths = if (isRetroArch) {
-            val packageName = if (effectiveEmulatorId == "retroarch_64") "com.retroarch.aarch64" else "com.retroarch"
-            val contentDir = romPath?.let { File(it).parent }
-            // RetroArch's sort_by_content_enable sorts into the ROM's parent directory basename,
-            // not the platform slug.
-            val contentDirName = romPath?.let { File(it).parentFile?.name }
+            val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+                emulatorId = effectiveEmulatorId,
+                coreName = coreName,
+                romPath = romPath,
+            )
             if (coreName != null) {
-                Logger.debug(TAG, "discoverSavePath: RetroArch using known core=$coreName (baseOverride=$basePathOverride)")
-                retroArchConfigParser.resolveSavePaths(packageName, contentDirName, coreName, contentDir, basePathOverride)
+                retroArchPathResolver.resolveSaveDirectories(req)
             } else {
-                val corePatterns = EmulatorRegistry.getRetroArchCorePatterns()[platformSlug] ?: emptyList()
-                Logger.debug(TAG, "discoverSavePath: RetroArch trying all cores=$corePatterns (baseOverride=$basePathOverride)")
-                corePatterns.flatMap { core ->
-                    retroArchConfigParser.resolveSavePaths(packageName, contentDirName, core, contentDir, basePathOverride)
-                } + retroArchConfigParser.resolveSavePaths(packageName, contentDirName, null, contentDir, basePathOverride)
+                retroArchPathResolver.resolveSaveDirectoriesForPlatform(req, platformSlug)
             }
         } else {
             resolveSavePaths(config, platformSlug)
