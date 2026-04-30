@@ -2,6 +2,8 @@ package com.nendo.argosy.ui.filebrowser
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import com.nendo.argosy.core.storage.StorageVolume
+import com.nendo.argosy.core.storage.StorageVolumeType
 import com.nendo.argosy.ui.util.clickableNoFocus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues

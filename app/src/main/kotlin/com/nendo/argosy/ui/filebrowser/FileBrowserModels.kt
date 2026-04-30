@@ -1,22 +1,8 @@
 package com.nendo.argosy.ui.filebrowser
 
+import com.nendo.argosy.core.storage.StorageVolume
+import com.nendo.argosy.core.storage.StorageVolumeType
 import java.io.File
-
-enum class StorageVolumeType {
-    INTERNAL,
-    SD_CARD,
-    USB,
-    UNKNOWN
-}
-
-data class StorageVolume(
-    val id: String,
-    val displayName: String,
-    val path: String,
-    val type: StorageVolumeType,
-    val availableBytes: Long = 0L,
-    val totalBytes: Long = 0L
-)
 
 data class FileEntry(
     val name: String,

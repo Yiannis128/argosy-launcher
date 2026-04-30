@@ -6,12 +6,12 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import android.os.StatFs
-import com.nendo.argosy.ui.filebrowser.StorageVolumeType
+import com.nendo.argosy.core.storage.StorageVolumeType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.nendo.argosy.ui.filebrowser.StorageVolume as AppStorageVolume
+import com.nendo.argosy.core.storage.StorageVolume as AppStorageVolume
 
 @Singleton
 class StorageVolumeDetector @Inject constructor(
