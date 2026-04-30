@@ -20,7 +20,6 @@ import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
@@ -59,7 +58,12 @@ class SyncCoordinator @Inject constructor(
             return@withContext ProcessResult.NotConnected
         }
 
-        mutex.withLock {
+        if (!mutex.tryLock()) {
+            Logger.debug(TAG, "processQueue: Already in progress, skipping duplicate call")
+            return@withContext ProcessResult.Completed(processed = 0, failed = 0)
+        }
+
+        try {
             var processed = 0
             var failed = 0
 
@@ -109,6 +113,8 @@ class SyncCoordinator @Inject constructor(
 
             Logger.info(TAG, "processQueue: Completed | processed=$processed, failed=$failed")
             ProcessResult.Completed(processed, failed)
+        } finally {
+            mutex.unlock()
         }
     }
 
