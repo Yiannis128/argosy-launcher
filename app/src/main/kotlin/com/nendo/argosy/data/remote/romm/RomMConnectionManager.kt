@@ -48,6 +48,8 @@ class RomMConnectionManager @Inject constructor(
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
+    private val connectMutex = kotlinx.coroutines.sync.Mutex()
+
     fun getApi(): RomMApi? = api
 
     fun getBaseUrl(): String = baseUrl
@@ -91,12 +93,21 @@ class RomMConnectionManager @Inject constructor(
     }
 
     suspend fun connect(url: String, token: String? = null): RomMResult<String> {
-        _connectionState.value = ConnectionState.Connecting
+        connectMutex.lock()
+        try {
+            val current = _connectionState.value
+            val normalized = url.trimEnd('/') + "/"
+            if (current is ConnectionState.Connected && baseUrl == normalized && accessToken == token) {
+                Logger.debug(TAG, "connect: already connected to $normalized, skipping heartbeat")
+                return RomMResult.Success(normalized)
+            }
 
-        val urlsToTry = buildUrlsToTry(url)
-        var lastError: String? = null
+            _connectionState.value = ConnectionState.Connecting
 
-        for (candidateUrl in urlsToTry) {
+            val urlsToTry = buildUrlsToTry(url)
+            var lastError: String? = null
+
+            for (candidateUrl in urlsToTry) {
             val normalizedUrl = candidateUrl.trimEnd('/') + "/"
             try {
                 val newApi = createApi(normalizedUrl, token)
@@ -125,8 +136,11 @@ class RomMConnectionManager @Inject constructor(
             }
         }
 
-        _connectionState.value = ConnectionState.Failed(lastError ?: "Connection failed")
-        return RomMResult.Error(lastError ?: "Connection failed")
+            _connectionState.value = ConnectionState.Failed(lastError ?: "Connection failed")
+            return RomMResult.Error(lastError ?: "Connection failed")
+        } finally {
+            connectMutex.unlock()
+        }
     }
 
     suspend fun login(username: String, password: String): RomMResult<String> {
