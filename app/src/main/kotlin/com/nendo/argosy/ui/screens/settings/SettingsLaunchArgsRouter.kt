@@ -18,7 +18,7 @@ internal fun routeOpenLaunchArgsModal(vm: SettingsViewModel, platformId: Long) {
         val launchConfig = emulatorDef.launchConfig
         if (launchConfig.isInProcess) return@launch
 
-        val override = vm.emulatorLaunchArgsDao.getByPlatformAndEmulator(platformId, emulatorId)
+        val override = vm.launchArgsRepo.getByPlatformAndEmulator(platformId, emulatorId)
         val bindings = launchConfig.bindingDefaults(emulatorDef)
         val state = LaunchArgsModalState(
             platformId = platformId,
@@ -127,7 +127,7 @@ internal fun routeResetLaunchArgsFocused(vm: SettingsViewModel) {
 internal fun routeResetAllLaunchArgs(vm: SettingsViewModel) {
     val state = vm._uiState.value.emulators.launchArgsModalState ?: return
     vm.viewModelScope.launch {
-        vm.emulatorLaunchArgsDao.deleteByPlatformAndEmulator(state.platformId, state.emulatorId)
+        vm.launchArgsRepo.deleteByPlatformAndEmulator(state.platformId, state.emulatorId)
         vm.emulatorDelegate.updateLaunchArgsOverride(null)
     }
 }
@@ -144,11 +144,11 @@ private fun persistLaunchArgsField(
         )
         val updated = transform(base)
         if (updated.hasAnyOverride()) {
-            vm.emulatorLaunchArgsDao.upsert(updated)
-            val persisted = vm.emulatorLaunchArgsDao.getByPlatformAndEmulator(state.platformId, state.emulatorId)
+            vm.launchArgsRepo.upsert(updated)
+            val persisted = vm.launchArgsRepo.getByPlatformAndEmulator(state.platformId, state.emulatorId)
             vm.emulatorDelegate.updateLaunchArgsOverride(persisted)
         } else {
-            vm.emulatorLaunchArgsDao.deleteByPlatformAndEmulator(state.platformId, state.emulatorId)
+            vm.launchArgsRepo.deleteByPlatformAndEmulator(state.platformId, state.emulatorId)
             vm.emulatorDelegate.updateLaunchArgsOverride(null)
         }
     }
