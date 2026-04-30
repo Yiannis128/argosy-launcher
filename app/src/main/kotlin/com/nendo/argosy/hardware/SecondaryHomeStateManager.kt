@@ -1,12 +1,12 @@
 package com.nendo.argosy.hardware
 
 import android.content.Context
-import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
-import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.repository.CollectionRepository
+import com.nendo.argosy.data.repository.DownloadQueueRepository
+import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.PlatformRepository
+import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailViewModel
@@ -21,13 +21,12 @@ import kotlinx.coroutines.withContext
 
 class SecondaryHomeStateManager(
     private val context: Context,
-    private val gameDao: GameDao,
+    private val gameRepository: GameRepository,
     private val platformRepository: PlatformRepository,
     private val collectionRepository: CollectionRepository,
     private val emulatorConfigDao: EmulatorConfigDao,
-    private val gameFileDao: GameFileDao,
-    private val downloadQueueDao: DownloadQueueDao,
-    private val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
+    private val downloadQueueRepository: DownloadQueueRepository,
+    private val steamRepository: SteamRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager? = null,
     private val displayAffinityHelper: DisplayAffinityHelper
 ) {
@@ -113,13 +112,12 @@ class SecondaryHomeStateManager(
         if (savedScreen == "GAME_DETAIL" && savedDetailGameId > 0 && !isGameActive) {
             val affinityHelper = DisplayAffinityHelper(context)
             val vm = DualGameDetailViewModel(
-                gameDao = gameDao,
+                gameRepository = gameRepository,
                 platformRepository = platformRepository,
                 collectionRepository = collectionRepository,
                 emulatorConfigDao = emulatorConfigDao,
-                gameFileDao = gameFileDao,
-                downloadQueueDao = downloadQueueDao,
-                steamDownloadQueueDao = steamDownloadQueueDao,
+                downloadQueueRepository = downloadQueueRepository,
+                steamRepository = steamRepository,
                 steamContentManager = steamContentManager,
                 displayAffinityHelper = affinityHelper,
                 context = context
@@ -172,7 +170,7 @@ class SecondaryHomeStateManager(
 
     suspend fun loadCompanionGameData(gameId: Long): CompanionInGameState {
         return withContext(Dispatchers.IO) {
-            val game = gameDao.getById(gameId) ?: return@withContext CompanionInGameState()
+            val game = gameRepository.getById(gameId) ?: return@withContext CompanionInGameState()
             val platform = platformRepository.getById(game.platformId)
             val startTime = sessionStateStore.getSessionStartTimeMillis()
             CompanionInGameState(
@@ -198,13 +196,12 @@ class SecondaryHomeStateManager(
     fun createGameDetailViewModel(): DualGameDetailViewModel {
         val affinityHelper = DisplayAffinityHelper(context)
         return DualGameDetailViewModel(
-            gameDao = gameDao,
+            gameRepository = gameRepository,
             platformRepository = platformRepository,
             collectionRepository = collectionRepository,
             emulatorConfigDao = emulatorConfigDao,
-            gameFileDao = gameFileDao,
-            downloadQueueDao = downloadQueueDao,
-            steamDownloadQueueDao = steamDownloadQueueDao,
+            downloadQueueRepository = downloadQueueRepository,
+            steamRepository = steamRepository,
             steamContentManager = steamContentManager,
             displayAffinityHelper = affinityHelper,
             context = context

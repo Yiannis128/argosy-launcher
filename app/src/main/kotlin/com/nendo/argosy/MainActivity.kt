@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var platformRepository: PlatformRepository
     @Inject lateinit var collectionRepository: CollectionRepository
     @Inject lateinit var downloadQueueDao: DownloadQueueDao
+    @Inject lateinit var downloadQueueRepository: com.nendo.argosy.data.repository.DownloadQueueRepository
     @Inject lateinit var gamepadInputHandler: GamepadInputHandler
     @Inject lateinit var imageCacheManager: ImageCacheManager
     @Inject lateinit var romMRepository: RomMRepository
@@ -90,6 +91,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var notificationManager: com.nendo.argosy.ui.notification.NotificationManager
     @Inject lateinit var emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao
     @Inject lateinit var steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao
+    @Inject lateinit var steamRepository: com.nendo.argosy.data.repository.SteamRepository
     @Inject lateinit var playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker
     @Inject lateinit var repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
     @Inject lateinit var steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
@@ -224,9 +226,11 @@ class MainActivity : ComponentActivity() {
                 context = this,
                 scope = activityScope,
                 gameDao = gameDao,
+                gameRepository = gameRepository,
                 platformRepository = platformRepository,
                 collectionRepository = collectionRepository,
                 downloadQueueDao = downloadQueueDao,
+                downloadQueueRepository = downloadQueueRepository,
                 gameFileDao = gameFileDao,
                 downloadManager = downloadManagerInstance,
                 gameActionsDelegate = gameActionsDelegate,
@@ -244,6 +248,7 @@ class MainActivity : ComponentActivity() {
                 notificationManager = notificationManager,
                 emulatorConfigDao = emulatorConfigDao,
                 steamDownloadQueueDao = steamDownloadQueueDao,
+                steamRepository = steamRepository,
                 playSessionTracker = playSessionTracker,
                 steamContentManager = steamContentManager,
                 repairImageCacheUseCase = repairImageCacheUseCase,

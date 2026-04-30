@@ -5,13 +5,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
-import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.entity.CollectionEntity
-import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.repository.CollectionRepository
+import com.nendo.argosy.data.repository.DownloadQueueRepository
+import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.PlatformRepository
+import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.local.entity.CollectionGameEntity
 import com.nendo.argosy.data.local.entity.EmulatorConfigEntity
 import com.nendo.argosy.data.local.entity.getDisplayName
@@ -44,13 +44,13 @@ import kotlinx.coroutines.launch
 const val MEDIA_GRID_COLUMNS = 3
 
 class DualGameDetailViewModel(
-    private val gameDao: GameDao,
+    private val gameRepository: GameRepository,
     private val platformRepository: PlatformRepository,
     private val collectionRepository: CollectionRepository,
+    // TODO: replace with EmulatorConfigRepository once it exists (Agent B settings refactor).
     private val emulatorConfigDao: EmulatorConfigDao,
-    private val gameFileDao: GameFileDao,
-    private val downloadQueueDao: DownloadQueueDao,
-    private val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
+    private val downloadQueueRepository: DownloadQueueRepository,
+    private val steamRepository: SteamRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager? = null,
     private val displayAffinityHelper: DisplayAffinityHelper,
     private val context: Context
@@ -167,7 +167,7 @@ class DualGameDetailViewModel(
         ratingDebounceJob = viewModelScope.launch {
             delay(250)
             val gameId = _uiState.value.gameId
-            if (gameId >= 0) gameDao.updateUserRating(gameId, next)
+            if (gameId >= 0) gameRepository.updateUserRating(gameId, next)
         }
     }
 
@@ -179,7 +179,7 @@ class DualGameDetailViewModel(
         difficultyDebounceJob = viewModelScope.launch {
             delay(250)
             val gameId = _uiState.value.gameId
-            if (gameId >= 0) gameDao.updateUserDifficulty(gameId, next)
+            if (gameId >= 0) gameRepository.updateUserDifficulty(gameId, next)
         }
     }
 
@@ -192,7 +192,7 @@ class DualGameDetailViewModel(
         statusDebounceJob = viewModelScope.launch {
             delay(250)
             val gameId = _uiState.value.gameId
-            if (gameId >= 0) gameDao.updateStatus(gameId, next)
+            if (gameId >= 0) gameRepository.updateStatus(gameId, next)
         }
     }
 
@@ -244,21 +244,21 @@ class DualGameDetailViewModel(
                 val value = _ratingPickerValue.value
                 _uiState.update { it.copy(rating = value.takeIf { v -> v > 0 }) }
                 viewModelScope.launch {
-                    gameDao.updateUserRating(gameId, value)
+                    gameRepository.updateUserRating(gameId, value)
                 }
             }
             ActiveModal.DIFFICULTY -> {
                 val value = _ratingPickerValue.value
                 _uiState.update { it.copy(userDifficulty = value) }
                 viewModelScope.launch {
-                    gameDao.updateUserDifficulty(gameId, value)
+                    gameRepository.updateUserDifficulty(gameId, value)
                 }
             }
             ActiveModal.STATUS -> {
                 val value = _statusPickerValue.value
                 _uiState.update { it.copy(status = value) }
                 viewModelScope.launch {
-                    gameDao.updateStatus(gameId, value)
+                    gameRepository.updateStatus(gameId, value)
                 }
             }
             ActiveModal.EMULATOR, ActiveModal.CORE, ActiveModal.COLLECTION,
@@ -275,7 +275,7 @@ class DualGameDetailViewModel(
 
     fun loadGame(gameId: Long) {
         viewModelScope.launch {
-            val game = gameDao.getById(gameId) ?: return@launch
+            val game = gameRepository.getById(gameId) ?: return@launch
             val platform = platformRepository.getById(game.platformId)
             val platformName = platform?.getDisplayName() ?: game.platformSlug
 
@@ -384,7 +384,7 @@ class DualGameDetailViewModel(
     private fun observeDownloads(gameId: Long) {
         downloadObserverJob?.cancel()
         downloadObserverJob = viewModelScope.launch {
-            downloadQueueDao.observeActiveDownloads().collect { entities ->
+            downloadQueueRepository.observeActiveDownloads().collect { entities ->
                 val entity = entities.find { it.gameId == gameId }
                 val progress = if (entity != null && entity.totalBytes > 0) {
                     (entity.bytesDownloaded.toFloat() / entity.totalBytes).coerceIn(0f, 1f)
@@ -395,7 +395,7 @@ class DualGameDetailViewModel(
                 _uiState.update { it.copy(downloadProgress = progress, downloadState = state) }
 
                 if (wasActive && entity == null) {
-                    val game = gameDao.getById(gameId) ?: return@collect
+                    val game = gameRepository.getById(gameId) ?: return@collect
                     val isNowPlayable = when {
                         game.source == GameSource.ANDROID_APP -> true
                         game.steamAppId != null && game.localPath != null ->
@@ -432,7 +432,7 @@ class DualGameDetailViewModel(
                         _uiState.update { it.copy(downloadProgress = progress, downloadState = uiState) }
                     } else {
                         if (_uiState.value.downloadState != null) {
-                            val game = gameDao.getById(gameId) ?: return@collect
+                            val game = gameRepository.getById(gameId) ?: return@collect
                             val isNowDownloaded = game.steamAppId != null && game.localPath != null &&
                                 java.io.File(game.localPath, ".download_complete").exists()
                             _uiState.update {
@@ -450,7 +450,7 @@ class DualGameDetailViewModel(
             }
         } else {
             steamDownloadObserverJob = viewModelScope.launch {
-                steamDownloadQueueDao.observeByAppId(steamAppId).collect { entity ->
+                steamRepository.observeDownloadByAppId(steamAppId).collect { entity ->
                     if (entity != null) {
                         val progress = if (entity.totalBytes > 0) {
                             (entity.bytesDownloaded.toFloat() / entity.totalBytes).coerceIn(0f, 1f)
@@ -459,7 +459,7 @@ class DualGameDetailViewModel(
                             it.copy(downloadProgress = progress, downloadState = entity.state)
                         }
                     } else if (_uiState.value.downloadState != null && _uiState.value.isSteamGame) {
-                        val game = gameDao.getById(gameId) ?: return@collect
+                        val game = gameRepository.getById(gameId) ?: return@collect
                         val isNowDownloaded = game.steamAppId != null && game.localPath != null &&
                             java.io.File(game.localPath, ".download_complete").exists()
                         _uiState.update {
@@ -794,7 +794,7 @@ class DualGameDetailViewModel(
         val newFavorite = !state.isFavorite
         _uiState.update { it.copy(isFavorite = newFavorite) }
         viewModelScope.launch {
-            gameDao.updateFavorite(state.gameId, newFavorite)
+            gameRepository.updateFavorite(state.gameId, newFavorite)
         }
     }
 
@@ -995,10 +995,10 @@ class DualGameDetailViewModel(
     suspend fun openUpdatesModal() {
         val gameId = _uiState.value.gameId
         if (gameId < 0) return
-        val game = gameDao.getById(gameId) ?: return
+        val game = gameRepository.getById(gameId) ?: return
         val platformSlug = game.platformSlug
         val localPath = game.localPath
-        val remoteFiles = gameFileDao.getFilesForGame(gameId)
+        val remoteFiles = gameRepository.getGameFilesForGame(gameId)
 
         val localUpdateFileNames = if (localPath != null) {
             ZipExtractor.listAllUpdateFiles(localPath, platformSlug)

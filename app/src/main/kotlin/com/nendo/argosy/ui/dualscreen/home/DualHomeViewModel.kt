@@ -10,9 +10,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.entity.CollectionEntity
-import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.repository.DownloadQueueRepository
+import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.ui.common.appId
 import com.nendo.argosy.ui.common.toIndicator
@@ -161,10 +161,10 @@ data class DualHomeUiState(
 }
 
 class DualHomeViewModel(
-    private val gameDao: GameDao,
+    private val gameRepository: GameRepository,
     private val platformRepository: PlatformRepository,
     private val collectionRepository: CollectionRepository,
-    private val downloadQueueDao: DownloadQueueDao,
+    private val downloadQueueRepository: DownloadQueueRepository,
     private val displayAffinityHelper: DisplayAffinityHelper,
     private val context: Context,
     private val preferencesRepository: UserPreferencesRepository? = null,
@@ -253,7 +253,7 @@ class DualHomeViewModel(
         viewModelScope.launch {
             var previouslyDownloading = emptySet<Long>()
 
-            downloadQueueDao.observeActiveDownloads().collect { entities ->
+            downloadQueueRepository.observeActiveDownloads().collect { entities ->
                 val downloadsByGameId = entities.associateBy { it.gameId }
                 val currentlyDownloading = downloadsByGameId.keys
 
@@ -309,7 +309,7 @@ class DualHomeViewModel(
                     return@collect
                 }
                 val appId = steamState.appId ?: return@collect
-                val game = gameDao.getBySteamAppId(appId) ?: return@collect
+                val game = gameRepository.getBySteamAppId(appId) ?: return@collect
                 lastSteamGameId = game.id
                 val activeDl = scm.activeDownload.value
                 val progress = activeDl?.progress ?: when (steamState) {
@@ -373,13 +373,13 @@ class DualHomeViewModel(
         val sections = mutableListOf<DualHomeSection>()
 
         val newThreshold = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
-        val recentGames = gameDao.getRecentlyPlayed(limit = 1)
-        val newGames = gameDao.getNewlyAddedPlayable(newThreshold, 1)
+        val recentGames = gameRepository.getRecentlyPlayed(limit = 1)
+        val newGames = gameRepository.getNewlyAddedPlayable(newThreshold, 1)
         if (recentGames.isNotEmpty() || newGames.isNotEmpty()) {
             sections.add(DualHomeSection.Recent)
         }
 
-        val favorites = gameDao.getFavorites()
+        val favorites = gameRepository.getFavorites()
         if (favorites.isNotEmpty()) {
             sections.add(DualHomeSection.Favorites)
         }
@@ -430,10 +430,10 @@ class DualHomeViewModel(
                 val newThreshold = Instant.now().minus(
                     NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS
                 )
-                val recentlyPlayed = gameDao.getRecentlyPlayed(
+                val recentlyPlayed = gameRepository.getRecentlyPlayed(
                     limit = RECENT_GAMES_LIMIT
                 )
-                val newlyAdded = gameDao.getNewlyAddedPlayable(
+                val newlyAdded = gameRepository.getNewlyAddedPlayable(
                     newThreshold, RECENT_GAMES_LIMIT
                 )
                 val allCandidates = (recentlyPlayed + newlyAdded)
@@ -446,13 +446,13 @@ class DualHomeViewModel(
                     .map { it.toUi() }
             }
             is DualHomeSection.Favorites -> {
-                var favorites = gameDao.getFavorites()
+                var favorites = gameRepository.getFavorites()
                 if (installedOnly) favorites = filterPlayable(favorites)
                 favorites.map { it.toUi() }
             }
             is DualHomeSection.Platform -> {
-                realCount = gameDao.countByPlatform(section.id)
-                var platformGames = gameDao.getByPlatformSorted(
+                realCount = gameRepository.countByPlatform(section.id)
+                var platformGames = gameRepository.getByPlatformSorted(
                     section.id, limit = PLATFORM_GAMES_LIMIT
                 ).filter { !it.isHidden }
                 if (installedOnly) platformGames = filterPlayable(platformGames)
@@ -591,7 +591,7 @@ class DualHomeViewModel(
     fun toggleFavorite() {
         val game = _uiState.value.selectedGame ?: return
         viewModelScope.launch {
-            gameDao.updateFavorite(game.id, !game.isFavorite)
+            gameRepository.updateFavorite(game.id, !game.isFavorite)
             loadGamesForCurrentSection()
         }
     }
@@ -1112,7 +1112,7 @@ class DualHomeViewModel(
 
     private fun loadLibraryGames(onLoaded: (() -> Unit)? = null) {
         viewModelScope.launch {
-            val entities = gameDao.getAllSortedByTitle()
+            val entities = gameRepository.getAllSortedByTitle()
             val allGames = entities.map { it.toUi() }
             allLibraryGames = allGames
             val filters = _uiState.value.activeFilters
@@ -1131,7 +1131,7 @@ class DualHomeViewModel(
 
     private fun loadLibraryGamesForPlatform(platformId: Long, onLoaded: (() -> Unit)? = null) {
         viewModelScope.launch {
-            val entities = gameDao.getByPlatform(platformId)
+            val entities = gameRepository.getByPlatform(platformId)
             val platformGames = entities.map { it.toUi() }
             allLibraryGames = platformGames
             val filters = _uiState.value.activeFilters

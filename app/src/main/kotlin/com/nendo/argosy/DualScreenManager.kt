@@ -67,9 +67,11 @@ class DualScreenManager(
     context: Context,
     private var scope: CoroutineScope,
     internal val gameDao: GameDao,
+    internal val gameRepository: com.nendo.argosy.data.repository.GameRepository,
     internal val platformRepository: PlatformRepository,
     internal val collectionRepository: CollectionRepository,
     internal val downloadQueueDao: DownloadQueueDao,
+    internal val downloadQueueRepository: com.nendo.argosy.data.repository.DownloadQueueRepository,
     internal val gameFileDao: GameFileDao,
     private val downloadManager: DownloadManager,
     private val gameActionsDelegate: GameActionsDelegate,
@@ -87,6 +89,7 @@ class DualScreenManager(
     private val notificationManager: com.nendo.argosy.ui.notification.NotificationManager,
     internal val emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao,
     internal val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
+    internal val steamRepository: com.nendo.argosy.data.repository.SteamRepository,
     internal val playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker,
     internal val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     internal val repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase? = null,
@@ -440,10 +443,10 @@ class DualScreenManager(
 
     fun initSwappedViewModel() {
         swappedDualHomeViewModel = DualHomeViewModel(
-            gameDao = gameDao,
+            gameRepository = gameRepository,
             platformRepository = platformRepository,
             collectionRepository = collectionRepository,
-            downloadQueueDao = downloadQueueDao,
+            downloadQueueRepository = downloadQueueRepository,
             displayAffinityHelper = displayAffinityHelper,
             context = appContext,
             steamContentManager = steamContentManager,
@@ -1598,13 +1601,12 @@ class DualScreenManager(
 
     fun selectGameSwapped(gameId: Long) {
         val vm = com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailViewModel(
-            gameDao = gameDao,
+            gameRepository = gameRepository,
             platformRepository = platformRepository,
             collectionRepository = collectionRepository,
             emulatorConfigDao = emulatorConfigDao,
-            gameFileDao = gameFileDao,
-            downloadQueueDao = downloadQueueDao,
-            steamDownloadQueueDao = steamDownloadQueueDao,
+            downloadQueueRepository = downloadQueueRepository,
+            steamRepository = steamRepository,
             steamContentManager = steamContentManager,
             displayAffinityHelper = displayAffinityHelper,
             context = appContext

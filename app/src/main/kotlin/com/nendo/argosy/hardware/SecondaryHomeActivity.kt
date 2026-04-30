@@ -543,13 +543,13 @@ class SecondaryHomeActivity :
     }
 
     private fun initializeDependencies() {
-        val gameDao = dsm.gameDao
+        val gameRepository = dsm.gameRepository
         val platformRepository = dsm.platformRepository
         val collectionRepository = dsm.collectionRepository
         val affinityHelper = dsm.displayAffinityHelper
 
         viewModel = SecondaryHomeViewModel(
-            gameDao = gameDao, platformRepository = platformRepository,
+            gameRepository = gameRepository, platformRepository = platformRepository,
             appsRepository = AppsRepository(applicationContext),
             preferencesRepository = null,
             displayAffinityHelper = affinityHelper,
@@ -557,9 +557,9 @@ class SecondaryHomeActivity :
             syncPreferencesRepository = dsm.syncPreferencesRepository
         )
         dualHomeViewModel = DualHomeViewModel(
-            gameDao = gameDao, platformRepository = platformRepository,
+            gameRepository = gameRepository, platformRepository = platformRepository,
             collectionRepository = collectionRepository,
-            downloadQueueDao = dsm.downloadQueueDao,
+            downloadQueueRepository = dsm.downloadQueueRepository,
             displayAffinityHelper = affinityHelper,
             context = applicationContext,
             steamContentManager = dsm.steamContentManager,
@@ -571,13 +571,12 @@ class SecondaryHomeActivity :
             secondaryHomeViewModel = { viewModel }
         )
         stateManager = SecondaryHomeStateManager(
-            context = applicationContext, gameDao = gameDao,
+            context = applicationContext, gameRepository = gameRepository,
             platformRepository = platformRepository,
             collectionRepository = collectionRepository,
             emulatorConfigDao = dsm.emulatorConfigDao,
-            gameFileDao = dsm.gameFileDao,
-            downloadQueueDao = dsm.downloadQueueDao,
-            steamDownloadQueueDao = dsm.steamDownloadQueueDao,
+            downloadQueueRepository = dsm.downloadQueueRepository,
+            steamRepository = dsm.steamRepository,
             steamContentManager = dsm.steamContentManager,
             displayAffinityHelper = affinityHelper
         )
