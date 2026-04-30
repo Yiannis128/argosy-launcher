@@ -8,7 +8,6 @@ import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.remote.romm.ConnectionState
-import com.nendo.argosy.domain.usecase.sync.SyncLibraryResult
 import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.notification.NotificationProgress
@@ -695,12 +694,8 @@ internal fun routeScanForAndroidGames(vm: SettingsViewModel) {
 }
 
 internal fun routeSyncRomm(vm: SettingsViewModel) {
-    vm.viewModelScope.launch {
-        when (val result = vm.syncLibraryUseCase()) {
-            is SyncLibraryResult.Error -> vm.notificationManager.showError(result.message)
-            is SyncLibraryResult.Success -> vm.loadSettings()
-            SyncLibraryResult.AlreadyInProgress -> Unit
-        }
+    vm.platformSyncQueue.enqueueLibrary(initializeFirst = false) {
+        vm.viewModelScope.launch { vm.loadSettings() }
     }
 }
 

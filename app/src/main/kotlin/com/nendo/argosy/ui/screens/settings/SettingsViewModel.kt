@@ -80,6 +80,7 @@ class SettingsViewModel @Inject constructor(
     internal val gameRepository: GameRepository,
     internal val imageCacheManager: ImageCacheManager,
     internal val syncLibraryUseCase: SyncLibraryUseCase,
+    internal val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     internal val configureEmulatorUseCase: ConfigureEmulatorUseCase,
     internal val updateRepository: UpdateRepository,
     internal val appInstaller: AppInstaller,

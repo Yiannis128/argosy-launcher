@@ -86,6 +86,14 @@ internal fun routeObserveDelegateStates(vm: SettingsViewModel) {
         vm._uiState.update { it.copy(storage = storage) }
     }.launchIn(vm.viewModelScope)
 
+    vm.platformSyncQueue.busyPlatformIds.onEach { ids ->
+        vm._uiState.update { it.copy(storage = it.storage.copy(busyPlatformIds = ids)) }
+    }.launchIn(vm.viewModelScope)
+
+    vm.platformSyncQueue.isLibraryBusy.onEach { busy ->
+        vm._uiState.update { it.copy(storage = it.storage.copy(isLibrarySyncing = busy)) }
+    }.launchIn(vm.viewModelScope)
+
     vm.storageDelegate.launchFolderPicker.onEach { launch ->
         vm._uiState.update { it.copy(launchFolderPicker = launch) }
     }.launchIn(vm.viewModelScope)

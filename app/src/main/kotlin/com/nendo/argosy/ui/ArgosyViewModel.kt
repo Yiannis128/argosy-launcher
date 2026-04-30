@@ -167,7 +167,7 @@ class ArgosyViewModel @Inject constructor(
     private val brightnessController: BrightnessController,
     private val volumeController: VolumeController,
     private val fanController: FanController,
-    private val syncLibraryUseCase: com.nendo.argosy.domain.usecase.sync.SyncLibraryUseCase,
+    private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val socialRepository: SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
@@ -386,7 +386,7 @@ class ArgosyViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             romMRepository.initialize()
             if (romMRepository.isConnected()) {
-                syncLibraryUseCase(initializeFirst = false)
+                platformSyncQueue.enqueueLibrary(initializeFirst = false)
             }
         }
     }

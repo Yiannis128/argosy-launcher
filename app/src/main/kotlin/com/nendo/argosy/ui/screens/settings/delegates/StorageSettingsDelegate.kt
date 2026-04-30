@@ -40,6 +40,7 @@ class StorageSettingsDelegate @Inject constructor(
     private val migratePlatformStorageUseCase: MigratePlatformStorageUseCase,
     private val purgePlatformUseCase: PurgePlatformUseCase,
     private val syncPlatformUseCase: SyncPlatformUseCase,
+    private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val databaseAdminRepository: DatabaseAdminRepository,
     private val managedStorageAccessor: ManagedStorageAccessor
 ) {
@@ -533,8 +534,9 @@ class StorageSettingsDelegate @Inject constructor(
     }
 
     fun syncPlatform(scope: CoroutineScope, platformId: Long, platformName: String) {
+        if (!platformSyncQueue.enqueuePlatform(platformId, platformName)) return
         scope.launch {
-            syncPlatformUseCase(platformId, platformName)
+            platformSyncQueue.busyPlatformIds.first { platformId !in it }
             loadPlatformConfigs(scope)
             refreshCollectionStats(scope)
         }

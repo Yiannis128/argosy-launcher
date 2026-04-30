@@ -6,10 +6,7 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.domain.model.Changelog
 import com.nendo.argosy.domain.model.ChangelogEntry
 import com.nendo.argosy.domain.model.RequiredAction
-import com.nendo.argosy.domain.usecase.sync.SyncLibraryResult
-import com.nendo.argosy.domain.usecase.sync.SyncLibraryUseCase
-import com.nendo.argosy.core.notification.NotificationManager
-import com.nendo.argosy.core.notification.showError
+import com.nendo.argosy.data.sync.PlatformSyncQueue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,9 +26,8 @@ data class SyncState(
 
 class HomeSyncDelegate @Inject constructor(
     private val romMRepository: RomMRepository,
-    private val syncLibraryUseCase: SyncLibraryUseCase,
-    private val preferencesRepository: UserPreferencesRepository,
-    private val notificationManager: NotificationManager
+    private val platformSyncQueue: PlatformSyncQueue,
+    private val preferencesRepository: UserPreferencesRepository
 ) {
     private val _state = MutableStateFlow(SyncState())
     val state: StateFlow<SyncState> = _state.asStateFlow()
@@ -47,8 +43,9 @@ class HomeSyncDelegate @Inject constructor(
                 val prefs = preferencesRepository.preferences.first()
                 val lastSync = prefs.lastRommSync
                 val oneWeekAgo = Instant.now().minus(AUTO_SYNC_DAYS, ChronoUnit.DAYS)
+                val isStale = lastSync == null || lastSync.isBefore(oneWeekAgo)
 
-                if (lastSync == null || lastSync.isBefore(oneWeekAgo)) {
+                if (isStale && !platformSyncQueue.isLibraryBusyNow()) {
                     syncFromRomm(scope, onSyncComplete)
                 } else {
                     romMRepository.refreshFavoritesIfNeeded()
@@ -58,14 +55,8 @@ class HomeSyncDelegate @Inject constructor(
         }
     }
 
-    fun syncFromRomm(scope: CoroutineScope, onSyncComplete: () -> Unit) {
-        scope.launch {
-            when (val result = syncLibraryUseCase(initializeFirst = true)) {
-                is SyncLibraryResult.Error -> notificationManager.showError(result.message)
-                is SyncLibraryResult.Success -> onSyncComplete()
-                SyncLibraryResult.AlreadyInProgress -> Unit
-            }
-        }
+    fun syncFromRomm(@Suppress("UNUSED_PARAMETER") scope: CoroutineScope, onSyncComplete: () -> Unit) {
+        platformSyncQueue.enqueueLibrary(initializeFirst = true, onComplete = onSyncComplete)
     }
 
     fun refreshFavoritesIfConnected(scope: CoroutineScope, onFavoritesRefreshed: suspend () -> Unit) {

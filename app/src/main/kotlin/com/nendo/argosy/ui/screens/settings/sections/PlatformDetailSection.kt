@@ -472,13 +472,19 @@ fun PlatformDetailSection(
                     isFocused = isFocused(item),
                     onToggle = { viewModel.togglePlatformSync(config.platform.id, it) }
                 )
-                PlatformDetailItem.SyncNow -> ActionPreference(
-                    title = "Sync Now",
-                    subtitle = "Sync this platform with RomM",
-                    isFocused = isFocused(item),
-                    icon = Icons.Default.Sync,
-                    onClick = { viewModel.syncPlatform(config.platform.id, config.platform.getDisplayName()) }
-                )
+                PlatformDetailItem.SyncNow -> {
+                    val isBusy = config.platform.id in uiState.storage.busyPlatformIds ||
+                        uiState.storage.isLibrarySyncing
+                    ActionPreference(
+                        title = "Sync Now",
+                        subtitle = if (isBusy) "Sync in progress..." else "Sync this platform with RomM",
+                        isFocused = isFocused(item),
+                        icon = Icons.Default.Sync,
+                        spinIcon = isBusy,
+                        isEnabled = !isBusy,
+                        onClick = { viewModel.syncPlatform(config.platform.id, config.platform.getDisplayName()) }
+                    )
+                }
                 PlatformDetailItem.PackagePath -> {} // rendered as InfoItem
                 PlatformDetailItem.RemoveFiles -> ActionPreference(
                     title = "Remove Local Files",

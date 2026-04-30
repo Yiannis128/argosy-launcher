@@ -38,6 +38,7 @@ class StorageSettingsDelegateTest {
     private lateinit var migratePlatformStorageUseCase: MigratePlatformStorageUseCase
     private lateinit var purgePlatformUseCase: PurgePlatformUseCase
     private lateinit var syncPlatformUseCase: SyncPlatformUseCase
+    private lateinit var platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue
     private lateinit var databaseAdminRepository: DatabaseAdminRepository
     private lateinit var managedStorageAccessor: ManagedStorageAccessor
     private lateinit var delegate: StorageSettingsDelegate
@@ -53,6 +54,7 @@ class StorageSettingsDelegateTest {
         migratePlatformStorageUseCase = mockk(relaxed = true)
         purgePlatformUseCase = mockk(relaxed = true)
         syncPlatformUseCase = mockk(relaxed = true)
+        platformSyncQueue = mockk(relaxed = true)
         databaseAdminRepository = mockk(relaxed = true)
         managedStorageAccessor = mockk(relaxed = true)
 
@@ -64,6 +66,7 @@ class StorageSettingsDelegateTest {
             migratePlatformStorageUseCase = migratePlatformStorageUseCase,
             purgePlatformUseCase = purgePlatformUseCase,
             syncPlatformUseCase = syncPlatformUseCase,
+            platformSyncQueue = platformSyncQueue,
             databaseAdminRepository = databaseAdminRepository,
             managedStorageAccessor = managedStorageAccessor
         )

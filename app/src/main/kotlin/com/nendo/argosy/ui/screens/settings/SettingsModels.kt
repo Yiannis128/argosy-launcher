@@ -578,7 +578,9 @@ data class StorageState(
     val isValidatingDownloads: Boolean = false,
     val showPurgeAllConfirm: Boolean = false,
     val isPurgingAll: Boolean = false,
-    val weeklyIntegrityCheckEnabled: Boolean = true
+    val weeklyIntegrityCheckEnabled: Boolean = true,
+    val busyPlatformIds: Set<Long> = emptySet(),
+    val isLibrarySyncing: Boolean = false
 )
 
 data class PlatformMigrationInfo(

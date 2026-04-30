@@ -1,7 +1,9 @@
 package com.nendo.argosy.ui.components
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.focusBackground
@@ -504,6 +506,7 @@ fun ActionPreference(
     isEnabled: Boolean = true,
     trailingText: String? = null,
     badge: String? = null,
+    spinIcon: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -516,11 +519,28 @@ fun ActionPreference(
                 isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
+            val iconModifier = if (spinIcon) {
+                val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin")
+                val rotation by transition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                        animation = androidx.compose.animation.core.tween(
+                            durationMillis = 1200,
+                            easing = androidx.compose.animation.core.LinearEasing
+                        )
+                    ),
+                    label = "spin-rotation"
+                )
+                Modifier.size(Dimens.iconMd).rotate(rotation)
+            } else {
+                Modifier.size(Dimens.iconMd)
+            }
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint ?: defaultTint,
-                modifier = Modifier.size(Dimens.iconMd)
+                modifier = iconModifier
             )
             Spacer(modifier = Modifier.width(Dimens.spacingMd))
         }
