@@ -97,7 +97,6 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker
     @Inject lateinit var repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
     @Inject lateinit var steamContentManager: com.nendo.argosy.data.steam.SteamContentManager
-    @Inject lateinit var gameRepository: com.nendo.argosy.data.repository.GameRepository
     @Inject lateinit var presenceManager: com.nendo.argosy.data.social.PresenceManager
     @Inject lateinit var discordPresenceManager: com.nendo.argosy.data.social.discord.DiscordPresenceManager
 
