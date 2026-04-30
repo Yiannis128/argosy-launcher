@@ -451,13 +451,27 @@ class StateCacheManager @Inject constructor(
         Log.d(TAG, "Deleted all ${caches.size} cached states for game $gameId")
     }
 
-    fun buildStateTargetPath(
+    suspend fun buildStateTargetPath(
         config: StatePathConfig,
         platformId: String,
         romBaseName: String,
-        slotNumber: Int
+        slotNumber: Int,
+        emulatorId: String? = null,
+        coreName: String? = null,
+        romPath: String? = null,
     ): String? {
-        val paths = StatePathRegistry.resolvePath(config, platformId)
+        val paths = if (emulatorId != null &&
+            com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(emulatorId)
+        ) {
+            val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+                emulatorId = emulatorId,
+                coreName = coreName,
+                romPath = romPath,
+            )
+            retroArchPathResolver.resolveStateDirectories(req)
+        } else {
+            StatePathRegistry.resolvePath(config, platformId)
+        }
         val baseDir = paths.firstOrNull { File(it).exists() } ?: paths.firstOrNull() ?: return null
         val fileName = config.slotPattern.buildFileName(romBaseName, slotNumber)
         return "$baseDir/$fileName"

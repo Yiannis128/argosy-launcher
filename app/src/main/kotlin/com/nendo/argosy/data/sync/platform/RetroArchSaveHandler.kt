@@ -1,7 +1,6 @@
 package com.nendo.argosy.data.sync.platform
 
 import android.content.Context
-import com.nendo.argosy.data.emulator.RetroArchConfigParser
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.Logger
@@ -16,7 +15,6 @@ import javax.inject.Singleton
 class RetroArchSaveHandler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val fal: FileAccessLayer,
-    private val retroArchConfigParser: RetroArchConfigParser,
     private val retroArchPathResolver: com.nendo.argosy.data.emulator.RetroArchPathResolver,
 ) : PlatformSaveHandler {
     companion object {
@@ -91,28 +89,23 @@ class RetroArchSaveHandler @Inject constructor(
         return null
     }
 
-    fun constructSavePath(context: SaveContext): String? {
-        val packageName = getPackageName(context.emulatorId)
+    suspend fun constructSavePath(context: SaveContext): String? {
         val coreName = SavePathRegistry.getRetroArchCore(context.platformSlug)
         if (coreName == null) {
             Logger.debug(TAG, "constructSavePath: No core mapping for platform | platform=${context.platformSlug}")
             return null
         }
 
-        // Parse config to get actual save directory (respects user settings)
-        val raConfig = retroArchConfigParser.parse(packageName)
-        val saveDir = raConfig?.savefileDirectory
-            ?: "/storage/emulated/0/RetroArch/saves"
-
+        val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+            emulatorId = context.emulatorId,
+            coreName = coreName,
+            romPath = context.romPath,
+        )
         val baseName = buildSaveFileName(context)
-        val savePath = "$saveDir/$coreName/$baseName.srm"
+        val saveExtension = context.config.saveExtensions.firstOrNull() ?: "srm"
+        val savePath = retroArchPathResolver.buildSaveFilePath(req, baseName, saveExtension)
         Logger.debug(TAG, "constructSavePath: Constructed | path=$savePath")
         return savePath
-    }
-
-    private fun getPackageName(emulatorId: String): String = when (emulatorId) {
-        "retroarch_64" -> "com.retroarch.aarch64"
-        else -> "com.retroarch"
     }
 
     private fun buildSaveFileName(context: SaveContext): String {

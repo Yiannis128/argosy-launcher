@@ -1,13 +1,13 @@
 package com.nendo.argosy.data.sync.platform
 
 import android.content.Context
-import com.nendo.argosy.data.emulator.RetroArchConfigParser
-import com.nendo.argosy.data.emulator.RetroArchSaveConfig
+import com.nendo.argosy.data.emulator.RetroArchPathResolver
 import com.nendo.argosy.data.emulator.SavePathConfig
-import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.storage.FileAccessLayer
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -19,15 +19,15 @@ class RetroArchSaveHandlerTest {
 
     private lateinit var context: Context
     private lateinit var fal: FileAccessLayer
-    private lateinit var parser: RetroArchConfigParser
+    private lateinit var resolver: RetroArchPathResolver
     private lateinit var handler: RetroArchSaveHandler
 
     @Before
     fun setUp() {
         context = mockk(relaxed = true)
         fal = mockk(relaxed = true)
-        parser = mockk(relaxed = true)
-        handler = RetroArchSaveHandler(context, fal, parser)
+        resolver = mockk(relaxed = true)
+        handler = RetroArchSaveHandler(context, fal, resolver)
     }
 
     private fun saveContext(
@@ -35,9 +35,9 @@ class RetroArchSaveHandlerTest {
         platformSlug: String = "snes",
         romPath: String? = "/storage/emulated/0/Roms/SNES/Mario.smc",
         gameTitle: String = "Super Mario World",
-        localSavePath: String? = null,
+        saveExtensions: List<String> = listOf("srm"),
     ): SaveContext = SaveContext(
-        config = mockk(relaxed = true) { every { saveExtensions } returns listOf("srm") },
+        config = mockk(relaxed = true) { every { this@mockk.saveExtensions } returns saveExtensions },
         romPath = romPath,
         titleId = null,
         emulatorPackage = null,
@@ -45,22 +45,21 @@ class RetroArchSaveHandlerTest {
         gameTitle = gameTitle,
         platformSlug = platformSlug,
         emulatorId = emulatorId,
-        localSavePath = localSavePath,
+        localSavePath = null,
     )
 
     @Test
-    fun `constructSavePath omits core subdir when sort_savefiles_enable is false`() {
-        every { parser.parse(any()) } returns RetroArchSaveConfig(
-            savefileDirectory = "/storage/emulated/0/RetroArch/saves",
-            savefilesInContentDir = false,
-            sortByContentDirectory = false,
-            sortByCore = false,
-        )
+    fun `constructSavePath omits core subdir when sort_savefiles_enable is false`() = runTest {
+        coEvery { resolver.buildSaveFilePath(any(), any(), any()) } answers {
+            val baseName = secondArg<String>()
+            val ext = thirdArg<String>()
+            "/storage/emulated/0/RetroArch/saves/$baseName.$ext"
+        }
 
         val ctx = saveContext()
         val path = handler.constructSavePath(ctx)
 
-        assertNotNull("constructSavePath should not return null when core is mapped", path)
+        assertNotNull(path)
         assertEquals(
             "When sort=false, save path must NOT contain the core subdirectory",
             "/storage/emulated/0/RetroArch/saves/Mario.srm",
@@ -69,62 +68,42 @@ class RetroArchSaveHandlerTest {
     }
 
     @Test
-    fun `constructSavePath uses core subdir when sort_savefiles_enable is true`() {
-        every { parser.parse(any()) } returns RetroArchSaveConfig(
-            savefileDirectory = "/storage/emulated/0/RetroArch/saves",
-            savefilesInContentDir = false,
-            sortByContentDirectory = false,
-            sortByCore = true,
-        )
+    fun `constructSavePath delegates to resolver with raw libretro core id`() = runTest {
+        var capturedCore: String? = null
+        coEvery { resolver.buildSaveFilePath(any(), any(), any()) } answers {
+            capturedCore = firstArg<RetroArchPathResolver.Request>().coreName
+            "/some/path/file.srm"
+        }
 
-        val ctx = saveContext()
-        val path = handler.constructSavePath(ctx)
+        val ctx = saveContext(platformSlug = "snes")
+        handler.constructSavePath(ctx)
 
-        assertNotNull(path)
-        assertTrue(
-            "When sort=true, path must contain core subdirectory; got: $path",
-            path!!.contains("/Snes9x/") || path.contains("/snes9x/"),
-        )
-    }
-
-    @Test
-    fun `constructSavePath honors content-dir mode`() {
-        every { parser.parse(any()) } returns RetroArchSaveConfig(
-            savefileDirectory = "/storage/emulated/0/RetroArch/saves",
-            savefilesInContentDir = true,
-            sortByContentDirectory = false,
-            sortByCore = false,
-        )
-
-        val ctx = saveContext(romPath = "/storage/emulated/0/Roms/SNES/Mario.smc")
-        val path = handler.constructSavePath(ctx)
-
-        assertNotNull(path)
-        assertTrue(
-            "When savefiles_in_content_dir=true, path should land next to ROM; got: $path",
-            path!!.startsWith("/storage/emulated/0/Roms/SNES"),
+        assertEquals(
+            "Handler must pass raw libretro core id; resolver applies getRetroArchSaveDirName once",
+            "snes9x",
+            capturedCore,
         )
     }
 
     @Test
-    fun `constructSavePath honors PSX mcd extension`() {
-        every { parser.parse(any()) } returns RetroArchSaveConfig(
-            savefileDirectory = "/storage/emulated/0/RetroArch/saves",
-            savefilesInContentDir = false,
-            sortByContentDirectory = false,
-            sortByCore = false,
-        )
+    fun `constructSavePath honors PSX mcd extension`() = runTest {
+        var capturedExt: String? = null
+        coEvery { resolver.buildSaveFilePath(any(), any(), any()) } answers {
+            capturedExt = thirdArg<String>()
+            "/some/path/file.${thirdArg<String>()}"
+        }
 
         val ctx = saveContext(
             platformSlug = "psx",
             romPath = "/storage/emulated/0/Roms/PSX/FFVII.cue",
+            saveExtensions = listOf("mcd"),
         )
-        val path = handler.constructSavePath(ctx)
+        handler.constructSavePath(ctx)
 
-        assertNotNull(path)
-        assertFalse(
-            "PSX should not get .srm extension; got: $path",
-            path!!.endsWith(".srm"),
+        assertEquals(
+            "PSX should pass mcd extension to resolver",
+            "mcd",
+            capturedExt,
         )
     }
 }

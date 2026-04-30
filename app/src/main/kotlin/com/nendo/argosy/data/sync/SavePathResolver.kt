@@ -520,41 +520,27 @@ class SavePathResolver @Inject constructor(
         return "$baseDir/$fileName"
     }
 
-    private fun constructRetroArchSavePath(
+    private suspend fun constructRetroArchSavePath(
         emulatorId: String,
         gameTitle: String,
         platformSlug: String,
         romPath: String?
     ): String? {
-        val packageName = when (emulatorId) {
-            "retroarch_64" -> "com.retroarch.aarch64"
-            else -> "com.retroarch"
-        }
-
-        val raConfig = retroArchConfigParser.parse(packageName)
+        val raConfig = retroArchConfigParser.parse(
+            com.nendo.argosy.data.emulator.RetroArchPathResolver.packageForEmulatorId(emulatorId)
+        )
         val coreName = SavePathRegistry.getRetroArchCore(platformSlug, raConfig?.lastLoadedCore)
             ?: return null
-        val saveDirName = EmulatorRegistry.getRetroArchSaveDirName(coreName)
         val saveConfig = SavePathRegistry.getConfig(emulatorId) ?: return null
         val extension = saveConfig.saveExtensions.firstOrNull() ?: "srm"
 
-        val baseDir = when {
-            raConfig?.savefilesInContentDir == true && romPath != null -> {
-                File(romPath).parent
-            }
-            raConfig?.savefileDirectory != null -> {
-                if (raConfig.sortByCore) {
-                    "${raConfig.savefileDirectory}/$saveDirName"
-                } else {
-                    raConfig.savefileDirectory
-                }
-            }
-            else -> {
-                val defaultPaths = resolveSavePaths(saveConfig, platformSlug)
-                defaultPaths.firstOrNull { directoryExists(it) }
-                    ?: defaultPaths.firstOrNull()
-            }
-        } ?: return null
+        val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
+            emulatorId = emulatorId,
+            coreName = coreName,
+            romPath = romPath,
+        )
+        val dirs = retroArchPathResolver.resolveSaveDirectories(req)
+        val baseDir = dirs.firstOrNull { directoryExists(it) } ?: dirs.firstOrNull() ?: return null
 
         val fileName = buildRetroArchFileName(gameTitle, romPath, extension)
         return "$baseDir/$fileName"
