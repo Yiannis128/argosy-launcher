@@ -6,7 +6,7 @@ import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.ui.input.InputResult
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.libretro.LibretroSettingDef
 import com.nendo.argosy.ui.screens.settings.sections.AboutItem
 import com.nendo.argosy.ui.screens.settings.sections.AmbientLedItem

@@ -19,7 +19,7 @@ import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import kotlinx.coroutines.flow.Flow
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.EmulatorDownloadState
 import com.nendo.argosy.ui.screens.settings.EmulatorUpdateModal
 import com.nendo.argosy.ui.screens.settings.LaunchArgsModalState

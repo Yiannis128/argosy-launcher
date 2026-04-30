@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.domain.usecase.collection.CategoryType
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.home.HomePlatformUi
 import com.nendo.argosy.ui.screens.home.HomeRow
 import com.nendo.argosy.ui.screens.home.HomeRowItem

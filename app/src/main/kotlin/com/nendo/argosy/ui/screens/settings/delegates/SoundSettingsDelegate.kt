@@ -1,10 +1,10 @@
 package com.nendo.argosy.ui.screens.settings.delegates
 
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
-import com.nendo.argosy.ui.input.SoundConfig
+import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.ui.input.SoundPreset
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.SoundState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow

@@ -2,7 +2,7 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess

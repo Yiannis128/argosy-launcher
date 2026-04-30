@@ -61,7 +61,7 @@ import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.core.notification.DownloadNotificationObserver
 import com.nendo.argosy.core.notification.NotificationManager

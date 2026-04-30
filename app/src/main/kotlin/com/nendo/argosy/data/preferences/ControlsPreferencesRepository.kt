@@ -6,8 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.nendo.argosy.ui.input.SoundConfig
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundConfig
+import com.nendo.argosy.core.input.SoundType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject

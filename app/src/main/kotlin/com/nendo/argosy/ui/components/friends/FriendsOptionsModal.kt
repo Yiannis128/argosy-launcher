@@ -15,7 +15,7 @@ import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.LocalInputDispatcher
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 
 enum class FriendsOption {

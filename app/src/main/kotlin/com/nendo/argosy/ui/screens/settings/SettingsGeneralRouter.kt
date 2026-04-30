@@ -10,7 +10,7 @@ import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.domain.usecase.sync.SyncLibraryResult
 import com.nendo.argosy.ui.input.HapticPattern
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.notification.NotificationProgress
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.core.notification.showError

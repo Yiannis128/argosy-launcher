@@ -1,7 +1,7 @@
 package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.GameDownloadStatus
 import com.nendo.argosy.ui.screens.gamedetail.MoreOptionAction
 import kotlinx.coroutines.flow.MutableStateFlow

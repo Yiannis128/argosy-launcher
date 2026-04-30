@@ -1,7 +1,7 @@
 package com.nendo.argosy.ui.screens.settings
 
 import com.nendo.argosy.ui.input.InputResult
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 
 internal enum class InputMethod {
     UP, DOWN, LEFT, RIGHT, CONFIRM, LONG_CONFIRM, BACK, CONTEXT_MENU, SECONDARY_ACTION,

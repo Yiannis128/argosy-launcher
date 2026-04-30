@@ -9,7 +9,7 @@ import com.nendo.argosy.data.emulator.RetroArchCore
 import com.nendo.argosy.data.launcher.SteamLauncher
 import com.nendo.argosy.data.launcher.SteamLaunchers
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.UpdateFileUi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

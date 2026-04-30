@@ -2,7 +2,7 @@ package com.nendo.argosy.ui.screens.home.delegates
 
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.home.HomeRow
 import com.nendo.argosy.ui.screens.home.HomeRowItem
 import com.nendo.argosy.ui.screens.home.HomeUiState

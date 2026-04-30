@@ -30,9 +30,9 @@ import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.data.preferences.AmbientLedColorMode
 import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
-import com.nendo.argosy.ui.input.SoundConfig
+import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.ui.input.SoundPreset
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.social.discord.DiscordPresenceState

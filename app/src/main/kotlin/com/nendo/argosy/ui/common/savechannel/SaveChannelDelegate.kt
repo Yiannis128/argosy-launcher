@@ -16,7 +16,7 @@ import com.nendo.argosy.domain.usecase.state.RestoreCachedStatesUseCase
 import com.nendo.argosy.domain.usecase.state.RestoreStateResult
 import com.nendo.argosy.domain.usecase.state.RestoreStateUseCase
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess

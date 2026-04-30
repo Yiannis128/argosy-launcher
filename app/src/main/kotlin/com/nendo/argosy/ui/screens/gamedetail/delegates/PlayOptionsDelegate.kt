@@ -7,7 +7,7 @@ import com.nendo.argosy.data.repository.RetroAchievementsRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
 import com.nendo.argosy.ui.input.SoundFeedbackManager
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.LaunchEvent
 import com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction
 import dagger.hilt.android.qualifiers.ApplicationContext

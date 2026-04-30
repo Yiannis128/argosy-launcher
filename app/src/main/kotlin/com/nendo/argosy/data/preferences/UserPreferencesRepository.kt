@@ -1,8 +1,8 @@
 package com.nendo.argosy.data.preferences
 
 import com.nendo.argosy.data.cache.GradientPreset
-import com.nendo.argosy.ui.input.SoundConfig
-import com.nendo.argosy.ui.input.SoundType
+import com.nendo.argosy.core.input.SoundConfig
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine

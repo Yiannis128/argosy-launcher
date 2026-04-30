@@ -5,31 +5,13 @@ import android.media.AudioAttributes
 import android.media.SoundPool
 import android.util.Log
 import com.nendo.argosy.R
+import com.nendo.argosy.core.input.SoundConfig
+import com.nendo.argosy.core.input.SoundType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "SoundFeedback"
-
-enum class SoundType {
-    SILENT,
-    NAVIGATE,
-    BOUNDARY,
-    SECTION_CHANGE,
-    SELECT,
-    BACK,
-    OPEN_MODAL,
-    CLOSE_MODAL,
-    FAVORITE,
-    UNFAVORITE,
-    DOWNLOAD_START,
-    DOWNLOAD_COMPLETE,
-    DOWNLOAD_CANCEL,
-    ERROR,
-    VOLUME_PREVIEW,
-    TOGGLE,
-    LAUNCH_GAME
-}
 
 enum class SoundPreset(val resourceId: Int?, val displayName: String) {
     CLICK_SOFT(R.raw.click_soft, "Click Soft"),
@@ -50,11 +32,6 @@ enum class SoundPreset(val resourceId: Int?, val displayName: String) {
     SILENT(null, "Silent"),
     CUSTOM(null, "Custom...")
 }
-
-data class SoundConfig(
-    val presetName: String? = null,
-    val customFilePath: String? = null
-)
 
 @Singleton
 class SoundFeedbackManager @Inject constructor(
