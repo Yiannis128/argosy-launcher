@@ -15,7 +15,7 @@ import javax.inject.Singleton
  * config) triple. Replaces the four ad-hoc dispatch sites that used to live in
  * [com.nendo.argosy.data.repository.SaveSyncApiClient.getHandler],
  * [com.nendo.argosy.data.sync.SavePathResolver]'s `when (platformSlug)` blocks, and the duplicate
- * platform switches in `SavePathValidator` and `TitleIdDetector`.
+ * platform switches in `SavePathValidator`.
  *
  * Adding a new folder-based platform = register one entry in [folderHandlers] (plus a slug
  * mapping in [slugAliases] if needed). Adding a new file-based platform = inject the handler

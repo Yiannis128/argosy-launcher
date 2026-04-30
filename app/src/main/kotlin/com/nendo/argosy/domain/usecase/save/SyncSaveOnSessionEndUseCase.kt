@@ -2,7 +2,6 @@ package com.nendo.argosy.domain.usecase.save
 
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
-import com.nendo.argosy.data.emulator.TitleIdDetector
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -22,7 +21,6 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
     private val emulatorResolver: EmulatorResolver,
     private val preferencesRepository: UserPreferencesRepository,
     private val romMRepository: RomMRepository,
-    private val titleIdDetector: TitleIdDetector
 ) {
     companion object {
         private const val TAG = "SyncSaveOnSessionEnd"
@@ -122,31 +120,6 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
         )
         Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Initial path discovery | savePath=$savePath, cachedTitleId=$titleId")
 
-        if (savePath == null && titleId == null && sessionStartTime > 0) {
-            Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | No save found, attempting folder-based detection")
-            val detected = titleIdDetector.detectRecentTitleId(
-                emulatorId, game.platformSlug, sessionStartTime, emulatorPackage
-            )
-            if (detected == null) {
-                Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | No folder-based save detected")
-            } else {
-                val isValidTitleId = game.platformSlug != "switch" || isValidSwitchTitleId(detected.titleId)
-                if (!isValidTitleId) {
-                    Logger.warn(TAG, "[SaveSync] SESSION gameId=$gameId | Invalid detected titleId=${detected.titleId} (doesn't start with 01), skipping cache")
-                } else {
-                    val existingGame = gameDao.getByTitleIdAndPlatform(detected.titleId, game.platformId)
-                    if (existingGame == null || existingGame.id == gameId) {
-                        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Detected titleId | titleId=${detected.titleId}, savePath=${detected.savePath}")
-                        gameDao.updateTitleId(gameId, detected.titleId)
-                        titleId = detected.titleId
-                        savePath = detected.savePath
-                    } else {
-                        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | TitleId already assigned to another game | titleId=${detected.titleId}, otherGameId=${existingGame.id}")
-                    }
-                }
-            }
-        }
-
         if (savePath == null) {
             Logger.info(TAG, "[SaveSync] SESSION gameId=$gameId | Result=NO_SAVE_FOUND | No save path discovered")
             return Result.NoSaveFound
@@ -216,9 +189,4 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
         }
     }
 
-    private fun isValidSwitchTitleId(titleId: String): Boolean {
-        return titleId.length == 16 &&
-            titleId.all { it.isDigit() || it in 'A'..'F' || it in 'a'..'f' } &&
-            titleId.uppercase().startsWith("01")
-    }
 }
