@@ -133,11 +133,11 @@ object EmulatorRegistry {
                 "psx", "psp", "saturn", "dreamcast",
                 "tg16", "tgcd", "pcfx", "3do",
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
-                "ngp", "ngpc", "neogeo",
+                "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc",
-                "arcade",
-                "c64", "vic20", "dos", "zx", "pc9800"
+                "arcade", "supergrafx",
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -153,11 +153,11 @@ object EmulatorRegistry {
                 "psx", "psp", "saturn", "dreamcast",
                 "tg16", "tgcd", "pcfx", "3do",
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
-                "ngp", "ngpc", "neogeo",
+                "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc",
-                "arcade",
-                "c64", "vic20", "dos", "zx", "pc9800"
+                "arcade", "supergrafx",
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -836,7 +836,10 @@ object EmulatorRegistry {
         "ngp" to listOf("mednafen_ngp"),
         "ngpc" to listOf("mednafen_ngp"),
         "neogeo" to listOf("fbneo", "fbalpha"),
+        "neogeocd" to listOf("neocd", "fbneo"),
+        "supergrafx" to listOf("mednafen_supergrafx"),
         "arcade" to listOf("fbneo", "mame", "fbalpha"),
+        "amstradcpc" to listOf("cap32", "crocods"),
         "dos" to listOf("dosbox_pure", "dosbox_core", "dosbox_svn"),
         "msx" to listOf("bluemsx", "fmsx"),
         "msx2" to listOf("bluemsx", "fmsx"),
@@ -979,6 +982,17 @@ object EmulatorRegistry {
         "neogeo" to listOf(
             RetroArchCore("fbneo", "FinalBurn Neo"),
             RetroArchCore("fbalpha2012_neogeo", "FB Alpha 2012 Neo Geo")
+        ),
+        "neogeocd" to listOf(
+            RetroArchCore("neocd", "NeoCD"),
+            RetroArchCore("fbneo", "FinalBurn Neo")
+        ),
+        "supergrafx" to listOf(
+            RetroArchCore("mednafen_supergrafx", "Beetle SuperGrafx")
+        ),
+        "amstradcpc" to listOf(
+            RetroArchCore("cap32", "Caprice32"),
+            RetroArchCore("crocods", "CrocoDS")
         ),
         "arcade" to listOf(
             RetroArchCore("fbneo", "FinalBurn Neo"),
@@ -1235,11 +1249,11 @@ object EmulatorRegistry {
                 "psx", "psp", "saturn", "dreamcast",
                 "tg16", "tgcd", "pcfx", "3do",
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
-                "ngp", "ngpc", "neogeo",
+                "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc",
-                "arcade",
-                "c64", "vic20", "dos", "zx", "pc9800"
+                "arcade", "supergrafx",
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
