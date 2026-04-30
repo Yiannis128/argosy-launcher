@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.data.download.DownloadState
-import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.steam.SteamContentManager
 import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.data.remote.playstore.PlayStoreService
@@ -61,8 +60,7 @@ class DownloadDelegate @Inject constructor(
     private val playStoreService: PlayStoreService,
     private val imageCacheManager: com.nendo.argosy.data.cache.ImageCacheManager,
     private val gameRepository: com.nendo.argosy.data.repository.GameRepository,
-    private val steamContentManager: SteamContentManager,
-    private val gameDao: GameDao
+    private val steamContentManager: SteamContentManager
 ) {
     private val _state = MutableStateFlow(DownloadUiState())
     val state: StateFlow<DownloadUiState> = _state.asStateFlow()
@@ -142,7 +140,7 @@ class DownloadDelegate @Inject constructor(
                 val gameId = gameIdProvider()
                 if (gameId == 0L) return@collect
 
-                val game = gameDao.getById(gameId) ?: return@collect
+                val game = gameRepository.getById(gameId) ?: return@collect
                 val steamAppId = game.steamAppId
 
                 if (steamDownload == null || steamAppId == null || steamDownload.appId != steamAppId) {

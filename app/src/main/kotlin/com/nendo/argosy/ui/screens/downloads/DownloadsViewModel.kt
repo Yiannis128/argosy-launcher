@@ -6,8 +6,8 @@ import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.data.download.DownloadProgress
 import com.nendo.argosy.data.download.DownloadQueueState
 import com.nendo.argosy.data.download.DownloadState
-import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.steam.SteamContentManager
 import com.nendo.argosy.data.steam.QueuedSteamDownload
 import com.nendo.argosy.data.steam.SteamDownloadProgress
@@ -96,7 +96,7 @@ class DownloadsViewModel @Inject constructor(
     private val downloadManager: DownloadManager,
     private val preferencesRepository: UserPreferencesRepository,
     private val steamContentManager: SteamContentManager,
-    private val gameDao: GameDao
+    private val gameRepository: GameRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DownloadsUiState())
@@ -192,7 +192,7 @@ class DownloadsViewModel @Inject constructor(
                             is SteamDownloadState.Failed -> DownloadState.FAILED to steamState.error
                             is SteamDownloadState.Idle -> DownloadState.QUEUED to null
                         }
-                        val game = gameDao.getBySteamAppId(activeDl.appId)
+                        val game = gameRepository.getBySteamAppId(activeDl.appId)
                         items.add(DownloadProgress(
                             id = -activeDl.appId,
                             gameId = game?.id ?: 0L,
@@ -210,7 +210,7 @@ class DownloadsViewModel @Inject constructor(
                     }
                     steamState is SteamDownloadState.Paused -> {
                         activeAppId = steamState.appId
-                        val game = gameDao.getBySteamAppId(steamState.appId)
+                        val game = gameRepository.getBySteamAppId(steamState.appId)
                         items.add(DownloadProgress(
                             id = -steamState.appId,
                             gameId = game?.id ?: 0L,
@@ -230,7 +230,7 @@ class DownloadsViewModel @Inject constructor(
                 // Queued downloads: show as QUEUED (waiting to start)
                 for (queued in queue) {
                     if (queued.appId == activeAppId) continue
-                    val game = gameDao.getBySteamAppId(queued.appId)
+                    val game = gameRepository.getBySteamAppId(queued.appId)
                     items.add(DownloadProgress(
                         id = -queued.appId,
                         gameId = game?.id ?: 0L,
@@ -248,7 +248,7 @@ class DownloadsViewModel @Inject constructor(
                 // Completed Steam downloads
                 for (dl in completed) {
                     if (dl.appId == activeAppId) continue
-                    val game = gameDao.getBySteamAppId(dl.appId)
+                    val game = gameRepository.getBySteamAppId(dl.appId)
                     items.add(DownloadProgress(
                         id = -dl.appId,
                         gameId = game?.id ?: 0L,
@@ -309,7 +309,7 @@ class DownloadsViewModel @Inject constructor(
         val steamAppId = -item.id
         android.util.Log.d("DownloadsVM", "resumeSteamDownload: steamAppId=$steamAppId")
         viewModelScope.launch {
-            val game = gameDao.getBySteamAppId(steamAppId)
+            val game = gameRepository.getBySteamAppId(steamAppId)
             android.util.Log.d("DownloadsVM", "resumeSteamDownload: game=${game?.title}")
             if (game == null) return@launch
             steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.coverPath)

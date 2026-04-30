@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.download.DownloadManager
-import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.preferences.GridDensity
@@ -89,7 +89,7 @@ data class SecondaryHomeUiState(
 
 @HiltViewModel
 class SecondaryHomeViewModel @Inject constructor(
-    private val gameDao: GameDao,
+    private val gameRepository: GameRepository,
     private val platformRepository: PlatformRepository,
     private val appsRepository: AppsRepository,
     private val preferencesRepository: UserPreferencesRepository?,
@@ -229,13 +229,13 @@ class SecondaryHomeViewModel @Inject constructor(
         val sections = mutableListOf<HomeSection>()
 
         val newThreshold = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
-        val recentGames = gameDao.getRecentlyPlayed(limit = 1)
-        val newGames = gameDao.getNewlyAddedPlayable(newThreshold, 1)
+        val recentGames = gameRepository.getRecentlyPlayed(limit = 1)
+        val newGames = gameRepository.getNewlyAddedPlayable(newThreshold, 1)
         if (recentGames.isNotEmpty() || newGames.isNotEmpty()) {
             sections.add(HomeSection.Recent)
         }
 
-        val favorites = gameDao.getFavorites()
+        val favorites = gameRepository.getFavorites()
         if (favorites.isNotEmpty()) {
             sections.add(HomeSection.Favorites)
         }
@@ -287,18 +287,18 @@ class SecondaryHomeViewModel @Inject constructor(
             val games = when (section) {
                 is HomeSection.Recent -> {
                     val newThreshold = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
-                    val recentlyPlayed = gameDao.getRecentlyPlayed(limit = RECENT_GAMES_LIMIT)
-                    val newlyAdded = gameDao.getNewlyAddedPlayable(newThreshold, RECENT_GAMES_LIMIT)
+                    val recentlyPlayed = gameRepository.getRecentlyPlayed(limit = RECENT_GAMES_LIMIT)
+                    val newlyAdded = gameRepository.getNewlyAddedPlayable(newThreshold, RECENT_GAMES_LIMIT)
                     val allCandidates = (recentlyPlayed + newlyAdded).distinctBy { it.id }
                     sortRecentGamesWithNewPriority(allCandidates)
                         .take(RECENT_GAMES_LIMIT)
                         .map { it.toUi(hiddenIds) }
                 }
                 is HomeSection.Favorites -> {
-                    gameDao.getFavorites().map { it.toUi(hiddenIds) }
+                    gameRepository.getFavorites().map { it.toUi(hiddenIds) }
                 }
                 is HomeSection.Platform -> {
-                    gameDao.getByPlatformSorted(section.id, limit = 200)
+                    gameRepository.getByPlatformSorted(section.id, limit = 200)
                         .filter { !it.isHidden }
                         .map { it.toUi(hiddenIds) }
                 }
@@ -394,7 +394,7 @@ class SecondaryHomeViewModel @Inject constructor(
             // Try to resume if there's a paused/waiting download first
             dm.resumeDownload(gameId)
 
-            val game = gameDao.getById(gameId) ?: return@launch
+            val game = gameRepository.getById(gameId) ?: return@launch
             val rommId = game.rommId ?: return@launch
             val fileName = game.rommFileName ?: game.title
 

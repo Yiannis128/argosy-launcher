@@ -2,7 +2,7 @@ package com.nendo.argosy.ui.screens.home.delegates
 
 import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.data.download.DownloadState
-import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.steam.SteamContentManager
 import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.data.update.ApkInstallManager
@@ -27,7 +27,7 @@ class HomeDownloadDelegate @Inject constructor(
     private val apkInstallManager: ApkInstallManager,
     private val notificationManager: NotificationManager,
     private val steamContentManager: SteamContentManager,
-    private val gameDao: GameDao
+    private val gameRepository: GameRepository
 ) {
     private val rommIndicators = MutableStateFlow<Map<Long, GameDownloadIndicator>>(emptyMap())
     private val steamIndicators = MutableStateFlow<Map<Long, GameDownloadIndicator>>(emptyMap())
@@ -86,7 +86,7 @@ class HomeDownloadDelegate @Inject constructor(
                     return@collect
                 }
                 val appId = steamState.appId ?: return@collect
-                val game = gameDao.getBySteamAppId(appId) ?: return@collect
+                val game = gameRepository.getBySteamAppId(appId) ?: return@collect
                 val activeDl = steamContentManager.activeDownload.value
                 val progress = activeDl?.progress ?: when (steamState) {
                     is SteamDownloadState.Paused -> steamState.progress
