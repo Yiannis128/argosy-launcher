@@ -26,7 +26,6 @@ import com.nendo.argosy.ui.screens.settings.LaunchArgsModalState
 import com.nendo.argosy.ui.screens.settings.launchArgsModalRows
 import com.nendo.argosy.ui.screens.settings.UpdateModalState
 import com.nendo.argosy.ui.screens.settings.EmulatorPickerInfo
-import com.nendo.argosy.ui.screens.settings.EmulatorSavePathInfo
 import com.nendo.argosy.ui.screens.settings.EmulatorState
 import com.nendo.argosy.ui.screens.settings.EmulatorUpdateInfo
 import com.nendo.argosy.ui.screens.settings.PlatformEmulatorConfig
@@ -556,23 +555,6 @@ class EmulatorSettingsDelegate @Inject constructor(
 
     suspend fun getPreferredExtension(platformId: Long): String? {
         return emulatorConfigDao.getPreferredExtension(platformId)?.ifEmpty { null }
-    }
-
-    suspend fun getAllEmulatorSavePaths(): List<EmulatorSavePathInfo> {
-        val saveConfigs = emulatorSaveConfigDao.getAll()
-        val installedEmulators = state.value.installedEmulators
-
-        return saveConfigs.mapNotNull { config ->
-            val emulator = installedEmulators.find { it.def.id == config.emulatorId }
-            val emulatorName = emulator?.def?.displayName ?: return@mapNotNull null
-
-            EmulatorSavePathInfo(
-                emulatorId = config.emulatorId,
-                emulatorName = emulatorName,
-                savePath = config.savePathPattern,
-                isCustom = config.isUserOverride
-            )
-        }
     }
 
     fun updateCoreCounts() {

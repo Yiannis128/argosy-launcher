@@ -563,13 +563,6 @@ data class PlatformStorageConfig(
     val supportsStatePath: Boolean = false
 )
 
-data class EmulatorSavePathInfo(
-    val emulatorId: String,
-    val emulatorName: String,
-    val savePath: String?,
-    val isCustom: Boolean
-)
-
 data class StorageState(
     val romStoragePath: String = "",
     val downloadedGamesSize: Long = 0,

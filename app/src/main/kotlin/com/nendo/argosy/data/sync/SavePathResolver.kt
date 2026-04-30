@@ -170,14 +170,16 @@ class SavePathResolver @Inject constructor(
                 val savePath = findSaveByRomName(basePath, romPath, config.saveExtensions)
                 if (savePath != null) {
                     Logger.debug(TAG, "discoverSavePath: ROM-based match found at $savePath")
-                    emulatorSaveConfigDao.upsert(
-                        EmulatorSaveConfigEntity(
-                            emulatorId = effectiveEmulatorId,
-                            savePathPattern = File(savePath).parent ?: basePath,
-                            isAutoDetected = true,
-                            lastVerifiedAt = Instant.now()
+                    if (!isRetroArch) {
+                        emulatorSaveConfigDao.upsert(
+                            EmulatorSaveConfigEntity(
+                                emulatorId = effectiveEmulatorId,
+                                savePathPattern = File(savePath).parent ?: basePath,
+                                isAutoDetected = true,
+                                lastVerifiedAt = Instant.now()
+                            )
                         )
-                    )
+                    }
                     return@withContext savePath
                 }
             }
@@ -188,14 +190,16 @@ class SavePathResolver @Inject constructor(
             val saveFile = findSaveInPath(basePath, gameTitle, config.saveExtensions)
             if (saveFile != null) {
                 Logger.debug(TAG, "discoverSavePath: found save at $saveFile")
-                emulatorSaveConfigDao.upsert(
-                    EmulatorSaveConfigEntity(
-                        emulatorId = effectiveEmulatorId,
-                        savePathPattern = basePath,
-                        isAutoDetected = true,
-                        lastVerifiedAt = Instant.now()
+                if (!isRetroArch) {
+                    emulatorSaveConfigDao.upsert(
+                        EmulatorSaveConfigEntity(
+                            emulatorId = effectiveEmulatorId,
+                            savePathPattern = basePath,
+                            isAutoDetected = true,
+                            lastVerifiedAt = Instant.now()
+                        )
                     )
-                )
+                }
                 return@withContext saveFile
             }
         }
