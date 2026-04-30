@@ -311,7 +311,8 @@ class LibraryViewModel @Inject constructor(
     private val gradientExtractionDelegate: GradientExtractionDelegate,
     private val emulatorDetector: EmulatorDetector,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
-    private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController
+    private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -1206,14 +1207,16 @@ class LibraryViewModel @Inject constructor(
         collectionModalDelegate.createAndAdd(viewModelScope, name)
     }
 
-    private fun GameEntity.toUi(platformDisplayNames: Map<Long, String> = emptyMap()): LibraryGameUi =
+    private suspend fun GameEntity.toUi(platformDisplayNames: Map<Long, String> = emptyMap()): LibraryGameUi =
         toLibraryGameUi(
+            downloadStatus = downloadFileStatusRepository,
             platformDisplayName = platformDisplayNames[platformId],
             gradientColors = gradientExtractionDelegate.getGradient(id)
         )
 
-    private fun GameListItem.toUi(platformDisplayNames: Map<Long, String> = emptyMap()): LibraryGameUi =
+    private suspend fun GameListItem.toUi(platformDisplayNames: Map<Long, String> = emptyMap()): LibraryGameUi =
         toLibraryGameUi(
+            downloadStatus = downloadFileStatusRepository,
             platformDisplayName = platformDisplayNames[platformId],
             gradientColors = gradientExtractionDelegate.getGradient(id)
         )

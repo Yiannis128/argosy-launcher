@@ -655,7 +655,8 @@ class HomeLibraryDelegate @Inject constructor(
         )
     }
 
-    private fun GameEntity.toUi(): HomeGameUi = toHomeGameUi(
+    private suspend fun GameEntity.toUi(): HomeGameUi = toHomeGameUi(
+        downloadStatus = downloadFileStatusRepository,
         platformDisplayName = cachedPlatformDisplayNames[platformId],
         gradientColors = gradientExtractionDelegate.getGradient(id)
     )

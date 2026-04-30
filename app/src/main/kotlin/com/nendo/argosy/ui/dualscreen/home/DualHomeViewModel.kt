@@ -1244,7 +1244,8 @@ class DualHomeViewModel(
 
     // --- Private: Entity to UI ---
 
-    private fun GameEntity.toUi(): HomeGameUi = toHomeGameUi()
+    private suspend fun GameEntity.toUi(): HomeGameUi =
+        toHomeGameUi(downloadStatus = downloadFileStatusRepository)
 
     // --- Cover Repair ---
 
