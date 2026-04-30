@@ -110,7 +110,7 @@ class SettingsViewModel @Inject constructor(
     internal val discordPresenceManager: DiscordPresenceManager,
     internal val coreOptionOverrideDao: CoreOptionOverrideDao,
     private val gameDao: com.nendo.argosy.data.local.dao.GameDao,
-    private val playSessionDao: com.nendo.argosy.data.local.dao.PlaySessionDao,
+    private val playStatsRepo: com.nendo.argosy.data.repository.PlayStatsRepository,
     private val biosRepository: com.nendo.argosy.data.repository.BiosRepository,
     private val savePathValidator: com.nendo.argosy.data.emulator.SavePathValidator
 ) : ViewModel() {
@@ -246,7 +246,7 @@ class SettingsViewModel @Inject constructor(
             val platformSlug = config.platform.slug
             val downloaded = gameDao.countDownloadedByPlatform(platformId)
             val favorites = gameDao.countFavoritesByPlatform(platformId)
-            val totalPlayTimeMs = playSessionDao.getTotalActivePlayMsByPlatform(platformSlug)
+            val totalPlayTimeMs = playStatsRepo.getTotalActivePlayMsByPlatform(platformSlug)
             val allBiosStatus = biosRepository.getStatusByPlatform()
             val biosStatus = allBiosStatus.find { it.platformSlug == platformSlug }
             val packagePathAccessible = if (config.effectiveEmulatorId == "builtin") {
