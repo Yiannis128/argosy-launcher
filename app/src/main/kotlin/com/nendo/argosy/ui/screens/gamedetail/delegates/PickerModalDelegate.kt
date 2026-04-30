@@ -76,11 +76,14 @@ class PickerModalDelegate @Inject constructor(
 
     // region Emulator Picker
 
-    suspend fun showEmulatorPicker(platformSlug: String) {
+    suspend fun showEmulatorPicker(platformSlug: String, builtinEnabled: Boolean = true) {
         if (emulatorDetector.installedEmulators.value.isEmpty()) {
             emulatorDetector.detectEmulators()
         }
-        val available = emulatorDetector.getInstalledForPlatform(platformSlug)
+        val available = emulatorDetector.getInstalledForPlatform(platformSlug).let { list ->
+            if (builtinEnabled) list
+            else list.filterNot { it.def.packageName == com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_PACKAGE }
+        }
         _state.update {
             it.copy(
                 showEmulatorPicker = true,

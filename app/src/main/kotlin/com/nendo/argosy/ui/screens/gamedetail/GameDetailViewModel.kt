@@ -1142,7 +1142,10 @@ class GameDetailViewModel @Inject constructor(
     fun showEmulatorPicker() {
         val game = _uiState.value.game ?: return
         moreOptionsDelegate.reset()
-        viewModelScope.launch { pickerModalDelegate.showEmulatorPicker(game.platformSlug) }
+        viewModelScope.launch {
+            val builtinEnabled = preferencesRepository.userPreferences.first().builtinLibretroEnabled
+            pickerModalDelegate.showEmulatorPicker(game.platformSlug, builtinEnabled)
+        }
     }
 
     fun dismissEmulatorPicker() = pickerModalDelegate.dismissEmulatorPicker()

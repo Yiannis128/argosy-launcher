@@ -126,7 +126,7 @@ object EmulatorRegistry {
         EmulatorDef(
             id = "retroarch",
             packageName = "com.retroarch",
-            displayName = "RetroArch (32-bit)",
+            displayName = "RetroArch",
             supportedPlatforms = setOf(
                 "nes", "snes", "n64", "gc", "gb", "gbc", "gba", "nds", "3ds",
                 "genesis", "sms", "sg1000", "gg", "scd", "32x",

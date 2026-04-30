@@ -267,7 +267,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             .map { platform ->
             val canonicalSlug = PlatformDefinitions.getCanonicalSlug(platform.slug)
             val defaultConfig = vm.emulatorConfigDao.getDefaultForPlatform(platform.id)
-            val available = installedEmulators.filter { canonicalSlug in it.def.supportedPlatforms }
+            val available = installedEmulators
+                .filter { canonicalSlug in it.def.supportedPlatforms }
+                .filter { prefs.builtinLibretroEnabled || it.def.packageName != EmulatorRegistry.BUILTIN_PACKAGE }
             val isUserConfigured = defaultConfig != null
 
             val recommended = EmulatorRegistry.getRecommendedEmulators()[canonicalSlug] ?: emptyList()
