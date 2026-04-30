@@ -245,6 +245,11 @@ class SteamRepository @Inject constructor(
         }
     }
 
+    fun observeDownloadByAppId(
+        steamAppId: Long
+    ): kotlinx.coroutines.flow.Flow<com.nendo.argosy.data.local.entity.SteamDownloadQueueEntity?> =
+        steamDownloadQueueDao.observeByAppId(steamAppId)
+
     suspend fun refreshAllMetadata(): SteamResult<Int> = withContext(Dispatchers.IO) {
         try {
             val steamGames = gameDao.getBySource(GameSource.STEAM)

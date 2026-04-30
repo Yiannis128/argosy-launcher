@@ -741,4 +741,25 @@ class GameRepository @Inject constructor(
 
     suspend fun getScreenshotPaths(gameId: Long): String? =
         gameDao.getScreenshotPaths(gameId)
+
+    suspend fun getByIgdbId(igdbId: Long): GameEntity? = gameDao.getByIgdbId(igdbId)
+
+    suspend fun getBySteamAppId(steamAppId: Long): GameEntity? =
+        gameDao.getBySteamAppId(steamAppId)
+
+    fun searchForQuickMenu(query: String, limit: Int = 10): Flow<List<GameEntity>> =
+        gameDao.searchForQuickMenu(query, limit)
+
+    suspend fun getLocalGamesNeedingGradients(): List<com.nendo.argosy.data.local.dao.GradientExtractionCandidate> =
+        gameDao.getLocalGamesNeedingGradients()
+
+    suspend fun updateGradientColors(gameId: Long, json: String) =
+        gameDao.updateGradientColors(gameId, json)
+
+    suspend fun clearCoverPath(gameId: Long) = gameDao.clearCoverPath(gameId)
+
+    suspend fun clearBackgroundPath(gameId: Long) = gameDao.clearBackgroundPath(gameId)
+
+    suspend fun getGameFilesForGame(gameId: Long): List<com.nendo.argosy.data.local.entity.GameFileEntity> =
+        gameFileDao.getFilesForGame(gameId)
 }
