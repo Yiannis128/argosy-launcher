@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Singleton
 
 data class ScreenshotState(
     val focusedScreenshotIndex: Int = 0,
@@ -20,7 +19,6 @@ data class ScreenshotState(
     val viewerScreenshotIndex: Int = 0
 )
 
-@Singleton
 class ScreenshotDelegate @Inject constructor(
     private val imageCacheManager: ImageCacheManager,
     private val notificationManager: NotificationManager

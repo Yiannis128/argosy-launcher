@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
-import javax.inject.Singleton
 
 data class PickerModalState(
     val showEmulatorPicker: Boolean = false,
@@ -58,7 +57,6 @@ sealed class PickerSelection {
     data class Variant(val variantFileId: Long?) : PickerSelection()
 }
 
-@Singleton
 class PickerModalDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val emulatorDetector: EmulatorDetector,

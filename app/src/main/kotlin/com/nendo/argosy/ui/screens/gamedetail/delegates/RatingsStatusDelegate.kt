@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Singleton
 
 data class RatingsStatusState(
     val showRatingPicker: Boolean = false,
@@ -26,7 +25,6 @@ data class RatingsStatusState(
     val ratingsStatusFocusIndex: Int = 0
 )
 
-@Singleton
 class RatingsStatusDelegate @Inject constructor(
     private val romMRepository: RomMRepository,
     private val notificationManager: NotificationManager,

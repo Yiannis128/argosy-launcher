@@ -9,6 +9,7 @@ import com.nendo.argosy.data.storage.FileAccessLayerImpl
 import com.nendo.argosy.hardware.LEDController
 import com.nendo.argosy.hardware.OdinLEDController
 import com.squareup.moshi.Moshi
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,25 +19,28 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+abstract class AppModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideMoshi(): Moshi = Moshi.Builder().build()
+    abstract fun bindFileAccessLayer(impl: FileAccessLayerImpl): FileAccessLayer
 
-    @Provides
-    @Singleton
-    fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
-        return context.dataStore
+    companion object {
+
+        @Provides
+        @Singleton
+        fun provideMoshi(): Moshi = Moshi.Builder().build()
+
+        @Provides
+        @Singleton
+        fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
+            return context.dataStore
+        }
+
+        @Provides
+        @Singleton
+        fun provideLEDController(): LEDController {
+            return OdinLEDController()
+        }
     }
-
-    @Provides
-    @Singleton
-    fun provideLEDController(): LEDController {
-        return OdinLEDController()
-    }
-
-    @Provides
-    @Singleton
-    fun provideFileAccessLayer(impl: FileAccessLayerImpl): FileAccessLayer = impl
 }

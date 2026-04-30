@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Singleton
 
 data class PlayOptionsState(
     val showPlayOptions: Boolean = false,
@@ -33,7 +32,6 @@ data class PlayOptionsState(
     val isOnline: Boolean = false
 )
 
-@Singleton
 class PlayOptionsDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameRepository: GameRepository,

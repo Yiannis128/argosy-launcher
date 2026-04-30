@@ -9,14 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
-import javax.inject.Singleton
 
 data class MoreOptionsState(
     val showMoreOptions: Boolean = false,
     val moreOptionsFocusIndex: Int = 0
 )
 
-@Singleton
 class MoreOptionsDelegate @Inject constructor(
     private val soundManager: SoundFeedbackManager
 ) {

@@ -17,9 +17,7 @@ import com.nendo.argosy.ui.screens.gamedetail.components.SaveSyncStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
 class SaveManagementDelegate @Inject constructor(
     private val gameRepository: GameRepository,
     private val saveSyncDao: SaveSyncDao,

@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Singleton
 
 data class DownloadUiState(
     val downloadStatus: GameDownloadStatus = GameDownloadStatus.NOT_DOWNLOADED,
@@ -48,7 +47,6 @@ data class DownloadUiState(
     val missingDiscNumbers: List<Int> = emptyList()
 )
 
-@Singleton
 class DownloadDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadManager: DownloadManager,
