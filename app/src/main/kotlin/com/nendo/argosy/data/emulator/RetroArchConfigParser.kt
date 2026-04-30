@@ -28,6 +28,7 @@ class RetroArchConfigParser @Inject constructor() {
     private val configPaths = listOf(
         "/storage/emulated/0/Android/data/com.retroarch/files/retroarch.cfg",
         "/storage/emulated/0/Android/data/com.retroarch.aarch64/files/retroarch.cfg",
+        "/storage/emulated/0/Android/data/com.retroarch.ra32/files/retroarch.cfg",
         "/storage/emulated/0/RetroArch/retroarch.cfg"
     )
 
@@ -35,6 +36,7 @@ class RetroArchConfigParser @Inject constructor() {
         val packageSpecificPath = when (packageName) {
             "com.retroarch" -> "/storage/emulated/0/Android/data/com.retroarch/files/retroarch.cfg"
             "com.retroarch.aarch64" -> "/storage/emulated/0/Android/data/com.retroarch.aarch64/files/retroarch.cfg"
+            "com.retroarch.ra32" -> "/storage/emulated/0/Android/data/com.retroarch.ra32/files/retroarch.cfg"
             else -> null
         }
 
