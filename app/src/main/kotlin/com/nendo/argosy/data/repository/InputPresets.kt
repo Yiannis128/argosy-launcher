@@ -1,7 +1,7 @@
 package com.nendo.argosy.data.repository
 
 import android.view.KeyEvent
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.DetectedLayout
 
 object RetroButton {
     const val B = 0

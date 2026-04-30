@@ -10,8 +10,8 @@ import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.data.local.entity.HotkeyAction
 import com.nendo.argosy.data.local.entity.HotkeyEntity
 import com.nendo.argosy.libretro.HotkeyManager
-import com.nendo.argosy.ui.input.ControllerDetector
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.ControllerDetector
+import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

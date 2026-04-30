@@ -36,8 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import com.nendo.argosy.libretro.ui.RAConnectionNotification
-import com.nendo.argosy.ui.input.ControllerDetector
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.ControllerDetector
+import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.input.LocalABIconsSwapped
 import com.nendo.argosy.ui.input.LocalSwapStartSelect
 import com.nendo.argosy.ui.input.LocalXYIconsSwapped

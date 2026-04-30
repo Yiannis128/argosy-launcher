@@ -9,8 +9,8 @@ import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.libretro.LibretroCoreRegistry
-import com.nendo.argosy.ui.input.ControllerDetector
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.ControllerDetector
+import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.screens.settings.delegates.StorageSettingsDelegate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first

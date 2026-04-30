@@ -11,8 +11,8 @@ import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailViewModel
 import com.nendo.argosy.ui.dualscreen.home.DualHomeViewModel
-import com.nendo.argosy.ui.input.ControllerDetector
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.ControllerDetector
+import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.screens.secondaryhome.SecondaryHomeViewModel
 import com.nendo.argosy.util.DisplayAffinityHelper
 import com.nendo.argosy.util.DisplayRoleResolver

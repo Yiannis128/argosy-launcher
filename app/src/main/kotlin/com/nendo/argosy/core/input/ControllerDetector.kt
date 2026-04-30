@@ -1,4 +1,4 @@
-package com.nendo.argosy.ui.input
+package com.nendo.argosy.core.input
 
 import android.annotation.SuppressLint
 import android.view.InputDevice

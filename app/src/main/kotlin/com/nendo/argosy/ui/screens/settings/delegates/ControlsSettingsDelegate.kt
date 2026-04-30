@@ -3,8 +3,8 @@ package com.nendo.argosy.ui.screens.settings.delegates
 import android.app.Application
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
-import com.nendo.argosy.ui.input.ControllerDetector
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.ControllerDetector
+import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.input.HapticFeedbackManager
 import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.screens.settings.ControlsState

@@ -52,9 +52,9 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.util.PServerExecutor
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.domain.usecase.libretro.LibretroMigrationUseCase
-import com.nendo.argosy.ui.input.ControllerDetector
+import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
-import com.nendo.argosy.ui.input.DetectedLayout
+import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.ui.input.HapticFeedbackManager
 import com.nendo.argosy.ui.input.HapticPattern
