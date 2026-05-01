@@ -226,8 +226,10 @@ dependencies {
     // Steam (JavaSteam)
     implementation(libs.bundles.steam)
 
+    // argosy-sigil — title id / serial extraction (replaces in-tree :libchdr +
+    // Iso9660Utils + AesXts + ZArchiveReader + GameCubeHeaderParser.parseRomHeader)
+    implementation(project(":sigil"))
     // Libretro (built-in emulation) - local module for customization
-    implementation(project(":libchdr"))
     implementation(project(":libretrodroid"))
 
     // WorkManager

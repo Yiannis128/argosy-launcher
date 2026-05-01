@@ -139,48 +139,4 @@ object GameCubeHeaderParser {
         return VALID_REGIONS.any { region -> path.contains("/$region/Card A/") }
     }
 
-    fun gameIdToHex(gameId: String): String {
-        return gameId.toByteArray(Charsets.US_ASCII)
-            .joinToString("") { "%02X".format(it) }
-    }
-
-    fun findGciForGame(saveDir: File, gameId: String): List<File> {
-        val regions = listOf("USA", "EUR", "JAP", "KOR")
-        val results = mutableListOf<File>()
-
-        fun searchDirectory(dir: File) {
-            dir.listFiles()?.forEach { file ->
-                if (file.isFile && file.extension.equals("gci", ignoreCase = true) && !file.name.contains(".deleted")) {
-                    if (file.name.contains(gameId, ignoreCase = true)) {
-                        results.add(file)
-                    } else {
-                        val gciInfo = parseGciHeader(file)
-                        if (gciInfo?.gameId.equals(gameId, ignoreCase = true)) {
-                            results.add(file)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Search the provided directory directly (for user overrides that point to card folder)
-        searchDirectory(saveDir)
-        if (results.isNotEmpty()) return results
-
-        // Search standard Dolphin structure: {saveDir}/{region}/[Card A|B/]
-        for (region in regions) {
-            val regionDir = File(saveDir, region)
-            if (!regionDir.exists()) continue
-
-            val dirsToSearch = mutableListOf(regionDir)
-            regionDir.listFiles()?.filter { it.isDirectory && it.name.startsWith("Card", ignoreCase = true) }
-                ?.let { dirsToSearch.addAll(it) }
-
-            for (dir in dirsToSearch) {
-                searchDirectory(dir)
-            }
-        }
-
-        return results
-    }
 }

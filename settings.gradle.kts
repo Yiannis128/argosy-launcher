@@ -23,5 +23,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "argosy-launcher"
 include(":app")
-include(":libchdr")
+include(":sigil")
+project(":sigil").projectDir = file("sigil/bindings/android")
 include(":libretrodroid")
