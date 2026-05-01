@@ -21,6 +21,7 @@ import com.squareup.moshi.Moshi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -90,6 +91,29 @@ class RetroAchievementsRepository @Inject constructor(
         val username = prefs.raUsername ?: return null
         val token = prefs.raToken ?: return null
         return RACredentials(username, token)
+    }
+
+    // RA Connect tokens are long-lived but not eternal. RA can rotate them
+    // server-side (password change, manual revoke, IP-binding triggered).
+    // The client only learns about it when a request comes back HTTP 401 or
+    // Success=false with an "invalid"/"expired" error. Stateless auth on
+    // every endpoint means there is no other signal.
+    //
+    // When that happens, clear the stored creds so isLoggedIn() reflects
+    // RA's real state instead of locally stale prefs. Otherwise every
+    // subsequent call retries forever and the user sees nothing happening
+    // -- no logs, no UI surface, no obvious action to take.
+    private suspend fun handleAuthFailure(httpCode: Int, errorBody: String?, context: String) {
+        val isAuthError = httpCode == 401 ||
+            httpCode == 403 ||
+            (errorBody?.contains("invalid", ignoreCase = true) == true) ||
+            (errorBody?.contains("expired", ignoreCase = true) == true) ||
+            (errorBody?.contains("credentials", ignoreCase = true) == true)
+        if (!isAuthError) return
+        if (!isLoggedIn()) return  // already cleared
+        Logger.warn(TAG, "RA auth failure ($context): http=$httpCode error=$errorBody -- clearing stored credentials")
+        prefsRepository.clearRACredentials()
+        unlocksCache.clear()
     }
 
     suspend fun resolveGameId(hash: String): Long? {
@@ -320,6 +344,7 @@ class RetroAchievementsRepository @Inject constructor(
                 RASessionResult(true, unlocked)
             } else {
                 Logger.error(TAG, "Failed to start session: ${body?.error}")
+                handleAuthFailure(response.code(), body?.error, "startSession")
                 RASessionResult(false)
             }
         } catch (e: Exception) {
@@ -356,9 +381,11 @@ class RetroAchievementsRepository @Inject constructor(
                 gameId = gameRaId
             )
 
-            if (response.isSuccessful) {
-                response.body()?.patchData
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true) {
+                body.patchData
             } else {
+                handleAuthFailure(response.code(), body?.error, "getGamePatchData")
                 null
             }
         } catch (e: Exception) {
@@ -493,6 +520,12 @@ class RetroAchievementsRepository @Inject constructor(
 
     private val unlocksCache = java.util.concurrent.ConcurrentHashMap<Long, Pair<Long, GameUnlocks>>()
 
+    // Per-game mutex so concurrent fetchUnlocksFresh callers share one network
+    // call. Without this, multiple Home prefetches for the same game launch in
+    // parallel, each sees an empty cache before any response writes, and all
+    // hit RA. The cooldown only protects the second cycle, not within a cycle.
+    private val unlocksFetchMutexes = java.util.concurrent.ConcurrentHashMap<Long, kotlinx.coroutines.sync.Mutex>()
+
     /**
      * Fetches the user's unlocked achievement IDs for a single game directly
      * from RA's Connect API (`r=unlocks`). Read-only, unlike `startsession`
@@ -511,56 +544,60 @@ class RetroAchievementsRepository @Inject constructor(
             return null
         }
 
-        val now = System.currentTimeMillis()
-        unlocksCache[gameRaId]?.let { (fetchedAt, cached) ->
-            val ageSec = (now - fetchedAt) / 1000
-            if (now - fetchedAt < UNLOCKS_COOLDOWN_MS) {
-                Logger.debug(
-                    TAG,
-                    "fetchUnlocksFresh: cooldown hit game=$gameRaId age=${ageSec}s " +
-                        "casual=${cached.unlockedIds.size} hc=${cached.hardcoreUnlockedIds.size}"
+        val mutex = unlocksFetchMutexes.computeIfAbsent(gameRaId) { kotlinx.coroutines.sync.Mutex() }
+        return mutex.withLock {
+            val now = System.currentTimeMillis()
+            unlocksCache[gameRaId]?.let { (fetchedAt, cached) ->
+                val ageSec = (now - fetchedAt) / 1000
+                if (now - fetchedAt < UNLOCKS_COOLDOWN_MS) {
+                    Logger.debug(
+                        TAG,
+                        "fetchUnlocksFresh: cooldown hit game=$gameRaId age=${ageSec}s " +
+                            "casual=${cached.unlockedIds.size} hc=${cached.hardcoreUnlockedIds.size}"
+                    )
+                    return@withLock cached
+                }
+            }
+
+            Logger.debug(TAG, "fetchUnlocksFresh: calling RA Connect r=unlocks game=$gameRaId")
+            try {
+                val casualResponse = api.getUnlocks(
+                    username = credentials.username,
+                    token = credentials.token,
+                    gameId = gameRaId,
+                    hardcore = 0
                 )
-                return cached
+                val hardcoreResponse = api.getUnlocks(
+                    username = credentials.username,
+                    token = credentials.token,
+                    gameId = gameRaId,
+                    hardcore = 1
+                )
+
+                if (!casualResponse.isSuccessful) {
+                    Logger.warn(TAG, "fetchUnlocksFresh: HTTP ${casualResponse.code()} for game $gameRaId")
+                    handleAuthFailure(casualResponse.code(), casualResponse.body()?.error, "fetchUnlocksFresh")
+                    return@withLock unlocksCache[gameRaId]?.second
+                }
+
+                val casual = (casualResponse.body()?.userUnlocks ?: emptyList())
+                    .filter { it != WARNING_UNLOCK_ID }
+                    .toSet()
+                val hardcore = (hardcoreResponse.body()?.userUnlocks ?: emptyList())
+                    .filter { it != WARNING_UNLOCK_ID }
+                    .toSet()
+
+                val result = GameUnlocks(unlockedIds = casual, hardcoreUnlockedIds = hardcore)
+                unlocksCache[gameRaId] = now to result
+                Logger.info(
+                    TAG,
+                    "fetchUnlocksFresh: game=$gameRaId casual=${casual.size} hardcore=${hardcore.size}"
+                )
+                result
+            } catch (e: Exception) {
+                Logger.warn(TAG, "fetchUnlocksFresh exception for game $gameRaId: ${e.message}")
+                unlocksCache[gameRaId]?.second
             }
-        }
-
-        Logger.debug(TAG, "fetchUnlocksFresh: calling RA Connect r=unlocks game=$gameRaId")
-        return try {
-            val casualResponse = api.getUnlocks(
-                username = credentials.username,
-                token = credentials.token,
-                gameId = gameRaId,
-                hardcore = 0
-            )
-            val hardcoreResponse = api.getUnlocks(
-                username = credentials.username,
-                token = credentials.token,
-                gameId = gameRaId,
-                hardcore = 1
-            )
-
-            if (!casualResponse.isSuccessful) {
-                Logger.warn(TAG, "fetchUnlocksFresh: HTTP ${casualResponse.code()} for game $gameRaId")
-                return unlocksCache[gameRaId]?.second
-            }
-
-            val casual = (casualResponse.body()?.userUnlocks ?: emptyList())
-                .filter { it != WARNING_UNLOCK_ID }
-                .toSet()
-            val hardcore = (hardcoreResponse.body()?.userUnlocks ?: emptyList())
-                .filter { it != WARNING_UNLOCK_ID }
-                .toSet()
-
-            val result = GameUnlocks(unlockedIds = casual, hardcoreUnlockedIds = hardcore)
-            unlocksCache[gameRaId] = now to result
-            Logger.info(
-                TAG,
-                "fetchUnlocksFresh: game=$gameRaId casual=${casual.size} hardcore=${hardcore.size}"
-            )
-            result
-        } catch (e: Exception) {
-            Logger.warn(TAG, "fetchUnlocksFresh exception for game $gameRaId: ${e.message}")
-            unlocksCache[gameRaId]?.second
         }
     }
 
