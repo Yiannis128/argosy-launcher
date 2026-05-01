@@ -1,9 +1,6 @@
 [submodule "libretrodroid/src/main/cpp/rcheevos"]
 	path = libretrodroid/src/main/cpp/rcheevos
 	url = https://github.com/RetroAchievements/rcheevos.git
-[submodule "libchdr/src/main/cpp/libchdr"]
-	path = libchdr/src/main/cpp/libchdr
-	url = https://github.com/rtissera/libchdr.git
 [submodule "sigil"]
 	path = sigil
 	url = https://github.com/rommforge/argosy-sigil.git
