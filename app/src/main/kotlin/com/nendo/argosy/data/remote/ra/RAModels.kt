@@ -91,31 +91,3 @@ data class RACredentials(
     val token: String
 )
 
-// Web API response for game info with user progress
-@JsonClass(generateAdapter = true)
-data class RAGameInfoAndUserProgressResponse(
-    @Json(name = "ID") val id: Long,
-    @Json(name = "Title") val title: String? = null,
-    @Json(name = "ConsoleID") val consoleId: Int? = null,
-    @Json(name = "ConsoleName") val consoleName: String? = null,
-    @Json(name = "ImageIcon") val imageIcon: String? = null,
-    @Json(name = "NumAchievements") val numAchievements: Int? = null,
-    @Json(name = "NumAwardedToUser") val numAwardedToUser: Int? = null,
-    @Json(name = "NumAwardedToUserHardcore") val numAwardedToUserHardcore: Int? = null,
-    @Json(name = "UserCompletion") val userCompletion: String? = null,
-    @Json(name = "UserCompletionHardcore") val userCompletionHardcore: String? = null,
-    @Json(name = "Achievements") val achievements: Map<String, RAWebAchievement>? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class RAWebAchievement(
-    @Json(name = "ID") val id: Long,
-    @Json(name = "Title") val title: String,
-    @Json(name = "Description") val description: String? = null,
-    @Json(name = "Points") val points: Int,
-    @Json(name = "BadgeName") val badgeName: String? = null,
-    @Json(name = "DisplayOrder") val displayOrder: Int? = null,
-    @Json(name = "DateEarned") val dateEarned: String? = null,
-    @Json(name = "DateEarnedHardcore") val dateEarnedHardcore: String? = null,
-    @Json(name = "type") val type: String? = null
-)

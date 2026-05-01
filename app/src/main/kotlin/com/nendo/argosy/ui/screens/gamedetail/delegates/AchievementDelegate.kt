@@ -67,67 +67,6 @@ class AchievementDelegate @Inject constructor(
         return emptyList()
     }
 
-    private suspend fun fetchAchievementsFromRA(raId: Long, gameId: Long): List<AchievementUi> {
-        val raData = raRepository.getGameAchievementsWithProgress(raId) ?: return emptyList()
-
-        val entities = mutableListOf<AchievementEntity>()
-        val uiModels = mutableListOf<AchievementUi>()
-
-        raData.achievements.forEach { achievement ->
-            val isUnlocked = achievement.id in raData.unlockedIds
-            val isHardcore = achievement.id in raData.hardcoreUnlockedIds
-            val badgeUrl = achievement.badgeName?.let { "${RA_BADGE_BASE_URL}$it.png" }
-            val badgeUrlLock = achievement.badgeName?.let { "${RA_BADGE_BASE_URL}${it}_lock.png" }
-
-            entities += AchievementEntity(
-                gameId = gameId,
-                raId = achievement.id,
-                title = achievement.title,
-                description = achievement.description ?: "",
-                points = achievement.points,
-                type = achievement.type,
-                badgeUrl = badgeUrl,
-                badgeUrlLock = badgeUrlLock,
-                unlockedAt = raData.unlockedTimestamps[achievement.id],
-                unlockedHardcoreAt = raData.hardcoreUnlockedTimestamps[achievement.id]
-            )
-
-            uiModels += AchievementUi(
-                raId = achievement.id,
-                title = achievement.title,
-                description = achievement.description ?: "",
-                points = achievement.points,
-                type = achievement.type,
-                badgeUrl = if (isUnlocked) badgeUrl else (badgeUrlLock ?: badgeUrl),
-                isUnlocked = isUnlocked,
-                isUnlockedHardcore = isHardcore
-            )
-        }
-
-        achievementDao.replaceForGame(gameId, entities)
-        gameRepository.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
-
-        // Use merged DB state for earned count (replaceForGame preserves local unlocks)
-        val actualEarned = achievementDao.countUnlockedByGameId(gameId)
-        val earnedCount = maxOf(raData.earnedCount, actualEarned)
-        gameRepository.updateAchievementCount(gameId, raData.totalCount, earnedCount)
-        achievementUpdateBus.emit(
-            AchievementUpdateBus.AchievementUpdate(gameId, raData.totalCount, earnedCount)
-        )
-
-        // Rebuild UI models from merged DB state to reflect preserved local unlocks
-        val savedAchievements = achievementDao.getByGameId(gameId)
-        val mergedUiModels = savedAchievements.map { it.toAchievementUi() }
-
-        savedAchievements.forEach { achievement ->
-            if (achievement.cachedBadgeUrl == null && achievement.badgeUrl != null) {
-                imageCacheManager.queueBadgeCache(achievement.id, achievement.badgeUrl, achievement.badgeUrlLock)
-            }
-        }
-
-        return mergedUiModels
-    }
-
     private suspend fun fetchAchievementsFromRomM(rommId: Long, gameId: Long): List<AchievementUi> {
         return when (val result = romMRepository.getRom(rommId)) {
             is RomMResult.Success -> {

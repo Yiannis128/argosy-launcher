@@ -63,14 +63,6 @@ interface RAApi {
         @Query("m") hash: String
     ): Response<okhttp3.ResponseBody>
 
-    // Web API endpoint - uses API key instead of token, no emulator registration required
-    @GET("API/API_GetGameInfoAndUserProgress.php")
-    suspend fun getGameInfoAndUserProgress(
-        @Query("g") gameId: Long,
-        @Query("u") username: String,
-        @Query("y") apiKey: String
-    ): Response<RAGameInfoAndUserProgressResponse>
-
     companion object {
         const val BASE_URL = "https://retroachievements.org/"
     }

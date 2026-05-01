@@ -34,39 +34,6 @@ class FetchAchievementsUseCase @Inject constructor(
         return null
     }
 
-    private suspend fun fetchFromRA(raId: Long, gameId: Long): AchievementCounts? {
-        val raData = raRepository.getGameAchievementsWithProgress(raId) ?: return null
-
-        val entities = raData.achievements.map { achievement ->
-            val badgeUrl = achievement.badgeName?.let { "${RA_BADGE_BASE_URL}$it.png" }
-            val badgeUrlLock = achievement.badgeName?.let { "${RA_BADGE_BASE_URL}${it}_lock.png" }
-
-            AchievementEntity(
-                gameId = gameId,
-                raId = achievement.id,
-                title = achievement.title,
-                description = achievement.description ?: "",
-                points = achievement.points,
-                type = achievement.type,
-                badgeUrl = badgeUrl,
-                badgeUrlLock = badgeUrlLock,
-                unlockedAt = raData.unlockedTimestamps[achievement.id],
-                unlockedHardcoreAt = raData.hardcoreUnlockedTimestamps[achievement.id]
-            )
-        }
-        achievementDao.replaceForGame(gameId, entities)
-        gameDao.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
-
-        // Compute earned count from the merged DB state (replaceForGame preserves
-        // local unlocks when incoming data has none, e.g. Connect API fallback)
-        val actualEarned = achievementDao.countUnlockedByGameId(gameId)
-        val earnedCount = maxOf(raData.earnedCount, actualEarned)
-        gameDao.updateAchievementCount(gameId, raData.totalCount, earnedCount)
-        queueBadgeCaching(gameId)
-
-        return AchievementCounts(total = raData.totalCount, earned = earnedCount)
-    }
-
     private suspend fun fetchFromRomM(rommId: Long, gameId: Long): AchievementCounts? {
         return when (val result = romMRepository.getRom(rommId)) {
             is RomMResult.Success -> {
