@@ -103,17 +103,14 @@ class RetroAchievementsRepository @Inject constructor(
     // RA's real state instead of locally stale prefs. Otherwise every
     // subsequent call retries forever and the user sees nothing happening
     // -- no logs, no UI surface, no obvious action to take.
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun handleAuthFailure(httpCode: Int, errorBody: String?, context: String) {
-        val isAuthError = httpCode == 401 ||
-            httpCode == 403 ||
-            (errorBody?.contains("invalid", ignoreCase = true) == true) ||
-            (errorBody?.contains("expired", ignoreCase = true) == true) ||
-            (errorBody?.contains("credentials", ignoreCase = true) == true)
-        if (!isAuthError) return
-        if (!isLoggedIn()) return  // already cleared
-        Logger.warn(TAG, "RA auth failure ($context): http=$httpCode error=$errorBody -- clearing stored credentials")
-        prefsRepository.clearRACredentials()
-        unlocksCache.clear()
+        // No-op. The previous implementation cleared stored credentials on any
+        // response whose error string contained "invalid"/"expired"/"credentials"
+        // — too broad: RA Connect routinely returns those words for non-auth
+        // errors ("Invalid game ID", "Invalid hash"), which silently wiped users'
+        // tokens mid-session and broke RA from that point until manual re-login.
+        // RA users can re-login from Settings if the token actually rots.
     }
 
     suspend fun resolveGameId(hash: String): Long? {
