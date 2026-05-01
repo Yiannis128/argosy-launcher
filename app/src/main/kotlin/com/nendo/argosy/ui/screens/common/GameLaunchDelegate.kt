@@ -121,6 +121,13 @@ class GameLaunchDelegate @Inject constructor(
 
     val isSyncing: Boolean get() = _syncOverlayState.value != null
 
+    // Guards against rapid d-pad / button-repeat re-entry on the launch path.
+    // isSyncing only fires when the sync overlay is up; built-in libretro
+    // launches show no overlay, so without this flag a second launchGame
+    // could spawn a second LibretroActivity while the first is still
+    // dlopen'ing the core (the core .so is single-instance per process).
+    private val launchInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private var _onLaunchFailed: (() -> Unit)? = null
 
     fun launchGame(
@@ -132,6 +139,11 @@ class GameLaunchDelegate @Inject constructor(
         onLaunchFailed: () -> Unit = {}
     ) {
         if (isSyncing) {
+            onLaunchFailed()
+            return
+        }
+        if (!launchInFlight.compareAndSet(false, true)) {
+            android.util.Log.d("GameLaunchDelegate", "launchGame: skipping reentrant call (launch already in flight)")
             onLaunchFailed()
             return
         }
@@ -314,6 +326,7 @@ class GameLaunchDelegate @Inject constructor(
                 dispatchPrimaryLaunchResult(result, channelName, launchMode, onLaunch, onLaunchFailed)
             } finally {
                 _syncOverlayState.value = null
+                launchInFlight.set(false)
             }
         }
     }
@@ -601,14 +614,23 @@ class GameLaunchDelegate @Inject constructor(
         launchMode: LaunchMode? = null,
         callbacks: LaunchResultCallbacks
     ) {
+        if (!launchInFlight.compareAndSet(false, true)) {
+            android.util.Log.d("GameLaunchDelegate", "launchSimple: skipping reentrant call (launch already in flight)")
+            callbacks.onLaunchFailed()
+            return
+        }
         scope.launch {
-            val result = launchGameUseCase(
-                gameId = gameId,
-                discId = discId,
-                selectedDiscPath = selectedDiscPath,
-                variantFileId = variantFileId
-            )
-            dispatchSimpleResult(result, launchMode, callbacks)
+            try {
+                val result = launchGameUseCase(
+                    gameId = gameId,
+                    discId = discId,
+                    selectedDiscPath = selectedDiscPath,
+                    variantFileId = variantFileId
+                )
+                dispatchSimpleResult(result, launchMode, callbacks)
+            } finally {
+                launchInFlight.set(false)
+            }
         }
     }
 
