@@ -562,7 +562,8 @@ object EmulatorRegistry {
             launchAction = "me.magnum.melonds.LAUNCH_ROM",
             launchConfig = LaunchConfig.Custom(
                 activityClass = "me.magnum.melonds.ui.emulator.EmulatorActivity",
-                intentExtras = mapOf("uri" to ExtraValue.FileUri)
+                intentExtras = mapOf("uri" to ExtraValue.FileUri),
+                defaultDataBinding = RomBindingFormat.FILE_PROVIDER
             ),
             downloadUrl = "https://github.com/rafaelvcaetano/melonDS-android/releases/tag/nightly-release",
             releaseSource = ReleaseSource.GitHub("rafaelvcaetano/melonDS-android")
@@ -576,8 +577,6 @@ object EmulatorRegistry {
             launchConfig = LaunchConfig.Custom(
                 activityClass = "me.magnum.melonds.ui.emulator.EmulatorActivity",
                 intentExtras = mapOf("uri" to ExtraValue.FileUri),
-                // MelonDualDS rejects launches without a FileProvider data URI;
-                // confirmed by user testing. melonDS proper doesn't need this.
                 defaultDataBinding = RomBindingFormat.FILE_PROVIDER
             ),
             downloadUrl = "https://github.com/SapphireRhodonite/melonDS-android/releases",
