@@ -62,7 +62,16 @@ data class EffectiveLaunchCommand(
 )
 
 fun EffectiveLaunchCommand.toIntent(context: Context): Intent {
+    val ownFileProviderAuthority = "${context.packageName}.fileprovider"
     for (uri in grantReadUriTo) {
+        if (uri.scheme != "content") {
+            Logger.warn(TAG, "Skipping URI grant for non-content scheme: $uri")
+            continue
+        }
+        if (uri.authority != ownFileProviderAuthority) {
+            Logger.warn(TAG, "Refusing URI grant to $packageName for foreign authority '${uri.authority}' — only $ownFileProviderAuthority can be granted")
+            continue
+        }
         try {
             context.grantUriPermission(packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (e: Exception) {

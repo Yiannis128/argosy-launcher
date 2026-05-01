@@ -686,6 +686,12 @@ class GameLauncher @Inject constructor(
     private fun parseBindingFormat(name: String): RomBindingFormat? =
         runCatching { RomBindingFormat.valueOf(name) }.getOrNull()
 
+    private fun isPathOpaqueToOtherApps(path: String): Boolean {
+        if (!path.startsWith("/storage/")) return false
+        val tail = path.removePrefix("/storage/")
+        return !(tail.startsWith("emulated/0/") || tail.startsWith("self/primary/"))
+    }
+
     private fun rewriteBindings(
         command: EffectiveLaunchCommand,
         romFile: File,
@@ -695,6 +701,17 @@ class GameLauncher @Inject constructor(
     ): EffectiveLaunchCommand {
         val absolutePath = romFile.absolutePath
         val grantUris = command.grantReadUriTo.toMutableList()
+
+        val needsContentUri = isPathOpaqueToOtherApps(absolutePath)
+        fun upgradeIfOpaque(b: RomBindingFormat?): RomBindingFormat? =
+            if (b == RomBindingFormat.ABSOLUTE_PATH && needsContentUri) {
+                Logger.warn(TAG, "ROM at $absolutePath is on a secondary external mount; upgrading ABSOLUTE_PATH → FILE_PROVIDER")
+                RomBindingFormat.FILE_PROVIDER
+            } else b
+
+        @Suppress("NAME_SHADOWING") val dataBinding = upgradeIfOpaque(dataBinding)
+        @Suppress("NAME_SHADOWING") val extraBinding = upgradeIfOpaque(extraBinding)
+        @Suppress("NAME_SHADOWING") val clipDataBinding = upgradeIfOpaque(clipDataBinding)
 
         fun targetUriFor(format: RomBindingFormat): Uri? = when (format) {
             RomBindingFormat.NONE -> null
