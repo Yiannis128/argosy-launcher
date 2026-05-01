@@ -2,17 +2,15 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.AchievementDao
-import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.core.game.toAchievementUi
-import com.nendo.argosy.data.remote.romm.RomMEarnedAchievement
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
-import com.nendo.argosy.data.repository.RA_BADGE_BASE_URL
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
+import com.nendo.argosy.data.repository.RetroAchievementsRepository.Companion.toAchievementDefinition
+import com.nendo.argosy.data.repository.RetroAchievementsRepository.Companion.toRommEarnedByBadgeId
 import com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
 import com.nendo.argosy.core.event.AchievementUpdateBus
-import com.nendo.argosy.util.parseTimestamp
 import com.nendo.argosy.core.game.AchievementUi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,13 +55,10 @@ class AchievementDelegate @Inject constructor(
     }
 
     private suspend fun fetchAndCacheAchievements(rommId: Long?, gameId: Long): List<AchievementUi> {
-        // Fetch RA unlock data from RomM (which has the API key server-side).
-        // Never call RA directly for UI display -- that's only for in-game sessions.
         if (rommId != null) {
             val rommResults = fetchAchievementsFromRomM(rommId, gameId)
             if (rommResults.isNotEmpty()) return rommResults
         }
-
         return emptyList()
     }
 
@@ -74,35 +69,24 @@ class AchievementDelegate @Inject constructor(
                 val apiAchievements = rom.raMetadata?.achievements ?: emptyList()
                 if (apiAchievements.isEmpty()) return emptyList()
 
-                romMRepository.refreshRAProgressionIfNeeded(force = true)
-                val earnedAchievements = getEarnedAchievements(rom.raId)
-                val earnedByBadgeId = earnedAchievements.associateBy { it.id }
-
-                val entities = apiAchievements.map { achievement ->
-                    val earned = earnedByBadgeId[achievement.badgeId]
-                    val unlockedAt = earned?.date?.let { parseTimestamp(it) }
-                    val unlockedHardcoreAt = earned?.dateHardcore?.let { parseTimestamp(it) }
-
-                    AchievementEntity(
-                        gameId = gameId,
-                        raId = achievement.raId,
-                        title = achievement.title,
-                        description = achievement.description,
-                        points = achievement.points,
-                        type = achievement.type,
-                        badgeUrl = achievement.badgeUrl,
-                        badgeUrlLock = achievement.badgeUrlLock,
-                        unlockedAt = unlockedAt,
-                        unlockedHardcoreAt = unlockedHardcoreAt
-                    )
+                val rommEarnedByBadgeId = if (rom.raId != null) {
+                    romMRepository.refreshRAProgressionIfNeeded(force = true)
+                    romMRepository.getEarnedAchievements(rom.raId).toRommEarnedByBadgeId()
+                } else {
+                    emptyMap()
                 }
-                achievementDao.replaceForGame(gameId, entities)
-                gameRepository.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
 
-                val earnedCount = entities.count { it.isUnlocked }
-                gameRepository.updateAchievementCount(gameId, entities.size, earnedCount)
+                val counts = raRepository.syncAchievementsForGame(
+                    gameId = gameId,
+                    gameRaId = rom.raId,
+                    definitions = apiAchievements.map { it.toAchievementDefinition() },
+                    rommEarnedById = rommEarnedByBadgeId
+                ) ?: return emptyList()
+
+                gameRepository.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
+                gameRepository.updateAchievementCount(gameId, counts.total, counts.earned)
                 achievementUpdateBus.emit(
-                    AchievementUpdateBus.AchievementUpdate(gameId, entities.size, earnedCount)
+                    AchievementUpdateBus.AchievementUpdate(gameId, counts.total, counts.earned)
                 )
 
                 val savedAchievements = achievementDao.getByGameId(gameId)
@@ -112,29 +96,9 @@ class AchievementDelegate @Inject constructor(
                     }
                 }
 
-                apiAchievements.map { achievement ->
-                    val earned = earnedByBadgeId[achievement.badgeId]
-                    val isUnlocked = earned != null
-                    val isUnlockedHardcore = earned?.dateHardcore != null
-                    AchievementUi(
-                        raId = achievement.raId,
-                        title = achievement.title,
-                        description = achievement.description,
-                        points = achievement.points,
-                        type = achievement.type,
-                        badgeUrl = if (isUnlocked) achievement.badgeUrl else (achievement.badgeUrlLock ?: achievement.badgeUrl),
-                        isUnlocked = isUnlocked,
-                        isUnlockedHardcore = isUnlockedHardcore
-                    )
-                }
+                savedAchievements.map { it.toAchievementUi() }
             }
             is RomMResult.Error -> emptyList()
         }
     }
-
-    private fun getEarnedAchievements(gameRaId: Long?): List<RomMEarnedAchievement> {
-        if (gameRaId == null) return emptyList()
-        return romMRepository.getEarnedAchievements(gameRaId)
-    }
-
 }

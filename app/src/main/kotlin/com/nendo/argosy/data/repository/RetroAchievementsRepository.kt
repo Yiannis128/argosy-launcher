@@ -3,6 +3,7 @@ package com.nendo.argosy.data.repository
 import android.content.Context
 import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
+import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.SyncPriority
 import com.nendo.argosy.data.local.entity.SyncType
@@ -12,6 +13,8 @@ import com.nendo.argosy.data.remote.ra.RAAchievementPatch
 import com.nendo.argosy.data.remote.ra.RAApi
 import com.nendo.argosy.data.remote.ra.RACredentials
 import com.nendo.argosy.data.remote.ra.RAPatchData
+import com.nendo.argosy.data.remote.romm.RomMAchievement
+import com.nendo.argosy.data.remote.romm.RomMEarnedAchievement
 import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.parseTimestamp
 import com.squareup.moshi.Moshi
@@ -28,6 +31,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "RetroAchievementsRepository"
+private const val UNLOCKS_COOLDOWN_MS = 5 * 60 * 1000L
+private const val WARNING_UNLOCK_ID = 101000001L
 const val RA_BADGE_BASE_URL = "https://media.retroachievements.org/Badge/"
 
 sealed class RALoginResult {
@@ -46,6 +51,8 @@ sealed class RAAwardResult {
 class RetroAchievementsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val pendingSyncQueueDao: PendingSyncQueueDao,
+    private val achievementDao: com.nendo.argosy.data.local.dao.AchievementDao,
+    private val gameDao: com.nendo.argosy.data.local.dao.GameDao,
     private val prefsRepository: UserPreferencesRepository,
     private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec
 ) {
@@ -120,7 +127,8 @@ class RetroAchievementsRepository @Inject constructor(
             }
 
             prefsRepository.setRACredentials(username, token)
-            Logger.info(TAG, "Login successful")
+            gameDao.clearAllAchievementsFetchedAt()
+            Logger.info(TAG, "Login successful; cleared achievement-fetch timestamps")
             RALoginResult.Success(username)
         } catch (e: Exception) {
             Logger.error(TAG, "Login exception: ${e.message}")
@@ -131,6 +139,8 @@ class RetroAchievementsRepository @Inject constructor(
     suspend fun logout() {
         Logger.info(TAG, "Logging out")
         prefsRepository.clearRACredentials()
+        gameDao.clearAllAchievementsFetchedAt()
+        unlocksCache.clear()
     }
 
     suspend fun awardAchievement(
@@ -360,6 +370,199 @@ class RetroAchievementsRepository @Inject constructor(
     fun observePendingCount(): Flow<Int> = pendingSyncQueueDao.observePendingCountBySyncType(SyncType.ACHIEVEMENT)
 
     suspend fun getPendingCount(): Int = pendingSyncQueueDao.countPendingBySyncType(SyncType.ACHIEVEMENT)
+
+    data class GameUnlocks(
+        val unlockedIds: Set<Long>,
+        val hardcoreUnlockedIds: Set<Long>
+    )
+
+    data class AchievementCounts(
+        val total: Int,
+        val earned: Int
+    )
+
+    /**
+     * Build/persist achievement entities for [gameId] using [definitions] (the
+     * achievement list from RomM's `rom.raMetadata.achievements`) merged with
+     * unlock state from two complementary sources:
+     *
+     * 1. RA Connect `r=unlocks` (read-only, 5-min cooldown) when the user is
+     *    logged in to RA. Returns IDs only -- no timestamps; stamps `now` for
+     *    newly-known unlocks.
+     * 2. [rommEarnedById] (from RomM's progression cache, keyed by badge id).
+     *    Carries actual unlock timestamps.
+     *
+     * An achievement is unlocked if either source reports it. When both report
+     * the same achievement, the RomM timestamp is preferred (it's a real date,
+     * not `now`). [AchievementDao.replaceForGame] then merges with any existing
+     * local timestamp via [minOf], keeping the earliest known unlock time.
+     * Returns the post-merge counts read back from the DB.
+     */
+    suspend fun syncAchievementsForGame(
+        gameId: Long,
+        gameRaId: Long?,
+        definitions: List<AchievementDefinition>,
+        rommEarnedById: Map<String?, RommEarnedAchievement> = emptyMap()
+    ): AchievementCounts? {
+        if (definitions.isEmpty()) return null
+
+        val freshUnlocks = gameRaId?.let { fetchUnlocksFresh(it) }
+        val now = System.currentTimeMillis()
+
+        Logger.debug(
+            TAG,
+            "syncAchievementsForGame gameId=$gameId raId=$gameRaId defs=${definitions.size} " +
+                "freshUnlocks=${freshUnlocks?.let { "casual=${it.unlockedIds.size},hc=${it.hardcoreUnlockedIds.size}" } ?: "null"} " +
+                "rommEarned=${rommEarnedById.size}"
+        )
+
+        val entities = definitions.map { def ->
+            val rommEarned = rommEarnedById[def.badgeId]
+            val raCasualUnlocked = freshUnlocks != null && def.raId in freshUnlocks.unlockedIds
+            val raHardcoreUnlocked = freshUnlocks != null && def.raId in freshUnlocks.hardcoreUnlockedIds
+
+            val unlockedAt = rommEarned?.unlockedAt ?: if (raCasualUnlocked) now else null
+            val unlockedHardcoreAt = rommEarned?.unlockedHardcoreAt ?: if (raHardcoreUnlocked) now else null
+
+            AchievementEntity(
+                gameId = gameId,
+                raId = def.raId,
+                title = def.title,
+                description = def.description,
+                points = def.points,
+                type = def.type,
+                badgeUrl = def.badgeUrl,
+                badgeUrlLock = def.badgeUrlLock,
+                unlockedAt = unlockedAt,
+                unlockedHardcoreAt = unlockedHardcoreAt
+            )
+        }
+
+        achievementDao.replaceForGame(gameId, entities)
+
+        val saved = achievementDao.getByGameId(gameId)
+        val earned = saved.count { it.isUnlocked }
+        return AchievementCounts(total = saved.size, earned = earned)
+    }
+
+    /**
+     * Source-agnostic achievement definition. Both RomM's
+     * `rom.raMetadata.achievements` and any other achievement-list provider
+     * map onto this DTO before reaching [syncAchievementsForGame].
+     */
+    data class AchievementDefinition(
+        val raId: Long,
+        val title: String,
+        val description: String?,
+        val points: Int,
+        val type: String?,
+        val badgeId: String?,
+        val badgeUrl: String?,
+        val badgeUrlLock: String?
+    )
+
+    /**
+     * Source-agnostic earned-achievement record with optional unlock timestamps.
+     */
+    data class RommEarnedAchievement(
+        val unlockedAt: Long?,
+        val unlockedHardcoreAt: Long?
+    )
+
+    companion object {
+        fun RomMAchievement.toAchievementDefinition(): AchievementDefinition =
+            AchievementDefinition(
+                raId = raId,
+                title = title,
+                description = description,
+                points = points,
+                type = type,
+                badgeId = badgeId,
+                badgeUrl = badgeUrl,
+                badgeUrlLock = badgeUrlLock
+            )
+
+        fun List<RomMEarnedAchievement>.toRommEarnedByBadgeId(): Map<String?, RommEarnedAchievement> =
+            associate { earned ->
+                earned.id to RommEarnedAchievement(
+                    unlockedAt = earned.date?.let { parseTimestamp(it) },
+                    unlockedHardcoreAt = earned.dateHardcore?.let { parseTimestamp(it) }
+                )
+            }
+    }
+
+    private val unlocksCache = java.util.concurrent.ConcurrentHashMap<Long, Pair<Long, GameUnlocks>>()
+
+    /**
+     * Fetches the user's unlocked achievement IDs for a single game directly
+     * from RA's Connect API (`r=unlocks`). Read-only, unlike `startsession`
+     * which would register a play session. Per-game results are cached for
+     * 5 minutes to bound RA traffic during UI browsing.
+     *
+     * Returns null when the user is not logged in to RA, when the cooldown
+     * is active and no cached result exists, or when the request fails.
+     * The synthetic `101000001` "unsupported emulator" warning unlock that
+     * RA attaches to every unlock query is filtered out.
+     */
+    suspend fun fetchUnlocksFresh(gameRaId: Long): GameUnlocks? {
+        val credentials = getCredentials()
+        if (credentials == null) {
+            Logger.debug(TAG, "fetchUnlocksFresh: skipped (not logged in) game=$gameRaId")
+            return null
+        }
+
+        val now = System.currentTimeMillis()
+        unlocksCache[gameRaId]?.let { (fetchedAt, cached) ->
+            val ageSec = (now - fetchedAt) / 1000
+            if (now - fetchedAt < UNLOCKS_COOLDOWN_MS) {
+                Logger.debug(
+                    TAG,
+                    "fetchUnlocksFresh: cooldown hit game=$gameRaId age=${ageSec}s " +
+                        "casual=${cached.unlockedIds.size} hc=${cached.hardcoreUnlockedIds.size}"
+                )
+                return cached
+            }
+        }
+
+        Logger.debug(TAG, "fetchUnlocksFresh: calling RA Connect r=unlocks game=$gameRaId")
+        return try {
+            val casualResponse = api.getUnlocks(
+                username = credentials.username,
+                token = credentials.token,
+                gameId = gameRaId,
+                hardcore = 0
+            )
+            val hardcoreResponse = api.getUnlocks(
+                username = credentials.username,
+                token = credentials.token,
+                gameId = gameRaId,
+                hardcore = 1
+            )
+
+            if (!casualResponse.isSuccessful) {
+                Logger.warn(TAG, "fetchUnlocksFresh: HTTP ${casualResponse.code()} for game $gameRaId")
+                return unlocksCache[gameRaId]?.second
+            }
+
+            val casual = (casualResponse.body()?.userUnlocks ?: emptyList())
+                .filter { it != WARNING_UNLOCK_ID }
+                .toSet()
+            val hardcore = (hardcoreResponse.body()?.userUnlocks ?: emptyList())
+                .filter { it != WARNING_UNLOCK_ID }
+                .toSet()
+
+            val result = GameUnlocks(unlockedIds = casual, hardcoreUnlockedIds = hardcore)
+            unlocksCache[gameRaId] = now to result
+            Logger.info(
+                TAG,
+                "fetchUnlocksFresh: game=$gameRaId casual=${casual.size} hardcore=${hardcore.size}"
+            )
+            result
+        } catch (e: Exception) {
+            Logger.warn(TAG, "fetchUnlocksFresh exception for game $gameRaId: ${e.message}")
+            unlocksCache[gameRaId]?.second
+        }
+    }
 
     private fun generateValidation(achievementId: Long, username: String, hardcore: Boolean): String {
         val hardcoreFlag = if (hardcore) "1" else "0"

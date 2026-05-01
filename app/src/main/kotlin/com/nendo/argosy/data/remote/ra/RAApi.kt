@@ -63,6 +63,17 @@ interface RAApi {
         @Query("m") hash: String
     ): Response<okhttp3.ResponseBody>
 
+    // Read-only unlock fetch for browsing UI. Does NOT register a play session
+    // (unlike startsession which side-effects "Currently Playing" attribution).
+    @GET("dorequest.php")
+    suspend fun getUnlocks(
+        @Query("r") request: String = "unlocks",
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("g") gameId: Long,
+        @Query("h") hardcore: Int
+    ): Response<RAUnlocksResponse>
+
     companion object {
         const val BASE_URL = "https://retroachievements.org/"
     }
