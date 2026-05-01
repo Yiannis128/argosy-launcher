@@ -73,10 +73,14 @@ class SyncCoordinator @Inject constructor(
                 Logger.debug(TAG, "processQueue: Promoted $promoted FAILED rows back to PENDING")
             }
 
-            if (!syncPreferencesRepository.isSaveSyncLocalRekeyDone()) {
-                val rewritten = saveSyncRepository.get().rekeySaveSyncToLocalEmulators()
+            // Rekey runs every cycle, not once: server saves can arrive any
+            // time carrying RomM-side emulator labels (libretro core names like
+            // mGBA, gpSP, prosystem) that don't match the user's local emulator.
+            // UPDATE OR REPLACE makes this idempotent -- a no-op when no rows
+            // need migration. The "once" flag was missing this drift case.
+            val rewritten = saveSyncRepository.get().rekeySaveSyncToLocalEmulators()
+            if (rewritten > 0) {
                 Logger.info(TAG, "processQueue: Save-sync rekey migration complete | rowsRewritten=$rewritten")
-                syncPreferencesRepository.setSaveSyncLocalRekeyDone()
             }
 
             if (!syncPreferencesRepository.isSavePathCachePurged()) {
