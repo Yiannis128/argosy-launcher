@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -419,14 +420,26 @@ private fun GameDetailContent(
 
     val focusedItem = menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, menuLayoutState)
 
+    // While a programmatic scroll triggered by menu focus is in flight, the
+    // reverse-sync below must not infer a "visible section" from intermediate
+    // scroll values -- a layout shift mid-animation (e.g. an achievements
+    // refresh emitting and changing achievementTopY) would otherwise bounce
+    // focus back to the previous section.
+    var programmaticScrollInFlight by remember { mutableStateOf(false) }
+
     // Scroll to section when menu focus changes
     LaunchedEffect(uiState.menuFocusIndex) {
-        when (focusedItem) {
-            MenuItem.Details -> scrollState.animateScrollTo(0)
-            MenuItem.Description -> scrollState.animateScrollTo(descriptionTopY.coerceAtLeast(0))
-            MenuItem.Screenshots -> scrollState.animateScrollTo(screenshotTopY.coerceAtLeast(0))
-            MenuItem.Achievements -> scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
-            else -> {}
+        try {
+            programmaticScrollInFlight = true
+            when (focusedItem) {
+                MenuItem.Details -> scrollState.animateScrollTo(0)
+                MenuItem.Description -> scrollState.animateScrollTo(descriptionTopY.coerceAtLeast(0))
+                MenuItem.Screenshots -> scrollState.animateScrollTo(screenshotTopY.coerceAtLeast(0))
+                MenuItem.Achievements -> scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
+                else -> {}
+            }
+        } finally {
+            programmaticScrollInFlight = false
         }
     }
 
@@ -437,6 +450,7 @@ private fun GameDetailContent(
             .debounce(100)
             .distinctUntilChanged()
             .collect { scrollY ->
+                if (programmaticScrollInFlight) return@collect
                 val currentFocus = menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, menuLayoutState)
                 if (currentFocus !in listOf(MenuItem.Details, MenuItem.Description, MenuItem.Screenshots, MenuItem.Achievements)) {
                     return@collect

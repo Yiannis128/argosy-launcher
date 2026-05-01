@@ -125,6 +125,7 @@ class GameDetailViewModel @Inject constructor(
     private val actionDebounceMs = 300L
     private var pageLoadTime: Long = 0
     private val pageLoadDebounceMs = 500L
+    private val achievementRefetchThresholdMs = 5 * 60 * 1000L
 
     private var backgroundRepairPending = false
     private var gameFilesObserverJob: kotlinx.coroutines.Job? = null
@@ -284,7 +285,8 @@ class GameDetailViewModel @Inject constructor(
         viewModelScope.launch {
             achievementDelegate.achievements.collect { achievements ->
                 _uiState.update { state ->
-                    state.copy(game = state.game?.copy(achievements = achievements))
+                    if (state.game?.achievements == achievements) state
+                    else state.copy(game = state.game?.copy(achievements = achievements))
                 }
             }
         }
@@ -674,7 +676,14 @@ class GameDetailViewModel @Inject constructor(
     }
 
     private fun refreshAchievementsInBackground(rommId: Long?, gameId: Long) {
-        achievementDelegate.refresh(viewModelScope, gameId, rommId)
+        viewModelScope.launch {
+            val entity = gameRepository.getById(gameId) ?: return@launch
+            val fetchedAt = entity.achievementsFetchedAt
+            if (fetchedAt != null &&
+                System.currentTimeMillis() - fetchedAt < achievementRefetchThresholdMs
+            ) return@launch
+            achievementDelegate.refresh(viewModelScope, gameId, rommId)
+        }
     }
 
     private suspend fun loadUpdateAndDlcFiles(
