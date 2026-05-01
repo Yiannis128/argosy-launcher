@@ -10,9 +10,10 @@ import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.nendo.argosy.ui.theme.ThemeState
 import com.nendo.argosy.ui.theme.toThemeState
@@ -147,13 +148,18 @@ class SecondaryHomeActivity :
             // is available. Without the key produceState fires once, sees
             // dsm uninitialized, and never re-runs -- live theme updates
             // from the primary screen never reach the secondary.
-            val themeState by produceState(initialValue = ThemeState(), isInitialized) {
-                if (!isInitialized) return@produceState
+            // dsm is resolved asynchronously after setContent runs, so the
+            // collector has to start once isInitialized flips true. Without
+            // the LaunchedEffect key, live theme updates from the primary
+            // screen would never reach the secondary.
+            val themeState = remember { mutableStateOf(ThemeState()) }
+            LaunchedEffect(isInitialized) {
+                if (!isInitialized) return@LaunchedEffect
                 dsm.preferencesRepository.userPreferences.collect { prefs ->
-                    value = prefs.toThemeState()
+                    themeState.value = prefs.toThemeState()
                 }
             }
-            SecondaryHomeTheme(themeState = themeState) {
+            SecondaryHomeTheme(themeState = themeState.value) {
                 if (!isInitialized) return@SecondaryHomeTheme
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalABIconsSwapped provides abIconsSwapped,
