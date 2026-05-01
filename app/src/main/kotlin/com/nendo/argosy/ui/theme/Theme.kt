@@ -65,7 +65,7 @@ private fun darken(color: Color, factor: Float = 0.6f): Color {
     return hsvToColor(hsv)
 }
 
-private fun createDarkColorScheme(
+internal fun createDarkColorScheme(
     primary: Color = ALauncherColors.Cyan,
     secondary: Color = ALauncherColors.Teal,
     tertiary: Color = ALauncherColors.Green
@@ -97,7 +97,7 @@ private fun createDarkColorScheme(
     outlineVariant = Color.White.copy(alpha = 0.06f)
 )
 
-private fun createLightColorScheme(
+internal fun createLightColorScheme(
     primary: Color = ALauncherColors.CyanDark,
     secondary: Color = ALauncherColors.TealDark,
     tertiary: Color = ALauncherColors.GreenDark
@@ -204,42 +204,82 @@ data class BoxArtStyleConfig(
 
 val LocalBoxArtStyle = staticCompositionLocalOf { BoxArtStyleConfig() }
 
+/**
+ * Resolved palette derived from a [ThemeState] (plus an optional host-broadcast
+ * primary override used by the secondary display). Single source of truth so
+ * the primary and secondary themes can never disagree on dark-mode resolution,
+ * default-accent fallbacks, or what counts as "effective primary".
+ */
+data class ArgosyPalette(
+    val isDarkTheme: Boolean,
+    val rawPrimary: Color?,        // user-set primary, before fallback (drives focusGlow)
+    val effectivePrimary: Color,   // primary actually used everywhere (with default applied)
+    val rawSecondary: Color?,
+    val effectiveSecondary: Color
+)
+
+@Composable
+internal fun rememberArgosyPalette(
+    themeState: ThemeState,
+    primaryOverride: Color? = null
+): ArgosyPalette {
+    val isDarkTheme = when (themeState.themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+    val defaultPrimary = if (BuildConfig.DEBUG) ALauncherColors.Orange else ALauncherColors.Indigo
+    val defaultPrimaryDark = if (BuildConfig.DEBUG) ALauncherColors.OrangeDark else ALauncherColors.IndigoDark
+    val rawPrimary = primaryOverride ?: themeState.primaryColor?.let { Color(it) }
+    val rawSecondary = themeState.secondaryColor?.let { Color(it) }
+    val effectivePrimary = rawPrimary ?: if (isDarkTheme) defaultPrimary else defaultPrimaryDark
+    val effectiveSecondary = rawSecondary ?: effectivePrimary
+    return ArgosyPalette(isDarkTheme, rawPrimary, effectivePrimary, rawSecondary, effectiveSecondary)
+}
+
+internal fun argosyColorScheme(palette: ArgosyPalette) = if (palette.isDarkTheme) {
+    createDarkColorScheme(primary = palette.effectivePrimary, secondary = palette.effectiveSecondary)
+} else {
+    createLightColorScheme(primary = palette.effectivePrimary, secondary = palette.effectiveSecondary)
+}
+
 @Composable
 fun ALauncherTheme(
     viewModel: ThemeViewModel = hiltViewModel(),
     content: @Composable () -> Unit
 ) {
     val themeState by viewModel.themeState.collectAsState()
+    val palette = rememberArgosyPalette(themeState)
 
-    val isDarkTheme = when (themeState.themeMode) {
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    ProvideArgosyThemeLocals(themeState = themeState, palette = palette) {
+        MaterialTheme(
+            colorScheme = argosyColorScheme(palette),
+            typography = Typography,
+            content = content
+        )
     }
+}
 
+/**
+ * Provides the launcher's CompositionLocals (LocalUiScale, LocalLauncherTheme,
+ * LocalBoxArtStyle, LocalFooterStyle). Both [ALauncherTheme] and the
+ * secondary-display theme call into this -- without it, cover-art style
+ * settings (corners, borders, glow, etc.) silently fall back to defaults on
+ * the dual-screen home and library grid because [LocalBoxArtStyle] would
+ * never be overridden there.
+ */
+@Composable
+fun ProvideArgosyThemeLocals(
+    themeState: ThemeState,
+    palette: ArgosyPalette,
+    content: @Composable () -> Unit
+) {
     val defaultPrimary = if (BuildConfig.DEBUG) ALauncherColors.Orange else ALauncherColors.Indigo
-    val defaultPrimaryDark = if (BuildConfig.DEBUG) ALauncherColors.OrangeDark else ALauncherColors.IndigoDark
-    val primaryColor = themeState.primaryColor?.let { Color(it) }
-    val secondaryColor = themeState.secondaryColor?.let { Color(it) }
-
-    val effectivePrimary = primaryColor ?: if (isDarkTheme) defaultPrimary else defaultPrimaryDark
-    val colorScheme = if (isDarkTheme) {
-        createDarkColorScheme(
-            primary = effectivePrimary,
-            secondary = secondaryColor ?: effectivePrimary
-        )
-    } else {
-        createLightColorScheme(
-            primary = effectivePrimary,
-            secondary = secondaryColor ?: effectivePrimary
-        )
-    }
-
-    val focusGlow = (primaryColor ?: defaultPrimary).copy(alpha = 0.4f)
-    val semanticColors = if (isDarkTheme) DarkSemanticColors else LightSemanticColors
+    val focusGlow = (palette.rawPrimary ?: defaultPrimary).copy(alpha = 0.4f)
+    val semanticColors = if (palette.isDarkTheme) DarkSemanticColors else LightSemanticColors
 
     val launcherConfig = LauncherThemeConfig(
-        isDarkTheme = isDarkTheme,
+        isDarkTheme = palette.isDarkTheme,
         focusGlowColor = focusGlow,
         overlayLight = Color.Black.copy(alpha = 0.3f),
         overlayDark = Color.Black.copy(alpha = 0.7f),
@@ -257,8 +297,8 @@ fun ALauncherTheme(
         outerEffect = themeState.boxArtOuterEffect,
         outerEffectThicknessPx = themeState.boxArtOuterEffectThickness.px,
         glowColorMode = themeState.glowColorMode,
-        accentColor = effectivePrimary,
-        secondaryColor = secondaryColor ?: effectivePrimary,
+        accentColor = palette.effectivePrimary,
+        secondaryColor = palette.effectiveSecondary,
         innerEffect = themeState.boxArtInnerEffect,
         innerEffectThicknessPx = themeState.boxArtInnerEffectThickness.px,
         systemIconPosition = themeState.systemIconPosition,
@@ -288,12 +328,7 @@ fun ALauncherTheme(
         LocalUiScale provides uiScaleConfig,
         LocalLauncherTheme provides launcherConfig,
         LocalBoxArtStyle provides boxArtStyle,
-        LocalFooterStyle provides footerStyle
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = Typography,
-            content = content
-        )
-    }
+        LocalFooterStyle provides footerStyle,
+        content = content
+    )
 }
