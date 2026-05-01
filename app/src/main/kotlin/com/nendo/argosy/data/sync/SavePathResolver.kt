@@ -7,7 +7,6 @@ import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.TitleIdExtractor
 import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
@@ -18,7 +17,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -125,14 +123,6 @@ class SavePathResolver @Inject constructor(
             val psxSave = discoverPSXSavePath(config, romPath, emulatorPackage)
             if (psxSave != null) {
                 Logger.debug(TAG, "discoverSavePath: PSX save found at $psxSave")
-                emulatorSaveConfigDao.upsert(
-                    EmulatorSaveConfigEntity(
-                        emulatorId = effectiveEmulatorId,
-                        savePathPattern = File(psxSave).parent ?: "",
-                        isAutoDetected = true,
-                        lastVerifiedAt = Instant.now()
-                    )
-                )
                 return@withContext psxSave
             }
         }
@@ -159,16 +149,6 @@ class SavePathResolver @Inject constructor(
                 val savePath = findSaveByRomName(basePath, romPath, config.saveExtensions)
                 if (savePath != null) {
                     Logger.debug(TAG, "discoverSavePath: ROM-based match found at $savePath")
-                    if (!isRetroArch) {
-                        emulatorSaveConfigDao.upsert(
-                            EmulatorSaveConfigEntity(
-                                emulatorId = effectiveEmulatorId,
-                                savePathPattern = File(savePath).parent ?: basePath,
-                                isAutoDetected = true,
-                                lastVerifiedAt = Instant.now()
-                            )
-                        )
-                    }
                     return@withContext savePath
                 }
             }
@@ -179,16 +159,6 @@ class SavePathResolver @Inject constructor(
             val saveFile = findSaveInPath(basePath, gameTitle, config.saveExtensions)
             if (saveFile != null) {
                 Logger.debug(TAG, "discoverSavePath: found save at $saveFile")
-                if (!isRetroArch) {
-                    emulatorSaveConfigDao.upsert(
-                        EmulatorSaveConfigEntity(
-                            emulatorId = effectiveEmulatorId,
-                            savePathPattern = basePath,
-                            isAutoDetected = true,
-                            lastVerifiedAt = Instant.now()
-                        )
-                    )
-                }
                 return@withContext saveFile
             }
         }

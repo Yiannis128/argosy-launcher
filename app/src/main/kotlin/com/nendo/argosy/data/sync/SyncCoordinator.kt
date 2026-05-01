@@ -31,6 +31,7 @@ class SyncCoordinator @Inject constructor(
     private val pendingSyncQueueDao: PendingSyncQueueDao,
     private val saveCacheDao: SaveCacheDao,
     private val saveSyncDao: com.nendo.argosy.data.local.dao.SaveSyncDao,
+    private val emulatorSaveConfigDao: com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao,
     private val gameDao: GameDao,
     private val romMRepository: Lazy<RomMRepository>,
     private val saveSyncRepository: Lazy<SaveSyncRepository>,
@@ -76,6 +77,12 @@ class SyncCoordinator @Inject constructor(
                 val rewritten = saveSyncRepository.get().rekeySaveSyncToLocalEmulators()
                 Logger.info(TAG, "processQueue: Save-sync rekey migration complete | rowsRewritten=$rewritten")
                 syncPreferencesRepository.setSaveSyncLocalRekeyDone()
+            }
+
+            if (!syncPreferencesRepository.isSavePathCachePurged()) {
+                emulatorSaveConfigDao.clearAutoDetected()
+                Logger.info(TAG, "processQueue: Purged auto-detected save-path cache (no longer used)")
+                syncPreferencesRepository.setSavePathCachePurged()
             }
 
             val deduped = saveSyncDao.deleteDuplicateRows()

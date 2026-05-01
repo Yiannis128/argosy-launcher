@@ -149,6 +149,6 @@ class RomMRepository @Inject constructor(
     fun getEarnedAchievements(raGameId: Long): List<RomMEarnedAchievement> =
         achievementService.getEarnedAchievements(raGameId)
 
-    suspend fun refreshRAProgressionIfNeeded(): RomMResult<Unit> =
-        achievementService.refreshRAProgressionIfNeeded()
+    suspend fun refreshRAProgressionIfNeeded(force: Boolean = false): RomMResult<Unit> =
+        achievementService.refreshRAProgressionIfNeeded(force)
 }

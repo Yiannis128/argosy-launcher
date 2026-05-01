@@ -74,7 +74,7 @@ class FetchAchievementsUseCase @Inject constructor(
                 val apiAchievements = rom.raMetadata?.achievements
                 if (apiAchievements.isNullOrEmpty()) return null
 
-                romMRepository.refreshRAProgressionIfNeeded()
+                romMRepository.refreshRAProgressionIfNeeded(force = true)
                 val earnedAchievements = rom.raId?.let { romMRepository.getEarnedAchievements(it) } ?: emptyList()
                 val earnedByBadgeId = earnedAchievements.associateBy { it.id }
 

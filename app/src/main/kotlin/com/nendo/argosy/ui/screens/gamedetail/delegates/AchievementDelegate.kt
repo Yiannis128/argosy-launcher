@@ -135,7 +135,7 @@ class AchievementDelegate @Inject constructor(
                 val apiAchievements = rom.raMetadata?.achievements ?: emptyList()
                 if (apiAchievements.isEmpty()) return emptyList()
 
-                romMRepository.refreshRAProgressionIfNeeded()
+                romMRepository.refreshRAProgressionIfNeeded(force = true)
                 val earnedAchievements = getEarnedAchievements(rom.raId)
                 val earnedByBadgeId = earnedAchievements.associateBy { it.id }
 

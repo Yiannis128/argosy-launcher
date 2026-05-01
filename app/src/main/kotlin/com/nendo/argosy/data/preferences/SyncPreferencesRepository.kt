@@ -95,6 +95,7 @@ class SyncPreferencesRepository @Inject constructor(
         val SOCIAL_LAST_PLAY_SESSION_SYNC = stringPreferencesKey("social_last_play_session_sync")
         val SOCIAL_HIDDEN_GAME_IDS = stringPreferencesKey("social_hidden_game_ids")
         val SAVE_SYNC_LOCAL_REKEY_DONE = booleanPreferencesKey("save_sync_local_rekey_done")
+        val SAVE_PATH_CACHE_PURGED = booleanPreferencesKey("save_path_cache_purged")
     }
 
     suspend fun isSaveSyncLocalRekeyDone(): Boolean =
@@ -102,6 +103,13 @@ class SyncPreferencesRepository @Inject constructor(
 
     suspend fun setSaveSyncLocalRekeyDone() {
         dataStore.edit { it[Keys.SAVE_SYNC_LOCAL_REKEY_DONE] = true }
+    }
+
+    suspend fun isSavePathCachePurged(): Boolean =
+        dataStore.data.map { it[Keys.SAVE_PATH_CACHE_PURGED] ?: false }.first()
+
+    suspend fun setSavePathCachePurged() {
+        dataStore.edit { it[Keys.SAVE_PATH_CACHE_PURGED] = true }
     }
 
     val preferences: Flow<SyncPreferences> = dataStore.data.map { prefs ->
