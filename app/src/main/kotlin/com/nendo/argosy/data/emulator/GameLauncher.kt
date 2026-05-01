@@ -825,11 +825,7 @@ class GameLauncher @Inject constructor(
             return null
         }
 
-        // Absolute path into RetroArch's own cores dir, not just the basename.
-        // RetroArch's intent extras path is being read in its own UID context;
-        // it can dlopen this directly without going through whatever runtime
-        // lookup of LIBRETRO=<basename> was crashing on Android 15 strict ROMs.
-        val coreFileName = "$dataDir/cores/${coreName}_libretro_android.so"
+        val coreFileName = "${coreName}_libretro_android.so"
         Logger.debug(TAG, "RetroArch core: $coreFileName for platform: ${game.platformSlug}")
 
         // Grant RetroArch a content URI for the ROM. On Android 11+ scoped
