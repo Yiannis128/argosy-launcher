@@ -286,6 +286,7 @@ object PlatformDefinitions {
         "amstrad" to "amstradcpc",
         "amstrad_cpc" to "amstradcpc",
         "amstrad-cpc" to "amstradcpc",
+        "acpc" to "amstradcpc",
         "zxspectrum" to "zx",
         "zx_spectrum" to "zx",
         "zx-spectrum" to "zx",
