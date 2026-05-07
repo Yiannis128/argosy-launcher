@@ -133,7 +133,16 @@ class GameSessionService : Service() {
                 currentGameTitle = gameTitle
                 currentGameId = gameId
                 currentEmulatorId = emulatorId
-                currentEmulatorPackage = emulatorPackage
+                // Built-in libretro runs in-process (LibretroActivity inside Argosy), so the
+                // foreground monitor must compare against this app's real package name. The
+                // synthetic argosy.builtin.libretro id never matches currentForegroundPackage,
+                // which would mis-flag every built-in session as backgrounded after the poll
+                // delay and trip the fail-to-menu timer mid-game.
+                currentEmulatorPackage = if (emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) {
+                    packageName
+                } else {
+                    emulatorPackage
+                }
                 currentSavePath = savePath
                 currentChannelName = channelName
                 currentIsHardcore = isHardcore
