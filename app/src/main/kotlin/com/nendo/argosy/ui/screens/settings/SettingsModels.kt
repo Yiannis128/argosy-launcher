@@ -565,9 +565,7 @@ data class PlatformStorageConfig(
     val customStatePath: String? = null,
     val isUserStatePathOverride: Boolean = false,
     val supportsStatePath: Boolean = false,
-    /** PS2-only. -1 = not a PS2 platform / unknown; 0+ = number of folder memcards visible. */
     val folderMemcardCount: Int = -1,
-    /** PS2-only. Path of the user-picked folder memcard, or null. */
     val selectedMemcardPath: String? = null
 )
 

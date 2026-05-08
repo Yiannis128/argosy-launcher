@@ -851,11 +851,6 @@ class EmulatorSettingsDelegate @Inject constructor(
         return emulatorUpdateManager.getUpdatesForPlatform(platformSlug)
     }
 
-    /**
-     * Enumerate the folder memory cards visible for the given PS2 emulator. Honors the user's
-     * `savePathPattern` override when set; otherwise uses the registry's default `memcards/`
-     * path. Caller is responsible for filtering to PS2 platforms before calling.
-     */
     suspend fun listPs2FolderMemcardsForEmulator(
         emulatorId: String,
         emulatorPackage: String?
