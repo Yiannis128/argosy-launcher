@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -357,182 +358,12 @@ fun GameCard(
         }
 
         if (gradientBorderProgress > 0f && gradientColors != null) {
-            val isDark = isSystemInDarkTheme()
-            val neutralColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.5f)
-            val animatedPrimary = lerp(neutralColor, gradientColors.first, gradientBorderProgress)
-            val animatedSecondary = lerp(neutralColor, gradientColors.second, gradientBorderProgress)
-            val animatedFrameWidth = frameWidthPx * gradientBorderProgress
-
-            val badgePosition = if (showPlatformBadge) boxArtStyle.systemIconPosition else SystemIconPosition.OFF
-            val gradientMaskShape = GradientMaskShape(
-                outerCornerRadius = outerCornerRadiusPx,
-                frameWidth = animatedFrameWidth,
-                isStub = false,
-                badgePosition = badgePosition,
-                badgeWidth = badgeWidthPx,
-                badgeHeight = badgeHeightPx,
-                badgeCornerRadius = scaledCornerRadiusPx,
-                oneDpPx = oneDpPx
-            )
-
-            val innerEffectShape = InnerEffectShape(outerCornerRadiusPx, animatedFrameWidth, innerEffectWidth)
-            val gradientImageData = rememberFileImageModel(effectiveCoverPath)
-            when (innerEffect) {
-                BoxArtInnerEffect.GLASS -> {
-                    if (gradientImageData != null) {
-                        val glassLayers = listOf(
-                            Triple(24.dp, 0.00f to 0.24f, 1.0f),
-                            Triple(12.dp, 0.21f to 0.44f, 1.0f),
-                            Triple(6.dp, 0.41f to 0.60f, 1.0f),
-                            Triple(3.dp, 0.57f to 0.68f, 1.0f),
-                            Triple(1.5.dp, 0.65f to 0.76f, 0.85f),
-                            Triple(0.8.dp, 0.73f to 0.84f, 0.65f),
-                            Triple(0.4.dp, 0.81f to 0.92f, 0.45f),
-                            Triple(0.1.dp, 0.89f to 1.00f, 0.3f)
-                        )
-
-                        glassLayers.forEach { (blurAmount, range, alpha) ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer { this.alpha = alpha }
-                                    .clip(
-                                        GlassRingShape(
-                                            outerCornerRadius = outerCornerRadiusPx,
-                                            frameWidth = frameWidthPx,
-                                            innerEffectWidth = innerEffectWidth,
-                                            startProgress = range.first,
-                                            endProgress = range.second,
-                                            badgePosition = badgePosition,
-                                            badgeWidth = badgeWidthPx,
-                                            badgeHeight = badgeHeightPx,
-                                            badgeCornerRadius = scaledCornerRadiusPx,
-                                            oneDpPx = oneDpPx
-                                        )
-                                    )
-                            ) {
-                                AsyncImage(
-                                    model = gradientImageData,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .blur(blurAmount)
-                                )
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(innerEffectShape)
-                                .drawBehind {
-                                    val depthWidth = frameWidthPx * 1.5f
-                                    val depthLayers = 6
-                                    val depthStrokeWidth = depthWidth / depthLayers
-                                    for (i in 0 until depthLayers) {
-                                        val progress = i.toFloat() / depthLayers
-                                        val alpha = (0.35f * (1f - progress)).coerceIn(0f, 1f)
-                                        val layerInset = frameWidthPx + (depthWidth * progress) + depthStrokeWidth / 2
-                                        val layerRadius = (outerCornerRadiusPx - layerInset).coerceAtLeast(0f)
-                                        drawRoundRect(
-                                            color = Color.Black.copy(alpha = alpha),
-                                            topLeft = Offset(layerInset, layerInset),
-                                            size = Size(size.width - layerInset * 2, size.height - layerInset * 2),
-                                            cornerRadius = CornerRadius(layerRadius),
-                                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = depthStrokeWidth)
-                                        )
-                                    }
-                                }
-                        )
-                    }
-                }
-                BoxArtInnerEffect.SHADOW -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(innerEffectShape)
-                            .drawBehind {
-                                val layers = 12
-                                val strokeWidth = innerEffectWidth / layers
-                                for (i in 0 until layers) {
-                                    val progress = i.toFloat() / layers
-                                    val alpha = (0.5f * (1f - progress)).coerceIn(0f, 1f)
-                                    val layerInset = frameWidthPx + (innerEffectWidth * progress) + strokeWidth / 2
-                                    val layerRadius = (outerCornerRadiusPx - layerInset).coerceAtLeast(0f)
-                                    drawRoundRect(
-                                        color = Color.Black.copy(alpha = alpha),
-                                        topLeft = Offset(layerInset, layerInset),
-                                        size = Size(size.width - layerInset * 2, size.height - layerInset * 2),
-                                        cornerRadius = CornerRadius(layerRadius),
-                                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-                                    )
-                                }
-                            }
-                    )
-                }
-                BoxArtInnerEffect.GLOW -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(innerEffectShape)
-                            .drawBehind {
-                                val layers = 12
-                                val strokeWidth = innerEffectWidth / layers
-                                for (i in 0 until layers) {
-                                    val progress = i.toFloat() / layers
-                                    val alpha = (0.4f * (1f - progress)).coerceIn(0f, 1f)
-                                    val layerInset = frameWidthPx + (innerEffectWidth * progress) + strokeWidth / 2
-                                    val layerRadius = (outerCornerRadiusPx - layerInset).coerceAtLeast(0f)
-                                    drawRoundRect(
-                                        color = Color.White.copy(alpha = alpha),
-                                        topLeft = Offset(layerInset, layerInset),
-                                        size = Size(size.width - layerInset * 2, size.height - layerInset * 2),
-                                        cornerRadius = CornerRadius(layerRadius),
-                                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-                                    )
-                                }
-                            }
-                    )
-                }
-                BoxArtInnerEffect.SHINE -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .drawBehind {
-                                val diagonal = kotlin.math.sqrt(size.width * size.width + size.height * size.height)
-                                val sweepWidth = diagonal * 0.4f
-                                val progress = sweepOffset * (diagonal + sweepWidth) - sweepWidth
-                                val startX = progress * 0.85f
-                                val startY = progress * 0.5f - size.height * 0.2f
-                                val endX = startX + sweepWidth * 0.85f
-                                val endY = startY + sweepWidth * 0.5f
-                                drawRect(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.White.copy(alpha = 0.4f),
-                                            Color.Transparent
-                                        ),
-                                        start = Offset(startX, startY),
-                                        end = Offset(endX, endY)
-                                    )
-                                )
-                            }
-                    )
-                }
-                BoxArtInnerEffect.OFF -> {}
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(gradientMaskShape)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(animatedPrimary, animatedSecondary)
-                        )
-                    )
+            GradientBorderOverlay(
+                gradientColors = gradientColors,
+                gradientBorderProgress = gradientBorderProgress,
+                geometry = geometry,
+                effectiveCoverPath = effectiveCoverPath,
+                sweepOffset = sweepOffset
             )
         }
 
@@ -551,58 +382,10 @@ fun GameCard(
             )
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        ) {
-            if (game.isFavorite || game.isDownloaded) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Dimens.spacingSm)
-                        .padding(bottom = Dimens.spacingXs),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    if (game.isFavorite) {
-                        Box(
-                            modifier = Modifier
-                                .size(Dimens.iconSm + Dimens.borderMedium)
-                                .background(Color.Black.copy(alpha = 0.35f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = "Favorite",
-                                tint = Color.White,
-                                modifier = Modifier.size(Dimens.iconXs)
-                            )
-                        }
-                    } else {
-                        Box(modifier = Modifier.size(Dimens.iconSm + Dimens.borderMedium))
-                    }
-
-                    if (game.isDownloaded) {
-                        Box(
-                            modifier = Modifier
-                                .size(Dimens.iconSm + Dimens.borderMedium)
-                                .background(Color.Black.copy(alpha = 0.35f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Downloaded",
-                                tint = Color.White,
-                                modifier = Modifier.size(Dimens.iconXs)
-                            )
-                        }
-                    } else {
-                        Box(modifier = Modifier.size(Dimens.iconSm + Dimens.borderMedium))
-                    }
-                }
-            }
-
-        }
+        StatusIndicators(
+            isFavorite = game.isFavorite,
+            isDownloaded = game.isDownloaded
+        )
     }
 }
 
@@ -866,6 +649,110 @@ private fun StubCover(gameTitle: String, useSolidStub: Boolean) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(Dimens.spacingSm)
         )
+    }
+}
+
+@Composable
+private fun GradientBorderOverlay(
+    gradientColors: Pair<Color, Color>,
+    gradientBorderProgress: Float,
+    geometry: BoxArtGeometry,
+    effectiveCoverPath: String,
+    sweepOffset: Float
+) {
+    val isDark = isSystemInDarkTheme()
+    val neutralColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.5f)
+    val animatedPrimary = lerp(neutralColor, gradientColors.first, gradientBorderProgress)
+    val animatedSecondary = lerp(neutralColor, gradientColors.second, gradientBorderProgress)
+    val animatedFrameWidth = geometry.frameWidthPx * gradientBorderProgress
+
+    val gradientMaskShape = GradientMaskShape(
+        outerCornerRadius = geometry.outerCornerRadiusPx,
+        frameWidth = animatedFrameWidth,
+        isStub = false,
+        badgePosition = geometry.effectiveBadgePosition,
+        badgeWidth = geometry.badgeWidthPx,
+        badgeHeight = geometry.badgeHeightPx,
+        badgeCornerRadius = geometry.scaledCornerRadiusPx,
+        oneDpPx = geometry.oneDpPx
+    )
+
+    val innerEffectShape = InnerEffectShape(
+        outerCornerRadius = geometry.outerCornerRadiusPx,
+        frameWidth = animatedFrameWidth,
+        effectWidth = geometry.innerEffectWidth
+    )
+    val coverImageData = rememberFileImageModel(effectiveCoverPath)
+
+    when (geometry.innerEffect) {
+        BoxArtInnerEffect.GLASS -> if (coverImageData != null) {
+            GlassInnerEffect(coverImageData, glassColorFilter = null, innerEffectShape, geometry)
+        }
+        BoxArtInnerEffect.SHADOW -> StrokeInnerEffect(innerEffectShape, geometry, Color.Black, 0.5f)
+        BoxArtInnerEffect.GLOW -> StrokeInnerEffect(innerEffectShape, geometry, Color.White, 0.4f)
+        BoxArtInnerEffect.SHINE -> ShineInnerEffect(sweepOffset)
+        BoxArtInnerEffect.OFF -> {}
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(gradientMaskShape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(animatedPrimary, animatedSecondary)
+                )
+            )
+    )
+}
+
+@Composable
+private fun BoxScope.StatusIndicators(isFavorite: Boolean, isDownloaded: Boolean) {
+    if (!isFavorite && !isDownloaded) return
+
+    Row(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.spacingSm)
+            .padding(bottom = Dimens.spacingXs),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        IndicatorBadge(
+            visible = isFavorite,
+            icon = Icons.Default.Favorite,
+            contentDescription = "Favorite"
+        )
+        IndicatorBadge(
+            visible = isDownloaded,
+            icon = Icons.Default.CheckCircle,
+            contentDescription = "Downloaded"
+        )
+    }
+}
+
+@Composable
+private fun IndicatorBadge(
+    visible: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String
+) {
+    if (visible) {
+        Box(
+            modifier = Modifier
+                .size(Dimens.iconSm + Dimens.borderMedium)
+                .background(Color.Black.copy(alpha = 0.35f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = Color.White,
+                modifier = Modifier.size(Dimens.iconXs)
+            )
+        }
+    } else {
+        Box(modifier = Modifier.size(Dimens.iconSm + Dimens.borderMedium))
     }
 }
 
