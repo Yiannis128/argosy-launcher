@@ -87,10 +87,18 @@ class SaveSyncApiClient @Inject constructor(
             }
         }
 
+        emulatorResolver.ensureDetected()
+
+        val preferred = emulatorResolver.getPreferredEmulator(game.platformSlug)
+        if (preferred != null) {
+            Logger.debug(TAG, "[SaveSync] DISCOVER gameId=${game.id} | Using preferred emulator for platform=${game.platformSlug} | emulatorId=${preferred.def.id}")
+            return preferred.def.id
+        }
+
         val installedEmulators = emulatorResolver.getInstalledForPlatform(game.platformSlug)
         if (installedEmulators.isNotEmpty()) {
             val emulatorId = installedEmulators.first().def.id
-            Logger.debug(TAG, "[SaveSync] DISCOVER gameId=${game.id} | Using first installed emulator for platform=${game.platformSlug} | emulatorId=$emulatorId, installed=${installedEmulators.map { it.def.id }}")
+            Logger.debug(TAG, "[SaveSync] DISCOVER gameId=${game.id} | Falling back to first installed for platform=${game.platformSlug} | emulatorId=$emulatorId, installed=${installedEmulators.map { it.def.id }}")
             return emulatorId
         }
 

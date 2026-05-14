@@ -123,7 +123,7 @@ class SaveSyncOrchestrator @Inject constructor(
         for (syncEntity in pendingDownloads) {
             syncQueueManager.updateOperation(syncEntity.gameId) { it.copy(status = SyncStatus.IN_PROGRESS) }
 
-            when (val result = client.downloadSave(syncEntity.gameId, syncEntity.emulatorId, syncEntity.channelName)) {
+            when (val result = client.downloadSave(syncEntity.gameId, "default", syncEntity.channelName)) {
                 is SaveSyncResult.Success -> {
                     syncQueueManager.completeOperation(syncEntity.gameId)
                     downloaded++
