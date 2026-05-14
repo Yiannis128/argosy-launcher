@@ -629,6 +629,8 @@ private fun GameDetailContent(
                                         onScreenshotPositioned(y)
                                     },
                                     isActive = focusedItem == MenuItem.Screenshots,
+                                    gameId = game.id,
+                                    cacheEnabled = uiState.syncScreenshotsEnabled,
                                     onSectionFocus = {
                                         viewModel.setMenuFocusIndex(menuLayout.focusIndexOf(MenuItem.Screenshots, menuLayoutState))
                                     }

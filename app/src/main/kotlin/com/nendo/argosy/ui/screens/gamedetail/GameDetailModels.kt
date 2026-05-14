@@ -194,6 +194,7 @@ data class GameDetailUiState(
     val memcardPickerFocusIndex: Int = 0,
     val hardcoreConflictFocusIndex: Int = 0,
     val saveChannel: SaveChannelState = SaveChannelState(),
+    val syncScreenshotsEnabled: Boolean = false,
     val saveStatusInfo: SaveStatusInfo? = null,
     val showPermissionModal: Boolean = false,
     val permissionModalType: PermissionModalType = PermissionModalType.STORAGE,

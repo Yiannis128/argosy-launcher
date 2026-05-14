@@ -534,7 +534,8 @@ class GameDetailViewModel @Inject constructor(
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
                     isPrivate = isPrivate,
-                    hasSocialAccount = hasSocial
+                    hasSocialAccount = hasSocial,
+                    syncScreenshotsEnabled = prefs.syncScreenshotsEnabled
                 )
             }
 

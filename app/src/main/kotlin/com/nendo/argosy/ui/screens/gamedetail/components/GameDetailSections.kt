@@ -381,8 +381,20 @@ fun ScreenshotsSection(
     onScreenshotTap: (Int) -> Unit,
     onPositioned: (Int) -> Unit,
     isActive: Boolean = false,
-    onSectionFocus: () -> Unit = {}
+    onSectionFocus: () -> Unit = {},
+    gameId: Long = 0L,
+    cacheEnabled: Boolean = false
 ) {
+    val cacheManager = com.nendo.argosy.ui.common.LocalImageCacheManager.current
+    LaunchedEffect(gameId, cacheEnabled, screenshots) {
+        if (!cacheEnabled || cacheManager == null || gameId == 0L) return@LaunchedEffect
+        val missingRemotes = screenshots
+            .filter { it.cachedPath == null && it.remoteUrl.isNotBlank() }
+            .map { it.remoteUrl }
+        if (missingRemotes.isNotEmpty()) {
+            cacheManager.queueScreenshotCacheByGameId(gameId, missingRemotes)
+        }
+    }
 
     Column(
         modifier = Modifier.onGloballyPositioned { coords ->
