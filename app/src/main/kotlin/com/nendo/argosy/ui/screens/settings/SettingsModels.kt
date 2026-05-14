@@ -306,7 +306,7 @@ data class AppPickerModalState(
     val platformId: Long,
     val platformName: String,
     val platformSlug: String,
-    val apps: List<com.nendo.argosy.data.platform.InstalledApp> = emptyList(),
+    val apps: List<com.nendo.argosy.data.platform.LaunchableApp> = emptyList(),
     val focusIndex: Int = 0
 )
 

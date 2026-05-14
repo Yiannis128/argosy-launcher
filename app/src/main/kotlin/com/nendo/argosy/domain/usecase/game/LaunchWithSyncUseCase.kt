@@ -7,6 +7,7 @@ import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.data.repository.PreLaunchSyncResult
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.domain.model.SyncProgress
@@ -70,19 +71,19 @@ class LaunchWithSyncUseCase @Inject constructor(
         val syncResult = saveSyncRepository.preLaunchSync(gameId, game.rommId, emulatorId)
 
         when (syncResult) {
-            is SaveSyncRepository.PreLaunchSyncResult.NoConnection -> {
+            is PreLaunchSyncResult.NoConnection -> {
                 emit(SyncState.Skipped)
             }
-            is SaveSyncRepository.PreLaunchSyncResult.NoServerSave -> {
+            is PreLaunchSyncResult.NoServerSave -> {
                 emit(SyncState.Complete)
             }
-            is SaveSyncRepository.PreLaunchSyncResult.LocalIsNewer -> {
+            is PreLaunchSyncResult.LocalIsNewer -> {
                 emit(SyncState.Complete)
             }
-            is SaveSyncRepository.PreLaunchSyncResult.LocalModified -> {
+            is PreLaunchSyncResult.LocalModified -> {
                 emit(SyncState.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName))
             }
-            is SaveSyncRepository.PreLaunchSyncResult.ServerIsNewer -> {
+            is PreLaunchSyncResult.ServerIsNewer -> {
                 emit(SyncState.Downloading)
                 val downloadResult = saveSyncRepository.downloadSave(gameId, emulatorId, syncResult.channelName)
                 when (downloadResult) {
@@ -165,22 +166,22 @@ class LaunchWithSyncUseCase @Inject constructor(
         val syncResult = saveSyncRepository.preLaunchSync(gameId, game.rommId, emulatorId)
 
         when (syncResult) {
-            is SaveSyncRepository.PreLaunchSyncResult.NoConnection -> {
+            is PreLaunchSyncResult.NoConnection -> {
                 emit(SyncProgress.PreLaunch.Connecting(channelName, success = false))
                 emit(SyncProgress.Skipped)
             }
-            is SaveSyncRepository.PreLaunchSyncResult.NoServerSave -> {
+            is PreLaunchSyncResult.NoServerSave -> {
                 emit(SyncProgress.PreLaunch.Downloading(channelName, success = true))
                 emit(SyncProgress.PreLaunch.Launching(channelName))
             }
-            is SaveSyncRepository.PreLaunchSyncResult.LocalIsNewer -> {
+            is PreLaunchSyncResult.LocalIsNewer -> {
                 emit(SyncProgress.PreLaunch.Downloading(channelName, success = true))
                 emit(SyncProgress.PreLaunch.Launching(channelName))
             }
-            is SaveSyncRepository.PreLaunchSyncResult.LocalModified -> {
+            is PreLaunchSyncResult.LocalModified -> {
                 emit(SyncProgress.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName))
             }
-            is SaveSyncRepository.PreLaunchSyncResult.ServerIsNewer -> {
+            is PreLaunchSyncResult.ServerIsNewer -> {
                 emit(SyncProgress.PreLaunch.Downloading(channelName))
                 val downloadResult = saveSyncRepository.downloadSave(gameId, emulatorId, syncResult.channelName)
                 when (downloadResult) {

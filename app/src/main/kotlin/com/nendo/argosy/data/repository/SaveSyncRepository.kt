@@ -34,6 +34,24 @@ sealed class SaveSyncResult {
     data object NotConfigured : SaveSyncResult()
 }
 
+sealed class PreLaunchSyncResult {
+    data object NoConnection : PreLaunchSyncResult()
+    data object NoServerSave : PreLaunchSyncResult()
+    data object LocalIsNewer : PreLaunchSyncResult()
+    data class ServerIsNewer(val serverTimestamp: Instant, val channelName: String?) : PreLaunchSyncResult()
+    data class LocalModified(
+        val localSavePath: String,
+        val serverTimestamp: Instant,
+        val channelName: String?
+    ) : PreLaunchSyncResult()
+}
+
+enum class HardcoreResolutionChoice {
+    KEEP_HARDCORE,
+    DOWNGRADE_TO_CASUAL,
+    KEEP_LOCAL
+}
+
 @Singleton
 class SaveSyncRepository @Inject constructor(
     private val apiClient: SaveSyncApiClient,
@@ -198,19 +216,7 @@ class SaveSyncRepository @Inject constructor(
     ): SaveSyncEntity = entityManager.createOrUpdateSyncEntity(gameId, rommId, emulatorId, localPath, localUpdatedAt, channelName)
 
     suspend fun preLaunchSync(gameId: Long, rommId: Long, emulatorId: String): PreLaunchSyncResult =
-        conflictResolver.preLaunchSync(gameId, rommId, emulatorId).toRepoResult()
-
-    sealed class PreLaunchSyncResult {
-        data object NoConnection : PreLaunchSyncResult()
-        data object NoServerSave : PreLaunchSyncResult()
-        data object LocalIsNewer : PreLaunchSyncResult()
-        data class ServerIsNewer(val serverTimestamp: Instant, val channelName: String?) : PreLaunchSyncResult()
-        data class LocalModified(
-            val localSavePath: String,
-            val serverTimestamp: Instant,
-            val channelName: String?
-        ) : PreLaunchSyncResult()
-    }
+        conflictResolver.preLaunchSync(gameId, rommId, emulatorId)
 
     suspend fun checkForConflict(
         gameId: Long,
@@ -218,16 +224,10 @@ class SaveSyncRepository @Inject constructor(
         channelName: String?
     ): ConflictInfo? = conflictResolver.checkForConflict(gameId, emulatorId, channelName)
 
-    enum class HardcoreResolutionChoice {
-        KEEP_HARDCORE,
-        DOWNGRADE_TO_CASUAL,
-        KEEP_LOCAL
-    }
-
     suspend fun resolveHardcoreConflict(
         resolution: SaveSyncResult.NeedsHardcoreResolution,
         choice: HardcoreResolutionChoice
-    ): SaveSyncResult = conflictResolver.resolveHardcoreConflict(resolution, choice.toResolverChoice())
+    ): SaveSyncResult = conflictResolver.resolveHardcoreConflict(resolution, choice)
 
     suspend fun syncSavesForNewDownload(gameId: Long, rommId: Long, emulatorId: String) =
         orchestrator.syncSavesForNewDownload(gameId, rommId, emulatorId)
@@ -248,28 +248,3 @@ class SaveSyncRepository @Inject constructor(
         apiClient.confirmDeviceSynced(saveId)
 }
 
-private fun SaveSyncConflictResolver.PreLaunchSyncResult.toRepoResult(): SaveSyncRepository.PreLaunchSyncResult {
-    return when (this) {
-        is SaveSyncConflictResolver.PreLaunchSyncResult.NoConnection ->
-            SaveSyncRepository.PreLaunchSyncResult.NoConnection
-        is SaveSyncConflictResolver.PreLaunchSyncResult.NoServerSave ->
-            SaveSyncRepository.PreLaunchSyncResult.NoServerSave
-        is SaveSyncConflictResolver.PreLaunchSyncResult.LocalIsNewer ->
-            SaveSyncRepository.PreLaunchSyncResult.LocalIsNewer
-        is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer ->
-            SaveSyncRepository.PreLaunchSyncResult.ServerIsNewer(serverTimestamp, channelName)
-        is SaveSyncConflictResolver.PreLaunchSyncResult.LocalModified ->
-            SaveSyncRepository.PreLaunchSyncResult.LocalModified(localSavePath, serverTimestamp, channelName)
-    }
-}
-
-private fun SaveSyncRepository.HardcoreResolutionChoice.toResolverChoice(): SaveSyncConflictResolver.HardcoreResolutionChoice {
-    return when (this) {
-        SaveSyncRepository.HardcoreResolutionChoice.KEEP_HARDCORE ->
-            SaveSyncConflictResolver.HardcoreResolutionChoice.KEEP_HARDCORE
-        SaveSyncRepository.HardcoreResolutionChoice.DOWNGRADE_TO_CASUAL ->
-            SaveSyncConflictResolver.HardcoreResolutionChoice.DOWNGRADE_TO_CASUAL
-        SaveSyncRepository.HardcoreResolutionChoice.KEEP_LOCAL ->
-            SaveSyncConflictResolver.HardcoreResolutionChoice.KEEP_LOCAL
-    }
-}

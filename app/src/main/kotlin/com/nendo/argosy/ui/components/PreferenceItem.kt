@@ -853,16 +853,6 @@ fun HueSliderPreference(
     }
 }
 
-fun hueToColorInt(hue: Float, saturation: Float = 0.7f, lightness: Float = 0.5f): Int {
-    return ColorUtils.HSLToColor(floatArrayOf(hue, saturation, lightness))
-}
-
-fun colorIntToHue(colorInt: Int): Float {
-    val hsl = FloatArray(3)
-    ColorUtils.colorToHSL(colorInt, hsl)
-    return hsl[0]
-}
-
 @Composable
 fun ImageCachePreference(
     title: String,

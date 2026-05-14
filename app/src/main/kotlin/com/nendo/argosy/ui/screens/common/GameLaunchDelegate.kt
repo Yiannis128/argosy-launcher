@@ -17,6 +17,7 @@ import com.nendo.argosy.data.emulator.SessionEndResult
 import com.nendo.argosy.data.emulator.SavePathValidator
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.GameRepository
+import com.nendo.argosy.data.repository.HardcoreResolutionChoice
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
@@ -273,9 +274,9 @@ class GameLaunchDelegate @Inject constructor(
                         channelName = hardcoreConflictInfo!!.channelName
                     )
                     val repoChoice = when (hardcoreConflictChoice!!) {
-                        HardcoreConflictChoice.KEEP_HARDCORE -> SaveSyncRepository.HardcoreResolutionChoice.KEEP_HARDCORE
-                        HardcoreConflictChoice.DOWNGRADE_TO_CASUAL -> SaveSyncRepository.HardcoreResolutionChoice.DOWNGRADE_TO_CASUAL
-                        HardcoreConflictChoice.KEEP_LOCAL -> SaveSyncRepository.HardcoreResolutionChoice.KEEP_LOCAL
+                        HardcoreConflictChoice.KEEP_HARDCORE -> HardcoreResolutionChoice.KEEP_HARDCORE
+                        HardcoreConflictChoice.DOWNGRADE_TO_CASUAL -> HardcoreResolutionChoice.DOWNGRADE_TO_CASUAL
+                        HardcoreConflictChoice.KEEP_LOCAL -> HardcoreResolutionChoice.KEEP_LOCAL
                     }
                     val resolveResult = saveSyncRepository.resolveHardcoreConflict(resolution, repoChoice)
                     android.util.Log.d("GameLaunchDelegate", "Resolution result: $resolveResult")

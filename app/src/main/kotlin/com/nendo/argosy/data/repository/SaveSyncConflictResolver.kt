@@ -40,24 +40,6 @@ class SaveSyncConflictResolver @Inject constructor(
     private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context
 ) {
-    enum class HardcoreResolutionChoice {
-        KEEP_HARDCORE,
-        DOWNGRADE_TO_CASUAL,
-        KEEP_LOCAL
-    }
-
-    sealed class PreLaunchSyncResult {
-        data object NoConnection : PreLaunchSyncResult()
-        data object NoServerSave : PreLaunchSyncResult()
-        data object LocalIsNewer : PreLaunchSyncResult()
-        data class ServerIsNewer(val serverTimestamp: Instant, val channelName: String?) : PreLaunchSyncResult()
-        data class LocalModified(
-            val localSavePath: String,
-            val serverTimestamp: Instant,
-            val channelName: String?
-        ) : PreLaunchSyncResult()
-    }
-
     suspend fun preLaunchSync(gameId: Long, rommId: Long, emulatorId: String): PreLaunchSyncResult =
         withContext(Dispatchers.IO) {
             crossEmulatorMigrateIfNeeded(gameId, emulatorId)

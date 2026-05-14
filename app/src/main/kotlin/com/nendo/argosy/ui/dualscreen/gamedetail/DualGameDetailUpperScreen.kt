@@ -358,7 +358,7 @@ private fun GameInfoDisplay(
                         Icon(
                             imageVector = Icons.Filled.EmojiEvents,
                             contentDescription = null,
-                            tint = Color(0xFFFFD700),
+                            tint = ALauncherColors.StarGold,
                             modifier = Modifier.size(24.dp)
                         )
                         Text(

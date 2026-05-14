@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
+import com.nendo.argosy.data.preferences.BoxArtGlowStrength
 import com.nendo.argosy.data.preferences.BoxArtInnerEffect
 import com.nendo.argosy.data.preferences.BoxArtOuterEffect
 import com.nendo.argosy.data.preferences.GlowColorMode
@@ -176,7 +177,7 @@ private val LightSemanticColors = SemanticColors(
 val LocalLauncherTheme = staticCompositionLocalOf {
     LauncherThemeConfig(
         isDarkTheme = true,
-        focusGlowColor = ALauncherColors.FocusGlow,
+        focusGlowColor = ALauncherColors.Cyan.copy(alpha = 0.4f),
         overlayLight = Color.Black.copy(alpha = 0.3f),
         overlayDark = Color.Black.copy(alpha = 0.7f),
         semanticColors = DarkSemanticColors
@@ -189,8 +190,8 @@ data class BoxArtStyleConfig(
     val borderThicknessDp: Dp = 2.dp,
     val borderStyle: BoxArtBorderStyle = BoxArtBorderStyle.SOLID,
     val glassBorderTintAlpha: Float = 0f,
-    val glowAlpha: Float = 0.4f,
-    val isShadow: Boolean = false,
+    val glowAlpha: Float = BoxArtGlowStrength.MEDIUM.alpha,
+    val isShadow: Boolean = BoxArtGlowStrength.MEDIUM.isShadow,
     val outerEffect: BoxArtOuterEffect = BoxArtOuterEffect.GLOW,
     val outerEffectThicknessPx: Float = 16f,
     val glowColorMode: GlowColorMode = GlowColorMode.AUTO,

@@ -131,7 +131,7 @@ class SaveSyncConflictResolverTest {
 
         val result = resolver.preLaunchSync(1L, 100L, "retroarch")
 
-        assertTrue(result is SaveSyncConflictResolver.PreLaunchSyncResult.LocalIsNewer)
+        assertTrue(result is PreLaunchSyncResult.LocalIsNewer)
     }
 
     @Test
@@ -149,7 +149,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -171,7 +171,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected LocalModified but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.LocalModified
+            result is PreLaunchSyncResult.LocalModified
         )
     }
 
@@ -187,7 +187,7 @@ class SaveSyncConflictResolverTest {
 
         val result = resolver.preLaunchSync(1L, 100L, "retroarch")
 
-        assertTrue(result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer)
+        assertTrue(result is PreLaunchSyncResult.ServerIsNewer)
     }
 
     @Test
@@ -196,7 +196,7 @@ class SaveSyncConflictResolverTest {
 
         val result = resolver.preLaunchSync(1L, 100L, "retroarch")
 
-        assertTrue(result is SaveSyncConflictResolver.PreLaunchSyncResult.NoServerSave)
+        assertTrue(result is PreLaunchSyncResult.NoServerSave)
     }
 
     @Test
@@ -205,7 +205,7 @@ class SaveSyncConflictResolverTest {
 
         val result = resolver.preLaunchSync(1L, 100L, "retroarch")
 
-        assertTrue(result is SaveSyncConflictResolver.PreLaunchSyncResult.NoConnection)
+        assertTrue(result is PreLaunchSyncResult.NoConnection)
     }
 
     @Test
@@ -215,7 +215,7 @@ class SaveSyncConflictResolverTest {
 
         val result = resolver.preLaunchSync(1L, 100L, "retroarch")
 
-        assertTrue(result is SaveSyncConflictResolver.PreLaunchSyncResult.LocalIsNewer)
+        assertTrue(result is PreLaunchSyncResult.LocalIsNewer)
     }
 
     @Test
@@ -230,7 +230,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer for channel save but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -247,7 +247,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -340,7 +340,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result (accented server filename should match ASCII romBaseName)",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -364,7 +364,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result (accented slot should match ASCII activeChannel via equalsNormalized)",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -388,7 +388,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -414,7 +414,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -475,9 +475,9 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
-        val serverResult = result as SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+        val serverResult = result as PreLaunchSyncResult.ServerIsNewer
         assertEquals("slot1", serverResult.channelName)
     }
 
@@ -496,7 +496,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer when device has no sync entry (timestamp fallback), got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -520,7 +520,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Null emulator server save should match, got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -537,7 +537,7 @@ class SaveSyncConflictResolverTest {
 
         val result = resolver.preLaunchSync(1L, 100L, "retroarch")
 
-        assertTrue(result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer)
+        assertTrue(result is PreLaunchSyncResult.ServerIsNewer)
         coVerify { saveSyncDao.upsert(match { it.channelName == "slot1" }) }
     }
 
@@ -575,7 +575,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected LocalModified but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.LocalModified
+            result is PreLaunchSyncResult.LocalModified
         )
         localFile.delete()
     }
@@ -604,7 +604,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
         localFile.delete()
     }
@@ -633,7 +633,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected LocalModified from cache hash fallback but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.LocalModified
+            result is PreLaunchSyncResult.LocalModified
         )
         localFile.delete()
     }
@@ -674,7 +674,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer (should find newer slotted save) but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -700,7 +700,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer (slot='test' matches romBaseName='test') but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
     }
 
@@ -732,9 +732,9 @@ class SaveSyncConflictResolverTest {
 
         assertTrue(
             "Expected ServerIsNewer but got $result",
-            result is SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+            result is PreLaunchSyncResult.ServerIsNewer
         )
-        val serverResult = result as SaveSyncConflictResolver.PreLaunchSyncResult.ServerIsNewer
+        val serverResult = result as PreLaunchSyncResult.ServerIsNewer
         assertEquals(
             "Should pick the newer slotted save",
             "test",

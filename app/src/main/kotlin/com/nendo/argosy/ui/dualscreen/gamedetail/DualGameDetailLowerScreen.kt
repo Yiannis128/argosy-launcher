@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.nendo.argosy.ui.theme.ALauncherColors
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -789,7 +790,7 @@ private fun OptionsTabContent(
                     max = 10,
                     filledIcon = Icons.Filled.Star,
                     emptyIcon = Icons.Outlined.Star,
-                    activeColor = Color(0xFFFFB300)
+                    activeColor = ALauncherColors.TrophyAmber
                 )
             }
         )
@@ -801,7 +802,7 @@ private fun OptionsTabContent(
                     max = 10,
                     filledIcon = Icons.Filled.Whatshot,
                     emptyIcon = Icons.Outlined.Whatshot,
-                    activeColor = Color(0xFFFF7043)
+                    activeColor = ALauncherColors.Orange
                 )
             }
         )

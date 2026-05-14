@@ -26,10 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.Modal
+import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.util.clickableNoFocus
-
-private val goldColor = Color(0xFFFFD700)
 
 sealed class PlayOptionAction {
     data object Resume : PlayOptionAction()
@@ -73,7 +72,7 @@ fun PlayOptionsModal(
                 val idx = currentIndex++
                 PlayOptionRow(
                     icon = Icons.Default.EmojiEvents,
-                    iconTint = goldColor,
+                    iconTint = ALauncherColors.StarGold,
                     label = "Hardcore",
                     isFocused = focusIndex == idx,
                     onClick = { onAction(PlayOptionAction.ResumeHardcore) }
@@ -99,7 +98,7 @@ fun PlayOptionsModal(
             val hardcoreIdx = currentIndex++
             PlayOptionRow(
                 icon = Icons.Default.EmojiEvents,
-                iconTint = if (isOnline) goldColor else null,
+                iconTint = if (isOnline) ALauncherColors.StarGold else null,
                 label = "Hardcore",
                 subtext = if (isOnline) "Online-only, no save states or cheats" else "Requires internet connection",
                 isFocused = focusIndex == hardcoreIdx,

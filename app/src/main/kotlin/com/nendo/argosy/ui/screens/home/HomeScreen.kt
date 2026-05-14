@@ -89,6 +89,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import com.nendo.argosy.ui.theme.ALauncherColors
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -1171,7 +1172,7 @@ private fun GameInfo(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = textColorOverride ?: Color(0xFFFFD700),
+                            tint = textColorOverride ?: ALauncherColors.StarGold,
                             modifier = Modifier.size(Dimens.iconXs)
                         )
                         Text(
@@ -1189,7 +1190,7 @@ private fun GameInfo(
                         Icon(
                             imageVector = Icons.Default.Whatshot,
                             contentDescription = null,
-                            tint = textColorOverride ?: Color(0xFFE53935),
+                            tint = textColorOverride ?: ALauncherColors.DifficultyRed,
                             modifier = Modifier.size(Dimens.iconXs)
                         )
                         Text(
@@ -1207,7 +1208,7 @@ private fun GameInfo(
                         Icon(
                             imageVector = Icons.Filled.EmojiEvents,
                             contentDescription = null,
-                            tint = textColorOverride ?: Color(0xFFFFB300),
+                            tint = textColorOverride ?: ALauncherColors.TrophyAmber,
                             modifier = Modifier.size(Dimens.iconXs)
                         )
                         Text(

@@ -89,13 +89,14 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 
 @Composable
 fun GameCard(
     game: HomeGameUi,
     isFocused: Boolean,
     modifier: Modifier = Modifier,
-    focusScale: Float = Motion.scaleFocused,
+    focusScale: Float = ComponentDefaults.Focus.scaleFocused,
     scaleFromBottom: Boolean = false,
     downloadIndicator: GameDownloadIndicator = GameDownloadIndicator.NONE,
     showPlatformBadge: Boolean = true,
@@ -125,13 +126,13 @@ fun GameCard(
     }
 
     val scale by animateFloatAsState(
-        targetValue = scaleOverride ?: if (isFocused) focusScale else Motion.scaleDefault,
+        targetValue = scaleOverride ?: if (isFocused) focusScale else ComponentDefaults.Focus.scaleDefault,
         animationSpec = Motion.focusSpring,
         label = "scale"
     )
 
     val alpha by animateFloatAsState(
-        targetValue = alphaOverride ?: if (isFocused) Motion.alphaFocused else Motion.alphaUnfocused,
+        targetValue = alphaOverride ?: if (isFocused) ComponentDefaults.Focus.alphaFocused else ComponentDefaults.Focus.alphaUnfocused,
         animationSpec = Motion.focusSpring,
         label = "alpha"
     )
@@ -850,7 +851,7 @@ fun GameCardWithNewBadge(
     cardWidth: Dp,
     cardHeight: Dp,
     modifier: Modifier = Modifier,
-    focusScale: Float = Motion.scaleFocused,
+    focusScale: Float = ComponentDefaults.Focus.scaleFocused,
     scaleFromBottom: Boolean = false,
     downloadIndicator: GameDownloadIndicator = GameDownloadIndicator.NONE,
     showPlatformBadge: Boolean = true,
@@ -867,13 +868,13 @@ fun GameCardWithNewBadge(
     val badgeTopOverflow = 20.dp
 
     val scale by animateFloatAsState(
-        targetValue = scaleOverride ?: if (isFocused) focusScale else Motion.scaleDefault,
+        targetValue = scaleOverride ?: if (isFocused) focusScale else ComponentDefaults.Focus.scaleDefault,
         animationSpec = Motion.focusSpring,
         label = "wrapperScale"
     )
 
     val alpha by animateFloatAsState(
-        targetValue = alphaOverride ?: if (isFocused) Motion.alphaFocused else Motion.alphaUnfocused,
+        targetValue = alphaOverride ?: if (isFocused) ComponentDefaults.Focus.alphaFocused else ComponentDefaults.Focus.alphaUnfocused,
         animationSpec = Motion.focusSpring,
         label = "wrapperAlpha"
     )
