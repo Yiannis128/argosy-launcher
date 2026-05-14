@@ -1234,7 +1234,7 @@ private fun GameRail(
     showPlatformBadge: Boolean,
     repairedCoverPaths: Map<Long, String> = emptyMap(),
     onCoverLoadFailed: ((Long, String) -> Unit)? = null,
-    onCoverLoaded: ((Long, String) -> Unit)? = null,
+    onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)? = null,
     onItemTap: (Int) -> Unit = {},
     onItemLongPress: (Int) -> Unit = {},
     isVideoPreviewActive: Boolean = false,

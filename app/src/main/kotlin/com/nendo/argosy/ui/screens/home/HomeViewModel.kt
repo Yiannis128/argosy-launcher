@@ -668,9 +668,9 @@ class HomeViewModel @Inject constructor(
     fun refreshFavorites() { viewModelScope.launch { libraryDelegate.loadFavorites() } }
     fun refreshPlatforms() { viewModelScope.launch { libraryDelegate.loadPlatforms() } }
     fun regenerateRecommendations() = libraryDelegate.regenerateRecommendations(viewModelScope)
-    fun extractGradientForGame(gameId: Long, coverPath: String) {
+    fun extractGradientForGame(gameId: Long, bitmap: android.graphics.Bitmap) {
         val isFocused = _uiState.value.focusedGame?.id == gameId
-        libraryDelegate.extractGradientForGame(viewModelScope, gameId, coverPath, isFocused)
+        libraryDelegate.extractGradientForGame(viewModelScope, gameId, bitmap, isFocused)
     }
     fun repairCoverImage(gameId: Long, failedPath: String) = libraryDelegate.repairCoverImage(viewModelScope, gameId, failedPath)
     fun showLaunchError(message: String) = notificationManager.showError(message)

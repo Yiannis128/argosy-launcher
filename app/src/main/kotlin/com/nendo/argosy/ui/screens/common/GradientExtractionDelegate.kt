@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.common
 
+import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
 import com.nendo.argosy.data.cache.GradientExtractionConfig
 import com.nendo.argosy.data.cache.GradientPreset
@@ -164,6 +165,42 @@ class GradientExtractionDelegate @Inject constructor(
                 pendingExtractions.remove(gameId)
             }
         }
+    }
+
+    fun extractForGame(
+        scope: CoroutineScope,
+        gameId: Long,
+        bitmap: Bitmap,
+        prioritize: Boolean = false
+    ) {
+        if (hasGradient(gameId)) return
+        if (pendingExtractions.contains(gameId)) return
+
+        pendingExtractions.add(gameId)
+        val dispatcher = if (prioritize) Dispatchers.Default else extractionDispatcher
+
+        scope.launch(dispatcher) {
+            try {
+                extractAndPersistFromBitmap(gameId, bitmap)
+            } finally {
+                pendingExtractions.remove(gameId)
+            }
+        }
+    }
+
+    private suspend fun extractAndPersistFromBitmap(gameId: Long, bitmap: Bitmap) {
+        if (currentPreset == GradientPreset.CUSTOM) {
+            val result = gradientColorExtractor.extractWithMetrics(bitmap, currentPreset.toConfig())
+            _gradients.value = _gradients.value + (gameId to (result.primary to result.secondary))
+            return
+        }
+
+        val allPresets = gradientColorExtractor.extractAllPresetsFromBitmap(bitmap)
+        val json = gradientColorExtractor.serializeAllPresets(allPresets)
+        gameRepository.updateGradientColors(gameId, json)
+        persistedPresets[gameId] = allPresets
+        val colors = allPresets[currentPreset] ?: return
+        _gradients.value = _gradients.value + (gameId to colors)
     }
 
     private suspend fun extractAndPersist(gameId: Long, coverPath: String) {

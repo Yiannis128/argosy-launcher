@@ -533,8 +533,8 @@ class HomeLibraryDelegate @Inject constructor(
         gradientExtractionDelegate.extractForVisibleGames(scope, requests, focusedIndex)
     }
 
-    fun extractGradientForGame(scope: CoroutineScope, gameId: Long, coverPath: String, isFocused: Boolean) {
-        gradientExtractionDelegate.extractForGame(scope, gameId, coverPath, prioritize = isFocused)
+    fun extractGradientForGame(scope: CoroutineScope, gameId: Long, bitmap: android.graphics.Bitmap, isFocused: Boolean) {
+        gradientExtractionDelegate.extractForGame(scope, gameId, bitmap, prioritize = isFocused)
     }
 
     fun repairCoverImage(scope: CoroutineScope, gameId: Long, failedPath: String) {

@@ -76,6 +76,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import coil.compose.AsyncImage
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.BoxArtInnerEffect
@@ -102,7 +104,7 @@ fun GameCard(
     showPlatformBadge: Boolean = true,
     coverPathOverride: String? = null,
     onCoverLoadFailed: ((gameId: Long, failedPath: String) -> Unit)? = null,
-    onCoverLoaded: ((gameId: Long, coverPath: String) -> Unit)? = null,
+    onCoverLoaded: ((gameId: Long, bitmap: Bitmap) -> Unit)? = null,
     scaleOverride: Float? = null,
     alphaOverride: Float? = null,
     saturationOverride: Float? = null
@@ -335,8 +337,9 @@ fun GameCard(
                     contentScale = ContentScale.Crop,
                     colorFilter = saturationColorFilter,
                     modifier = Modifier.fillMaxSize(),
-                    onSuccess = {
-                        onCoverLoaded?.invoke(game.id, effectiveCoverPath)
+                    onSuccess = { state ->
+                        val bitmap = (state.result.drawable as? BitmapDrawable)?.bitmap
+                        if (bitmap != null) onCoverLoaded?.invoke(game.id, bitmap)
                     },
                     onError = {
                         if (onCoverLoadFailed != null && effectiveCoverPath.startsWith("/")) {
@@ -860,7 +863,7 @@ fun GameCardWithNewBadge(
     showPlatformBadge: Boolean = true,
     coverPathOverride: String? = null,
     onCoverLoadFailed: ((gameId: Long, failedPath: String) -> Unit)? = null,
-    onCoverLoaded: ((gameId: Long, coverPath: String) -> Unit)? = null,
+    onCoverLoaded: ((gameId: Long, bitmap: Bitmap) -> Unit)? = null,
     scaleOverride: Float? = null,
     alphaOverride: Float? = null
 ) {
