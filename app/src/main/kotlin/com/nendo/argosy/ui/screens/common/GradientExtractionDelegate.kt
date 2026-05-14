@@ -189,18 +189,29 @@ class GradientExtractionDelegate @Inject constructor(
     }
 
     private suspend fun extractAndPersistFromBitmap(gameId: Long, bitmap: Bitmap) {
-        if (currentPreset == GradientPreset.CUSTOM) {
-            val result = gradientColorExtractor.extractWithMetrics(bitmap, currentPreset.toConfig())
-            _gradients.value = _gradients.value + (gameId to (result.primary to result.secondary))
-            return
+        val readable = if (bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return
+        } else {
+            bitmap
         }
+        val ownsCopy = readable !== bitmap
 
-        val allPresets = gradientColorExtractor.extractAllPresetsFromBitmap(bitmap)
-        val json = gradientColorExtractor.serializeAllPresets(allPresets)
-        gameRepository.updateGradientColors(gameId, json)
-        persistedPresets[gameId] = allPresets
-        val colors = allPresets[currentPreset] ?: return
-        _gradients.value = _gradients.value + (gameId to colors)
+        try {
+            if (currentPreset == GradientPreset.CUSTOM) {
+                val result = gradientColorExtractor.extractWithMetrics(readable, currentPreset.toConfig())
+                _gradients.value = _gradients.value + (gameId to (result.primary to result.secondary))
+                return
+            }
+
+            val allPresets = gradientColorExtractor.extractAllPresetsFromBitmap(readable)
+            val json = gradientColorExtractor.serializeAllPresets(allPresets)
+            gameRepository.updateGradientColors(gameId, json)
+            persistedPresets[gameId] = allPresets
+            val colors = allPresets[currentPreset] ?: return
+            _gradients.value = _gradients.value + (gameId to colors)
+        } finally {
+            if (ownsCopy) readable.recycle()
+        }
     }
 
     private suspend fun extractAndPersist(gameId: Long, coverPath: String) {
