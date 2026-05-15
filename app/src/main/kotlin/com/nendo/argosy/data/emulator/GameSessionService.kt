@@ -9,13 +9,11 @@ import android.content.IntentFilter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
-import android.animation.ValueAnimator
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.view.animation.AccelerateInterpolator
-import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.os.FileObserver
 import android.os.Handler
@@ -30,8 +28,6 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.nendo.argosy.MainActivity
 import com.nendo.argosy.R
@@ -83,14 +79,12 @@ class GameSessionService : Service() {
     private val midGameCacheMutex = Mutex()
     private var wasEmulatorInForeground = true
     private var emulatorDisplayId: Int = android.view.Display.DEFAULT_DISPLAY
+    private var lastOverlayShownAt: Long = 0L
 
     private var helmIcon: ImageView? = null
     private var checkIcon: ImageView? = null
-    private var overlayText: TextView? = null
-    private var textWrapper: FrameLayout? = null
     private var introAnimator: AnimatorSet? = null
     private var exitAnimator: AnimatorSet? = null
-    private var textFullWidth: Int = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -151,6 +145,7 @@ class GameSessionService : Service() {
                 currentIsHardcore = isHardcore
                 sessionStartTime = if (startTime > 0) startTime else System.currentTimeMillis()
                 lastMidGameCacheId = -1
+                lastOverlayShownAt = 0L
                 wasEmulatorInForeground = true
                 emulatorDisplayId = displayId
 
@@ -531,20 +526,21 @@ class GameSessionService : Service() {
         if (!Settings.canDrawOverlays(this)) return
         if (isOverlayVisible) return
 
+        val now = System.currentTimeMillis()
+        if (lastOverlayShownAt != 0L && now - lastOverlayShownAt < OVERLAY_DEBOUNCE_MS) {
+            Logger.debug(TAG, "Overlay suppressed by debounce (${(now - lastOverlayShownAt) / 1000}s since last)")
+            return
+        }
+
         val dp = { value: Int ->
             TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics).toInt()
         }
 
-        val isDark = isDarkTheme()
-        val backgroundColor = if (isDark) Color.parseColor("#DD1E1E1E") else Color.parseColor("#DDF5F5F5")
-        val textColor = if (isDark) Color.WHITE else Color.parseColor("#1E1E1E")
-        val helmTint = if (isDark) Color.WHITE else Color.parseColor("#1E1E1E")
+        val helmTint = if (isDarkTheme()) Color.WHITE else Color.parseColor("#1E1E1E")
+        val iconSize = dp(22)
 
-        val iconSize = dp(18)
-        val iconContainerWidth = iconSize + dp(20)
-
-        val iconContainer = FrameLayout(this).apply {
-            layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+        val shadowPaint = Paint().apply {
+            setShadowLayer(dp(3).toFloat(), 0f, dp(1).toFloat(), Color.argb(140, 0, 0, 0))
         }
 
         helmIcon = ImageView(this).apply {
@@ -552,6 +548,7 @@ class GameSessionService : Service() {
             setImageResource(R.drawable.ic_helm)
             setColorFilter(helmTint)
             scaleType = ImageView.ScaleType.FIT_CENTER
+            setLayerType(View.LAYER_TYPE_SOFTWARE, shadowPaint)
         }
 
         checkIcon = ImageView(this).apply {
@@ -560,52 +557,12 @@ class GameSessionService : Service() {
             scaleType = ImageView.ScaleType.FIT_CENTER
             scaleX = 0f
             scaleY = 0f
+            setLayerType(View.LAYER_TYPE_SOFTWARE, shadowPaint)
         }
 
-        iconContainer.addView(helmIcon)
-        iconContainer.addView(checkIcon)
-
-        overlayText = TextView(this).apply {
-            text = "save cached"
-            setTextColor(textColor)
-            textSize = 12f
-            maxLines = 1
-        }
-
-        overlayText?.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        textFullWidth = overlayText?.measuredWidth ?: 0
-
-        overlayText?.layoutParams = FrameLayout.LayoutParams(
-            textFullWidth,
-            FrameLayout.LayoutParams.WRAP_CONTENT
-        )
-
-        textWrapper = FrameLayout(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                marginStart = dp(6)
-            }
-            clipChildren = true
-            clipToPadding = true
-            addView(overlayText)
-        }
-
-        overlayView = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(6), dp(10), dp(6))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(6).toFloat()
-                setColor(backgroundColor)
-            }
-
-            addView(iconContainer)
-            addView(textWrapper)
+        overlayView = FrameLayout(this).apply {
+            addView(helmIcon)
+            addView(checkIcon)
         }
 
         val params = WindowManager.LayoutParams(
@@ -618,13 +575,14 @@ class GameSessionService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.START
-            x = 24
-            y = 24
+            x = dp(12)
+            y = dp(12)
         }
 
         try {
             windowManager?.addView(overlayView, params)
             isOverlayVisible = true
+            lastOverlayShownAt = now
 
             startIntroAnimation()
             Logger.debug(TAG, "Overlay shown")
@@ -636,7 +594,6 @@ class GameSessionService : Service() {
     private fun startIntroAnimation() {
         val helm = helmIcon ?: return
         val check = checkIcon ?: return
-        val wrapper = textWrapper ?: return
 
         val helmRotation = ObjectAnimator.ofFloat(helm, "rotation", 0f, 900f).apply {
             duration = 800
@@ -646,16 +603,6 @@ class GameSessionService : Service() {
         val helmFadeOut = ObjectAnimator.ofFloat(helm, "alpha", 1f, 0f).apply {
             duration = 200
             startDelay = 600
-        }
-
-        val textReveal = ValueAnimator.ofInt(0, textFullWidth).apply {
-            duration = 600
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { animator ->
-                val lp = wrapper.layoutParams
-                lp.width = animator.animatedValue as Int
-                wrapper.layoutParams = lp
-            }
         }
 
         val checkBounce = ObjectAnimator.ofPropertyValuesHolder(
@@ -669,7 +616,7 @@ class GameSessionService : Service() {
         }
 
         introAnimator = AnimatorSet().apply {
-            playTogether(helmRotation, helmFadeOut, textReveal, checkBounce)
+            playTogether(helmRotation, helmFadeOut, checkBounce)
             start()
         }
     }
@@ -681,25 +628,13 @@ class GameSessionService : Service() {
         introAnimator = null
 
         val overlay = overlayView ?: return
-        val wrapper = textWrapper ?: return
-
-        val textCollapse = ValueAnimator.ofInt(textFullWidth, 0).apply {
-            duration = 200
-            interpolator = AccelerateInterpolator()
-            addUpdateListener { animator ->
-                val lp = wrapper.layoutParams
-                lp.width = animator.animatedValue as Int
-                wrapper.layoutParams = lp
-            }
-        }
 
         val fadeOut = ObjectAnimator.ofFloat(overlay, "alpha", 1f, 0f).apply {
-            duration = 150
-            startDelay = 150
+            duration = 300
         }
 
         exitAnimator = AnimatorSet().apply {
-            playTogether(textCollapse, fadeOut)
+            play(fadeOut)
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) {
                     removeOverlay()
@@ -726,8 +661,6 @@ class GameSessionService : Service() {
         overlayView = null
         helmIcon = null
         checkIcon = null
-        overlayText = null
-        textWrapper = null
         isOverlayVisible = false
     }
 
@@ -757,6 +690,7 @@ class GameSessionService : Service() {
         private const val WIFILOCK_TAG = "argosy:game_session_wifilock"
         private const val MAX_WAKELOCK_DURATION_MS = 4 * 60 * 60 * 1000L // 4 hours max
         private const val RESET_DELAY_MS = 3000L
+        private const val OVERLAY_DEBOUNCE_MS = 5 * 60 * 1000L
         private const val POLL_INTERVAL_MS = 2000L
         private const val STARTUP_COOLDOWN_MS = 20000L
         private const val CACHE_DEBOUNCE_MS = 250L
