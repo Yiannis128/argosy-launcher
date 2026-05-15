@@ -761,6 +761,7 @@ class DualScreenManager(
             "REFRESH_METADATA" -> handleDualRefresh(gameId)
             "DELETE" -> handleDualDelete(gameId)
             "HIDE" -> handleDualHide(gameId)
+            "UNHIDE" -> handleDualUnhide(gameId)
             "SAVE_SWITCH_CHANNEL" -> handleSaveSwitchChannel(gameId, channelName)
             "SAVE_SET_RESTORE_POINT" -> handleSaveSetRestorePoint(gameId, channelName, timestamp ?: 0L)
             "DOWNLOAD_UPDATE_FILE" -> {
@@ -1363,6 +1364,13 @@ class DualScreenManager(
             gameActionsDelegate.hideGame(gameId)
             _dualGameDetailState.value = null
             companionHost?.onDirectActionResult("HIDE_DONE", -1)
+        }
+    }
+
+    private fun handleDualUnhide(gameId: Long) {
+        scope.launch(Dispatchers.IO) {
+            gameActionsDelegate.unhideGame(gameId)
+            companionHost?.onDirectActionResult("UNHIDE_DONE", gameId)
         }
     }
 

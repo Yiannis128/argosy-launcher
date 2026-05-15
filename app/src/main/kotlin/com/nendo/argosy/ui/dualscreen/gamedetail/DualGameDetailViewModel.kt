@@ -370,7 +370,8 @@ class DualGameDetailViewModel(
                 selectedCoreId = selectedCoreId,
                 activeChannel = activeChannel,
                 activeSaveTimestamp = activeSaveTimestamp,
-                isMultiDisc = game.isMultiDisc
+                isMultiDisc = game.isMultiDisc,
+                isHidden = game.isHidden
             )
             _uiState.value = newState
             _visibleOptions.value = newState.visibleOptions()

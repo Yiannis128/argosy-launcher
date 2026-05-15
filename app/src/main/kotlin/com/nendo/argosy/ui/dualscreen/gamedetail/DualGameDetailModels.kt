@@ -83,7 +83,8 @@ data class DualGameDetailUiState(
     val downloadProgress: Float? = null,
     val downloadState: String? = null,
     val isDeleting: Boolean = false,
-    val isMultiDisc: Boolean = false
+    val isMultiDisc: Boolean = false,
+    val isHidden: Boolean = false
 )
 
 fun DualGameDetailUiState.visibleOptions(): List<GameDetailOption> {

@@ -354,7 +354,14 @@ class DualHomeInputHandler(
                 InputResult.HANDLED
             }
             com.nendo.argosy.ui.input.GamepadEvent.SecondaryAction -> {
-                viewModel.toggleFilterOverlay()
+                val isViewingHidden = viewModel.uiState.value.activeFilters.source == "HIDDEN"
+                if (isViewingHidden) {
+                    val state = viewModel.uiState.value
+                    val game = state.libraryGames.getOrNull(state.libraryFocusedIndex)
+                    if (game != null) onBroadcastDirectAction("UNHIDE", game.id)
+                } else {
+                    viewModel.toggleFilterOverlay()
+                }
                 InputResult.HANDLED
             }
             com.nendo.argosy.ui.input.GamepadEvent.Menu,

@@ -521,6 +521,10 @@ class SecondaryHomeActivity :
     }
 
     override fun onDirectActionResult(type: String, gameId: Long) {
+        if (type == "UNHIDE_DONE") {
+            dualHomeViewModel.refresh()
+            return
+        }
         val vm = dualGameDetailViewModel ?: return
         when (type) {
             "DELETE_START" -> { if (gameId > 0) vm.onDeleteStarted() }

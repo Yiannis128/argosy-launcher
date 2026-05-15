@@ -168,6 +168,7 @@ fun DualGameDetailLowerScreen(
                         activeChannel = state.activeChannel,
                         activeSaveTimestamp = state.activeSaveTimestamp,
                         saveSyncStatusName = state.saveSyncStatusName,
+                        isHidden = state.isHidden,
                         selectedIndex = selectedOptionIndex,
                         onOptionSelected = onOptionSelected
                     )
@@ -753,6 +754,7 @@ private fun OptionsTabContent(
     activeChannel: String?,
     activeSaveTimestamp: Long?,
     saveSyncStatusName: String?,
+    isHidden: Boolean,
     selectedIndex: Int,
     onOptionSelected: (GameDetailOption) -> Unit
 ) {
@@ -899,10 +901,11 @@ private fun OptionsTabContent(
             option, Icons.Filled.Delete, "Delete from Library",
             tint = Color(0xFFE57373)
         )
-        GameDetailOption.HIDE -> OptionEntry(
-            option, Icons.Filled.VisibilityOff, "Hide Game",
-            tint = Color(0xFFE57373)
-        )
+        GameDetailOption.HIDE -> if (isHidden) {
+            OptionEntry(option, Icons.Filled.Visibility, "Unhide Game")
+        } else {
+            OptionEntry(option, Icons.Filled.VisibilityOff, "Hide Game", tint = Color(0xFFE57373))
+        }
     }
 
     val actionGroup = setOf(GameDetailOption.PLAY)
