@@ -439,13 +439,18 @@ fun LibraryScreen(
             }
 
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                val isViewingHidden = uiState.activeFilters.source == SourceFilter.HIDDEN
                 LibraryFooter(
                     focusedGame = uiState.focusedGame,
+                    isViewingHidden = isViewingHidden,
                     showSectionJump = uiState.sectionLabels.size > 1,
                     onHintClick = { button ->
                         when (button) {
                             InputButton.A -> uiState.focusedGame?.let { onGameSelect(it.id) }
-                            InputButton.Y -> uiState.focusedGame?.let { viewModel.toggleFavorite(it.id) }
+                            InputButton.Y -> uiState.focusedGame?.let {
+                                if (isViewingHidden) viewModel.unhideGame(it.id)
+                                else viewModel.toggleFavorite(it.id)
+                            }
                             InputButton.X -> viewModel.toggleFilterMenu()
                             InputButton.SELECT -> viewModel.toggleQuickMenu()
                             else -> {}
@@ -511,7 +516,7 @@ fun LibraryScreen(
                     },
                     onHide = {
                         viewModel.toggleQuickMenu()
-                        viewModel.hideGame(game.id)
+                        if (game.isHidden) viewModel.unhideGame(game.id) else viewModel.hideGame(game.id)
                     }
                 )
             }
@@ -878,6 +883,7 @@ private fun LibraryGameCard(
 @Composable
 private fun LibraryFooter(
     focusedGame: LibraryGameUi?,
+    isViewingHidden: Boolean = false,
     showSectionJump: Boolean = false,
     onHintClick: ((InputButton) -> Unit)? = null
 ) {
@@ -886,7 +892,11 @@ private fun LibraryFooter(
             add(InputButton.LT_RT to "Jump Section")
         }
         add(InputButton.A to "Details")
-        add(InputButton.Y to if (focusedGame?.isFavorite == true) "Unfavorite" else "Favorite")
+        add(InputButton.Y to when {
+            isViewingHidden -> "Unhide"
+            focusedGame?.isFavorite == true -> "Unfavorite"
+            else -> "Favorite"
+        })
         add(InputButton.X to "Filter")
         add(InputButton.SELECT to "Quick Menu")
     }

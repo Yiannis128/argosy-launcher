@@ -10,7 +10,7 @@ data class SyncFilterPreferences(
     val deleteOrphans: Boolean = true
 ) {
     companion object {
-        val DEFAULT_REGIONS = setOf("USA")
+        val DEFAULT_REGIONS = ALL_KNOWN_REGIONS.toSet()
         val ALL_KNOWN_REGIONS = listOf(
             "USA", "World", "Europe", "Japan", "Korea",
             "China", "Taiwan", "Australia", "Brazil",

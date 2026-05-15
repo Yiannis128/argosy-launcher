@@ -207,7 +207,8 @@ data class LibraryUiState(
     val currentSectionLabel: String = "",
     val showSectionOverlay: Boolean = false,
     val overlaySectionLabel: String = "",
-    val sectionJumpTrigger: Int = 0
+    val sectionJumpTrigger: Int = 0,
+    val hiddenGameCount: Int = 0
 ) {
     val showSectionSidebar: Boolean
         get() = sectionLabels.size >= 3
@@ -236,7 +237,11 @@ data class LibraryUiState(
                 option.label + directionIndicator
             }
             FilterCategory.SEARCH -> recentSearches
-            FilterCategory.SOURCE -> SourceFilter.entries.map { it.label }
+            FilterCategory.SOURCE -> SourceFilter.entries.map { filter ->
+                if (filter == SourceFilter.HIDDEN && hiddenGameCount > 0)
+                    "${filter.label} ($hiddenGameCount)"
+                else filter.label
+            }
             FilterCategory.GENRE -> filterOptions.genres
             FilterCategory.PLAYERS -> filterOptions.players
         }
@@ -358,6 +363,15 @@ class LibraryViewModel @Inject constructor(
         observeSyncOverlay()
         observeCollectionModal()
         observeGradientChanges()
+        observeHiddenCount()
+    }
+
+    private fun observeHiddenCount() {
+        viewModelScope.launch {
+            gameRepository.observeHiddenList().collect { games ->
+                _uiState.update { it.copy(hiddenGameCount = games.size) }
+            }
+        }
     }
 
     private fun resetMenus() {
@@ -1403,7 +1417,11 @@ class LibraryViewModel @Inject constructor(
         override fun onSecondaryAction(): InputResult {
             val game = _uiState.value.focusedGame ?: return InputResult.UNHANDLED
             if (_uiState.value.showAddToCollectionModal || _uiState.value.showQuickMenu || _uiState.value.showFilterMenu) return InputResult.UNHANDLED
-            toggleFavorite(game.id)
+            if (_uiState.value.activeFilters.source == SourceFilter.HIDDEN) {
+                unhideGame(game.id)
+            } else {
+                toggleFavorite(game.id)
+            }
             return InputResult.HANDLED
         }
 

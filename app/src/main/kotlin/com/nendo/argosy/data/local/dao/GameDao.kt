@@ -63,6 +63,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE isHidden = 0 ORDER BY sortTitle ASC")
     suspend fun getAllSortedByTitle(): List<GameEntity>
 
+    @Query("SELECT * FROM games WHERE isHidden = 1 ORDER BY sortTitle ASC")
+    suspend fun getHiddenSortedByTitle(): List<GameEntity>
+
     @Query("SELECT * FROM games WHERE source = :source AND isHidden = 0 ORDER BY sortTitle ASC")
     fun observeBySource(source: GameSource): Flow<List<GameEntity>>
 
@@ -294,6 +297,9 @@ interface GameDao {
 
     @Query("SELECT * FROM games WHERE platformId = :platformId AND isHidden = 0 ORDER BY sortTitle ASC")
     suspend fun getByPlatform(platformId: Long): List<GameEntity>
+
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND isHidden = 1 ORDER BY sortTitle ASC")
+    suspend fun getHiddenByPlatform(platformId: Long): List<GameEntity>
 
     @Query("SELECT COUNT(*) FROM games")
     suspend fun countAll(): Int

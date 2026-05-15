@@ -421,6 +421,20 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             }
         }
     }
+
+    if (uiState.steam.showAddGameDialog) {
+        AddSteamGameDialog(uiState, viewModel)
+    }
+
+    if (uiState.steam.variantPickerInfo != null) {
+        com.nendo.argosy.ui.screens.settings.components.VariantPickerModal(
+            info = uiState.steam.variantPickerInfo,
+            focusIndex = uiState.steam.variantPickerFocusIndex,
+            onItemTap = { index -> viewModel.handleSteamVariantItemTap(index) },
+            onConfirm = { viewModel.confirmSteamVariantSelection() },
+            onDismiss = { viewModel.dismissSteamVariantPicker() }
+        )
+    }
 }
 
 @Composable

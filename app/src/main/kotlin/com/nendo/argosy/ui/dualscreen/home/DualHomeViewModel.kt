@@ -181,6 +181,7 @@ class DualHomeViewModel(
     val forwardingMode: StateFlow<ForwardingMode> = _forwardingMode.asStateFlow()
 
     private var allLibraryGames: List<HomeGameUi> = emptyList()
+    private var libraryLoadedHidden = false
     private var latestDownloads: Map<Long, com.nendo.argosy.data.local.entity.DownloadQueueEntity> = emptyMap()
     private val pendingCoverRepairs = mutableSetOf<Long>()
     private var letterOverlayJob: kotlinx.coroutines.Job? = null
@@ -1130,11 +1131,13 @@ class DualHomeViewModel(
         return SortResult(sortedGames, orderedSections, gridItems, labels)
     }
 
-    private fun loadLibraryGames(onLoaded: (() -> Unit)? = null) {
+    private fun loadLibraryGames(hidden: Boolean = false, onLoaded: (() -> Unit)? = null) {
         viewModelScope.launch {
-            val entities = gameRepository.getAllSortedByTitle()
+            val entities = if (hidden) gameRepository.getHiddenSortedByTitle()
+                           else gameRepository.getAllSortedByTitle()
             val allGames = entities.map { it.toUi() }
             allLibraryGames = allGames
+            libraryLoadedHidden = hidden
             val filters = _uiState.value.activeFilters
             val filtered = applyFiltersToList(allGames, filters)
             val result = applySort(filtered, filters.sort)
@@ -1149,11 +1152,13 @@ class DualHomeViewModel(
         }
     }
 
-    private fun loadLibraryGamesForPlatform(platformId: Long, onLoaded: (() -> Unit)? = null) {
+    private fun loadLibraryGamesForPlatform(platformId: Long, hidden: Boolean = false, onLoaded: (() -> Unit)? = null) {
         viewModelScope.launch {
-            val entities = gameRepository.getByPlatform(platformId)
+            val entities = if (hidden) gameRepository.getHiddenByPlatform(platformId)
+                           else gameRepository.getByPlatform(platformId)
             val platformGames = entities.map { it.toUi() }
             allLibraryGames = platformGames
+            libraryLoadedHidden = hidden
             val filters = _uiState.value.activeFilters
             val filtered = applyFiltersToList(platformGames, filters)
             val result = applySort(filtered, filters.sort)
@@ -1169,6 +1174,13 @@ class DualHomeViewModel(
     }
 
     private fun applyFilters(filters: DualActiveFilters) {
+        val wantHidden = filters.source == "HIDDEN"
+        if (wantHidden != libraryLoadedHidden) {
+            val platformId = _uiState.value.activeFilters.platformId
+            if (platformId != null) loadLibraryGamesForPlatform(platformId, hidden = wantHidden)
+            else loadLibraryGames(hidden = wantHidden)
+            return
+        }
         val filtered = applyFiltersToList(allLibraryGames, filters)
         val result = applySort(filtered, filters.sort)
         val options = buildFilterOptions(_uiState.value.filterCategory, filters)
@@ -1225,7 +1237,8 @@ class DualHomeViewModel(
             DualFilterCategory.SOURCE -> listOf(
                 DualFilterOption("ALL", filters.source == "ALL"),
                 DualFilterOption("PLAYABLE", filters.source == "PLAYABLE"),
-                DualFilterOption("FAVORITES", filters.source == "FAVORITES")
+                DualFilterOption("FAVORITES", filters.source == "FAVORITES"),
+                DualFilterOption("HIDDEN", filters.source == "HIDDEN")
             )
             DualFilterCategory.GENRE -> {
                 val genres = allLibraryGames

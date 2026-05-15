@@ -701,8 +701,14 @@ class GameRepository @Inject constructor(
     suspend fun getAllSortedByTitle(): List<GameEntity> =
         gameDao.getAllSortedByTitle()
 
+    suspend fun getHiddenSortedByTitle(): List<GameEntity> =
+        gameDao.getHiddenSortedByTitle()
+
     suspend fun getByPlatform(platformId: Long): List<GameEntity> =
         gameDao.getByPlatform(platformId)
+
+    suspend fun getHiddenByPlatform(platformId: Long): List<GameEntity> =
+        gameDao.getHiddenByPlatform(platformId)
 
     suspend fun countDownloadedByPlatform(platformId: Long): Int =
         gameDao.countDownloadedByPlatform(platformId)
