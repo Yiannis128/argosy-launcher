@@ -579,10 +579,21 @@ class DualGameDetailViewModel(
         _selectedSlotIndex.value = restoredIndex ?: 0
         _selectedHistoryIndex.value = 0
 
+        val channelEntries = entries.filter { it.channelName == activeChannel }
+        val hasSynced = channelEntries.any { it.source == "BOTH" || it.source == "SERVER" }
+        val hasLocal = channelEntries.any { it.source == "LOCAL" || it.source == "BOTH" }
+        val statusName = when {
+            channelEntries.isEmpty() -> null
+            hasSynced -> "SYNCED"
+            hasLocal -> "LOCAL_ONLY"
+            else -> null
+        }
+
         _uiState.update {
             it.copy(
                 activeChannel = activeChannel,
-                activeSaveTimestamp = activeSaveTimestamp
+                activeSaveTimestamp = activeSaveTimestamp,
+                saveSyncStatusName = statusName
             )
         }
         updateHistoryForFocusedSlot(activeSaveTimestamp)

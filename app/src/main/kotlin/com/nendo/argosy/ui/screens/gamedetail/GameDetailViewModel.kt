@@ -1137,17 +1137,29 @@ class GameDetailViewModel @Inject constructor(
     fun confirmDeleteLegacyChannel() = saveManagement.saveChannelDelegate.confirmDeleteLegacyChannel(viewModelScope)
 
     private fun handleSaveStatusChanged(event: SaveStatusEvent) {
-        val currentStatus = _uiState.value.saveStatusInfo?.status ?: com.nendo.argosy.ui.screens.gamedetail.components.SaveSyncStatus.NO_SAVE
         _uiState.update { state ->
             state.copy(
                 saveChannel = state.saveChannel.copy(activeChannel = event.channelName),
                 saveStatusInfo = SaveStatusInfo(
-                    status = currentStatus,
+                    status = state.saveStatusInfo?.status ?: com.nendo.argosy.ui.screens.gamedetail.components.SaveSyncStatus.NO_SAVE,
                     channelName = event.channelName,
                     activeSaveTimestamp = event.timestamp,
                     lastSyncTime = if (event.timestamp != null) null else state.saveStatusInfo?.lastSyncTime
                 )
             )
+        }
+        viewModelScope.launch {
+            val state = _uiState.value
+            val game = state.game ?: return@launch
+            val emulatorId = emulatorResolver.getEmulatorIdForGame(currentGameId, game.platformId, game.platformSlug)
+                ?: return@launch
+            val fresh = saveManagement.loadSaveStatusInfo(
+                currentGameId, emulatorId, event.channelName,
+                event.timestamp ?: state.saveStatusInfo?.activeSaveTimestamp
+            )
+            if (fresh != null) {
+                _uiState.update { it.copy(saveStatusInfo = fresh) }
+            }
         }
     }
 

@@ -379,7 +379,8 @@ private fun SavesMenuItem(
     } else {
         MaterialTheme.typography.bodyMedium
     }
-    val label = if (isSyncing) "Syncing..." else "Saves"
+    val slotName = if (isSyncing) "Syncing..." else (status?.channelName ?: "Auto-save")
+    val saveDate = if (!isSyncing) status?.displayTime else null
 
     MenuItemWithLeftBorder(
         isFocused = isFocused,
@@ -390,7 +391,7 @@ private fun SavesMenuItem(
         if (isCompact) {
             Icon(
                 imageVector = icon,
-                contentDescription = label,
+                contentDescription = slotName,
                 tint = iconTint,
                 modifier = Modifier.size(Dimens.iconSm)
             )
@@ -399,15 +400,19 @@ private fun SavesMenuItem(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = label,
-                    style = textStyle,
-                    color = textColor,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = slotName, style = textStyle, color = textColor)
+                    if (saveDate != null) {
+                        Text(
+                            text = saveDate,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = textColor.copy(alpha = 0.6f)
+                        )
+                    }
+                }
                 Icon(
                     imageVector = icon,
-                    contentDescription = label,
+                    contentDescription = slotName,
                     tint = iconTint,
                     modifier = Modifier.size(Dimens.iconSm)
                 )

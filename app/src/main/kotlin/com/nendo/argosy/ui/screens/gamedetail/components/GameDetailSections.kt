@@ -199,11 +199,6 @@ fun GameHeader(
             }
 
             ActionButtons(game = game, uiState = uiState, viewModel = viewModel)
-
-            uiState.saveStatusInfo?.let { statusInfo ->
-                Spacer(modifier = Modifier.height(Dimens.radiusLg))
-                SaveStatusRow(status = statusInfo)
-            }
         }
     }
 }
@@ -296,9 +291,36 @@ fun ActionButtons(
             ) {
                 when (uiState.downloadStatus) {
                     GameDownloadStatus.DOWNLOADED -> {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(Dimens.spacingSm))
-                        Text("PLAY")
+                        val saveInfo = uiState.saveStatusInfo
+                        if (saveInfo != null) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("PLAY")
+                                Text(
+                                    text = saveInfo.channelName ?: "Auto-save",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f)
+                                )
+                                saveInfo.displayTime?.let { time ->
+                                    Text(
+                                        text = time,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = saveInfo.effectiveStatus.icon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                modifier = Modifier.size(Dimens.spacingMd)
+                            )
+                        } else {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+                            Text("PLAY")
+                        }
                     }
                     GameDownloadStatus.NOT_DOWNLOADED -> {
                         Icon(Icons.Default.Download, contentDescription = null)

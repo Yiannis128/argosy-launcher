@@ -603,6 +603,11 @@ class GameSessionService : Service() {
         val helmFadeOut = ObjectAnimator.ofFloat(helm, "alpha", 1f, 0f).apply {
             duration = 200
             startDelay = 600
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    helm.visibility = View.GONE
+                }
+            })
         }
 
         val checkBounce = ObjectAnimator.ofPropertyValuesHolder(
@@ -689,7 +694,7 @@ class GameSessionService : Service() {
         private const val WAKELOCK_TAG = "argosy:game_session_wakelock"
         private const val WIFILOCK_TAG = "argosy:game_session_wifilock"
         private const val MAX_WAKELOCK_DURATION_MS = 4 * 60 * 60 * 1000L // 4 hours max
-        private const val RESET_DELAY_MS = 3000L
+        private const val RESET_DELAY_MS = 1700L
         private const val OVERLAY_DEBOUNCE_MS = 5 * 60 * 1000L
         private const val POLL_INTERVAL_MS = 2000L
         private const val STARTUP_COOLDOWN_MS = 20000L

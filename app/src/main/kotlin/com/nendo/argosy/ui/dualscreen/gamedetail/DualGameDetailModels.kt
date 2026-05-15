@@ -76,6 +76,7 @@ data class DualGameDetailUiState(
     val saveFocusColumn: SaveFocusColumn = SaveFocusColumn.SLOTS,
     val activeChannel: String? = null,
     val activeSaveTimestamp: Long? = null,
+    val saveSyncStatusName: String? = null,
     val hasMultipleCores: Boolean = false,
     val selectedCoreName: String? = null,
     val selectedCoreId: String? = null,

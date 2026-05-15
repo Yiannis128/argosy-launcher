@@ -80,6 +80,8 @@ import com.nendo.argosy.ui.common.savechannel.SaveFocusColumn
 import com.nendo.argosy.ui.common.savechannel.StateSlotRow
 import com.nendo.argosy.ui.common.savechannel.SaveHistoryItem
 import com.nendo.argosy.ui.common.savechannel.SaveSlotItem
+import com.nendo.argosy.ui.screens.gamedetail.components.SaveSyncStatus
+import com.nendo.argosy.ui.screens.gamedetail.components.icon
 import com.nendo.argosy.util.formatSaveSize
 import com.nendo.argosy.util.formatSaveTimestamp
 import com.nendo.argosy.ui.util.touchOnly
@@ -163,6 +165,9 @@ fun DualGameDetailLowerScreen(
                         status = state.status,
                         emulatorName = state.emulatorName,
                         coreName = state.selectedCoreName,
+                        activeChannel = state.activeChannel,
+                        activeSaveTimestamp = state.activeSaveTimestamp,
+                        saveSyncStatusName = state.saveSyncStatusName,
                         selectedIndex = selectedOptionIndex,
                         onOptionSelected = onOptionSelected
                     )
@@ -728,6 +733,8 @@ private data class OptionEntry(
     val label: String,
     val value: String? = null,
     val tint: Color? = null,
+    val subLabel: String? = null,
+    val subLabelSecondary: String? = null,
     val visualContent: (@Composable () -> Unit)? = null
 )
 
@@ -743,6 +750,9 @@ private fun OptionsTabContent(
     status: String?,
     emulatorName: String?,
     coreName: String?,
+    activeChannel: String?,
+    activeSaveTimestamp: Long?,
+    saveSyncStatusName: String?,
     selectedIndex: Int,
     onOptionSelected: (GameDetailOption) -> Unit
 ) {
@@ -780,7 +790,30 @@ private fun OptionsTabContent(
                     )
                 }
             } else null
-            OptionEntry(option, icon, label, visualContent = progressVisual)
+
+            val showSaveInfo = isPlayable && dlState == null && activeSaveTimestamp != null
+            val slotLabel = if (showSaveInfo) activeChannel ?: "Auto-save" else null
+            val dateLabel = if (showSaveInfo) formatSaveTimestamp(activeSaveTimestamp!!) else null
+            val statusVisual: (@Composable () -> Unit)? = if (showSaveInfo && saveSyncStatusName != null) {
+                val status = runCatching { SaveSyncStatus.valueOf(saveSyncStatusName) }.getOrNull()
+                if (status != null) {
+                    {
+                        Icon(
+                            imageVector = status.icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null
+            } else null
+
+            OptionEntry(
+                option, icon, label,
+                subLabel = slotLabel,
+                subLabelSecondary = dateLabel,
+                visualContent = progressVisual ?: statusVisual
+            )
         }
         GameDetailOption.RATING -> OptionEntry(
             option, Icons.Filled.Star, "Rating",
@@ -927,6 +960,8 @@ private fun OptionsTabContent(
                     value = entry.value,
                     isSelected = itemIndex == selectedIndex,
                     tint = entry.tint,
+                    subLabel = entry.subLabel,
+                    subLabelSecondary = entry.subLabelSecondary,
                     visualContent = entry.visualContent,
                     onClick = { onOptionSelected(entry.option) }
                 )
@@ -975,6 +1010,8 @@ private fun OptionItem(
     value: String? = null,
     isSelected: Boolean,
     tint: Color? = null,
+    subLabel: String? = null,
+    subLabelSecondary: String? = null,
     visualContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
@@ -1004,12 +1041,31 @@ private fun OptionItem(
             }
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = tint ?: MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = tint ?: MaterialTheme.colorScheme.onSurface
+            )
+            if (subLabel != null) {
+                Text(
+                    text = subLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (subLabelSecondary != null) {
+                Text(
+                    text = subLabelSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
         if (visualContent != null) {
             visualContent()
         } else if (value != null) {
