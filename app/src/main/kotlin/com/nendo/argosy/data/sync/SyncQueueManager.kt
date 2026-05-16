@@ -129,7 +129,9 @@ class SyncQueueManager @Inject constructor() {
     }
 
     suspend fun awaitResolution(gameId: Long): ConflictResolution {
-        return conflictResolutions.first { it.containsKey(gameId) }[gameId]!!
+        val resolved = conflictResolutions.first { it.containsKey(gameId) }[gameId]!!
+        conflictResolutions.update { it - gameId }
+        return resolved
     }
 
     fun resolveConflict(gameId: Long, resolution: ConflictResolution) {
