@@ -8,6 +8,8 @@ import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.local.entity.SyncPriority
 import com.nendo.argosy.data.local.entity.SyncStatus as DbSyncStatus
 import com.nendo.argosy.data.local.entity.SyncType
+import com.nendo.argosy.data.local.dao.PendingConflictDao
+import com.nendo.argosy.data.local.entity.PendingConflictEntity
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
@@ -15,12 +17,19 @@ import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.data.repository.StateCacheManager
+import com.nendo.argosy.data.sync.strategy.ConflictAutoResolver
+import com.nendo.argosy.data.sync.strategy.LocalSaveState
+import com.nendo.argosy.data.sync.strategy.ReconcileAction
+import com.nendo.argosy.data.sync.strategy.ReconcileOperation
+import com.nendo.argosy.data.sync.strategy.ReconcilePlan
+import com.nendo.argosy.data.sync.strategy.SaveSyncStrategySelector
 import com.nendo.argosy.util.Logger
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
@@ -39,7 +48,10 @@ class SyncCoordinator @Inject constructor(
     private val stateCacheManager: Lazy<StateCacheManager>,
     private val syncQueueManager: SyncQueueManager,
     private val syncPreferencesRepository: SyncPreferencesRepository,
-    private val payloadCodec: SyncPayloadCodec
+    private val payloadCodec: SyncPayloadCodec,
+    private val strategySelector: SaveSyncStrategySelector,
+    private val conflictAutoResolver: ConflictAutoResolver,
+    private val pendingConflictDao: PendingConflictDao
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -51,6 +63,105 @@ class SyncCoordinator @Inject constructor(
         data object NotConnected : ProcessResult()
         data class Completed(val processed: Int, val failed: Int) : ProcessResult()
     }
+
+    suspend fun reconcileAll(): ReconcileSummary = withContext(Dispatchers.IO) {
+        val queueResult = processQueue()
+
+        val state = romMRepository.get().connectionState.value
+        val caps = (state as? ConnectionState.Connected)?.capabilities
+        if (caps?.supportsSyncNegotiate != true) {
+            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
+        }
+
+        val inventory = buildInventory()
+        if (inventory.isEmpty()) {
+            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
+        }
+
+        val plan = strategySelector.current().planReconcile(inventory)
+        if (plan.operations.isEmpty()) {
+            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
+        }
+
+        val (conflicts, applied) = applyPlan(plan)
+        Logger.info(TAG, "reconcileAll: plan applied | conflicts=$conflicts handled=$applied sessionId=${plan.sessionId}")
+        ReconcileSummary(queueResult, planConflicts = conflicts, planApplied = applied)
+    }
+
+    private suspend fun buildInventory(): List<LocalSaveState> {
+        val rows = saveSyncDao.getAllWithLocalPath()
+        return rows.mapNotNull { row ->
+            val path = row.localSavePath ?: return@mapNotNull null
+            val file = File(path)
+            if (!file.exists()) return@mapNotNull null
+            LocalSaveState(
+                romId = row.rommId,
+                fileName = file.name,
+                slot = row.channelName,
+                emulator = row.emulatorId,
+                contentHash = row.lastUploadedHash,
+                updatedAt = (row.localUpdatedAt ?: Instant.ofEpochMilli(file.lastModified())).toString(),
+                fileSizeBytes = file.length()
+            )
+        }
+    }
+
+    private suspend fun applyPlan(plan: ReconcilePlan): Pair<Int, Int> {
+        var conflicts = 0
+        var applied = 0
+        for (op in plan.operations) {
+            when (op.action) {
+                ReconcileAction.NO_OP -> Unit
+                ReconcileAction.UPLOAD,
+                ReconcileAction.DOWNLOAD -> applied++
+                ReconcileAction.CONFLICT -> {
+                    val game = gameDao.getByRommId(op.romId)
+                    val clientHash = game?.id?.let { gid ->
+                        saveSyncDao.getByGameAndEmulator(gid, op.emulator ?: "")?.lastUploadedHash
+                    }
+                    when (val res = conflictAutoResolver.classify(op, clientHash)) {
+                        is ConflictAutoResolver.Resolution.AsIs -> {
+                            if (game != null) {
+                                pendingConflictDao.upsert(
+                                    PendingConflictEntity(
+                                        gameId = game.id,
+                                        rommSaveId = op.saveId,
+                                        fileName = op.fileName,
+                                        slot = op.slot,
+                                        emulator = op.emulator,
+                                        localUpdatedAt = null,
+                                        serverUpdatedAt = op.serverUpdatedAt?.let { parseInstantOrNull(it) },
+                                        localHash = clientHash,
+                                        serverHash = op.serverContentHash,
+                                        reason = op.reason
+                                    )
+                                )
+                                conflicts++
+                            }
+                        }
+                        is ConflictAutoResolver.Resolution.KeepLocal,
+                        is ConflictAutoResolver.Resolution.KeepServer -> {
+                            applied++
+                            Logger.info(TAG, "auto-resolved conflict for romId=${op.romId} via rule ${(res as? Any)}")
+                        }
+                    }
+                }
+            }
+        }
+        return conflicts to applied
+    }
+
+    private fun parseInstantOrNull(value: String): Instant? = try {
+        Instant.parse(value)
+    } catch (_: Exception) {
+        null
+    }
+
+    data class ReconcileSummary(
+        val queue: ProcessResult,
+        val planConflicts: Int,
+        val planApplied: Int
+    )
 
     suspend fun processQueue(): ProcessResult = withContext(Dispatchers.IO) {
         val romM = romMRepository.get()

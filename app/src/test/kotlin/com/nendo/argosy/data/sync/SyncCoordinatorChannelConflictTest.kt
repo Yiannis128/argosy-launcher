@@ -115,7 +115,10 @@ class SyncCoordinatorChannelConflictTest {
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences(saveSyncEnabled = true))
             },
-            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
+            strategySelector = mockk(relaxed = true),
+            conflictAutoResolver = mockk(relaxed = true),
+            pendingConflictDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -161,7 +164,10 @@ class SyncCoordinatorChannelConflictTest {
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences(saveSyncEnabled = true))
             },
-            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
+            strategySelector = mockk(relaxed = true),
+            conflictAutoResolver = mockk(relaxed = true),
+            pendingConflictDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -216,7 +222,10 @@ class SyncCoordinatorChannelConflictTest {
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences(saveSyncEnabled = true))
             },
-            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
+            strategySelector = mockk(relaxed = true),
+            conflictAutoResolver = mockk(relaxed = true),
+            pendingConflictDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -253,7 +262,10 @@ class SyncCoordinatorChannelConflictTest {
             syncPreferencesRepository = mockk(relaxed = true) {
                 every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences(saveSyncEnabled = false))
             },
-            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
+            strategySelector = mockk(relaxed = true),
+            conflictAutoResolver = mockk(relaxed = true),
+            pendingConflictDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()

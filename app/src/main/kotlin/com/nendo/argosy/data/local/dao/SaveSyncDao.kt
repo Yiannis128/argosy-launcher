@@ -98,6 +98,9 @@ interface SaveSyncDao {
     @Query("SELECT DISTINCT gameId FROM save_sync")
     suspend fun getAllGameIds(): List<Long>
 
+    @Query("SELECT * FROM save_sync WHERE localSavePath IS NOT NULL")
+    suspend fun getAllWithLocalPath(): List<SaveSyncEntity>
+
     // UPDATE OR REPLACE: when rewriting emulatorId would collide with an
     // existing row on the unique (gameId, emulatorId, channelName) index,
     // SQLite drops the conflicting row instead of aborting. Without this
