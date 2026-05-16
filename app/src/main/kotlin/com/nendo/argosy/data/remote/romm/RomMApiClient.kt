@@ -140,13 +140,15 @@ class RomMApiClient @Inject constructor(
                         ?: platformDao.getBySlug(remote.slug)
                     val platformDef = PlatformDefinitions.getBySlug(remote.slug)
                     val logoUrl = remote.logoUrl?.let { buildMediaUrl(it) }
-                    val normalizedName = remote.displayName ?: remote.name
+                    val aliasNames = PlatformDefinitions.getAliasDisplayName(remote.slug)
+                    val normalizedName = remote.displayName ?: aliasNames?.first ?: remote.name
+                    val resolvedShortName = aliasNames?.second ?: platformDef?.shortName ?: normalizedName
                     PlatformEntity(
                         id = remote.id,
                         slug = remote.slug,
                         fsSlug = remote.fsSlug,
                         name = normalizedName,
-                        shortName = platformDef?.shortName ?: normalizedName,
+                        shortName = resolvedShortName,
                         romExtensions = platformDef?.extensions?.joinToString(",") ?: "",
                         gameCount = remote.romCount,
                         isVisible = existing?.isVisible ?: true,

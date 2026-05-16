@@ -569,6 +569,22 @@ object PlatformDefinitions {
         return aliases + canonical
     }
 
+    fun getAliasDisplayName(slug: String): Pair<String, String>? =
+        aliasDisplayNames[slug.lowercase()]
+
+    private val aliasDisplayNames: Map<String, Pair<String, String>> = mapOf(
+        "mame" to ("MAME" to "MAME"),
+        "fbneo" to ("FB Neo" to "FBNeo"),
+        "fba" to ("FB Alpha" to "FBA"),
+        "naomi2" to ("NAOMI 2" to "NAOMI 2"),
+        "hikaru" to ("Hikaru" to "Hikaru"),
+        "psp-minis" to ("PSP Minis" to "PSP Minis"),
+        "psp_minis" to ("PSP Minis" to "PSP Minis"),
+        "pspminis" to ("PSP Minis" to "PSP Minis"),
+        "playstation-portable-minis" to ("PSP Minis" to "PSP Minis"),
+        "playstation_portable_minis" to ("PSP Minis" to "PSP Minis")
+    )
+
     fun getPlatformsForExtension(extension: String): List<PlatformDef> =
         extensionMap[extension.lowercase()] ?: emptyList()
 

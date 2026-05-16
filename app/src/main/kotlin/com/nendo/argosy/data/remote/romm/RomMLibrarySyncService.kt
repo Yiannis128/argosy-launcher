@@ -293,13 +293,15 @@ class RomMLibrarySyncService @Inject constructor(
         val platformDef = PlatformDefinitions.getBySlug(remote.slug)
 
         val logoUrl = remote.logoUrl?.let { apiClient.buildMediaUrl(it) }
-        val normalizedName = remote.displayName ?: remote.name
+        val aliasNames = PlatformDefinitions.getAliasDisplayName(remote.slug)
+        val normalizedName = remote.displayName ?: aliasNames?.first ?: remote.name
+        val resolvedShortName = aliasNames?.second ?: platformDef?.shortName ?: normalizedName
         val entity = PlatformEntity(
             id = platformId,
             slug = remote.slug,
             fsSlug = remote.fsSlug,
             name = normalizedName,
-            shortName = platformDef?.shortName ?: normalizedName,
+            shortName = resolvedShortName,
             romExtensions = platformDef?.extensions?.joinToString(",") ?: "",
             gameCount = remote.romCount,
             isVisible = existing?.isVisible ?: true,
