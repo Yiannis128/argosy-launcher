@@ -5,6 +5,7 @@ import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
+import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.local.entity.SyncPriority
 import com.nendo.argosy.data.local.entity.SyncStatus as DbSyncStatus
 import com.nendo.argosy.data.local.entity.SyncType
@@ -74,10 +75,6 @@ class SyncCoordinator @Inject constructor(
         }
 
         val inventory = buildInventory()
-        if (inventory.isEmpty()) {
-            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
-        }
-
         val plan = strategySelector.current().planReconcile(inventory)
         if (plan.operations.isEmpty()) {
             return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
@@ -112,8 +109,12 @@ class SyncCoordinator @Inject constructor(
         for (op in plan.operations) {
             when (op.action) {
                 ReconcileAction.NO_OP -> Unit
-                ReconcileAction.UPLOAD,
-                ReconcileAction.DOWNLOAD -> applied++
+                ReconcileAction.UPLOAD -> {
+                    if (queueUploadForOp(op)) applied++
+                }
+                ReconcileAction.DOWNLOAD -> {
+                    if (markServerNewerForOp(op)) applied++
+                }
                 ReconcileAction.CONFLICT -> {
                     val game = gameDao.getByRommId(op.romId)
                     val clientHash = game?.id?.let { gid ->
@@ -139,16 +140,73 @@ class SyncCoordinator @Inject constructor(
                                 conflicts++
                             }
                         }
-                        is ConflictAutoResolver.Resolution.KeepLocal,
+                        is ConflictAutoResolver.Resolution.KeepLocal -> {
+                            if (queueUploadForOp(op)) applied++
+                            Logger.info(TAG, "auto-resolved conflict romId=${op.romId} -> KeepLocal (${res.ruleId})")
+                        }
                         is ConflictAutoResolver.Resolution.KeepServer -> {
-                            applied++
-                            Logger.info(TAG, "auto-resolved conflict for romId=${op.romId} via rule ${(res as? Any)}")
+                            if (markServerNewerForOp(op)) applied++
+                            Logger.info(TAG, "auto-resolved conflict romId=${op.romId} -> KeepServer (${res.ruleId})")
                         }
                     }
                 }
             }
         }
         return conflicts to applied
+    }
+
+    private suspend fun queueUploadForOp(op: ReconcileOperation): Boolean {
+        val game = gameDao.getByRommId(op.romId) ?: run {
+            Logger.debug(TAG, "applyPlan UPLOAD: no local game for romId=${op.romId}, skipping")
+            return false
+        }
+        val emulatorId = op.emulator ?: return false
+        val payload = SaveFilePayload(emulatorId = emulatorId, channelName = op.slot)
+        pendingSyncQueueDao.deleteByGameAndType(game.id, SyncType.SAVE_FILE)
+        pendingSyncQueueDao.insert(
+            PendingSyncQueueEntity(
+                gameId = game.id,
+                rommId = op.romId,
+                syncType = SyncType.SAVE_FILE,
+                priority = SyncPriority.SAVE_FILE,
+                payloadJson = payloadCodec.encode(payload)
+            )
+        )
+        return true
+    }
+
+    private suspend fun markServerNewerForOp(op: ReconcileOperation): Boolean {
+        val game = gameDao.getByRommId(op.romId) ?: run {
+            Logger.debug(TAG, "applyPlan DOWNLOAD: no local game for romId=${op.romId}, skipping")
+            return false
+        }
+        if (game.localPath == null) {
+            Logger.debug(TAG, "applyPlan DOWNLOAD: game ${game.id} has no local ROM, skipping")
+            return false
+        }
+        val emulatorId = op.emulator ?: return false
+        val existing = if (op.slot != null) {
+            saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, op.slot)
+        } else {
+            saveSyncDao.getByGameAndEmulator(game.id, emulatorId)
+        }
+        val serverTime = op.serverUpdatedAt?.let { parseInstantOrNull(it) }
+        saveSyncDao.upsert(
+            SaveSyncEntity(
+                id = existing?.id ?: 0,
+                gameId = game.id,
+                rommId = op.romId,
+                emulatorId = emulatorId,
+                channelName = op.slot,
+                rommSaveId = op.saveId,
+                localSavePath = existing?.localSavePath,
+                localUpdatedAt = existing?.localUpdatedAt,
+                serverUpdatedAt = serverTime,
+                lastSyncedAt = existing?.lastSyncedAt,
+                syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER
+            )
+        )
+        return true
     }
 
     private fun parseInstantOrNull(value: String): Instant? = try {
