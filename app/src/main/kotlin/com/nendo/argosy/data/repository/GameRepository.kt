@@ -30,6 +30,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "GameRepository"
+private const val GAME_FETCH_BATCH_SIZE = 100
 
 data class PlatformStats(
     val platformId: Long,
@@ -611,7 +612,7 @@ class GameRepository @Inject constructor(
     fun observeRecentlyPlayed(limit: Int = 20): Flow<List<GameEntity>> =
         gameDao.observeRecentlyPlayed(limit)
 
-    suspend fun getFavorites(): List<GameEntity> = gameDao.getFavorites()
+    suspend fun getFavorites(): List<GameEntity> = hydrateByIds(gameDao.getFavoriteIds())
 
     suspend fun getRandomGame(): GameEntity? = gameDao.getRandomGame()
 
@@ -619,6 +620,14 @@ class GameRepository @Inject constructor(
         gameDao.getSearchCandidates()
 
     suspend fun getByIds(ids: List<Long>): List<GameEntity> = gameDao.getByIds(ids)
+
+    private suspend fun hydrateByIds(ids: List<Long>): List<GameEntity> {
+        if (ids.isEmpty()) return emptyList()
+        val byId = ids.chunked(GAME_FETCH_BATCH_SIZE)
+            .flatMap { gameDao.getByIds(it) }
+            .associateBy { it.id }
+        return ids.mapNotNull { byId[it] }
+    }
 
     suspend fun updateUserRating(gameId: Long, rating: Int) =
         gameDao.updateUserRating(gameId, rating)
@@ -704,10 +713,10 @@ class GameRepository @Inject constructor(
     ): List<GameEntity> = gameDao.getByPlatformSorted(platformId, limit)
 
     suspend fun getAllSortedByTitle(): List<GameEntity> =
-        gameDao.getAllSortedByTitle()
+        hydrateByIds(gameDao.getAllSortedByTitleIds())
 
     suspend fun getHiddenSortedByTitle(): List<GameEntity> =
-        gameDao.getHiddenSortedByTitle()
+        hydrateByIds(gameDao.getHiddenSortedByTitleIds())
 
     suspend fun getByPlatform(platformId: Long): List<GameEntity> =
         gameDao.getByPlatform(platformId)

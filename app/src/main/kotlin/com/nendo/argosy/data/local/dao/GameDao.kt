@@ -63,8 +63,14 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE isHidden = 0 ORDER BY sortTitle ASC")
     suspend fun getAllSortedByTitle(): List<GameEntity>
 
+    @Query("SELECT id FROM games WHERE isHidden = 0 ORDER BY sortTitle ASC")
+    suspend fun getAllSortedByTitleIds(): List<Long>
+
     @Query("SELECT * FROM games WHERE isHidden = 1 ORDER BY sortTitle ASC")
     suspend fun getHiddenSortedByTitle(): List<GameEntity>
+
+    @Query("SELECT id FROM games WHERE isHidden = 1 ORDER BY sortTitle ASC")
+    suspend fun getHiddenSortedByTitleIds(): List<Long>
 
     @Query("SELECT * FROM games WHERE source = :source AND isHidden = 0 ORDER BY sortTitle ASC")
     fun observeBySource(source: GameSource): Flow<List<GameEntity>>
@@ -176,6 +182,9 @@ interface GameDao {
 
     @Query("SELECT * FROM games WHERE isFavorite = 1 AND isHidden = 0 ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC")
     suspend fun getFavorites(): List<GameEntity>
+
+    @Query("SELECT id FROM games WHERE isFavorite = 1 AND isHidden = 0 ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC")
+    suspend fun getFavoriteIds(): List<Long>
 
     @Query("SELECT rommId FROM games WHERE isFavorite = 1 AND rommId IS NOT NULL")
     suspend fun getFavoriteRommIds(): List<Long>
