@@ -22,6 +22,7 @@ import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.dao.OrphanedFileDao
+import com.nendo.argosy.data.local.dao.PendingConflictDao
 import com.nendo.argosy.data.local.dao.PendingSocialSyncDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.PinnedCollectionDao
@@ -165,6 +166,10 @@ object DatabaseModule {
     @Provides
     fun providePendingSocialSyncDao(database: ALauncherDatabase): PendingSocialSyncDao =
         database.pendingSocialSyncDao()
+
+    @Provides
+    fun providePendingConflictDao(database: ALauncherDatabase): PendingConflictDao =
+        database.pendingConflictDao()
 
     @Provides
     fun provideSocialGameCacheDao(database: ALauncherDatabase): SocialGameCacheDao =

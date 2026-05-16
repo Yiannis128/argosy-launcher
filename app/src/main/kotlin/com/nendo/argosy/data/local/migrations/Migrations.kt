@@ -1601,3 +1601,33 @@ object Migration_109_110 : Migration(109, 110) {
         db.execSQL("ALTER TABLE emulator_save_config ADD COLUMN selectedMemcardPath TEXT")
     }
 }
+
+object Migration_110_111 : Migration(110, 111) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS pending_conflicts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                gameId INTEGER NOT NULL,
+                rommSaveId INTEGER,
+                fileName TEXT NOT NULL,
+                slot TEXT,
+                emulator TEXT,
+                localUpdatedAt INTEGER,
+                serverUpdatedAt INTEGER,
+                localHash TEXT,
+                serverHash TEXT,
+                reason TEXT NOT NULL DEFAULT '',
+                discoveredAt INTEGER NOT NULL,
+                dismissed INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_pending_conflicts_gameId_rommSaveId ON pending_conflicts(gameId, rommSaveId)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_pending_conflicts_dismissed ON pending_conflicts(dismissed)"
+        )
+    }
+}
