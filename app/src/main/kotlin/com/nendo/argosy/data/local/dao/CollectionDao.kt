@@ -135,4 +135,14 @@ interface CollectionDao {
         ORDER BY g.sortTitle ASC
     """)
     fun observeGamesByTypeAndName(type: CollectionType, name: String): Flow<List<GameEntity>>
+
+    @Query("""
+        SELECT g.id FROM games g
+        INNER JOIN collection_games cg ON g.id = cg.gameId
+        INNER JOIN collections c ON cg.collectionId = c.id
+        INNER JOIN platforms p ON g.platformId = p.id
+        WHERE c.type = :type AND c.name = :name AND p.syncEnabled = 1
+        ORDER BY g.sortTitle ASC
+    """)
+    fun observeGameIdsByTypeAndName(type: CollectionType, name: String): Flow<List<Long>>
 }
