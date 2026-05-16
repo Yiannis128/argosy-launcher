@@ -533,10 +533,12 @@ class SyncCoordinator @Inject constructor(
                 continue
             }
             if (resolution == ConflictResolution.KEEP_SERVER) {
+                val serverSaveId = conflicts[cache.gameId]?.second?.serverSaveId
                 val downloadResult = saveSyncRepository.get().downloadSave(
                     gameId = cache.gameId,
                     emulatorId = cache.emulatorId,
-                    channelName = null
+                    channelName = null,
+                    knownServerSaveId = serverSaveId
                 )
                 if (downloadResult is SaveSyncResult.Success) {
                     saveCacheDao.markSynced(cache.id, Instant.now())

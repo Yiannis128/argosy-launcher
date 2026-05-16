@@ -148,7 +148,8 @@ class SaveSyncConflictResolver @Inject constructor(
                                 return@withContext PreLaunchSyncResult.LocalModified(
                                     localSavePath = validatedPath,
                                     serverTimestamp = serverTime,
-                                    channelName = selectedChannel
+                                    channelName = selectedChannel,
+                                    serverSaveId = serverSave.id
                                 )
                             }
                         }
@@ -162,7 +163,8 @@ class SaveSyncConflictResolver @Inject constructor(
                                 return@withContext PreLaunchSyncResult.LocalModified(
                                     localSavePath = validatedPath,
                                     serverTimestamp = serverTime,
-                                    channelName = selectedChannel
+                                    channelName = selectedChannel,
+                                    serverSaveId = serverSave.id
                                 )
                             } else {
                                 Logger.debug(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Local hash matches cache id=${matchingCache.id}")
@@ -204,7 +206,8 @@ class SaveSyncConflictResolver @Inject constructor(
                         return@withContext PreLaunchSyncResult.LocalModified(
                             localSavePath = validatedPath ?: "",
                             serverTimestamp = serverTime,
-                            channelName = selectedChannel
+                            channelName = selectedChannel,
+                            serverSaveId = serverSave.id
                         )
                     }
                     Logger.debug(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Decision=SERVER_NEWER | Device is_current=false")
@@ -233,7 +236,7 @@ class SaveSyncConflictResolver @Inject constructor(
                     )
                 )
 
-                PreLaunchSyncResult.ServerIsNewer(serverTime, selectedChannel)
+                PreLaunchSyncResult.ServerIsNewer(serverTime, selectedChannel, serverSave.id)
             } catch (e: Exception) {
                 Logger.warn(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Error checking server saves", e)
                 PreLaunchSyncResult.NoConnection

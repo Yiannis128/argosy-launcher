@@ -312,7 +312,10 @@ class GameLaunchDelegate @Inject constructor(
                             android.util.Log.d("GameLaunchDelegate", "User chose to restore selected save - backing up local first")
                             if (emulatorId != null) {
                                 saveCacheManager.cacheAsRollback(gameId, emulatorId, info.localSavePath)
-                                val downloadResult = saveSyncRepository.downloadSave(gameId, emulatorId, info.channelName)
+                                val downloadResult = saveSyncRepository.downloadSave(
+                                    gameId, emulatorId, info.channelName,
+                                    knownServerSaveId = info.serverSaveId
+                                )
                                 android.util.Log.d("GameLaunchDelegate", "Download result after LocalModified restore: $downloadResult")
                                 gameRepository.updateActiveSaveApplied(gameId, true)
                             }

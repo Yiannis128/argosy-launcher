@@ -81,11 +81,14 @@ class LaunchWithSyncUseCase @Inject constructor(
                 emit(SyncState.Complete)
             }
             is PreLaunchSyncResult.LocalModified -> {
-                emit(SyncState.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName))
+                emit(SyncState.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName, syncResult.serverSaveId))
             }
             is PreLaunchSyncResult.ServerIsNewer -> {
                 emit(SyncState.Downloading)
-                val downloadResult = saveSyncRepository.downloadSave(gameId, emulatorId, syncResult.channelName)
+                val downloadResult = saveSyncRepository.downloadSave(
+                    gameId, emulatorId, syncResult.channelName,
+                    knownServerSaveId = syncResult.serverSaveId
+                )
                 when (downloadResult) {
                     is SaveSyncResult.Success -> {
                         emit(SyncState.Complete)
@@ -179,11 +182,14 @@ class LaunchWithSyncUseCase @Inject constructor(
                 emit(SyncProgress.PreLaunch.Launching(channelName))
             }
             is PreLaunchSyncResult.LocalModified -> {
-                emit(SyncProgress.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName))
+                emit(SyncProgress.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName, syncResult.serverSaveId))
             }
             is PreLaunchSyncResult.ServerIsNewer -> {
                 emit(SyncProgress.PreLaunch.Downloading(channelName))
-                val downloadResult = saveSyncRepository.downloadSave(gameId, emulatorId, syncResult.channelName)
+                val downloadResult = saveSyncRepository.downloadSave(
+                    gameId, emulatorId, syncResult.channelName,
+                    knownServerSaveId = syncResult.serverSaveId
+                )
                 when (downloadResult) {
                     is SaveSyncResult.Success -> {
                         emit(SyncProgress.PreLaunch.Downloading(channelName, success = true))

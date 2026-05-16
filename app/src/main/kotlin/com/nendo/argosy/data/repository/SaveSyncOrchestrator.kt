@@ -123,7 +123,7 @@ class SaveSyncOrchestrator @Inject constructor(
         for (syncEntity in pendingDownloads) {
             syncQueueManager.updateOperation(syncEntity.gameId) { it.copy(status = SyncStatus.IN_PROGRESS) }
 
-            when (val result = client.downloadSave(syncEntity.gameId, "default", syncEntity.channelName)) {
+            when (val result = client.downloadSave(syncEntity.gameId, "default", syncEntity.channelName, knownServerSaveId = syncEntity.rommSaveId)) {
                 is SaveSyncResult.Success -> {
                     syncQueueManager.completeOperation(syncEntity.gameId)
                     downloaded++
@@ -187,7 +187,7 @@ class SaveSyncOrchestrator @Inject constructor(
                 )
             )
 
-            val result = client.downloadSave(gameId, emulatorId, channelName, skipBackup = true)
+            val result = client.downloadSave(gameId, emulatorId, channelName, skipBackup = true, knownServerSaveId = serverSave.id)
             if (result is SaveSyncResult.Error) {
                 Logger.error(TAG, "syncSavesForNewDownload: failed '${serverSave.fileName}': ${result.message}")
             }

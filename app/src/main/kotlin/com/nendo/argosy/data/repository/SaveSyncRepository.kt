@@ -43,11 +43,16 @@ sealed class PreLaunchSyncResult {
     data object NoConnection : PreLaunchSyncResult()
     data object NoServerSave : PreLaunchSyncResult()
     data object LocalIsNewer : PreLaunchSyncResult()
-    data class ServerIsNewer(val serverTimestamp: Instant, val channelName: String?) : PreLaunchSyncResult()
+    data class ServerIsNewer(
+        val serverTimestamp: Instant,
+        val channelName: String?,
+        val serverSaveId: Long? = null
+    ) : PreLaunchSyncResult()
     data class LocalModified(
         val localSavePath: String,
         val serverTimestamp: Instant,
-        val channelName: String?
+        val channelName: String?,
+        val serverSaveId: Long? = null
     ) : PreLaunchSyncResult()
 }
 

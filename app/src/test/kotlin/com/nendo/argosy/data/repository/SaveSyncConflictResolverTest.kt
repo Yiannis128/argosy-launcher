@@ -794,4 +794,66 @@ class SaveSyncConflictResolverTest {
         coEvery { mockApiClient.checkSavesForGame(1L, 100L) } returns listOf(serverSave)
         coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any()) } returns entityWithRealPath
     }
+
+    // --- serverSaveId threading regression tests for #205 ---
+
+    @Test
+    fun `ServerIsNewer result carries the server save id`() = runTest {
+        val syncEntity = makeSyncEntity(lastUploadedHash = "abc")
+        val serverSave = makeServerSave(
+            id = 4242L,
+            deviceSyncs = listOf(RomMDeviceSync(deviceId = "device-1", isCurrent = false))
+        )
+        coEvery { mockApiClient.checkSavesForGame(1L, 100L) } returns listOf(serverSave)
+        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any()) } returns syncEntity
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any()) } returns null
+        coEvery { mockCacheManager.calculateLocalSaveHash(any()) } returns "abc"
+
+        val result = resolver.preLaunchSync(1L, 100L, "retroarch")
+
+        assertTrue(result is PreLaunchSyncResult.ServerIsNewer)
+        assertEquals(4242L, (result as PreLaunchSyncResult.ServerIsNewer).serverSaveId)
+    }
+
+    @Test
+    fun `LocalModified result carries the server save id`() = runTest {
+        val syncEntity = makeSyncEntity(
+            localSavePath = "/saves/test.srm",
+            lastUploadedHash = "abc123"
+        )
+        val serverSave = makeServerSave(
+            id = 9999L,
+            deviceSyncs = listOf(RomMDeviceSync(deviceId = "device-1", isCurrent = false))
+        )
+        coEvery { mockApiClient.checkSavesForGame(1L, 100L) } returns listOf(serverSave)
+        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any()) } returns syncEntity
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any()) } returns null
+        coEvery { mockCacheManager.calculateLocalSaveHash("/saves/test.srm") } returns "diverged_hash"
+
+        val result = resolver.preLaunchSync(1L, 100L, "retroarch")
+
+        assertTrue(result is PreLaunchSyncResult.LocalModified)
+        assertEquals(9999L, (result as PreLaunchSyncResult.LocalModified).serverSaveId)
+    }
+
+    @Test
+    fun `preLaunchSync upserts a sync entity with the server save id before returning ServerIsNewer`() = runTest {
+        val serverSave = makeServerSave(
+            id = 777L,
+            deviceSyncs = listOf(RomMDeviceSync(deviceId = "device-1", isCurrent = false))
+        )
+        coEvery { mockApiClient.checkSavesForGame(1L, 100L) } returns listOf(serverSave)
+        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any()) } returns null
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any()) } returns null
+
+        val result = resolver.preLaunchSync(1L, 100L, "retroarch")
+
+        assertTrue(result is PreLaunchSyncResult.ServerIsNewer)
+        coVerify {
+            saveSyncDao.upsert(match {
+                it.rommSaveId == 777L &&
+                    it.syncStatus == SaveSyncEntity.STATUS_SERVER_NEWER
+            })
+        }
+    }
 }
