@@ -222,16 +222,25 @@ data class RomMTokenResponse(
 
 @JsonClass(generateAdapter = true)
 data class RomMHeartbeatResponse(
-    @Json(name = "SYSTEM") val system: RomMSystem? = null
+    @Json(name = "SYSTEM") val system: RomMSystem? = null,
+    @Json(name = "METADATA_SOURCES") val metadataSources: RomMMetadataSources? = null
 ) {
     val version: String?
         get() = system?.version
+
+    val libretroApiEnabled: Boolean?
+        get() = metadataSources?.libretroApiEnabled
 }
 
 @JsonClass(generateAdapter = true)
 data class RomMSystem(
     @Json(name = "VERSION") val version: String? = null,
     @Json(name = "SHOW_SETUP_WIZARD") val showSetupWizard: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMMetadataSources(
+    @Json(name = "LIBRETRO_API_ENABLED") val libretroApiEnabled: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
