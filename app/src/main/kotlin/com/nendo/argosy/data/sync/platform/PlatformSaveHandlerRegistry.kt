@@ -3,6 +3,7 @@ package com.nendo.argosy.data.sync.platform
 import android.content.Context
 import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
+import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.util.Logger
@@ -21,8 +22,8 @@ import javax.inject.Singleton
  * platform switches in `SavePathValidator`.
  *
  * Adding a new folder-based platform = register one entry in [folderHandlers] (plus a slug
- * mapping in [slugAliases] if needed). Adding a new file-based platform = inject the handler
- * and add a branch to [getHandler].
+ * mapping in [PlatformDefinitions] aliases if needed). Adding a new file-based platform = inject
+ * the handler and add a branch to [getHandler].
  */
 @Singleton
 class PlatformSaveHandlerRegistry @Inject constructor(
@@ -48,12 +49,8 @@ class PlatformSaveHandlerRegistry @Inject constructor(
         Ps2FolderHandler(context, fal, saveArchiver)
     ).associateBy { it.platformSlug }
 
-    private val slugAliases: Map<String, String> = mapOf(
-        "psvita" to "vita"
-    )
-
     private fun canonicalSlug(platformSlug: String): String =
-        slugAliases[platformSlug] ?: platformSlug
+        PlatformDefinitions.getCanonicalSlug(platformSlug)
 
     /**
      * Resolve the handler for a save dispatch. Order matches the legacy `when` in

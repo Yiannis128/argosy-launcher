@@ -1111,7 +1111,7 @@ class LibretroActivity : ComponentActivity() {
             statesSupported = false
             return
         }
-        if (platformSlug in PLATFORMS_WITHOUT_STATE_SUPPORT) {
+        if (com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug) in PLATFORMS_WITHOUT_STATE_SUPPORT) {
             statesSupported = false
             Log.d(TAG, "State support disabled for platform=$platformSlug")
             return
@@ -1494,8 +1494,9 @@ class LibretroActivity : ComponentActivity() {
 
         if (!isL1R1 && !isL2R2) return false
 
-        if (isL1R1 && platformSlug in PLATFORMS_WITHOUT_SHOULDERS) return true
-        if (isL2R2 && platformSlug !in PLATFORMS_WITH_L2_R2) return true
+        val canonicalPlatform = com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug)
+        if (isL1R1 && canonicalPlatform in PLATFORMS_WITHOUT_SHOULDERS) return true
+        if (isL2R2 && canonicalPlatform !in PLATFORMS_WITH_L2_R2) return true
 
         return false
     }

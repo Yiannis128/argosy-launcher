@@ -6,6 +6,7 @@ import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
+import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
@@ -388,7 +389,7 @@ class SaveCacheManager @Inject constructor(
                 fal.mkdirs(targetPath)
                 val targetFile = fal.getTransformedFile(targetPath)
                 val game = gameDao.getById(entity.gameId)
-                val preserveRoots = game?.platformSlug == "psp"
+                val preserveRoots = game?.platformSlug?.let { PlatformDefinitions.getCanonicalSlug(it) } == "psp"
                 if (preserveRoots) {
                     saveArchiver.unzipToFolder(cacheFile, targetFile)
                 } else {
@@ -535,7 +536,8 @@ class SaveCacheManager @Inject constructor(
     private fun resolveFoldersToCache(saveFile: File, savePath: String, game: GameEntity?): List<File> {
         val titleId = game?.titleId
         val handler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
-        if (game?.platformSlug != "psp" || titleId == null || handler == null) {
+        val canonical = game?.platformSlug?.let { PlatformDefinitions.getCanonicalSlug(it) }
+        if (canonical != "psp" || titleId == null || handler == null) {
             return listOf(saveFile)
         }
         return handler.findAllSaveFoldersByTitleId(savePath, titleId)
@@ -546,7 +548,8 @@ class SaveCacheManager @Inject constructor(
     private suspend fun computeRestoredHash(game: GameEntity?, targetPath: String): String? {
         val titleId = game?.titleId
         val handler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
-        if (game?.platformSlug == "psp" && titleId != null && handler != null) {
+        val canonical = game?.platformSlug?.let { PlatformDefinitions.getCanonicalSlug(it) }
+        if (canonical == "psp" && titleId != null && handler != null) {
             val matched = handler.findAllSaveFoldersByTitleId(targetPath, titleId)
                 .map { fal.getTransformedFile(it) }
                 .filter { it.exists() && it.isDirectory }

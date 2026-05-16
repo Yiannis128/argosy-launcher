@@ -147,6 +147,11 @@ object PlatformDefinitions {
         "playstationportable" to "psp",
         "playstation_portable" to "psp",
         "playstation-portable" to "psp",
+        "psp-minis" to "psp",
+        "psp_minis" to "psp",
+        "pspminis" to "psp",
+        "playstation-portable-minis" to "psp",
+        "playstation_portable_minis" to "psp",
         // Microsoft
         "originalxbox" to "xbox",
         "original-xbox" to "xbox",

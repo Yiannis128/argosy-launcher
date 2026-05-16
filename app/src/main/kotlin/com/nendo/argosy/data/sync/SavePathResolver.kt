@@ -7,6 +7,7 @@ import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.TitleIdExtractor
 import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
@@ -340,7 +341,7 @@ class SavePathResolver @Inject constructor(
             return best.path
         }
 
-        if (platformSlug == "psp") {
+        if (PlatformDefinitions.getCanonicalSlug(platformSlug) == "psp") {
             val fallback = resolvedPaths.firstOrNull { directoryExists(it) }
             if (fallback != null) {
                 Logger.debug(TAG, "[SaveSync] DISCOVER | PSP fallback to existing parent for first-save watch | path=$fallback")
