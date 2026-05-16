@@ -48,6 +48,41 @@ class SaveSyncEntityManager @Inject constructor(
         }
     }
 
+    suspend fun markRestored(
+        gameId: Long,
+        rommId: Long,
+        emulatorId: String,
+        channelName: String?,
+        localPath: String,
+        rommSaveId: Long?,
+        serverTimestamp: Instant?,
+        contentHash: String?
+    ) {
+        val existing = if (channelName != null) {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName)
+                ?: saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, channelName)
+        } else {
+            saveSyncDao.getByGameAndEmulator(gameId, emulatorId)
+        }
+        val now = Instant.now()
+        saveSyncDao.upsert(
+            SaveSyncEntity(
+                id = existing?.id ?: 0,
+                gameId = gameId,
+                rommId = rommId,
+                emulatorId = emulatorId,
+                channelName = channelName,
+                rommSaveId = rommSaveId ?: existing?.rommSaveId,
+                localSavePath = localPath,
+                localUpdatedAt = now,
+                serverUpdatedAt = serverTimestamp ?: existing?.serverUpdatedAt,
+                lastSyncedAt = now,
+                lastUploadedHash = contentHash ?: existing?.lastUploadedHash,
+                syncStatus = SaveSyncEntity.STATUS_SYNCED
+            )
+        )
+    }
+
     suspend fun createOrUpdateSyncEntity(
         gameId: Long,
         rommId: Long,
