@@ -5,6 +5,7 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -601,14 +602,16 @@ private fun DrawerMenuItem(
         if (badge != null) {
             Box(
                 modifier = Modifier
-                    .size(Dimens.iconMd)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    .defaultMinSize(minWidth = Dimens.iconMd, minHeight = Dimens.iconMd)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .padding(horizontal = Dimens.spacingXs),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = badge.toString(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    maxLines = 1
                 )
             }
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
