@@ -350,7 +350,10 @@ class DisplaySettingsDelegate @Inject constructor(
     }
 
     fun cycleSystemIconPosition(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.systemIconPosition, direction)
+        val corners = SystemIconPosition.CORNERS
+        val current = _state.value.systemIconPosition
+        val idx = corners.indexOf(current).coerceAtLeast(0)
+        val next = corners[(idx + direction).mod(corners.size)]
         scope.launch {
             preferencesRepository.setSystemIconPosition(next)
             _state.update { it.copy(systemIconPosition = next) }

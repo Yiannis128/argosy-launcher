@@ -152,6 +152,81 @@ internal class GlassCombinedShape(
                 }
                 path.op(path, bottomEar, PathOperation.Union)
             }
+            SystemIconPosition.BOTTOM_LEFT -> {
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = 0f,
+                        top = badgeTop,
+                        right = badgeWidth,
+                        bottom = size.height,
+                        bottomLeftCornerRadius = CornerRadius(badgeCornerRadius),
+                        topRightCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val rightEarX = badgeWidth - oneDpPx
+                val rightEarY = size.height - frameWidth + oneDpPx
+                val rightEar = Path().apply {
+                    moveTo(rightEarX, rightEarY)
+                    lineTo(rightEarX + badgeCornerRadius, rightEarY)
+                    arcTo(
+                        Rect(rightEarX, rightEarY - badgeCornerRadius * 2, rightEarX + badgeCornerRadius * 2, rightEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, rightEar, PathOperation.Union)
+                val topEarX = frameWidth - oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX + badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX, topEarY - badgeCornerRadius * 2, topEarX + badgeCornerRadius * 2, topEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
+            }
+            SystemIconPosition.BOTTOM_RIGHT -> {
+                val badgeLeft = size.width - badgeWidth
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = badgeLeft,
+                        top = badgeTop,
+                        right = size.width,
+                        bottom = size.height,
+                        bottomRightCornerRadius = CornerRadius(badgeCornerRadius),
+                        topLeftCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val leftEarX = badgeLeft + oneDpPx
+                val leftEarY = size.height - frameWidth + oneDpPx
+                val leftEar = Path().apply {
+                    moveTo(leftEarX, leftEarY)
+                    lineTo(leftEarX - badgeCornerRadius, leftEarY)
+                    arcTo(
+                        Rect(leftEarX - badgeCornerRadius * 2, leftEarY - badgeCornerRadius * 2, leftEarX, leftEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, leftEar, PathOperation.Union)
+                val topEarX = size.width - frameWidth + oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX - badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX - badgeCornerRadius * 2, topEarY - badgeCornerRadius * 2, topEarX, topEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
+            }
             else -> {}
         }
         return path
@@ -308,6 +383,81 @@ internal class InnerEffectShape(
                 }
                 path.op(path, bottomEar, PathOperation.Union)
             }
+            SystemIconPosition.BOTTOM_LEFT -> {
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = 0f,
+                        top = badgeTop,
+                        right = badgeWidth,
+                        bottom = size.height,
+                        bottomLeftCornerRadius = CornerRadius(badgeCornerRadius),
+                        topRightCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val rightEarX = badgeWidth - oneDpPx
+                val rightEarY = size.height - frameWidth + oneDpPx
+                val rightEar = Path().apply {
+                    moveTo(rightEarX, rightEarY)
+                    lineTo(rightEarX + badgeCornerRadius, rightEarY)
+                    arcTo(
+                        Rect(rightEarX, rightEarY - badgeCornerRadius * 2, rightEarX + badgeCornerRadius * 2, rightEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, rightEar, PathOperation.Union)
+                val topEarX = frameWidth - oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX + badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX, topEarY - badgeCornerRadius * 2, topEarX + badgeCornerRadius * 2, topEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
+            }
+            SystemIconPosition.BOTTOM_RIGHT -> {
+                val badgeLeft = size.width - badgeWidth
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = badgeLeft,
+                        top = badgeTop,
+                        right = size.width,
+                        bottom = size.height,
+                        bottomRightCornerRadius = CornerRadius(badgeCornerRadius),
+                        topLeftCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val leftEarX = badgeLeft + oneDpPx
+                val leftEarY = size.height - frameWidth + oneDpPx
+                val leftEar = Path().apply {
+                    moveTo(leftEarX, leftEarY)
+                    lineTo(leftEarX - badgeCornerRadius, leftEarY)
+                    arcTo(
+                        Rect(leftEarX - badgeCornerRadius * 2, leftEarY - badgeCornerRadius * 2, leftEarX, leftEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, leftEar, PathOperation.Union)
+                val topEarX = size.width - frameWidth + oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX - badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX - badgeCornerRadius * 2, topEarY - badgeCornerRadius * 2, topEarX, topEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
+            }
             else -> {}
         }
         return path
@@ -448,6 +598,81 @@ internal class GlassRingShape(
                     close()
                 }
                 path.op(path, bottomEar, PathOperation.Union)
+            }
+            SystemIconPosition.BOTTOM_LEFT -> {
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = 0f,
+                        top = badgeTop,
+                        right = badgeWidth,
+                        bottom = size.height,
+                        bottomLeftCornerRadius = CornerRadius(badgeCornerRadius),
+                        topRightCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val rightEarX = badgeWidth - oneDpPx
+                val rightEarY = size.height - frameWidth + oneDpPx
+                val rightEar = Path().apply {
+                    moveTo(rightEarX, rightEarY)
+                    lineTo(rightEarX + badgeCornerRadius, rightEarY)
+                    arcTo(
+                        Rect(rightEarX, rightEarY - badgeCornerRadius * 2, rightEarX + badgeCornerRadius * 2, rightEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, rightEar, PathOperation.Union)
+                val topEarX = frameWidth - oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX + badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX, topEarY - badgeCornerRadius * 2, topEarX + badgeCornerRadius * 2, topEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
+            }
+            SystemIconPosition.BOTTOM_RIGHT -> {
+                val badgeLeft = size.width - badgeWidth
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = badgeLeft,
+                        top = badgeTop,
+                        right = size.width,
+                        bottom = size.height,
+                        bottomRightCornerRadius = CornerRadius(badgeCornerRadius),
+                        topLeftCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val leftEarX = badgeLeft + oneDpPx
+                val leftEarY = size.height - frameWidth + oneDpPx
+                val leftEar = Path().apply {
+                    moveTo(leftEarX, leftEarY)
+                    lineTo(leftEarX - badgeCornerRadius, leftEarY)
+                    arcTo(
+                        Rect(leftEarX - badgeCornerRadius * 2, leftEarY - badgeCornerRadius * 2, leftEarX, leftEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, leftEar, PathOperation.Union)
+                val topEarX = size.width - frameWidth + oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX - badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX - badgeCornerRadius * 2, topEarY - badgeCornerRadius * 2, topEarX, topEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
             }
             else -> {}
         }
@@ -596,6 +821,81 @@ internal class GradientMaskShape(
                     close()
                 }
                 path.op(path, bottomEar, PathOperation.Union)
+            }
+            SystemIconPosition.BOTTOM_LEFT -> {
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = 0f,
+                        top = badgeTop,
+                        right = badgeWidth,
+                        bottom = size.height,
+                        bottomLeftCornerRadius = CornerRadius(badgeCornerRadius),
+                        topRightCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val rightEarX = badgeWidth - oneDpPx
+                val rightEarY = size.height - borderOffsetPx + oneDpPx
+                val rightEar = Path().apply {
+                    moveTo(rightEarX, rightEarY)
+                    lineTo(rightEarX + badgeCornerRadius, rightEarY)
+                    arcTo(
+                        Rect(rightEarX, rightEarY - badgeCornerRadius * 2, rightEarX + badgeCornerRadius * 2, rightEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, rightEar, PathOperation.Union)
+                val topEarX = borderOffsetPx - oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX + badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX, topEarY - badgeCornerRadius * 2, topEarX + badgeCornerRadius * 2, topEarY),
+                        90f, 90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
+            }
+            SystemIconPosition.BOTTOM_RIGHT -> {
+                val badgeLeft = size.width - badgeWidth
+                val badgeTop = size.height - badgeHeight
+                path.addRoundRect(
+                    RoundRect(
+                        left = badgeLeft,
+                        top = badgeTop,
+                        right = size.width,
+                        bottom = size.height,
+                        bottomRightCornerRadius = CornerRadius(badgeCornerRadius),
+                        topLeftCornerRadius = CornerRadius(badgeCornerRadius)
+                    )
+                )
+                val leftEarX = badgeLeft + oneDpPx
+                val leftEarY = size.height - borderOffsetPx + oneDpPx
+                val leftEar = Path().apply {
+                    moveTo(leftEarX, leftEarY)
+                    lineTo(leftEarX - badgeCornerRadius, leftEarY)
+                    arcTo(
+                        Rect(leftEarX - badgeCornerRadius * 2, leftEarY - badgeCornerRadius * 2, leftEarX, leftEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, leftEar, PathOperation.Union)
+                val topEarX = size.width - borderOffsetPx + oneDpPx
+                val topEarY = badgeTop + oneDpPx
+                val topEar = Path().apply {
+                    moveTo(topEarX, topEarY)
+                    lineTo(topEarX - badgeCornerRadius, topEarY)
+                    arcTo(
+                        Rect(topEarX - badgeCornerRadius * 2, topEarY - badgeCornerRadius * 2, topEarX, topEarY),
+                        90f, -90f, false
+                    )
+                    close()
+                }
+                path.op(path, topEar, PathOperation.Union)
             }
             else -> {}
         }

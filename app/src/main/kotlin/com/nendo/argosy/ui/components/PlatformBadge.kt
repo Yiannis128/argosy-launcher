@@ -1,10 +1,12 @@
 package com.nendo.argosy.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
@@ -19,7 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -58,13 +61,6 @@ internal fun SystemIconPosition.spineEdge(aspectRatio: Float): SpineEdge {
         SystemIconPosition.BOTTOM_RIGHT -> if (vertical) SpineEdge.RIGHT else SpineEdge.BOTTOM
         else -> SpineEdge.TOP
     }
-}
-
-internal fun coverShapeForSpine(edge: SpineEdge, outerCornerRadius: Dp): RoundedCornerShape = when (edge) {
-    SpineEdge.TOP -> RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = outerCornerRadius, bottomEnd = outerCornerRadius)
-    SpineEdge.BOTTOM -> RoundedCornerShape(topStart = outerCornerRadius, topEnd = outerCornerRadius, bottomStart = 0.dp, bottomEnd = 0.dp)
-    SpineEdge.LEFT -> RoundedCornerShape(topStart = 0.dp, topEnd = outerCornerRadius, bottomStart = 0.dp, bottomEnd = outerCornerRadius)
-    SpineEdge.RIGHT -> RoundedCornerShape(topStart = outerCornerRadius, topEnd = 0.dp, bottomStart = outerCornerRadius, bottomEnd = 0.dp)
 }
 
 private enum class EarPosition {
@@ -109,16 +105,16 @@ private class CurvedEarShape(
         moveTo(r, 0f); lineTo(0f, 0f); arcTo(Rect(-r, 0f, r, r * 2), 270f, 90f, false); close()
     }
     private fun earBottomLeftHorizontal(r: Float): Path = Path().apply {
-        moveTo(0f, r); lineTo(r, r); arcTo(Rect(0f, -r, r * 2, r), 90f, -90f, false); close()
+        moveTo(0f, r); lineTo(r, r); arcTo(Rect(0f, -r, r * 2, r), 90f, 90f, false); close()
     }
     private fun earBottomLeftVertical(r: Float): Path = Path().apply {
-        moveTo(0f, r); lineTo(0f, 0f); arcTo(Rect(0f, -r, r * 2, r), 180f, -90f, false); close()
+        moveTo(0f, r); lineTo(r, r); arcTo(Rect(0f, -r, r * 2, r), 90f, 90f, false); close()
     }
     private fun earBottomRightHorizontal(r: Float): Path = Path().apply {
-        moveTo(r, r); lineTo(0f, r); arcTo(Rect(-r, -r, r, r), 90f, 90f, false); close()
+        moveTo(r, r); lineTo(0f, r); arcTo(Rect(-r, -r, r, r), 90f, -90f, false); close()
     }
     private fun earBottomRightVertical(r: Float): Path = Path().apply {
-        moveTo(r, r); lineTo(r, 0f); arcTo(Rect(-r, -r, r, r), 0f, -90f, false); close()
+        moveTo(r, r); lineTo(0f, r); arcTo(Rect(-r, -r, r, r), 90f, -90f, false); close()
     }
 }
 
@@ -132,7 +128,7 @@ fun PlatformBadge(
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
     val position = boxArtStyle.systemIconPosition
-    if (position == SystemIconPosition.OFF) return
+    if (position == SystemIconPosition.OFF || boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.OFF) return
 
     val scale = (cardWidthDp / BASE_WIDTH_DP).coerceIn(0.5f, 2f)
     val outerCornerRadius = boxArtStyle.cornerRadiusDp
@@ -156,7 +152,11 @@ fun PlatformBadge(
 
     val content = boxArtStyle.platformIndicatorContent
     val iconUri = resolveIconUri(platformSlug, content)
-    val effectiveContent = if (content == PlatformIndicatorContent.ICON && iconUri == null) PlatformIndicatorContent.NAME else content
+    val effectiveContent = when {
+        content == PlatformIndicatorContent.ICON && iconUri == null -> PlatformIndicatorContent.NAME
+        content == PlatformIndicatorContent.NAME_AND_ICON && iconUri == null -> PlatformIndicatorContent.NAME
+        else -> content
+    }
 
     val tabContent: @Composable () -> Unit = {
         BadgeInnerContent(
@@ -204,6 +204,26 @@ private fun BadgeInnerContent(
             contentScale = ContentScale.Fit,
             modifier = Modifier.size((fontSize.value * 1.5f).dp)
         )
+        PlatformIndicatorContent.NAME_AND_ICON -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AsyncImage(
+                model = iconUri,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size((fontSize.value * 1.3f).dp)
+            )
+            Text(
+                text = displayName,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                lineHeight = fontSize,
+                maxLines = 1,
+                overflow = TextOverflow.Clip
+            )
+        }
         PlatformIndicatorContent.NAME -> Text(
             text = displayName,
             fontSize = fontSize,
@@ -265,7 +285,7 @@ private fun TabBottomLeft(
             Box(Modifier.offset(x = borderOffset - 1.dp, y = 1.dp).size(earSize)
                 .clip(remember(outerR) { CurvedEarShape(outerR, EarPosition.BOTTOM_LEFT_TOP) }).background(badgeColor))
         }
-        Row {
+        Row(verticalAlignment = Alignment.Bottom) {
             Box(Modifier.clip(shape).background(badgeColor).padding(horizontal = hPad, vertical = vPad), Alignment.Center) { body() }
             Box(Modifier.offset(x = (-1).dp, y = -(borderOffset - 1.dp)).size(earSize)
                 .clip(remember(outerR) { CurvedEarShape(outerR, EarPosition.BOTTOM_LEFT_RIGHT) }).background(badgeColor))
@@ -284,7 +304,7 @@ private fun TabBottomRight(
             Box(Modifier.offset(x = -(borderOffset - 1.dp), y = 1.dp).size(earSize)
                 .clip(remember(outerR) { CurvedEarShape(outerR, EarPosition.BOTTOM_RIGHT_TOP) }).background(badgeColor))
         }
-        Row {
+        Row(verticalAlignment = Alignment.Bottom) {
             Box(Modifier.offset(x = 1.dp, y = -(borderOffset - 1.dp)).size(earSize)
                 .clip(remember(outerR) { CurvedEarShape(outerR, EarPosition.BOTTOM_RIGHT_LEFT) }).background(badgeColor))
             Box(Modifier.clip(shape).background(badgeColor).padding(horizontal = hPad, vertical = vPad), Alignment.Center) { body() }
@@ -292,70 +312,22 @@ private fun TabBottomRight(
     }
 }
 
-@Composable
-internal fun PlatformSpine(
-    platformDisplayName: String,
-    platformSlug: String,
-    edge: SpineEdge,
-    bottomAnchored: Boolean,
-    isFocused: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val boxArtStyle = LocalBoxArtStyle.current
-    val spineColor = when {
-        isFocused && boxArtStyle.borderStyle != BoxArtBorderStyle.SOLID -> Color.Black.copy(alpha = 0.45f)
-        boxArtStyle.borderStyle != BoxArtBorderStyle.SOLID -> Color.Black.copy(alpha = 0.6f)
-        else -> MaterialTheme.colorScheme.primary
-    }
-    val textColor = Color.White
-    val fontSize = 12.sp
-    val content = boxArtStyle.platformIndicatorContent
-    val iconUri = resolveIconUri(platformSlug, content)
-    val effectiveContent = if (content == PlatformIndicatorContent.ICON && iconUri == null) PlatformIndicatorContent.NAME else content
-    val displayName = platformDisplayName.uppercase()
-
-    val isHorizontal = edge == SpineEdge.TOP || edge == SpineEdge.BOTTOM
-
-    Box(
-        modifier = modifier
-            .background(spineColor),
-        contentAlignment = Alignment.Center
-    ) {
-        when (effectiveContent) {
-            PlatformIndicatorContent.ICON -> AsyncImage(
-                model = iconUri,
-                contentDescription = displayName,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.size(18.dp)
-            )
-            PlatformIndicatorContent.NAME -> {
-                val rotation = when {
-                    isHorizontal -> 0f
-                    edge == SpineEdge.LEFT && bottomAnchored -> 90f
-                    edge == SpineEdge.LEFT -> -90f
-                    edge == SpineEdge.RIGHT && bottomAnchored -> -90f
-                    else -> 90f
-                }
-                Text(
-                    text = displayName,
-                    fontSize = fontSize,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    lineHeight = fontSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .rotate(rotation)
-                        .padding(horizontal = 8.dp)
-                )
-            }
-        }
+// Swap measured width/height so a rotated child reports a vertical bounding box
+// to its parent. Compose's Modifier.rotate is draw-only and leaves the layout slot
+// unchanged, which clips rotated text inside narrow vertical containers.
+private fun Modifier.vertical(): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(maxWidth = Int.MAX_VALUE, maxHeight = Int.MAX_VALUE))
+    layout(placeable.height, placeable.width) {
+        placeable.place(
+            x = -(placeable.width / 2 - placeable.height / 2),
+            y = -(placeable.height / 2 - placeable.width / 2)
+        )
     }
 }
 
 @Composable
 private fun resolveIconUri(platformSlug: String, content: PlatformIndicatorContent): String? {
-    if (content != PlatformIndicatorContent.ICON) return null
+    if (content == PlatformIndicatorContent.NAME) return null
     val context = LocalContext.current
     return remember(platformSlug) { PlatformIconAssets.resolveAssetUri(context, platformSlug) }
 }
@@ -369,36 +341,126 @@ fun PlatformSpinePlacement(
     platformSlug: String,
     isFocused: Boolean,
     modifier: Modifier = Modifier,
-    cover: @Composable (coverShape: RoundedCornerShape) -> Unit
+    coverArea: @Composable (coverShape: RoundedCornerShape) -> Unit
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
     val edge = boxArtStyle.systemIconPosition.spineEdge(boxArtStyle.aspectRatio)
     val bottomAnchored = boxArtStyle.systemIconPosition == SystemIconPosition.BOTTOM_LEFT ||
         boxArtStyle.systemIconPosition == SystemIconPosition.BOTTOM_RIGHT
     val outerR = boxArtStyle.cornerRadiusDp
-    val coverShape = coverShapeForSpine(edge, outerR)
     val spineThickness = SPINE_THICKNESS_DP
+    val coverShape = RoundedCornerShape(outerR)
 
-    when (edge) {
-        SpineEdge.TOP -> Column(modifier = modifier) {
-            PlatformSpine(platformDisplayName, platformSlug, edge, bottomAnchored, isFocused,
-                Modifier.fillMaxWidth().heightIn(min = spineThickness, max = spineThickness))
-            Box(modifier = Modifier.weight(1f, fill = true)) { cover(coverShape) }
+    val margin = if (isFocused) boxArtStyle.borderThicknessDp else 0.dp
+    val coverPadding = when (edge) {
+        SpineEdge.TOP -> androidx.compose.foundation.layout.PaddingValues(top = spineThickness, start = margin, end = margin, bottom = margin)
+        SpineEdge.BOTTOM -> androidx.compose.foundation.layout.PaddingValues(bottom = spineThickness, start = margin, end = margin, top = margin)
+        SpineEdge.LEFT -> androidx.compose.foundation.layout.PaddingValues(start = spineThickness, top = margin, bottom = margin, end = margin)
+        SpineEdge.RIGHT -> androidx.compose.foundation.layout.PaddingValues(end = spineThickness, top = margin, bottom = margin, start = margin)
+    }
+
+    val labelAlign = when (edge) {
+        SpineEdge.TOP -> Alignment.TopCenter
+        SpineEdge.BOTTOM -> Alignment.BottomCenter
+        SpineEdge.LEFT -> Alignment.CenterStart
+        SpineEdge.RIGHT -> Alignment.CenterEnd
+    }
+    val labelSize: Modifier = when (edge) {
+        SpineEdge.TOP, SpineEdge.BOTTOM -> Modifier.fillMaxWidth().heightIn(min = spineThickness, max = spineThickness)
+        SpineEdge.LEFT, SpineEdge.RIGHT -> Modifier.fillMaxHeight().widthIn(min = spineThickness, max = spineThickness)
+    }
+
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier.align(labelAlign).then(labelSize),
+            contentAlignment = Alignment.Center
+        ) {
+            PlatformSpineLabel(
+                platformDisplayName = platformDisplayName,
+                platformSlug = platformSlug,
+                edge = edge,
+                bottomAnchored = bottomAnchored
+            )
         }
-        SpineEdge.BOTTOM -> Column(modifier = modifier) {
-            Box(modifier = Modifier.weight(1f, fill = true)) { cover(coverShape) }
-            PlatformSpine(platformDisplayName, platformSlug, edge, bottomAnchored, isFocused,
-                Modifier.fillMaxWidth().heightIn(min = spineThickness, max = spineThickness))
+        Box(modifier = Modifier.fillMaxSize().padding(coverPadding)) {
+            Box(modifier = Modifier.fillMaxSize().clip(coverShape)) {
+                coverArea(coverShape)
+            }
         }
-        SpineEdge.LEFT -> Row(modifier = modifier) {
-            PlatformSpine(platformDisplayName, platformSlug, edge, bottomAnchored, isFocused,
-                Modifier.fillMaxHeight().widthIn(min = spineThickness, max = spineThickness))
-            Box(modifier = Modifier.weight(1f, fill = true)) { cover(coverShape) }
-        }
-        SpineEdge.RIGHT -> Row(modifier = modifier) {
-            Box(modifier = Modifier.weight(1f, fill = true)) { cover(coverShape) }
-            PlatformSpine(platformDisplayName, platformSlug, edge, bottomAnchored, isFocused,
-                Modifier.fillMaxHeight().widthIn(min = spineThickness, max = spineThickness))
+    }
+}
+
+@Composable
+private fun PlatformSpineLabel(
+    platformDisplayName: String,
+    platformSlug: String,
+    edge: SpineEdge,
+    bottomAnchored: Boolean
+) {
+    val boxArtStyle = LocalBoxArtStyle.current
+    val content = boxArtStyle.platformIndicatorContent
+    val iconUri = resolveIconUri(platformSlug, content)
+    val effectiveContent = when {
+        content == PlatformIndicatorContent.ICON && iconUri == null -> PlatformIndicatorContent.NAME
+        content == PlatformIndicatorContent.NAME_AND_ICON && iconUri == null -> PlatformIndicatorContent.NAME
+        else -> content
+    }
+    val displayName = platformDisplayName.uppercase()
+    val isHorizontal = edge == SpineEdge.TOP || edge == SpineEdge.BOTTOM
+    val textColor = Color.White
+    val fontSize = 12.sp
+
+    val rotation = when {
+        isHorizontal -> 0f
+        edge == SpineEdge.LEFT && bottomAnchored -> 90f
+        edge == SpineEdge.LEFT -> -90f
+        edge == SpineEdge.RIGHT && bottomAnchored -> -90f
+        else -> 90f
+    }
+
+    val labelModifier = if (isHorizontal) {
+        Modifier.padding(horizontal = 8.dp)
+    } else {
+        Modifier.vertical().graphicsLayer { rotationZ = rotation }
+    }
+
+    when (effectiveContent) {
+        PlatformIndicatorContent.ICON -> AsyncImage(
+            model = iconUri,
+            contentDescription = displayName,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.size(16.dp)
+        )
+        PlatformIndicatorContent.NAME -> Text(
+            text = displayName,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Bold,
+            color = textColor,
+            lineHeight = fontSize,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = labelModifier
+        )
+        PlatformIndicatorContent.NAME_AND_ICON -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = labelModifier
+        ) {
+            AsyncImage(
+                model = iconUri,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = displayName,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                lineHeight = fontSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

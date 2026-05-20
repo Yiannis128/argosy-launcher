@@ -685,13 +685,17 @@ enum class SystemIconPosition {
     OFF, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT;
 
     companion object {
+        // Cycleable corner positions only. OFF is reserved as an internal sentinel
+        // (BoxArtShapes carve-out gating) and is reached via PlatformIndicatorStyle.OFF.
+        val CORNERS: List<SystemIconPosition> = listOf(TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT)
+
         fun fromString(value: String?): SystemIconPosition =
             entries.find { it.name == value } ?: TOP_LEFT
     }
 }
 
 enum class PlatformIndicatorStyle {
-    TAB, SPINE;
+    OFF, TAB, SPINE;
 
     companion object {
         fun fromString(value: String?): PlatformIndicatorStyle =
@@ -700,7 +704,7 @@ enum class PlatformIndicatorStyle {
 }
 
 enum class PlatformIndicatorContent {
-    NAME, ICON;
+    NAME, ICON, NAME_AND_ICON;
 
     companion object {
         fun fromString(value: String?): PlatformIndicatorContent =

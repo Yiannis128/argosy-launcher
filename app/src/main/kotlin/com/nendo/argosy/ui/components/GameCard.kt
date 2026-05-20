@@ -157,6 +157,31 @@ fun GameCard(
     val borderColor = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(boxArtStyle.cornerRadiusDp)
 
+    val spineActiveForBackground = showPlatformBadge &&
+        boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.SPINE
+    val cardBackgroundBrush: androidx.compose.ui.graphics.Brush = if (spineActiveForBackground) {
+        val accent = boxArtStyle.accentColor
+        val secondary = boxArtStyle.secondaryColor
+        val fallbackPrimary = accent ?: MaterialTheme.colorScheme.primary
+        val fallbackSecondary = secondary ?: fallbackPrimary
+        when (boxArtStyle.borderStyle) {
+            BoxArtBorderStyle.GRADIENT -> {
+                val (a, b) = coverGradientColors ?: (fallbackPrimary to fallbackSecondary)
+                androidx.compose.ui.graphics.Brush.linearGradient(listOf(a, b))
+            }
+            BoxArtBorderStyle.GLASS -> {
+                val base = coverGradientColors?.first ?: fallbackPrimary
+                val highlight = coverGradientColors?.second ?: base
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(highlight.copy(alpha = 0.85f), base.copy(alpha = 0.6f))
+                )
+            }
+            else -> androidx.compose.ui.graphics.SolidColor(fallbackPrimary)
+        }
+    } else {
+        androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.surfaceVariant)
+    }
+
     val outerShineTransition = if (outerEffect == BoxArtOuterEffect.SHINE && isFocused) {
         rememberInfiniteTransition(label = "outerShine")
     } else null
@@ -263,19 +288,31 @@ fun GameCard(
                 } else Modifier
             )
             .then(
-                if (isFocused && boxArtStyle.borderThicknessDp.value > 0f && boxArtStyle.borderStyle == BoxArtBorderStyle.SOLID) {
+                if (!spineActiveForBackground && isFocused && boxArtStyle.borderThicknessDp.value > 0f && boxArtStyle.borderStyle == BoxArtBorderStyle.SOLID) {
                     Modifier.border(boxArtStyle.borderThicknessDp, borderColor, shape)
                 } else Modifier
             )
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(cardBackgroundBrush)
     ) {
+        val spineBlurredBackdrop = spineActiveForBackground &&
+            boxArtStyle.borderStyle == BoxArtBorderStyle.GLASS &&
+            effectiveCoverPath.isNotEmpty()
+        if (spineBlurredBackdrop) {
+            AsyncImage(
+                model = rememberFileImageModel(effectiveCoverPath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(16.dp)
+            )
+        }
+
         val density = LocalDensity.current
         val outerCornerRadiusPx = with(density) { boxArtStyle.cornerRadiusDp.toPx() }
         val frameWidthPx = with(density) { boxArtStyle.borderThicknessDp.toPx() }
         val oneDpPx = with(density) { 1.dp.toPx() }
-        val useGlassBorder = isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GLASS
-        val useGradientBorder = isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GRADIENT
+        val useGlassBorder = !spineActiveForBackground && isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GLASS
+        val useGradientBorder = !spineActiveForBackground && isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GRADIENT
         val isStub = effectiveCoverPath.isEmpty()
 
         val gradientColors = game.gradientColors
@@ -297,18 +334,27 @@ fun GameCard(
         val displayName = if (showPlatformBadge) game.platformSlug.take(8) else ""
         val fontSizePx = with(density) { (baseFontSizeSp * badgeScale).dp.toPx() }
         val estimatedTextWidthPx = displayName.length * fontSizePx * 0.7f
-        val badgeWidthPx = with(density) { estimatedTextWidthPx + horizontalPadding.toPx() * 2 }
+        val platformContent = boxArtStyle.platformIndicatorContent
+        val iconExtraPx = when (platformContent) {
+            com.nendo.argosy.data.preferences.PlatformIndicatorContent.ICON -> fontSizePx * 1.5f
+            com.nendo.argosy.data.preferences.PlatformIndicatorContent.NAME_AND_ICON ->
+                fontSizePx * 1.3f + with(density) { 6.dp.toPx() }
+            else -> 0f
+        }
+        val contentTextPx = if (platformContent == com.nendo.argosy.data.preferences.PlatformIndicatorContent.ICON) 0f else estimatedTextWidthPx
+        val badgeWidthPx = with(density) { contentTextPx + iconExtraPx + horizontalPadding.toPx() * 2 }
         val badgeHeightPx = with(density) { fontSizePx + verticalPadding.toPx() * 2 }
         val scaledCornerRadiusPx = with(density) { scaledCornerRadius.toPx() }
 
-        val innerEffect = boxArtStyle.innerEffect
-        val innerEffectWidth = boxArtStyle.innerEffectThicknessPx
-
-        val spineActive = showPlatformBadge &&
-            boxArtStyle.systemIconPosition != SystemIconPosition.OFF &&
+        val indicatorActive = showPlatformBadge &&
+            boxArtStyle.platformIndicatorStyle != com.nendo.argosy.data.preferences.PlatformIndicatorStyle.OFF
+        val spineActive = indicatorActive &&
             boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.SPINE
-        val effectiveBadgePosition = if (showPlatformBadge &&
-            boxArtStyle.systemIconPosition != SystemIconPosition.OFF &&
+        // Skip the cover's inner edge effect when the spine container wraps the cover;
+        // the stroke at the cover's spine-side edge reads as a hard line between spine and cover.
+        val innerEffect = if (spineActive) BoxArtInnerEffect.OFF else boxArtStyle.innerEffect
+        val innerEffectWidth = boxArtStyle.innerEffectThicknessPx
+        val effectiveBadgePosition = if (indicatorActive &&
             boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.TAB) {
             boxArtStyle.systemIconPosition
         } else {
@@ -370,7 +416,15 @@ fun GameCard(
                 platformSlug = game.platformSlug,
                 isFocused = isFocused,
                 modifier = Modifier.fillMaxSize()
-            ) { _ -> coverBody() }
+            ) { _ ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    coverBody()
+                    StatusIndicators(
+                        isFavorite = game.isFavorite,
+                        isDownloaded = game.isDownloaded
+                    )
+                }
+            }
         } else {
             coverBody()
         }
@@ -385,7 +439,7 @@ fun GameCard(
             )
         }
 
-        if (showPlatformBadge && boxArtStyle.systemIconPosition != SystemIconPosition.OFF &&
+        if (indicatorActive &&
             boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.TAB) {
             val badgeAlignment = when (boxArtStyle.systemIconPosition) {
                 SystemIconPosition.TOP_LEFT -> Alignment.TopStart
@@ -404,10 +458,16 @@ fun GameCard(
             )
         }
 
-        StatusIndicators(
-            isFavorite = game.isFavorite,
-            isDownloaded = game.isDownloaded
-        )
+        if (!spineActive) {
+            val tabAtBottom = boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.TAB &&
+                (boxArtStyle.systemIconPosition == SystemIconPosition.BOTTOM_LEFT ||
+                 boxArtStyle.systemIconPosition == SystemIconPosition.BOTTOM_RIGHT)
+            StatusIndicators(
+                isFavorite = game.isFavorite,
+                isDownloaded = game.isDownloaded,
+                tabAtBottom = tabAtBottom
+            )
+        }
     }
 }
 
@@ -729,15 +789,22 @@ private fun GradientBorderOverlay(
 }
 
 @Composable
-private fun BoxScope.StatusIndicators(isFavorite: Boolean, isDownloaded: Boolean) {
+private fun BoxScope.StatusIndicators(
+    isFavorite: Boolean,
+    isDownloaded: Boolean,
+    tabAtBottom: Boolean = false
+) {
     if (!isFavorite && !isDownloaded) return
 
     Row(
         modifier = Modifier
-            .align(Alignment.BottomCenter)
+            .align(if (tabAtBottom) Alignment.TopCenter else Alignment.BottomCenter)
             .fillMaxWidth()
             .padding(horizontal = Dimens.spacingSm)
-            .padding(bottom = Dimens.spacingXs),
+            .then(
+                if (tabAtBottom) Modifier.padding(top = Dimens.spacingXs)
+                else Modifier.padding(bottom = Dimens.spacingXs)
+            ),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         IndicatorBadge(

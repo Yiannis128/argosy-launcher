@@ -152,7 +152,12 @@ class DisplayPreferencesRepository @Inject constructor(
             gradientAdvancedMode = prefs[Keys.GRADIENT_ADVANCED_MODE] ?: false,
             systemIconPosition = SystemIconPosition.fromString(prefs[Keys.SYSTEM_ICON_POSITION]),
             systemIconPadding = SystemIconPadding.fromString(prefs[Keys.SYSTEM_ICON_PADDING]),
-            platformIndicatorStyle = PlatformIndicatorStyle.fromString(prefs[Keys.PLATFORM_INDICATOR_STYLE]),
+            // Migrate legacy systemIconPosition=OFF (pre-style enum) to platformIndicatorStyle=OFF.
+            platformIndicatorStyle = if (prefs[Keys.SYSTEM_ICON_POSITION] == "OFF" && prefs[Keys.PLATFORM_INDICATOR_STYLE] == null) {
+                PlatformIndicatorStyle.OFF
+            } else {
+                PlatformIndicatorStyle.fromString(prefs[Keys.PLATFORM_INDICATOR_STYLE])
+            },
             platformIndicatorContent = PlatformIndicatorContent.fromString(prefs[Keys.PLATFORM_INDICATOR_CONTENT]),
             defaultView = DefaultView.fromString(prefs[Keys.DEFAULT_VIEW]),
             videoWallpaperEnabled = prefs[Keys.VIDEO_WALLPAPER_ENABLED] ?: false,

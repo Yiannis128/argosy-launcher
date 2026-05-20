@@ -75,24 +75,24 @@ internal sealed class BoxArtItem(
         visibleWhen = { it.boxArtBorderStyle == BoxArtBorderStyle.GRADIENT }
     )
 
-    data object IndicatorStyle : BoxArtItem(
-        key = "indicatorStyle",
-        section = "icon",
-        visibleWhen = { it.systemIconPosition != SystemIconPosition.OFF }
-    )
+    data object IndicatorStyle : BoxArtItem("indicatorStyle", "icon")
 
     data object IndicatorContent : BoxArtItem(
         key = "indicatorContent",
         section = "icon",
-        visibleWhen = { it.systemIconPosition != SystemIconPosition.OFF }
+        visibleWhen = { it.platformIndicatorStyle != PlatformIndicatorStyle.OFF }
     )
 
-    data object IconPos : BoxArtItem("iconPos", "icon")
+    data object IconPos : BoxArtItem(
+        key = "iconPos",
+        section = "icon",
+        visibleWhen = { it.platformIndicatorStyle != PlatformIndicatorStyle.OFF }
+    )
 
     data object IconPad : BoxArtItem(
         key = "iconPad",
         section = "icon",
-        visibleWhen = { it.systemIconPosition != SystemIconPosition.OFF }
+        visibleWhen = { it.platformIndicatorStyle != PlatformIndicatorStyle.OFF }
     )
 
     data object OuterEffect : BoxArtItem("outerEffect", "outer")
@@ -313,6 +313,7 @@ fun BoxArtSection(
                         title = when (display.platformIndicatorStyle) {
                             PlatformIndicatorStyle.SPINE -> "Spine Corner"
                             PlatformIndicatorStyle.TAB -> "Tab Corner"
+                            PlatformIndicatorStyle.OFF -> "Corner"
                         },
                         value = display.systemIconPosition.displayName(),
                         isFocused = isFocused(item),
@@ -555,6 +556,7 @@ private fun SystemIconPadding.displayName(): String = when (this) {
 }
 
 private fun PlatformIndicatorStyle.displayName(): String = when (this) {
+    PlatformIndicatorStyle.OFF -> "Off"
     PlatformIndicatorStyle.TAB -> "Tab"
     PlatformIndicatorStyle.SPINE -> "Spine"
 }
@@ -562,6 +564,7 @@ private fun PlatformIndicatorStyle.displayName(): String = when (this) {
 private fun PlatformIndicatorContent.displayName(): String = when (this) {
     PlatformIndicatorContent.NAME -> "Name"
     PlatformIndicatorContent.ICON -> "Icon"
+    PlatformIndicatorContent.NAME_AND_ICON -> "Name + Icon"
 }
 
 private fun BoxArtOuterEffect.displayName(): String = when (this) {
