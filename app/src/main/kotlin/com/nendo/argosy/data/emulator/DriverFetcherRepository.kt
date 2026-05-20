@@ -36,7 +36,9 @@ class DriverFetcherRepository @Inject constructor(
         val path: String,
         val sort: Int,
         val useTagName: Boolean = false,
-        val sortMode: SortMode = SortMode.Default
+        val sortMode: SortMode = SortMode.Default,
+        val titlePrefixesToStrip: List<String> = emptyList(),
+        val titleSuffixesToStrip: List<String> = emptyList()
     )
 
     data class DriverGroup(
@@ -52,7 +54,13 @@ class DriverFetcherRepository @Inject constructor(
     )
 
     val repos: List<DriverRepo> = listOf(
-        DriverRepo("Mr. Purple Turnip", "MrPurple666/purple-turnip", 0),
+        DriverRepo(
+            name = "Mr. Purple Turnip",
+            path = "MrPurple666/purple-turnip",
+            sort = 0,
+            titlePrefixesToStrip = listOf("vturnip_mrpurple_", "turnip_mrpurple_"),
+            titleSuffixesToStrip = listOf(".adpkg")
+        ),
         DriverRepo("GameHub Adreno 8xx", "crueter/GameHub-8Elite-Drivers", 1),
         DriverRepo("KIMCHI Turnip", "K11MCH1/AdrenoToolsDrivers", 2, useTagName = true, sortMode = SortMode.PublishTime),
         DriverRepo("Weab-Chan Freedreno", "Weab-chan/freedreno_turnip-CI", 3)

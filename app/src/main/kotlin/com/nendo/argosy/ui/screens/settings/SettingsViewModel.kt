@@ -179,6 +179,7 @@ class SettingsViewModel @Inject constructor(
         routeObservePlatformLibretroSettings(this)
         routeLoadAvailablePlatformsForLibretro(this)
         loadSettings()
+        driversDelegate.loadGpuInfo()
         raDelegate.initialize(viewModelScope)
         displayDelegate.loadPreviewGame(viewModelScope)
         displayDelegate.observeScreenCapturePermission(viewModelScope)
@@ -203,7 +204,11 @@ class SettingsViewModel @Inject constructor(
     fun reloadDrivers(force: Boolean = false) = driversDelegate.loadDrivers(viewModelScope, force)
     fun downloadDriverArtifact(artifact: com.nendo.argosy.ui.screens.settings.DriverArtifactUi) =
         driversDelegate.downloadArtifact(viewModelScope, artifact)
-    fun downloadFocusedDriverArtifact() = driversDelegate.downloadFocusedArtifact(viewModelScope)
+    fun openDriverPicker(index: Int) = driversDelegate.openPicker(index)
+    fun dismissDriverPicker() = driversDelegate.dismissPicker()
+    fun moveDriverPickerFocus(delta: Int) = driversDelegate.movePickerReleaseFocus(delta)
+    fun downloadSelectedDriverRelease() = driversDelegate.downloadFocusedPickerRelease(viewModelScope)
+    fun dismissDriverDownload() = driversDelegate.dismissActiveDownload()
 
     fun showEmulatorPicker(config: PlatformEmulatorConfig) = routeShowEmulatorPicker(this, config)
 

@@ -905,9 +905,8 @@ data class DriversState(
     val recommendedDriver: String = "Unsupported",
     val activeDownload: DriverDownloadState? = null,
     val downloadedFiles: List<String> = emptyList(),
-    val expandedGroupIndex: Int = -1,
-    val releaseFocusIndex: Int = 0,
-    val groupActionIndex: Int = 0
+    val pickerGroupIndex: Int? = null,
+    val pickerReleaseFocusIndex: Int = 0
 ) {
     val summary: String get() = when {
         isLoading && groups.isEmpty() -> "Checking drivers..."

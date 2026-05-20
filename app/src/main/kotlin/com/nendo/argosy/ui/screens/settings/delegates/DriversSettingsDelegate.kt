@@ -24,6 +24,14 @@ class DriversSettingsDelegate @Inject constructor(
     private var loadJob: Job? = null
     private var downloadJob: Job? = null
 
+    fun loadGpuInfo() {
+        if (_state.value.gpuModel != null) return
+        val gpu = driverFetcher.getGpuInfo()
+        _state.update {
+            it.copy(gpuModel = gpu.rawModel, recommendedDriver = gpu.recommendedDriver)
+        }
+    }
+
     fun loadDrivers(scope: CoroutineScope, force: Boolean = false) {
         if (!force && _state.value.groups.isNotEmpty()) {
             refreshDownloadedFiles()
@@ -56,29 +64,29 @@ class DriversSettingsDelegate @Inject constructor(
         }
     }
 
-    fun toggleGroupExpanded(index: Int) {
+    fun openPicker(index: Int) {
         _state.update {
-            val newIndex = if (it.expandedGroupIndex == index) -1 else index
-            it.copy(expandedGroupIndex = newIndex, releaseFocusIndex = 0)
+            if (index !in it.groups.indices) it
+            else it.copy(pickerGroupIndex = index, pickerReleaseFocusIndex = 0)
         }
     }
 
-    fun moveReleaseFocus(delta: Int) {
+    fun dismissPicker() {
+        _state.update { it.copy(pickerGroupIndex = null, pickerReleaseFocusIndex = 0) }
+    }
+
+    fun movePickerReleaseFocus(delta: Int) {
         val state = _state.value
-        val group = state.groups.getOrNull(state.expandedGroupIndex) ?: return
+        val group = state.groups.getOrNull(state.pickerGroupIndex ?: return) ?: return
         if (group.releases.isEmpty()) return
-        val next = (state.releaseFocusIndex + delta).coerceIn(0, group.releases.size - 1)
-        _state.update { it.copy(releaseFocusIndex = next) }
+        val next = (state.pickerReleaseFocusIndex + delta).coerceIn(0, group.releases.size - 1)
+        _state.update { it.copy(pickerReleaseFocusIndex = next) }
     }
 
-    fun moveGroupActionFocus(delta: Int) {
-        _state.update { it.copy(groupActionIndex = (it.groupActionIndex + delta).mod(2)) }
-    }
-
-    fun downloadFocusedArtifact(scope: CoroutineScope) {
+    fun downloadFocusedPickerRelease(scope: CoroutineScope) {
         val state = _state.value
-        val group = state.groups.getOrNull(state.expandedGroupIndex) ?: return
-        val release = group.releases.getOrNull(state.releaseFocusIndex) ?: return
+        val group = state.groups.getOrNull(state.pickerGroupIndex ?: return) ?: return
+        val release = group.releases.getOrNull(state.pickerReleaseFocusIndex) ?: return
         val artifact = release.artifacts.firstOrNull() ?: return
         downloadArtifact(scope, artifact)
     }
@@ -135,7 +143,8 @@ class DriversSettingsDelegate @Inject constructor(
     private fun DriverFetcherRepository.DriverGroup.toUi(): DriverGroupUi {
         val firstStable = releases.firstOrNull { !it.prerelease }
         val mapped = releases.map { release ->
-            val title = if (repo.useTagName) release.tagName else release.name.ifBlank { release.tagName }
+            val rawTitle = if (repo.useTagName) release.tagName else release.name.ifBlank { release.tagName }
+            val title = cleanTitle(rawTitle, repo)
             DriverReleaseUi(
                 title = title,
                 tagName = release.tagName,
@@ -159,5 +168,22 @@ class DriversSettingsDelegate @Inject constructor(
             releases = mapped,
             error = error
         )
+    }
+
+    private fun cleanTitle(raw: String, repo: DriverFetcherRepository.DriverRepo): String {
+        var t = raw
+        for (prefix in repo.titlePrefixesToStrip) {
+            if (t.startsWith(prefix, ignoreCase = true)) {
+                t = t.substring(prefix.length)
+                break
+            }
+        }
+        for (suffix in repo.titleSuffixesToStrip) {
+            if (t.endsWith(suffix, ignoreCase = true)) {
+                t = t.substring(0, t.length - suffix.length)
+                break
+            }
+        }
+        return t.ifBlank { raw }
     }
 }

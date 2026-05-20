@@ -21,6 +21,8 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         ) return null
 
         interceptGpuDriverPrompt(state, method)?.let { return it }
+        interceptDriverPicker(state, method)?.let { return it }
+        interceptDriverDownload(state, method)?.let { return it }
         interceptAppPickerModal(state, method)?.let { return it }
         interceptLaunchArgsModal(state, method)?.let { return it }
         interceptSavePathModal(state, method)?.let { return it }
@@ -55,6 +57,29 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
                 InputResult.HANDLED
             } else InputResult.HANDLED
             InputMethod.BACK -> if (!isInstalling) { viewModel.dismissGpuDriverPrompt(); InputResult.HANDLED } else InputResult.HANDLED
+            else -> InputResult.HANDLED
+        }
+    }
+
+    private fun interceptDriverDownload(state: SettingsUiState, method: InputMethod): InputResult? {
+        val download = state.drivers.activeDownload ?: return null
+        val terminal = download.isComplete || download.error != null
+        return when (method) {
+            InputMethod.CONFIRM, InputMethod.BACK -> if (terminal) {
+                viewModel.dismissDriverDownload(); InputResult.HANDLED
+            } else InputResult.HANDLED
+            else -> InputResult.HANDLED
+        }
+    }
+
+    private fun interceptDriverPicker(state: SettingsUiState, method: InputMethod): InputResult? {
+        if (state.drivers.pickerGroupIndex == null) return null
+        if (state.drivers.activeDownload != null) return null
+        return when (method) {
+            InputMethod.UP -> { viewModel.moveDriverPickerFocus(-1); InputResult.HANDLED }
+            InputMethod.DOWN -> { viewModel.moveDriverPickerFocus(1); InputResult.HANDLED }
+            InputMethod.CONFIRM -> { viewModel.downloadSelectedDriverRelease(); InputResult.HANDLED }
+            InputMethod.BACK -> { viewModel.dismissDriverPicker(); InputResult.HANDLED }
             else -> InputResult.HANDLED
         }
     }
