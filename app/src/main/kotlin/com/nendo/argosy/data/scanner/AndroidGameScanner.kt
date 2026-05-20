@@ -200,7 +200,7 @@ class AndroidGameScanner @Inject constructor(
                 gameDao.update(updated)
 
                 if (details != null) {
-                    queueImageCaching(existing.id, details)
+                    queueImageCaching(existing.id, updated.title, details)
                 }
                 return ProcessResult.UPDATED
             }
@@ -231,6 +231,9 @@ class AndroidGameScanner @Inject constructor(
         // Prefer Play Store cover over app icon
         if (details?.coverUrl != null) {
             imageCacheManager.queueCoverCacheByGameId(details.coverUrl, gameId)
+            details.screenshotUrls.firstOrNull()?.let { url ->
+                imageCacheManager.queueBackgroundCacheByGameId(url, gameId, game.title)
+            }
             if (details.screenshotUrls.isNotEmpty()) {
                 imageCacheManager.queueScreenshotCacheByGameId(gameId, details.screenshotUrls)
             }
@@ -242,9 +245,12 @@ class AndroidGameScanner @Inject constructor(
         return ProcessResult.ADDED
     }
 
-    private fun queueImageCaching(gameId: Long, details: PlayStoreAppDetails) {
+    private fun queueImageCaching(gameId: Long, gameTitle: String, details: PlayStoreAppDetails) {
         details.coverUrl?.let { url ->
             imageCacheManager.queueCoverCacheByGameId(url, gameId)
+        }
+        details.screenshotUrls.firstOrNull()?.let { url ->
+            imageCacheManager.queueBackgroundCacheByGameId(url, gameId, gameTitle)
         }
         if (details.screenshotUrls.isNotEmpty()) {
             imageCacheManager.queueScreenshotCacheByGameId(gameId, details.screenshotUrls)
@@ -302,7 +308,7 @@ class AndroidGameScanner @Inject constructor(
                         backgroundPath = details.screenshotUrls.firstOrNull() ?: game.backgroundPath
                     )
                     gameDao.update(updated)
-                    queueImageCaching(game.id, details)
+                    queueImageCaching(game.id, updated.title, details)
                     refreshedCount++
                     Log.d(TAG, "Refreshed metadata for: ${game.title}")
                 }

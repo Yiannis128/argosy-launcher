@@ -223,6 +223,13 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    fun queueBackgroundCacheByGameId(url: String, gameId: Long, gameTitle: String = "") {
+        scope.launch {
+            queue.send(ImageCacheRequest(url, gameId, ImageType.BACKGROUND, gameTitle, gameId = gameId))
+            startProcessingIfNeeded()
+        }
+    }
+
     private fun startProcessingIfNeeded() {
         if (isProcessing) return
         isProcessing = true
@@ -267,15 +274,23 @@ class ImageCacheManager @Inject constructor(
     }
 
     private suspend fun processRequest(request: ImageCacheRequest) {
-        val prefix = if (request.isSteam) "steam_bg" else "bg"
-        val fileName = "${prefix}_${request.id}_${request.url.md5Hash()}.jpg"
-        val slug = if (request.isSteam) resolveSteamPlatformSlug(request.id)
-                   else resolveRommPlatformSlug(request.id)
+        val isGameIdRequest = request.gameId != null
+        val prefix = when {
+            isGameIdRequest -> "bg_g${request.gameId}"
+            request.isSteam -> "steam_bg_${request.id}"
+            else -> "bg_${request.id}"
+        }
+        val fileName = "${prefix}_${request.url.md5Hash()}.jpg"
+        val slug = when {
+            isGameIdRequest -> resolveGamePlatformSlug(request.gameId!!)
+            request.isSteam -> resolveSteamPlatformSlug(request.id)
+            else -> resolveRommPlatformSlug(request.id)
+        }
         val cachedFile = File(platformDir(slug, "backgrounds"), fileName)
 
         if (cachedFile.exists()) {
             if (isValidImageFile(cachedFile)) {
-                updateGameBackground(request.id, cachedFile.absolutePath, request.isSteam)
+                updateGameBackgroundForRequest(request, cachedFile.absolutePath)
                 return
             } else {
                 cachedFile.delete()
@@ -296,9 +311,23 @@ class ImageCacheManager @Inject constructor(
             return
         }
 
-        val idLabel = if (request.isSteam) "steamAppId" else "rommId"
-        Log.d(TAG, "Cached background for $idLabel ${request.id}: ${cachedFile.length() / 1024}KB")
-        updateGameBackground(request.id, cachedFile.absolutePath, request.isSteam)
+        val idLabel = when {
+            isGameIdRequest -> "gameId ${request.gameId}"
+            request.isSteam -> "steamAppId ${request.id}"
+            else -> "rommId ${request.id}"
+        }
+        Log.d(TAG, "Cached background for $idLabel: ${cachedFile.length() / 1024}KB")
+        updateGameBackgroundForRequest(request, cachedFile.absolutePath)
+    }
+
+    private suspend fun updateGameBackgroundForRequest(request: ImageCacheRequest, localPath: String) {
+        if (request.gameId != null) {
+            val game = gameDao.getById(request.gameId) ?: return
+            if (game.backgroundPath?.startsWith("/") == true) return
+            gameDao.updateBackgroundPath(request.gameId, localPath)
+        } else {
+            updateGameBackground(request.id, localPath, request.isSteam)
+        }
     }
 
     private suspend fun updateGameBackground(id: Long, localPath: String, isSteam: Boolean) {
