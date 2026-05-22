@@ -409,7 +409,7 @@ object SaveDebugLogger {
         emulatorPackage: String?,
         platformSlug: String,
         romPath: String?,
-        cachedTitleId: String?,
+        cachedSaveId: String?,
         selectedMemcardPath: String?,
         savePathOverride: String?,
         resultPath: String?,
@@ -423,7 +423,7 @@ object SaveDebugLogger {
             details = buildString {
                 append("emu=$emulatorId(pkg=$emulatorPackage), platform=$platformSlug")
                 append(", rom=${romPath?.let { File(it).name } ?: "null"}")
-                append(", titleId=$cachedTitleId")
+                append(", saveId=$cachedSaveId")
                 if (selectedMemcardPath != null) append(", selectedCard=${File(selectedMemcardPath).name}")
                 if (savePathOverride != null) append(", override=${File(savePathOverride).name}")
                 append(", decision=$decision")

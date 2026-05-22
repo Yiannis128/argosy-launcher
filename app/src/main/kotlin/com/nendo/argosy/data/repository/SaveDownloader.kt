@@ -159,7 +159,7 @@ class SaveDownloader @Inject constructor(
                         gameTitle = game.title,
                         platformSlug = game.platformSlug,
                         romPath = game.localPath,
-                        cachedTitleId = game.titleId,
+                        cachedSaveId = game.saveId ?: game.titleId,
                         coreName = preferredCore,
                         emulatorPackage = emulatorPackage,
                         gameId = gameId
@@ -183,7 +183,7 @@ class SaveDownloader @Inject constructor(
                     gameTitle = game.title,
                     platformSlug = game.platformSlug,
                     romPath = game.localPath,
-                    cachedTitleId = game.titleId,
+                    cachedSaveId = game.saveId ?: game.titleId,
                     coreName = preferredCore,
                     emulatorPackage = emulatorPackage,
                     gameId = gameId
@@ -197,7 +197,7 @@ class SaveDownloader @Inject constructor(
                     gameTitle = game.title,
                     platformSlug = game.platformSlug,
                     romPath = game.localPath,
-                    cachedTitleId = null,
+                    cachedSaveId = null,
                     coreName = preferredCore,
                     emulatorPackage = emulatorPackage,
                     gameId = gameId
@@ -390,12 +390,12 @@ class SaveDownloader @Inject constructor(
                     return@withContext SaveSyncResult.Error("Insufficient disk space")
                 }
 
-                val resolvedTitleId = game.titleId ?: gameDao.getTitleId(gameId)
+                val resolvedSaveId = game.saveId ?: gameDao.getSaveId(gameId) ?: game.titleId ?: gameDao.getTitleId(gameId)
 
                 val saveContext = SaveContext(
                     config = config!!,
                     romPath = game.localPath,
-                    titleId = resolvedTitleId,
+                    saveId = resolvedSaveId,
                     emulatorPackage = emulatorPackage,
                     gameId = gameId,
                     gameTitle = game.title,
@@ -475,7 +475,7 @@ class SaveDownloader @Inject constructor(
                     val saveContext = SaveContext(
                         config = config!!,
                         romPath = game.localPath,
-                        titleId = game.titleId,
+                        saveId = game.saveId ?: game.titleId,
                         emulatorPackage = emulatorPackage,
                         gameId = gameId,
                         gameTitle = game.title,

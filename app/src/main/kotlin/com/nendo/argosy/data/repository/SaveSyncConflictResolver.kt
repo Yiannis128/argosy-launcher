@@ -365,7 +365,7 @@ class SaveSyncConflictResolver @Inject constructor(
             gameTitle = game.title,
             platformSlug = game.platformSlug,
             romPath = game.localPath,
-            cachedTitleId = game.titleId,
+            cachedSaveId = game.saveId ?: game.titleId,
             coreName = coreName,
             emulatorPackage = emulatorPackage,
             gameId = gameId
@@ -425,7 +425,7 @@ class SaveSyncConflictResolver @Inject constructor(
             gameTitle = game.title,
             platformSlug = game.platformSlug,
             romPath = game.localPath,
-            cachedTitleId = game.titleId,
+            cachedSaveId = game.saveId ?: game.titleId,
             coreName = coreName,
             emulatorPackage = emulatorPackage,
             gameId = gameId

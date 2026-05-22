@@ -96,17 +96,18 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
         Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Resolved emulator | emulatorId=$emulatorId, configPackage=${emulatorConfig?.packageName}, launchPackage=$emulatorPackage")
 
         var titleId = game.titleId
+        val saveIdForLookup = game.saveId ?: titleId
         var savePath = saveSyncRepository.discoverSavePath(
             emulatorId = emulatorId,
             gameTitle = game.title,
             platformSlug = game.platformSlug,
             romPath = game.localPath,
-            cachedTitleId = titleId,
+            cachedSaveId = saveIdForLookup,
             coreName = coreName,
             emulatorPackage = emulatorPackage,
             gameId = gameId
         )
-        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Initial path discovery | savePath=$savePath, cachedTitleId=$titleId")
+        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Initial path discovery | savePath=$savePath, cachedSaveId=$saveIdForLookup")
 
         if (savePath == null) {
             Logger.info(TAG, "[SaveSync] SESSION gameId=$gameId | Result=NO_SAVE_FOUND | No save path discovered")

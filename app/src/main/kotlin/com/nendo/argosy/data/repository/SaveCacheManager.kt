@@ -549,23 +549,23 @@ class SaveCacheManager @Inject constructor(
         saveCacheDao.observeByGame(gameId)
 
     private fun resolveFoldersToCache(saveFile: File, savePath: String, game: GameEntity?): List<File> {
-        val titleId = game?.titleId
+        val saveId = game?.saveId ?: game?.titleId
         val handler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
         val canonical = game?.platformSlug?.let { PlatformDefinitions.getCanonicalSlug(it) }
-        if (canonical != "psp" || titleId == null || handler == null) {
+        if (canonical != "psp" || saveId == null || handler == null) {
             return listOf(saveFile)
         }
-        return handler.findAllSaveFoldersByTitleId(savePath, titleId)
+        return handler.findAllSaveFoldersBySaveId(savePath, saveId)
             .map { fal.getTransformedFile(it) }
             .filter { it.exists() && it.isDirectory }
     }
 
     private suspend fun computeRestoredHash(game: GameEntity?, targetPath: String): String? {
-        val titleId = game?.titleId
+        val saveId = game?.saveId ?: game?.titleId
         val handler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
         val canonical = game?.platformSlug?.let { PlatformDefinitions.getCanonicalSlug(it) }
-        if (canonical == "psp" && titleId != null && handler != null) {
-            val matched = handler.findAllSaveFoldersByTitleId(targetPath, titleId)
+        if (canonical == "psp" && saveId != null && handler != null) {
+            val matched = handler.findAllSaveFoldersBySaveId(targetPath, saveId)
                 .map { fal.getTransformedFile(it) }
                 .filter { it.exists() && it.isDirectory }
             if (matched.isEmpty()) return null

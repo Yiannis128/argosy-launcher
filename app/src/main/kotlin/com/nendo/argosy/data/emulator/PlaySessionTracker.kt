@@ -267,7 +267,7 @@ class PlaySessionTracker @Inject constructor(
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
                 romPath = game.localPath,
-                cachedTitleId = game.titleId,
+                cachedSaveId = game.saveId ?: game.titleId,
                 coreName = orphaned.coreName,
                 emulatorPackage = orphaned.emulatorPackage,
                 gameId = orphaned.gameId
@@ -574,7 +574,7 @@ class PlaySessionTracker @Inject constructor(
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
                 romPath = game.localPath,
-                cachedTitleId = game.titleId,
+                cachedSaveId = game.saveId ?: game.titleId,
                 coreName = coreName,
                 emulatorPackage = emulatorPackage,
                 gameId = gameId
@@ -1013,7 +1013,7 @@ class PlaySessionTracker @Inject constructor(
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
                 romPath = game.localPath,
-                cachedTitleId = game.titleId,
+                cachedSaveId = game.saveId ?: game.titleId,
                 coreName = session.coreName,
                 emulatorPackage = session.emulatorPackage,
                 gameId = session.gameId

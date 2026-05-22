@@ -1645,3 +1645,10 @@ object Migration_112_113 : Migration(112, 113) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_sync_queue_sessionId ON pending_sync_queue(sessionId)")
     }
 }
+
+object Migration_113_114 : Migration(113, 114) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE games ADD COLUMN saveId TEXT")
+        db.execSQL("UPDATE games SET saveId = titleId WHERE titleId IS NOT NULL")
+    }
+}

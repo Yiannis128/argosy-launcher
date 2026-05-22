@@ -145,7 +145,7 @@ class SaveSyncRepository @Inject constructor(
         gameTitle: String,
         platformSlug: String,
         romPath: String? = null,
-        cachedTitleId: String? = null,
+        cachedSaveId: String? = null,
         coreName: String? = null,
         emulatorPackage: String? = null,
         gameId: Long? = null
@@ -154,7 +154,7 @@ class SaveSyncRepository @Inject constructor(
         gameTitle = gameTitle,
         platformSlug = platformSlug,
         romPath = romPath,
-        cachedTitleId = cachedTitleId,
+        cachedSaveId = cachedSaveId,
         coreName = coreName,
         emulatorPackage = emulatorPackage,
         gameId = gameId
@@ -166,8 +166,8 @@ class SaveSyncRepository @Inject constructor(
         platformSlug: String,
         romPath: String?,
         coreName: String? = null,
-        cachedTitleId: String? = null
-    ): String? = apiClient.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName, cachedTitleId)
+        cachedSaveId: String? = null
+    ): String? = apiClient.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName, cachedSaveId)
 
     suspend fun resolveCoreForGame(gameId: Long): String? =
         apiClient.resolveCoreForGame(gameId)

@@ -553,6 +553,15 @@ interface GameDao {
     @Query("UPDATE games SET titleId = :titleId, titleIdLocked = :locked WHERE id = :gameId")
     suspend fun setTitleIdWithLock(gameId: Long, titleId: String?, locked: Boolean)
 
+    @Query("UPDATE games SET titleId = :titleId, saveId = :saveId, titleIdLocked = :locked WHERE id = :gameId")
+    suspend fun setTitleAndSaveIdWithLock(gameId: Long, titleId: String?, saveId: String?, locked: Boolean)
+
+    @Query("UPDATE games SET saveId = :saveId WHERE id = :gameId")
+    suspend fun setSaveId(gameId: Long, saveId: String?)
+
+    @Query("SELECT saveId FROM games WHERE id = :gameId")
+    suspend fun getSaveId(gameId: Long): String?
+
     @Query("SELECT titleIdLocked FROM games WHERE id = :gameId")
     suspend fun isTitleIdLocked(gameId: Long): Boolean
 

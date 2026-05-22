@@ -52,9 +52,9 @@ open class FolderSaveHandler(
         val targetPath = context.localSavePath ?: run {
             val basePath = resolveBasePath(context.config, null)
                 ?: return@withContext ExtractResult(false, null, "No base path for $platformSlug saves")
-            val titleId = context.titleId
-                ?: return@withContext ExtractResult(false, null, "No title ID for $platformSlug save")
-            constructSavePath(basePath, titleId)
+            val saveId = context.saveId
+                ?: return@withContext ExtractResult(false, null, "No save ID for $platformSlug save")
+            constructSavePath(basePath, saveId)
                 ?: return@withContext ExtractResult(false, null, "Cannot construct $platformSlug save path")
         }
 
@@ -81,14 +81,14 @@ open class FolderSaveHandler(
      * Default folder lookup uses case-insensitive equality. Platforms with prefix or normalized-
      * folder matching override [folderMatches].
      */
-    override fun findSaveFolderByTitleId(basePath: String, titleId: String): String? {
+    override fun findSaveFolderBySaveId(basePath: String, saveId: String): String? {
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) {
             Logger.debug(tag, "Base path does not exist | path=$basePath")
             return null
         }
 
         val match = fal.listFiles(basePath)?.firstOrNull { folder ->
-            folder.isDirectory && folderMatches(folder.name, titleId)
+            folder.isDirectory && folderMatches(folder.name, saveId)
         }
 
         if (match != null) {
@@ -96,18 +96,18 @@ open class FolderSaveHandler(
             return match.path
         }
 
-        Logger.debug(tag, "No save found | basePath=$basePath, titleId=$titleId")
+        Logger.debug(tag, "No save found | basePath=$basePath, saveId=$saveId")
         return null
     }
 
-    override fun findAllSaveFoldersByTitleId(basePath: String, titleId: String): List<String> {
+    override fun findAllSaveFoldersBySaveId(basePath: String, saveId: String): List<String> {
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) return emptyList()
         return fal.listFiles(basePath).orEmpty()
-            .filter { it.isDirectory && folderMatches(it.name, titleId) }
+            .filter { it.isDirectory && folderMatches(it.name, saveId) }
             .map { it.path }
     }
 
-    override fun constructSavePath(baseDir: String, titleId: String): String? = "$baseDir/$titleId"
+    override fun constructSavePath(baseDir: String, saveId: String): String? = "$baseDir/$saveId"
 
     override fun resolveBasePath(config: SavePathConfig, basePathOverride: String?): String? {
         if (basePathOverride != null) return basePathOverride
@@ -121,6 +121,6 @@ open class FolderSaveHandler(
      * Per-platform folder-name match predicate. Default is case-insensitive equality. PSP
      * overrides to use prefix matching; PS2 uses normalized BA-prefix matching.
      */
-    protected open fun folderMatches(folderName: String, titleId: String): Boolean =
-        folderName.equals(titleId, ignoreCase = true)
+    protected open fun folderMatches(folderName: String, saveId: String): Boolean =
+        folderName.equals(saveId, ignoreCase = true)
 }

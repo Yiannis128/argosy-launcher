@@ -339,12 +339,12 @@ class SaveSyncApiClient @Inject constructor(
             return@withContext false
         }
 
-        val matchesAtTarget = handler.findAllSaveFoldersByTitleId(targetPath, titleId)
+        val matchesAtTarget = handler.findAllSaveFoldersBySaveId(targetPath, titleId)
         val (parentPath, matches) = if (matchesAtTarget.isNotEmpty()) {
             targetPath to matchesAtTarget
         } else {
             val p = File(targetPath).parent ?: return@withContext true
-            p to handler.findAllSaveFoldersByTitleId(p, titleId)
+            p to handler.findAllSaveFoldersBySaveId(p, titleId)
         }
         if (matches.isEmpty()) {
             Logger.debug(TAG, "clearSavesForTitle: no prefix matches for titleId=$titleId at parent=$parentPath, nothing to clear")
@@ -364,7 +364,7 @@ class SaveSyncApiClient @Inject constructor(
         gameTitle: String,
         platformSlug: String,
         romPath: String? = null,
-        cachedTitleId: String? = null,
+        cachedSaveId: String? = null,
         coreName: String? = null,
         emulatorPackage: String? = null,
         gameId: Long? = null
@@ -373,7 +373,7 @@ class SaveSyncApiClient @Inject constructor(
         gameTitle = gameTitle,
         platformSlug = platformSlug,
         romPath = romPath,
-        cachedTitleId = cachedTitleId,
+        cachedSaveId = cachedSaveId,
         coreName = coreName,
         emulatorPackage = emulatorPackage,
         gameId = gameId
@@ -385,8 +385,8 @@ class SaveSyncApiClient @Inject constructor(
         platformSlug: String,
         romPath: String?,
         coreName: String? = null,
-        cachedTitleId: String? = null
-    ): String? = savePathResolver.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName, cachedTitleId)
+        cachedSaveId: String? = null
+    ): String? = savePathResolver.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName, cachedSaveId)
 
     internal suspend fun <T> withRetry(
         maxAttempts: Int = 3,

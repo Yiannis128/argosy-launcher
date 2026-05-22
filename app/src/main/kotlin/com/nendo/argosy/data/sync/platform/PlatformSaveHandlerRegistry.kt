@@ -73,7 +73,7 @@ class PlatformSaveHandlerRegistry @Inject constructor(
 
     /**
      * Folder handler for [platformSlug], or null when the platform isn't a per-title folder
-     * layout. Used by [com.nendo.argosy.data.sync.SavePathResolver] for `findSaveFolderByTitleId`,
+     * layout. Used by [com.nendo.argosy.data.sync.SavePathResolver] for `findSaveFolderBySaveId`,
      * `resolveBasePath`, and `constructSavePath` dispatches.
      */
     fun getFolderHandler(platformSlug: String): PlatformSaveHandler? =
@@ -124,45 +124,45 @@ private class PspFolderHandler(
         private const val TAG = "PspFolderHandler"
     }
 
-    override fun folderMatches(folderName: String, titleId: String): Boolean =
-        folderName.startsWith(titleId, ignoreCase = true)
+    override fun folderMatches(folderName: String, saveId: String): Boolean =
+        folderName.startsWith(saveId, ignoreCase = true)
 
-    override fun findSaveFolderByTitleId(basePath: String, titleId: String): String? {
+    override fun findSaveFolderBySaveId(basePath: String, saveId: String): String? {
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) return null
-        val matches = findAllSaveFoldersByTitleId(basePath, titleId)
+        val matches = findAllSaveFoldersBySaveId(basePath, saveId)
         if (matches.isEmpty()) return null
         return basePath
     }
 
-    override fun constructSavePath(baseDir: String, titleId: String): String? = baseDir
+    override fun constructSavePath(baseDir: String, saveId: String): String? = baseDir
 
     override suspend fun prepareForUpload(
         localPath: String,
         context: SaveContext
     ): PreparedSave? = withContext(Dispatchers.IO) {
-        val titleId = context.titleId
+        val saveId = context.saveId
         val parent = fal.getTransformedFile(localPath)
         if (!parent.exists() || !parent.isDirectory) {
             Logger.debug(TAG, "prepareForUpload: parent folder missing | path=$localPath")
             return@withContext null
         }
 
-        val matchedPaths = if (titleId != null) {
-            findAllSaveFoldersByTitleId(localPath, titleId)
+        val matchedPaths = if (saveId != null) {
+            findAllSaveFoldersBySaveId(localPath, saveId)
         } else {
             emptyList()
         }
         if (matchedPaths.isEmpty()) {
-            Logger.debug(TAG, "prepareForUpload: no matches | parent=$localPath, titleId=$titleId")
+            Logger.debug(TAG, "prepareForUpload: no matches | parent=$localPath, saveId=$saveId")
             return@withContext null
         }
         val matchedFolders = matchedPaths.map { fal.getTransformedFile(it) }
 
-        Logger.debug(TAG, "prepareForUpload: bundling ${matchedFolders.size} folder(s) | titleId=$titleId, names=${matchedFolders.map { it.name }}")
+        Logger.debug(TAG, "prepareForUpload: bundling ${matchedFolders.size} folder(s) | saveId=$saveId, names=${matchedFolders.map { it.name }}")
 
-        val outputFile = File(appContext.cacheDir, "${titleId ?: parent.name}.zip")
+        val outputFile = File(appContext.cacheDir, "${saveId ?: parent.name}.zip")
         if (!saveArchiver.zipFolders(matchedFolders, outputFile)) {
-            Logger.error(TAG, "prepareForUpload: failed to zip folders | titleId=$titleId")
+            Logger.error(TAG, "prepareForUpload: failed to zip folders | saveId=$saveId")
             return@withContext null
         }
 
@@ -173,7 +173,7 @@ private class PspFolderHandler(
         tempFile: File,
         context: SaveContext
     ): ExtractResult = withContext(Dispatchers.IO) {
-        val titleId = context.titleId
+        val saveId = context.saveId
             ?: return@withContext ExtractResult(false, null, "No title ID for PSP save")
 
         val parentPath = context.localSavePath
@@ -183,9 +183,9 @@ private class PspFolderHandler(
         val parentFolder = File(parentPath)
         parentFolder.mkdirs()
 
-        val existing = findAllSaveFoldersByTitleId(parentPath, titleId)
+        val existing = findAllSaveFoldersBySaveId(parentPath, saveId)
         if (existing.isNotEmpty()) {
-            Logger.debug(TAG, "extractDownload: clearing ${existing.size} existing folder(s) | titleId=$titleId")
+            Logger.debug(TAG, "extractDownload: clearing ${existing.size} existing folder(s) | saveId=$saveId")
             existing.forEach { fal.deleteRecursively(it) }
         }
 
@@ -194,7 +194,7 @@ private class PspFolderHandler(
             return@withContext ExtractResult(false, null, "Failed to extract PSP save")
         }
 
-        val restored = findAllSaveFoldersByTitleId(parentPath, titleId)
+        val restored = findAllSaveFoldersBySaveId(parentPath, saveId)
         Logger.debug(TAG, "extractDownload: complete | parent=$parentPath, restored=${restored.size}")
         ExtractResult(true, parentPath)
     }
@@ -216,13 +216,13 @@ private class N3dsFolderHandler(
         private const val DEFAULT_CATEGORY = "00040000"
     }
 
-    override fun findSaveFolderByTitleId(basePath: String, titleId: String): String? {
+    override fun findSaveFolderBySaveId(basePath: String, saveId: String): String? {
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) {
             Logger.debug(TAG, "Base path does not exist | path=$basePath")
             return null
         }
 
-        val normalizedTitleId = titleId.uppercase()
+        val normalizedTitleId = saveId.uppercase()
         val shortTitleId = if (normalizedTitleId.length > 8) {
             normalizedTitleId.takeLast(8)
         } else {
@@ -264,9 +264,9 @@ private class N3dsFolderHandler(
         return bestMatchPath
     }
 
-    override fun constructSavePath(baseDir: String, titleId: String): String? {
-        val category = if (titleId.length >= 16) titleId.take(8) else DEFAULT_CATEGORY
-        val shortTitleId = if (titleId.length > 8) titleId.takeLast(8) else titleId
+    override fun constructSavePath(baseDir: String, saveId: String): String? {
+        val category = if (saveId.length >= 16) saveId.take(8) else DEFAULT_CATEGORY
+        val shortTitleId = if (saveId.length > 8) saveId.takeLast(8) else saveId
 
         val id0Folder = fal.listFiles(baseDir)?.firstOrNull { it.isDirectory }
         if (id0Folder == null) {
@@ -325,41 +325,41 @@ private class Ps2FolderHandler(
         private const val CARD_SUFFIX = ".ps2"
     }
 
-    override fun findSaveFolderByTitleId(basePath: String, titleId: String): String? {
-        Logger.debug(TAG, "findSaveFolderByTitleId: Searching | basePath=$basePath, serial=$titleId, normalized=${toFolderName(titleId)}")
+    override fun findSaveFolderBySaveId(basePath: String, saveId: String): String? {
+        Logger.debug(TAG, "findSaveFolderBySaveId: Searching | basePath=$basePath, serial=$saveId, normalized=${toFolderName(saveId)}")
 
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) {
-            Logger.debug(TAG, "findSaveFolderByTitleId: Base path does not exist | path=$basePath")
+            Logger.debug(TAG, "findSaveFolderBySaveId: Base path does not exist | path=$basePath")
             return null
         }
 
         if (isFolderCard(basePath)) {
-            Logger.debug(TAG, "findSaveFolderByTitleId: basePath is a folder card, searching subfolders directly")
-            return findInCard(basePath, titleId)
+            Logger.debug(TAG, "findSaveFolderBySaveId: basePath is a folder card, searching subfolders directly")
+            return findInCard(basePath, saveId)
         }
 
         val folderCards = listCardDirsIn(basePath)
-        Logger.debug(TAG, "findSaveFolderByTitleId: Found ${folderCards.size} memory card(s) | cards=${folderCards.map { it.name }}")
+        Logger.debug(TAG, "findSaveFolderBySaveId: Found ${folderCards.size} memory card(s) | cards=${folderCards.map { it.name }}")
 
         val matches = folderCards.mapNotNull { card ->
-            findInCard(card.path, titleId)?.let { card to it }
+            findInCard(card.path, saveId)?.let { card to it }
         }
         when {
             matches.isEmpty() -> {
-                val exactMatch = titleId.replace("-", "")
-                Logger.debug(TAG, "findSaveFolderByTitleId: No match | serial=$titleId, tried=${toFolderName(titleId)}, withoutHyphens=$exactMatch.")
+                val exactMatch = saveId.replace("-", "")
+                Logger.debug(TAG, "findSaveFolderBySaveId: No match | serial=$saveId, tried=${toFolderName(saveId)}, withoutHyphens=$exactMatch.")
                 return null
             }
             matches.size == 1 -> {
                 val (card, match) = matches[0]
-                Logger.debug(TAG, "findSaveFolderByTitleId: Match found | card=${card.name}, path=$match")
+                Logger.debug(TAG, "findSaveFolderBySaveId: Match found | card=${card.name}, path=$match")
                 return match
             }
             else -> {
                 Logger.warn(
                     TAG,
-                    "findSaveFolderByTitleId: AMBIGUOUS -- ${matches.size} cards contain a folder " +
-                        "for $titleId (${matches.map { it.first.name }}). Refusing to pick to avoid " +
+                    "findSaveFolderBySaveId: AMBIGUOUS -- ${matches.size} cards contain a folder " +
+                        "for $saveId (${matches.map { it.first.name }}). Refusing to pick to avoid " +
                         "overwriting the wrong card. User must select a specific memcard for this " +
                         "PS2 emulator in Settings."
                 )
@@ -368,9 +368,9 @@ private class Ps2FolderHandler(
         }
     }
 
-    override fun constructSavePath(baseDir: String, titleId: String): String? {
+    override fun constructSavePath(baseDir: String, saveId: String): String? {
         if (isFolderCard(baseDir)) {
-            return "$baseDir/${toFolderName(titleId)}"
+            return "$baseDir/${toFolderName(saveId)}"
         }
 
         val folderCards = listCardDirsIn(baseDir)
@@ -387,7 +387,7 @@ private class Ps2FolderHandler(
                 return null
             }
         }
-        return "$cardDir/${toFolderName(titleId)}"
+        return "$cardDir/${toFolderName(saveId)}"
     }
 
     fun listFolderMemcards(basePath: String): List<MemcardInfo> {
@@ -406,9 +406,9 @@ private class Ps2FolderHandler(
             it.isDirectory && it.name.endsWith(CARD_SUFFIX, ignoreCase = true)
         } ?: emptyList()
 
-    private fun findInCard(cardPath: String, titleId: String): String? {
+    private fun findInCard(cardPath: String, saveId: String): String? {
         val folders = fal.listFiles(cardPath)?.filter { it.isDirectory } ?: emptyList()
-        val match = folders.firstOrNull { matchesFolderName(it.name, titleId) }
+        val match = folders.firstOrNull { matchesFolderName(it.name, saveId) }
         return match?.path
     }
 

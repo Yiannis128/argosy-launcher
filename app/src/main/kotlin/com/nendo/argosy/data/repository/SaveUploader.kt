@@ -106,7 +106,7 @@ class SaveUploader @Inject constructor(
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
                 romPath = game.localPath,
-                cachedTitleId = game.titleId,
+                cachedSaveId = game.saveId ?: game.titleId,
                 coreName = preferredCore,
                 emulatorPackage = emulatorPackage,
                 gameId = gameId
@@ -120,7 +120,7 @@ class SaveUploader @Inject constructor(
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
                 romPath = game.localPath,
-                cachedTitleId = null,
+                cachedSaveId = null,
                 coreName = preferredCore,
                 emulatorPackage = emulatorPackage,
                 gameId = gameId
@@ -157,7 +157,7 @@ class SaveUploader @Inject constructor(
                 saveExtensions = listOf("sav", "srm")
             ),
             romPath = game.localPath,
-            titleId = game.titleId,
+            saveId = game.saveId ?: game.titleId,
             emulatorPackage = emulatorPackage,
             gameId = gameId,
             gameTitle = game.title,
