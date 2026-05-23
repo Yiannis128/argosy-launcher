@@ -95,8 +95,7 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
         }
         Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Resolved emulator | emulatorId=$emulatorId, configPackage=${emulatorConfig?.packageName}, launchPackage=$emulatorPackage")
 
-        var titleId = game.titleId
-        val saveIdForLookup = game.saveId ?: titleId
+        val saveIdForLookup = game.saveId ?: game.titleId
         var savePath = saveSyncRepository.discoverSavePath(
             emulatorId = emulatorId,
             gameTitle = game.title,

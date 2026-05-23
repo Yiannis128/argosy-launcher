@@ -166,7 +166,7 @@ class SaveDownloader @Inject constructor(
                     )
                 } else null
                 val constructed = if (cached == null && discovered == null) {
-                    savePathResolver.constructFolderSavePathWithOverride(resolvedEmulatorId, game.platformSlug, game.localPath, gameId, game.title, game.titleId, emulatorPackage)
+                    savePathResolver.constructFolderSavePathWithOverride(resolvedEmulatorId, game.platformSlug, game.localPath, gameId, game.title, game.saveId ?: game.titleId, emulatorPackage)
                 } else null
                 (cached ?: discovered ?: constructed).also {
                     Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Folder save path | cached=${cached != null}, discovered=${discovered != null}, constructed=${constructed != null}, path=$it")
@@ -204,7 +204,7 @@ class SaveDownloader @Inject constructor(
                 )
             } else discovered
 
-            (retried ?: savePathResolver.constructSavePath(resolvedEmulatorId, game.title, game.platformSlug, game.localPath, preferredCore, game.titleId)).also {
+            (retried ?: savePathResolver.constructSavePath(resolvedEmulatorId, game.title, game.platformSlug, game.localPath, preferredCore, game.saveId ?: game.titleId)).also {
                 Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | File save path | cached=${syncEntity.localSavePath != null}, discovered=${retried != null}, path=$it")
             }
         }
@@ -341,7 +341,7 @@ class SaveDownloader @Inject constructor(
                 targetPath = if (isSwitchEmulator && config != null) {
                     val resolved = preDownloadTargetPath
                         ?: savePathResolver.resolveSwitchSaveTargetPath(tempZipFile, config, emulatorPackage)
-                        ?: savePathResolver.constructFolderSavePathWithOverride(resolvedEmulatorId, game.platformSlug, game.localPath, gameId, game.title, game.titleId, emulatorPackage)
+                        ?: savePathResolver.constructFolderSavePathWithOverride(resolvedEmulatorId, game.platformSlug, game.localPath, gameId, game.title, game.saveId ?: game.titleId, emulatorPackage)
                     if (resolved == null) {
                         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cannot determine Switch save path from ZIP or ROM | emulator=$resolvedEmulatorId, package=$emulatorPackage, romPath=${game.localPath}")
                         return@withContext SaveSyncResult.NoSaveFound
