@@ -284,6 +284,29 @@ class GameRepository @Inject constructor(
         invalidated
     }
 
+    suspend fun repairFolderRomPointers(): Int = withContext(Dispatchers.IO) {
+        if (!isStorageReady()) {
+            Log.w(TAG, "repairFolderRomPointers: storage not ready, skipping")
+            return@withContext 0
+        }
+
+        val startTime = System.currentTimeMillis()
+        val gamesWithPaths = gameDao.getGamesWithLocalPathInfo()
+        var repaired = 0
+        for (info in gamesWithPaths) {
+            val path = info.localPath ?: continue
+            val file = File(path)
+            if (!file.isDirectory) continue
+            val inner = findPrimaryRomInFolder(file, info.platformSlug) ?: continue
+            gameDao.updateLocalPath(info.id, inner.absolutePath, info.source)
+            repaired++
+            Log.i(TAG, "Repaired folder-rom pointer for game ${info.id}: $path -> ${inner.absolutePath}")
+        }
+        val elapsed = System.currentTimeMillis() - startTime
+        if (repaired > 0) Log.i(TAG, "Repaired $repaired folder-rom pointers in ${elapsed}ms")
+        repaired
+    }
+
     suspend fun recoverDownloadPaths(): Int = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
         val gamesWithoutPath = gameDao.getGamesWithRommIdButNoPath()

@@ -334,6 +334,8 @@ class ArgosyViewModel @Inject constructor(
                 runBuiltinEmulatorMigration()
                 emulatorUpdateManager.checkIfNeeded()
 
+                gameRepository.repairFolderRomPointers()
+
                 runWeeklyIntegrityCheckIfDue()
 
                 _startupStatus.value = "Preparing home..."
