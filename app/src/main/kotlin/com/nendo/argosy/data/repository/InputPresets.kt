@@ -153,7 +153,119 @@ object MappingPlatforms {
         )
     )
 
-    val ALL = listOf(UNIVERSAL, NES, GB, SNES, GBA, N64, PSX, GENESIS, THREEDO)
+    val SATURN = MappingPlatform(
+        id = "saturn",
+        displayName = "Saturn",
+        buttons = listOf(
+            RetroButton.B, RetroButton.A, RetroButton.R,
+            RetroButton.Y, RetroButton.X, RetroButton.L,
+            RetroButton.L2, RetroButton.R2,
+            RetroButton.START, RetroButton.SELECT
+        ) + DPAD,
+        buttonLabels = mapOf(
+            RetroButton.B to "A",
+            RetroButton.A to "B",
+            RetroButton.R to "C",
+            RetroButton.Y to "X",
+            RetroButton.X to "Y",
+            RetroButton.L to "Z",
+            RetroButton.L2 to "L",
+            RetroButton.R2 to "R",
+            RetroButton.SELECT to "Mode"
+        )
+    )
+
+    val ARCADE6 = MappingPlatform(
+        id = "arcade6",
+        displayName = "Arcade",
+        buttons = listOf(
+            RetroButton.Y, RetroButton.X, RetroButton.L,
+            RetroButton.B, RetroButton.A, RetroButton.R,
+            RetroButton.START, RetroButton.SELECT
+        ) + DPAD,
+        buttonLabels = mapOf(
+            RetroButton.Y to "A",
+            RetroButton.X to "B",
+            RetroButton.L to "C",
+            RetroButton.B to "D",
+            RetroButton.A to "E",
+            RetroButton.R to "F",
+            RetroButton.SELECT to "Coin"
+        )
+    )
+
+    val VECTREX = MappingPlatform(
+        id = "vectrex",
+        displayName = "Vectrex",
+        buttons = listOf(
+            RetroButton.Y, RetroButton.B, RetroButton.A, RetroButton.X
+        ) + DPAD,
+        buttonLabels = mapOf(
+            RetroButton.Y to "1",
+            RetroButton.B to "2",
+            RetroButton.A to "3",
+            RetroButton.X to "4"
+        )
+    )
+
+    val INTV = MappingPlatform(
+        id = "intv",
+        displayName = "Intellivision",
+        buttons = listOf(
+            RetroButton.Y, RetroButton.B, RetroButton.A, RetroButton.X,
+            RetroButton.L, RetroButton.R, RetroButton.L2, RetroButton.R2,
+            RetroButton.L3, RetroButton.R3,
+            RetroButton.START, RetroButton.SELECT
+        ) + DPAD,
+        buttonLabels = mapOf(
+            RetroButton.Y to "Top",
+            RetroButton.B to "Left",
+            RetroButton.A to "Right",
+            RetroButton.X to "Last KP",
+            RetroButton.L to "Mini KP",
+            RetroButton.R to "Mini KP",
+            RetroButton.L2 to "Clear",
+            RetroButton.R2 to "Enter",
+            RetroButton.L3 to "KP 0",
+            RetroButton.R3 to "KP 5",
+            RetroButton.START to "Pause",
+            RetroButton.SELECT to "Swap"
+        )
+    )
+
+    val ATARI_SINGLE = MappingPlatform(
+        id = "atari-single",
+        displayName = "Atari (1-button)",
+        buttons = listOf(
+            RetroButton.B,
+            RetroButton.START, RetroButton.SELECT
+        ) + DPAD,
+        buttonLabels = mapOf(
+            RetroButton.B to "Fire",
+            RetroButton.START to "Reset"
+        )
+    )
+
+    val ATARI_5200 = MappingPlatform(
+        id = "atari-5200",
+        displayName = "Atari 5200",
+        buttons = listOf(
+            RetroButton.B, RetroButton.A,
+            RetroButton.START, RetroButton.SELECT,
+            RetroButton.L, RetroButton.R
+        ) + DPAD,
+        buttonLabels = mapOf(
+            RetroButton.B to "A",
+            RetroButton.A to "B",
+            RetroButton.L to "Pause",
+            RetroButton.R to "Reset"
+        )
+    )
+
+    val ALL = listOf(
+        UNIVERSAL, NES, GB, SNES, GBA, N64, PSX, GENESIS, THREEDO,
+        SATURN, ARCADE6, VECTREX, INTV, ATARI_SINGLE, ATARI_5200
+    )
 
     fun getByIndex(index: Int): MappingPlatform = ALL[index.coerceIn(0, ALL.lastIndex)]
 
@@ -169,10 +281,17 @@ object MappingPlatforms {
     fun dbPlatformIdForSlug(slug: String): String? = dbPlatformId(indexForPlatformSlug(slug))
 
     fun indexForPlatformSlug(slug: String): Int = when (slug) {
+        "atari2600" -> ALL.indexOf(ATARI_SINGLE)
+        "atari5200" -> ALL.indexOf(ATARI_5200)
+        "vectrex" -> ALL.indexOf(VECTREX)
+        "intellivision" -> ALL.indexOf(INTV)
+        "saturn" -> ALL.indexOf(SATURN)
+        "arcade", "cps1", "cps2", "cps3", "neogeocd" -> ALL.indexOf(ARCADE6)
+
         "nes", "fds", "gameandwatch",
         "sg1000", "sms", "gg",
-        "atari2600", "atari5200", "atari7800", "lynx",
-        "coleco", "intellivision", "odyssey2", "vectrex", "channelf",
+        "atari7800", "lynx",
+        "coleco", "odyssey2", "channelf",
         "pokemini", "wonderswan", "wsc",
         "megaduck", "supervision", "arduboy", "uzebox",
         "ngp", "ngpc" -> ALL.indexOf(NES)
@@ -187,14 +306,14 @@ object MappingPlatforms {
         "n64", "n64dd" -> ALL.indexOf(N64)
 
         "psx", "ps2", "psp", "vita",
-        "gc", "wii", "dc", "saturn",
+        "gc", "wii", "dc",
         "nds", "dsi", "3ds", "n3ds",
         "jaguar", "jaguarcd" -> ALL.indexOf(PSX)
 
         "3do" -> ALL.indexOf(THREEDO)
 
         "genesis", "scd", "32x", "pico",
-        "neogeo", "neogeocd" -> ALL.indexOf(GENESIS)
+        "neogeo" -> ALL.indexOf(GENESIS)
 
         else -> 0
     }

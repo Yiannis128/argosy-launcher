@@ -395,6 +395,17 @@ class SettingsViewModel @Inject constructor(
     fun getControllerOrder() = inputConfigRepository.observeControllerOrder()
     fun showInputMappingModal() = routeShowInputMappingModal(this)
     fun hideInputMappingModal() = routeHideInputMappingModal(this)
+    fun setTouchEnabled(enabled: Boolean) = routeSetTouchEnabled(this, enabled)
+    fun setTouchOpacityLandscape(value: Float) = routeSetTouchOpacityLandscape(this, value)
+    fun setTouchOpacityPortrait(value: Float) = routeSetTouchOpacityPortrait(this, value)
+    fun setTouchSizeScale(value: Float) = routeSetTouchSizeScale(this, value)
+    fun setTouchHaptic(enabled: Boolean) = routeSetTouchHaptic(this, enabled)
+    fun setTouchFadeOnIdle(enabled: Boolean) = routeSetTouchFadeOnIdle(this, enabled)
+    fun setTouchSwapHanded(enabled: Boolean) = routeSetTouchSwapHanded(this, enabled)
+    fun setTouchLockOrientation(enabled: Boolean) = routeSetTouchLockOrientation(this, enabled)
+    fun setTouchMirror180(enabled: Boolean) = routeSetTouchMirror180(this, enabled)
+    fun setTouchColouredFaceButtons(enabled: Boolean) = routeSetTouchColouredFaceButtons(this, enabled)
+    fun setTouchGenesis6Button(enabled: Boolean) = routeSetTouchGenesis6Button(this, enabled)
     fun getConnectedControllers() = inputConfigRepository.getConnectedControllers()
 
     suspend fun getControllerMapping(

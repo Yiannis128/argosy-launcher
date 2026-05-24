@@ -461,7 +461,18 @@ data class BuiltinControlsState(
     val showStickMappings: Boolean = false,
     val showDpadAsAnalog: Boolean = false,
     val showRumble: Boolean = true,
-    val showResetAll: Boolean = false
+    val showResetAll: Boolean = false,
+    val touchEnabled: Boolean = true,
+    val touchOpacityLandscape: Float = 0.45f,
+    val touchOpacityPortrait: Float = 1.0f,
+    val touchSizeScale: Float = 1.0f,
+    val touchHaptic: Boolean = true,
+    val touchFadeOnIdle: Boolean = false,
+    val touchSwapHanded: Boolean = false,
+    val touchLockOrientation: Boolean = false,
+    val touchMirror180: Boolean = false,
+    val touchColouredFaceButtons: Boolean = false,
+    val touchGenesis6Button: Boolean = false
 )
 
 enum class CoreChipStatus {

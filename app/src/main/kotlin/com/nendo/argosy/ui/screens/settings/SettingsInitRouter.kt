@@ -651,7 +651,18 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     fastForwardMode = builtinSettings.fastForwardMode,
                     fastForwardPreservePitch = builtinSettings.fastForwardPreservePitch,
                     analogAsDpad = builtinSettings.analogAsDpad,
-                    dpadAsAnalog = builtinSettings.dpadAsAnalog
+                    dpadAsAnalog = builtinSettings.dpadAsAnalog,
+                    touchEnabled = builtinSettings.showTouchControlsWhenNoGamepad,
+                    touchOpacityLandscape = builtinSettings.touchControlsOpacityLandscape,
+                    touchOpacityPortrait = builtinSettings.touchControlsOpacityPortrait,
+                    touchSizeScale = builtinSettings.touchControlsSizeScale,
+                    touchHaptic = builtinSettings.touchControlsHaptic,
+                    touchFadeOnIdle = builtinSettings.touchControlsFadeOnIdle,
+                    touchSwapHanded = builtinSettings.touchControlsSwapHanded,
+                    touchLockOrientation = builtinSettings.touchControlsLockOrientation,
+                    touchMirror180 = builtinSettings.touchControlsMirror180,
+                    touchColouredFaceButtons = builtinSettings.touchControlsColouredFaceButtons,
+                    touchGenesis6Button = builtinSettings.touchControlsGenesis6Button
                 )
             )
         }
