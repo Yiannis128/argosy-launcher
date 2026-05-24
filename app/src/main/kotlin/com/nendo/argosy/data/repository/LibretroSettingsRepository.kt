@@ -162,4 +162,7 @@ class LibretroSettingsRepository @Inject constructor(
         builtinPrefs.setTouchControlsColouredFaceButtons(enabled)
     suspend fun setTouchControlsGenesis6Button(enabled: Boolean) =
         builtinPrefs.setTouchControlsGenesis6Button(enabled)
+
+    suspend fun setTouchControlsPortraitSplit(enabled: Boolean) =
+        builtinPrefs.setTouchControlsPortraitSplit(enabled)
 }

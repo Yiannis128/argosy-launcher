@@ -68,6 +68,7 @@ internal sealed class BuiltinControlsItem(
     data object TouchMirror180 : BuiltinControlsItem("touchMirror180", "touchControls", { it.touchEnabled })
     data object TouchColouredFaceButtons : BuiltinControlsItem("touchColouredFaceButtons", "touchControls", { it.touchEnabled })
     data object TouchGenesis6Button : BuiltinControlsItem("touchGenesis6Button", "touchControls")
+    data object TouchPortraitSplit : BuiltinControlsItem("touchPortraitSplit", "touchControls", { it.touchEnabled })
     data object TouchCustomizeLayouts : BuiltinControlsItem("touchCustomizeLayouts", "touchControls", { it.touchEnabled })
 
     companion object {
@@ -102,6 +103,7 @@ internal sealed class BuiltinControlsItem(
             TouchMirror180,
             TouchColouredFaceButtons,
             TouchGenesis6Button,
+            TouchPortraitSplit,
             TouchCustomizeLayouts
         )
     }
@@ -388,6 +390,14 @@ fun BuiltinControlsSection(
                     isEnabled = controlsState.touchGenesis6Button,
                     isFocused = isFocused(item),
                     onToggle = { viewModel.setTouchGenesis6Button(it) }
+                )
+
+                BuiltinControlsItem.TouchPortraitSplit -> SwitchPreference(
+                    title = "Split screen in portrait",
+                    subtitle = "Place game in top half, controls in bottom half. Off = controls overlay the full-screen game.",
+                    isEnabled = controlsState.touchPortraitSplit,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setTouchPortraitSplit(it) }
                 )
 
                 BuiltinControlsItem.TouchCustomizeLayouts -> NavigationPreference(

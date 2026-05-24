@@ -87,6 +87,7 @@ fun OnScreenControlsHost(
                     onExitEdit()
                 }
             },
+            onTest = onExitEdit,
             modifier = modifier
         )
     } else {

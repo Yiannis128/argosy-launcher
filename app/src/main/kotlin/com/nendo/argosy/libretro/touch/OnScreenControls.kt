@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
@@ -107,7 +108,8 @@ fun OnScreenControls(
                 areaW = areaW,
                 areaH = areaH,
                 sizeScale = sizeScale,
-                fireHaptic = fireHaptic
+                fireHaptic = fireHaptic,
+                asAnalog = spec.dpad == DpadStyle.AnalogOnly
             )
         }
 
@@ -155,19 +157,21 @@ private fun DpadCross(
     areaW: Dp,
     areaH: Dp,
     sizeScale: Float,
-    fireHaptic: () -> Unit
+    fireHaptic: () -> Unit,
+    asAnalog: Boolean = false
 ) {
     val density = LocalDensity.current
     val baseSize = 140.dp * placement.scale * sizeScale
     val offsetX = areaW * placement.anchorX - baseSize / 2
     val offsetY = areaH * placement.anchorY - baseSize / 2
+    val motionSource = if (asAnalog) GLRetroView.MOTION_SOURCE_ANALOG_LEFT else GLRetroView.MOTION_SOURCE_DPAD
 
     Box(
         modifier = Modifier
             .offset { IntOffset(density.run { offsetX.roundToPx() }, density.run { offsetY.roundToPx() }) }
             .size(baseSize)
             .drawBehind { drawDpad(size) }
-            .pointerInput(Unit) {
+            .pointerInput(motionSource) {
                 awaitPointerEventScope {
                     var lastX = 0
                     var lastY = 0
@@ -182,15 +186,12 @@ private fun DpadCross(
                             val dy = if (rel.y > dead) 1 else if (rel.y < -dead) -1 else 0
                             if (dx != lastX || dy != lastY) {
                                 if (lastX == 0 && lastY == 0 && (dx != 0 || dy != 0)) fireHaptic()
-                                retroView.sendMotionEvent(
-                                    GLRetroView.MOTION_SOURCE_DPAD,
-                                    dx.toFloat(), dy.toFloat()
-                                )
+                                retroView.sendMotionEvent(motionSource, dx.toFloat(), dy.toFloat())
                                 lastX = dx
                                 lastY = dy
                             }
                         } else if (lastX != 0 || lastY != 0) {
-                            retroView.sendMotionEvent(GLRetroView.MOTION_SOURCE_DPAD, 0f, 0f)
+                            retroView.sendMotionEvent(motionSource, 0f, 0f)
                             lastX = 0
                             lastY = 0
                         }
@@ -291,7 +292,6 @@ private fun FaceCluster(
     sizeScale: Float,
     fireHaptic: () -> Unit
 ) {
-    val density = LocalDensity.current
     val btnSize = 60.dp * sizeScale * placement.scale
     val gap = 14.dp * sizeScale * placement.scale
 
@@ -303,13 +303,15 @@ private fun FaceCluster(
     val originX = areaW * placement.anchorX - groupW / 2
     val originY = areaH * placement.anchorY - groupH / 2
 
-    spec.faceSlots.zip(positions).forEach { (slot, pos) ->
-        ButtonChip(
+    val buttons = spec.faceSlots.zip(positions).mapIndexed { i, (slot, pos) ->
+        ClusterButton(
+            key = "face_$i",
             label = slot.label,
             tint = slot.tint,
-            sizeDp = btnSize,
             offsetX = originX + pos.x.dp,
             offsetY = originY + pos.y.dp,
+            widthDp = btnSize,
+            heightDp = btnSize,
             onPress = {
                 fireHaptic()
                 retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, slot.androidKeyCode)
@@ -319,6 +321,7 @@ private fun FaceCluster(
             }
         )
     }
+    ClusterDispatcher(buttons)
 }
 
 @Composable
@@ -333,85 +336,43 @@ private fun ShoulderBar(
 ) {
     val btnSize = 56.dp * sizeScale * placement.scale
     val gap = 12.dp * sizeScale * placement.scale
-    when (spec.shoulders) {
-        ShoulderShape.None -> Unit
-        ShoulderShape.TopPair -> {
-            val padding = 24.dp
-            val leftSlot = spec.shoulderSlots.getOrNull(0)
-            val rightSlot = spec.shoulderSlots.getOrNull(1)
-            if (leftSlot != null) {
-                ButtonChip(
-                    label = leftSlot.label,
-                    tint = null,
-                    sizeDp = btnSize,
-                    offsetX = padding,
-                    offsetY = areaH * placement.anchorY - btnSize / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, leftSlot.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, leftSlot.androidKeyCode) }
-                )
-            }
-            if (rightSlot != null) {
-                ButtonChip(
-                    label = rightSlot.label,
-                    tint = null,
-                    sizeDp = btnSize,
-                    offsetX = areaW - padding - btnSize,
-                    offsetY = areaH * placement.anchorY - btnSize / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, rightSlot.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, rightSlot.androidKeyCode) }
-                )
-            }
-        }
-        ShoulderShape.FourCorners -> {
-            val padding = 24.dp
-            val slots = spec.shoulderSlots
-            slots.getOrNull(0)?.let {
-                ButtonChip(it.label, null, btnSize, padding, areaH * placement.anchorY - btnSize - gap / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-            slots.getOrNull(1)?.let {
-                ButtonChip(it.label, null, btnSize, padding, areaH * placement.anchorY + gap / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-            slots.getOrNull(2)?.let {
-                ButtonChip(it.label, null, btnSize, areaW - padding - btnSize, areaH * placement.anchorY - btnSize - gap / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-            slots.getOrNull(3)?.let {
-                ButtonChip(it.label, null, btnSize, areaW - padding - btnSize, areaH * placement.anchorY + gap / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-        }
-        ShoulderShape.TopPairPlusZ -> {
-            val padding = 24.dp
-            spec.shoulderSlots.getOrNull(0)?.let {
-                ButtonChip(it.label, null, btnSize, padding, areaH * placement.anchorY - btnSize / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-            spec.shoulderSlots.getOrNull(1)?.let {
-                ButtonChip(it.label, null, btnSize, areaW - padding - btnSize, areaH * placement.anchorY - btnSize / 2,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-            spec.shoulderSlots.getOrNull(2)?.let {
-                ButtonChip(it.label, Color(0xFF6F4FCD), btnSize, areaW - padding - btnSize, areaH * placement.anchorY + btnSize / 2 + gap,
-                    onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, it.androidKeyCode) },
-                    onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, it.androidKeyCode) }
-                )
-            }
-        }
+    val padding = 24.dp
+    val centerY = areaH * placement.anchorY
+
+    fun cb(idx: Int, x: Dp, y: Dp, tint: Color? = null): ClusterButton? {
+        val slot = spec.shoulderSlots.getOrNull(idx) ?: return null
+        return ClusterButton(
+            key = "shoulder_$idx",
+            label = slot.label,
+            tint = tint,
+            offsetX = x,
+            offsetY = y,
+            widthDp = btnSize,
+            heightDp = btnSize,
+            onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, slot.androidKeyCode) },
+            onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, slot.androidKeyCode) }
+        )
     }
+
+    val buttons: List<ClusterButton> = when (spec.shoulders) {
+        ShoulderShape.None -> emptyList()
+        ShoulderShape.TopPair -> listOfNotNull(
+            cb(0, padding, centerY - btnSize / 2),
+            cb(1, areaW - padding - btnSize, centerY - btnSize / 2)
+        )
+        ShoulderShape.FourCorners -> listOfNotNull(
+            cb(0, padding, centerY - btnSize - gap / 2),
+            cb(1, padding, centerY + gap / 2),
+            cb(2, areaW - padding - btnSize, centerY - btnSize - gap / 2),
+            cb(3, areaW - padding - btnSize, centerY + gap / 2)
+        )
+        ShoulderShape.TopPairPlusZ -> listOfNotNull(
+            cb(0, padding, centerY - btnSize / 2),
+            cb(1, areaW - padding - btnSize, centerY - btnSize / 2),
+            cb(2, areaW - padding - btnSize, centerY + btnSize / 2 + gap, tint = Color(0xFF6F4FCD))
+        )
+    }
+    ClusterDispatcher(buttons)
 }
 
 @Composable
@@ -432,60 +393,138 @@ private fun SystemBar(
     val originX = areaW * placement.anchorX - groupW / 2
     val originY = areaH * placement.anchorY - btnH / 2
 
-    spec.system.forEachIndexed { i, slot ->
-        ButtonChip(
+    val buttons = spec.system.mapIndexed { i, slot ->
+        ClusterButton(
+            key = "system_$i",
             label = slot.label,
             tint = null,
-            sizeDp = btnH,
-            widthDp = btnW,
             offsetX = originX + (btnW + gap) * i,
             offsetY = originY,
+            widthDp = btnW,
+            heightDp = btnH,
             onPress = { fireHaptic(); retroView.sendKeyEvent(KeyEvent.ACTION_DOWN, slot.androidKeyCode) },
             onRelease = { retroView.sendKeyEvent(KeyEvent.ACTION_UP, slot.androidKeyCode) }
         )
     }
+    ClusterDispatcher(buttons)
 }
 
+private data class ClusterButton(
+    val key: Any,
+    val label: String,
+    val tint: Color?,
+    val offsetX: Dp,
+    val offsetY: Dp,
+    val widthDp: Dp,
+    val heightDp: Dp,
+    val onPress: () -> Unit,
+    val onRelease: () -> Unit
+)
+
 @Composable
-private fun ButtonChip(
-    label: String,
-    tint: Color?,
-    sizeDp: Dp,
-    offsetX: Dp,
-    offsetY: Dp,
-    widthDp: Dp = sizeDp,
-    onPress: () -> Unit,
-    onRelease: () -> Unit
+private fun ClusterDispatcher(
+    buttons: List<ClusterButton>
 ) {
+    if (buttons.isEmpty()) return
     val density = LocalDensity.current
-    var pressed by remember { mutableStateOf(false) }
-    val bg = tint ?: Color(0xCC1A1A1A)
-    val border = Color(0xFFE6E6E6)
-    val measurer = rememberTextMeasurer()
-    val minTap = 48.dp
-    val drawW = widthDp
-    val drawH = sizeDp
-    val hitW = if (drawW < minTap) minTap else drawW
-    val hitH = if (drawH < minTap) minTap else drawH
-    val hitOffX = offsetX - (hitW - drawW) / 2
-    val hitOffY = offsetY - (hitH - drawH) / 2
-    val drawInsetX = with(density) { ((hitW - drawW) / 2).toPx() }
-    val drawInsetY = with(density) { ((hitH - drawH) / 2).toPx() }
-    val drawWPx = with(density) { drawW.toPx() }
-    val drawHPx = with(density) { drawH.toPx() }
+    val pressedKeys = remember { mutableStateMapOf<Any, Unit>() }
+
+    val zones = buttons.map { b ->
+        val minTap = 48.dp
+        val drawW = b.widthDp
+        val drawH = b.heightDp
+        val hitW = if (drawW < minTap) minTap else drawW
+        val hitH = if (drawH < minTap) minTap else drawH
+        val hitOffX = b.offsetX - (hitW - drawW) / 2
+        val hitOffY = b.offsetY - (hitH - drawH) / 2
+        val l = with(density) { hitOffX.toPx() }
+        val t = with(density) { hitOffY.toPx() }
+        val r = l + with(density) { hitW.toPx() }
+        val btm = t + with(density) { hitH.toPx() }
+        b to Rect(l, t, r, btm)
+    }
+
+    buttons.forEach { b ->
+        ButtonChipVisual(
+            label = b.label,
+            tint = b.tint,
+            sizeDp = b.heightDp,
+            widthDp = b.widthDp,
+            offsetX = b.offsetX,
+            offsetY = b.offsetY,
+            pressed = pressedKeys.containsKey(b.key)
+        )
+    }
 
     Box(
         modifier = Modifier
-            .offset {
-                IntOffset(
-                    density.run { hitOffX.roundToPx() },
-                    density.run { hitOffY.roundToPx() }
-                )
+            .fillMaxSize()
+            .pointerInput(zones) {
+                val ownership = mutableMapOf<PointerId, ClusterButton>()
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        event.changes.forEach { change ->
+                            val pos = change.position
+                            val zoneHit = zones.firstOrNull { (_, rect) -> rect.contains(pos) }?.first
+                            val current = ownership[change.id]
+                            if (change.pressed) {
+                                if (zoneHit != null && zoneHit !== current) {
+                                    current?.let {
+                                        it.onRelease()
+                                        pressedKeys.remove(it.key)
+                                    }
+                                    if (!pressedKeys.containsKey(zoneHit.key)) {
+                                        zoneHit.onPress()
+                                        pressedKeys[zoneHit.key] = Unit
+                                    }
+                                    ownership[change.id] = zoneHit
+                                    change.consume()
+                                } else if (zoneHit == null && current != null) {
+                                    current.onRelease()
+                                    pressedKeys.remove(current.key)
+                                    ownership.remove(change.id)
+                                }
+                            } else {
+                                current?.let {
+                                    it.onRelease()
+                                    pressedKeys.remove(it.key)
+                                }
+                                ownership.remove(change.id)
+                            }
+                        }
+                    }
+                }
             }
-            .size(width = hitW, height = hitH)
+    )
+}
+
+@Composable
+private fun ButtonChipVisual(
+    label: String,
+    tint: Color?,
+    sizeDp: Dp,
+    widthDp: Dp,
+    offsetX: Dp,
+    offsetY: Dp,
+    pressed: Boolean
+) {
+    val density = LocalDensity.current
+    val bg = tint ?: Color(0xCC1A1A1A)
+    val border = Color(0xFFE6E6E6)
+    val measurer = rememberTextMeasurer()
+    val drawWPx = with(density) { widthDp.toPx() }
+    val drawHPx = with(density) { sizeDp.toPx() }
+    Box(
+        modifier = Modifier
+            .offset { IntOffset(
+                density.run { offsetX.roundToPx() },
+                density.run { offsetY.roundToPx() }
+            ) }
+            .size(width = widthDp, height = sizeDp)
             .drawBehind {
                 val r = kotlin.math.min(drawWPx, drawHPx) / 2f
-                val center = Offset(drawInsetX + drawWPx / 2f, drawInsetY + drawHPx / 2f)
+                val center = Offset(drawWPx / 2f, drawHPx / 2f)
                 drawCircle(
                     color = if (pressed) bg.copy(alpha = 1f) else bg,
                     radius = r,
@@ -513,23 +552,9 @@ private fun ButtonChip(
                     )
                 )
             }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
-                        val anyPressed = event.changes.any { it.pressed }
-                        if (anyPressed && !pressed) {
-                            pressed = true
-                            onPress()
-                        } else if (!anyPressed && pressed) {
-                            pressed = false
-                            onRelease()
-                        }
-                    }
-                }
-            }
     )
 }
+
 
 private fun computeFacePositions(shape: FaceShape, count: Int, btnSize: Dp, gap: Dp): List<DpOffset> {
     val s = btnSize.value

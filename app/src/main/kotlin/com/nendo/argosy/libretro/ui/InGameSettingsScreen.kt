@@ -86,7 +86,9 @@ data class InGameControlsState(
     val touchOpacityPortrait: Float = 1.0f,
     val touchSizeScale: Float = 1.0f,
     val touchHaptic: Boolean = true,
-    val touchLockOrientation: Boolean = false
+    val touchLockOrientation: Boolean = false,
+    val touchPortraitSplit: Boolean = true,
+    val touchGenesis6Button: Boolean = false
 )
 
 sealed class InGameControlsAction {
@@ -104,6 +106,8 @@ sealed class InGameControlsAction {
     data class SetTouchEnabled(val enabled: Boolean) : InGameControlsAction()
     data class SetTouchHaptic(val enabled: Boolean) : InGameControlsAction()
     data class SetTouchLockOrientation(val enabled: Boolean) : InGameControlsAction()
+    data class SetTouchPortraitSplit(val enabled: Boolean) : InGameControlsAction()
+    data class SetTouchGenesis6Button(val enabled: Boolean) : InGameControlsAction()
 }
 
 data class InGameModalCallbacks(
@@ -139,6 +143,8 @@ internal sealed class InGameControlsItem(
     data object TouchEnabled : InGameControlsItem("touchEnabled", "touchControls")
     data object TouchHaptic : InGameControlsItem("touchHaptic", "touchControls")
     data object TouchLockOrientation : InGameControlsItem("touchLockOrientation", "touchControls")
+    data object TouchPortraitSplit : InGameControlsItem("touchPortraitSplit", "touchControls")
+    data object TouchGenesis6Button : InGameControlsItem("touchGenesis6Button", "touchControls")
 
     companion object {
         val ALL = listOf(
@@ -157,7 +163,9 @@ internal sealed class InGameControlsItem(
             Header("touchControlsHeader", "touchControls", "Touch Controls"),
             TouchEnabled,
             TouchHaptic,
-            TouchLockOrientation
+            TouchLockOrientation,
+            TouchPortraitSplit,
+            TouchGenesis6Button
         )
     }
 }
@@ -257,6 +265,10 @@ fun InGameSettingsScreen(
                 action(InGameControlsAction.SetTouchHaptic(!state.touchHaptic))
             InGameControlsItem.TouchLockOrientation ->
                 action(InGameControlsAction.SetTouchLockOrientation(!state.touchLockOrientation))
+            InGameControlsItem.TouchPortraitSplit ->
+                action(InGameControlsAction.SetTouchPortraitSplit(!state.touchPortraitSplit))
+            InGameControlsItem.TouchGenesis6Button ->
+                action(InGameControlsAction.SetTouchGenesis6Button(!state.touchGenesis6Button))
             else -> {}
         }
     }
@@ -620,6 +632,22 @@ private fun InGameControlsSection(
                     isEnabled = state.touchLockOrientation,
                     isFocused = isFocused(item),
                     onToggle = { onAction(InGameControlsAction.SetTouchLockOrientation(it)) }
+                )
+
+                InGameControlsItem.TouchPortraitSplit -> SwitchPreference(
+                    title = "Split screen in portrait",
+                    subtitle = "Game in top half, controls in bottom. Off = full-screen game with translucent controls.",
+                    isEnabled = state.touchPortraitSplit,
+                    isFocused = isFocused(item),
+                    onToggle = { onAction(InGameControlsAction.SetTouchPortraitSplit(it)) }
+                )
+
+                InGameControlsItem.TouchGenesis6Button -> SwitchPreference(
+                    title = "Genesis 6-button mode",
+                    subtitle = "Show six face buttons for Genesis / Mega Drive",
+                    isEnabled = state.touchGenesis6Button,
+                    isFocused = isFocused(item),
+                    onToggle = { onAction(InGameControlsAction.SetTouchGenesis6Button(it)) }
                 )
             }
         }

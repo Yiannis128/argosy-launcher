@@ -41,6 +41,7 @@ fun TouchLayoutEditor(
     onCancel: () -> Unit,
     onReset: () -> Unit,
     onTogglePreviewOrientation: (() -> Unit)? = null,
+    onTest: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val placements = remember { mutableStateMapOf<GroupId, GroupPlacement>() }
@@ -92,6 +93,7 @@ fun TouchLayoutEditor(
             Button(onClick = { onSave(ResolvedLayout(placements.toMap())) }) { Text("Save") }
             OutlinedButton(onClick = onCancel) { Text("Cancel") }
             OutlinedButton(onClick = onReset) { Text("Reset") }
+            onTest?.let { OutlinedButton(onClick = it) { Text("Test") } }
             onTogglePreviewOrientation?.let {
                 OutlinedButton(onClick = it) { Text("Switch preview") }
             }

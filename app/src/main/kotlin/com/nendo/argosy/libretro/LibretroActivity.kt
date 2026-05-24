@@ -291,12 +291,20 @@ class LibretroActivity : ComponentActivity() {
         }
         touchSettingsState = globalSettings
         var lastLockOrientation = globalSettings.touchControlsLockOrientation
+        var lastSplit = globalSettings.touchControlsPortraitSplit
+        var lastShow = globalSettings.showTouchControlsWhenNoGamepad
         lifecycleScope.launch {
             preferencesRepository.getBuiltinEmulatorSettings().collect {
                 touchSettingsState = it
                 if (it.touchControlsLockOrientation != lastLockOrientation) {
                     lastLockOrientation = it.touchControlsLockOrientation
                     applyOrientationLock(it.touchControlsLockOrientation)
+                }
+                if (it.touchControlsPortraitSplit != lastSplit ||
+                    it.showTouchControlsWhenNoGamepad != lastShow) {
+                    lastSplit = it.touchControlsPortraitSplit
+                    lastShow = it.showTouchControlsWhenNoGamepad
+                    splitColumn?.let { col -> applyPortraitSplit(col) }
                 }
             }
         }
@@ -653,16 +661,15 @@ class LibretroActivity : ComponentActivity() {
 
     private fun applyPortraitSplit(column: android.widget.LinearLayout) {
         val portrait = currentOrientationState == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val overlayWouldShow = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState
+        val splitWanted = portrait &&
+            overlayWouldShow &&
+            touchSettingsState.touchControlsPortraitSplit
         val retroParams = retroView.layoutParams as android.widget.LinearLayout.LayoutParams
         val spacer = column.getChildAt(1)
         val spacerParams = spacer.layoutParams as android.widget.LinearLayout.LayoutParams
-        if (portrait) {
-            retroParams.weight = 1f
-            spacerParams.weight = 1f
-        } else {
-            retroParams.weight = 1f
-            spacerParams.weight = 0f
-        }
+        retroParams.weight = 1f
+        spacerParams.weight = if (splitWanted) 1f else 0f
         retroView.layoutParams = retroParams
         spacer.layoutParams = spacerParams
         column.requestLayout()
@@ -1006,7 +1013,9 @@ class LibretroActivity : ComponentActivity() {
                 touchOpacityPortrait = touchSettingsState.touchControlsOpacityPortrait,
                 touchSizeScale = touchSettingsState.touchControlsSizeScale,
                 touchHaptic = touchSettingsState.touchControlsHaptic,
-                touchLockOrientation = touchSettingsState.touchControlsLockOrientation
+                touchLockOrientation = touchSettingsState.touchControlsLockOrientation,
+                touchPortraitSplit = touchSettingsState.touchControlsPortraitSplit,
+                touchGenesis6Button = touchSettingsState.touchControlsGenesis6Button
             ),
             onControlsAction = ::handleControlsAction,
             modalCallbacks = buildModalCallbacks(),
@@ -1432,6 +1441,12 @@ class LibretroActivity : ComponentActivity() {
             is InGameControlsAction.SetTouchLockOrientation -> {
                 lifecycleScope.launch { preferencesRepository.setTouchControlsLockOrientation(action.enabled) }
             }
+            is InGameControlsAction.SetTouchPortraitSplit -> {
+                lifecycleScope.launch { preferencesRepository.setTouchControlsPortraitSplit(action.enabled) }
+            }
+            is InGameControlsAction.SetTouchGenesis6Button -> {
+                lifecycleScope.launch { preferencesRepository.setTouchControlsGenesis6Button(action.enabled) }
+            }
         }
     }
 
@@ -1621,13 +1636,25 @@ class LibretroActivity : ComponentActivity() {
         val im = getSystemService(android.hardware.input.InputManager::class.java) ?: return
         val listener = object : android.hardware.input.InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) {
-                isGamepadConnectedState = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+                val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+                if (connected != isGamepadConnectedState) {
+                    isGamepadConnectedState = connected
+                    splitColumn?.let { applyPortraitSplit(it) }
+                }
             }
             override fun onInputDeviceRemoved(deviceId: Int) {
-                isGamepadConnectedState = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+                val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+                if (connected != isGamepadConnectedState) {
+                    isGamepadConnectedState = connected
+                    splitColumn?.let { applyPortraitSplit(it) }
+                }
             }
             override fun onInputDeviceChanged(deviceId: Int) {
-                isGamepadConnectedState = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+                val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+                if (connected != isGamepadConnectedState) {
+                    isGamepadConnectedState = connected
+                    splitColumn?.let { applyPortraitSplit(it) }
+                }
             }
         }
         inputDeviceListener = listener

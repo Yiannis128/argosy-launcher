@@ -26,8 +26,9 @@ object LayoutDefaults {
             AnalogConfig.LeftOnly,
             AnalogConfig.LeftAndRight -> {
                 placements[GroupId.LEFT_ANALOG] = GroupPlacement(0.10f, 0.78f)
-                if (spec.dpad != DpadStyle.None && spec.dpad != DpadStyle.AnalogOnly) {
-                    placements[GroupId.DPAD] = GroupPlacement(0.22f, 0.78f, scale = 0.7f)
+                if (spec.dpad != DpadStyle.None) {
+                    val dpadScale = if (spec.dpad == DpadStyle.AnalogOnly) 0.7f else 0.7f
+                    placements[GroupId.DPAD] = GroupPlacement(0.22f, 0.78f, scale = dpadScale)
                 }
             }
         }
@@ -49,7 +50,7 @@ object LayoutDefaults {
             AnalogConfig.LeftOnly,
             AnalogConfig.LeftAndRight -> {
                 placements[GroupId.LEFT_ANALOG] = GroupPlacement(0.22f, 0.62f)
-                if (spec.dpad != DpadStyle.None && spec.dpad != DpadStyle.AnalogOnly) {
+                if (spec.dpad != DpadStyle.None) {
                     placements[GroupId.DPAD] = GroupPlacement(0.22f, 0.32f, scale = 0.7f)
                 }
             }
