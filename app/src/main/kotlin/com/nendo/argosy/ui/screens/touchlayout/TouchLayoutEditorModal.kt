@@ -66,7 +66,9 @@ fun TouchLayoutEditorModal(
         currentLayout = repository.load(spec, platformSlug, orientation)
     }
 
-    val backdrop = remember(platformSlug) { TouchBackdropCache.load(context, platformSlug) }
+    val backdrop = remember(platformSlug, orientation) {
+        TouchBackdropCache.load(context, platformSlug, orientation)
+    }
 
     BackHandler(enabled = true) { onDismiss() }
 

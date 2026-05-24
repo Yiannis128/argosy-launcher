@@ -110,6 +110,7 @@ import com.swordfish.libretrodroid.Variable
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -289,16 +290,17 @@ class LibretroActivity : ComponentActivity() {
             preferencesRepository.getBuiltinEmulatorSettings().first()
         }
         touchSettingsState = globalSettings
+        var lastLockOrientation = globalSettings.touchControlsLockOrientation
         lifecycleScope.launch {
-            preferencesRepository.getBuiltinEmulatorSettings().collect { touchSettingsState = it }
-        }
-        if (globalSettings.touchControlsLockOrientation) {
-            requestedOrientation = if (currentOrientationState == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
-                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            } else {
-                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            preferencesRepository.getBuiltinEmulatorSettings().collect {
+                touchSettingsState = it
+                if (it.touchControlsLockOrientation != lastLockOrientation) {
+                    lastLockOrientation = it.touchControlsLockOrientation
+                    applyOrientationLock(it.touchControlsLockOrientation)
+                }
             }
         }
+        applyOrientationLock(globalSettings.touchControlsLockOrientation)
         val settings = kotlinx.coroutines.runBlocking {
             effectiveLibretroSettingsResolver.getEffectiveSettings(platformId, platformSlug)
         }
@@ -1584,15 +1586,27 @@ class LibretroActivity : ComponentActivity() {
         super.onPause()
     }
 
+    private fun applyOrientationLock(locked: Boolean) {
+        requestedOrientation = if (!locked) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        } else if (currentOrientationState == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+    }
+
     private fun captureTouchBackdrop() {
         if (platformSlug.isBlank()) return
-        try {
-            val bmp = retroView.captureRawFrame()
-            if (bmp != null) {
-                com.nendo.argosy.libretro.touch.TouchBackdropCache.save(this, platformSlug, bmp)
+        val bmp = try { retroView.captureRawFrame() } catch (_: Exception) { null } ?: return
+        val orientation = currentOrientationState
+        val ctx = applicationContext
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                com.nendo.argosy.libretro.touch.TouchBackdropCache.save(ctx, platformSlug, orientation, bmp)
+            } finally {
                 bmp.recycle()
             }
-        } catch (_: Exception) {
         }
     }
 
