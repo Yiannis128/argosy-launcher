@@ -119,9 +119,27 @@ class SteamPathResolver @Inject constructor(
     }
 
     suspend fun isGameInstalled(appId: Long): Boolean {
-        val game = gameDao.getBySteamAppId(appId)
-        val path = game?.localPath ?: return false
-        return File(path, ".download_complete").exists() || androidDataAccessor.exists("$path/.download_complete")
+        val game = gameDao.getBySteamAppId(appId) ?: return false
+        return isGameInstalled(game)
+    }
+
+    suspend fun isGameInstalled(game: com.nendo.argosy.data.local.entity.GameEntity): Boolean {
+        val path = game.localPath
+        if (path != null) {
+            if (File(path, ".download_complete").exists() ||
+                androidDataAccessor.exists("$path/.download_complete")) {
+                return true
+            }
+        }
+        val appId = game.steamAppId ?: return false
+        val expected = getInstallDir(appId)
+        val expectedPath = expected.absolutePath
+        val installed = File(expected, ".download_complete").exists() ||
+            androidDataAccessor.exists("$expectedPath/.download_complete")
+        if (installed && game.localPath != expectedPath) {
+            runCatching { gameDao.update(game.copy(localPath = expectedPath)) }
+        }
+        return installed
     }
 
     fun findGnStoragePath(): String? = findAllGnStoragePaths().firstOrNull()

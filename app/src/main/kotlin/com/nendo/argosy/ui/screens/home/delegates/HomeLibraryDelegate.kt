@@ -90,7 +90,8 @@ class HomeLibraryDelegate @Inject constructor(
     private val emulatorDetector: EmulatorDetector,
     private val notificationManager: NotificationManager,
     private val repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase,
-    private val downloadFileStatusRepository: DownloadFileStatusRepository
+    private val downloadFileStatusRepository: DownloadFileStatusRepository,
+    private val steamPathResolver: com.nendo.argosy.data.steam.SteamPathResolver
 ) {
     private val _state = MutableStateFlow(LibraryState())
     val state: StateFlow<LibraryState> = _state.asStateFlow()
@@ -142,7 +143,7 @@ class HomeLibraryDelegate @Inject constructor(
         var favorites = gameRepository.getFavorites()
         val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
         val steamGames = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
-            .let { if (installedOnly) it.filter { g -> g.localPath != null } else it }
+            .let { if (installedOnly) filterSteamInstalled(it) else it }
 
         val newThreshold = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
         var recentlyPlayed = gameRepository.getRecentlyPlayed(RECENT_GAMES_CANDIDATE_POOL)
@@ -371,7 +372,7 @@ class HomeLibraryDelegate @Inject constructor(
         val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
         val androidGameUis = androidGames.map { it.toUi() }
         val steamGames = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
-            .let { if (installedOnly) it.filter { g -> g.localPath != null } else it }
+            .let { if (installedOnly) filterSteamInstalled(it) else it }
         val steamGameUis = steamGames.map { it.toUi() }
         _state.update {
             it.copy(
@@ -485,7 +486,7 @@ class HomeLibraryDelegate @Inject constructor(
             HomeRow.Steam -> {
                 val installedOnly = preferencesRepository.userPreferences.first().installedOnlyHome
                 val games = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
-                    .let { if (installedOnly) it.filter { g -> g.localPath != null } else it }
+                    .let { if (installedOnly) filterSteamInstalled(it) else it }
                 val gameUis = games.map { it.toUi() }
                 _state.update { it.copy(steamGames = gameUis) }
                 RefreshResult(gameUis.map { it.id }, isEmpty = gameUis.isEmpty())
@@ -665,6 +666,9 @@ class HomeLibraryDelegate @Inject constructor(
         platformDisplayName = cachedPlatformDisplayNames[platformId],
         gradientColors = gradientExtractionDelegate.getGradient(id)
     )
+
+    private suspend fun filterSteamInstalled(games: List<GameEntity>): List<GameEntity> =
+        games.filter { steamPathResolver.isGameInstalled(it) }
 }
 
 data class RefreshResult(
