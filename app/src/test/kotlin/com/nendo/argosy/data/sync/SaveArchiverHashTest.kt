@@ -2,6 +2,8 @@ package com.nendo.argosy.data.sync
 
 import com.nendo.argosy.data.storage.AndroidDataAccessor
 import com.nendo.argosy.data.storage.FileAccessLayer
+import com.nendo.argosy.data.storage.FileInfo
+import io.mockk.every
 import io.mockk.mockk
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
@@ -24,9 +26,28 @@ class SaveArchiverHashTest {
     @Before
     fun setup() {
         tempDir = createTempDirectory("save_archiver_hash_test").toFile()
+        val fal = mockk<FileAccessLayer>(relaxed = true)
+        every { fal.listFilesUnion(any()) } answers {
+            val path = firstArg<String>()
+            File(path).listFiles()?.map {
+                FileInfo(
+                    path = it.absolutePath,
+                    name = it.name,
+                    isDirectory = it.isDirectory,
+                    isFile = it.isFile,
+                    size = it.length(),
+                    lastModified = it.lastModified()
+                )
+            } ?: emptyList()
+        }
+        every { fal.getInputStream(any()) } answers {
+            val path = firstArg<String>()
+            val file = File(path)
+            if (file.exists() && file.canRead()) file.inputStream() else null
+        }
         saveArchiver = SaveArchiver(
             androidDataAccessor = mockk<AndroidDataAccessor>(relaxed = true),
-            fal = mockk<FileAccessLayer>(relaxed = true)
+            fal = fal
         )
     }
 
@@ -168,6 +189,67 @@ class SaveArchiverHashTest {
         assertEquals(
             saveArchiver.calculateFolderAsZipHash(folder),
             saveArchiver.calculateZipHash(zipFile)
+        )
+    }
+
+    // Regression: zipFolder and calculateFolderAsZipHash must enumerate from the
+    // same source, so files only visible via the union (not direct File.listFiles)
+    // appear in both the zip and the precomputed hash.
+    @Test
+    fun `zip and folder hash stay in sync for union-only files`() {
+        val folder = File(tempDir, "union").apply { mkdirs() }
+        File(folder, "visible.bin").writeBytes(byteArrayOf(1, 2, 3))
+
+        val ghostPath = "${folder.absolutePath}/ghost.bin"
+        val ghostBytes = byteArrayOf(9, 9, 9, 9)
+        val ghostBacking = File(tempDir, "ghost_backing.bin").apply { writeBytes(ghostBytes) }
+
+        val unionFal = mockk<FileAccessLayer>(relaxed = true)
+        every { unionFal.listFilesUnion(folder.absolutePath) } returns listOf(
+            FileInfo(
+                path = File(folder, "visible.bin").absolutePath,
+                name = "visible.bin",
+                isDirectory = false,
+                isFile = true,
+                size = 3,
+                lastModified = 0
+            ),
+            FileInfo(
+                path = ghostPath,
+                name = "ghost.bin",
+                isDirectory = false,
+                isFile = true,
+                size = ghostBytes.size.toLong(),
+                lastModified = 0
+            )
+        )
+        every { unionFal.getInputStream(any()) } answers {
+            val p = firstArg<String>()
+            if (p == ghostPath) ghostBacking.inputStream() else File(p).inputStream()
+        }
+
+        val unionArchiver = SaveArchiver(
+            androidDataAccessor = mockk<AndroidDataAccessor>(relaxed = true),
+            fal = unionFal
+        )
+
+        val zipFile = File(tempDir, "union.zip")
+        unionArchiver.zipFolder(folder, zipFile)
+
+        val zipEntryNames = mutableListOf<String>()
+        org.apache.commons.compress.archivers.zip.ZipFile.builder().setFile(zipFile).get().use { zf ->
+            zf.entries.iterator().forEach { zipEntryNames.add(it.name) }
+        }
+
+        assertEquals(
+            "Zip must include the union-only ghost entry",
+            setOf("union/visible.bin", "union/ghost.bin"),
+            zipEntryNames.toSet()
+        )
+        assertEquals(
+            "Folder hash must match zip hash when both see the ghost file",
+            unionArchiver.calculateFolderAsZipHash(folder),
+            unionArchiver.calculateZipHash(zipFile)
         )
     }
 
