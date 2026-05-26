@@ -1076,9 +1076,14 @@ class GameLauncher @Inject constructor(
                     resolvedExtras += ResolvedExtra.UriExtra(key, uri)
                 }
                 is ExtraValue.FileUriString -> {
-                    val uri = getFileUri(romFile)
-                    fileUri = uri
-                    resolvedExtras += ResolvedExtra.StringExtra(key, uri.toString())
+                    val value = if (romFile.extension.equals("m3u", ignoreCase = true)) {
+                        // Playlist files (.m3u) often rely on relative sibling paths.
+                        // Passing content:// as a string can prevent emulators from resolving those entries.
+                        romFile.absolutePath
+                    } else {
+                        getFileUri(romFile).also { fileUri = it }.toString()
+                    }
+                    resolvedExtras += ResolvedExtra.StringExtra(key, value)
                 }
                 is ExtraValue.Platform -> resolvedExtras += ResolvedExtra.StringExtra(key, platformSlug)
                 is ExtraValue.Literal -> resolvedExtras += ResolvedExtra.StringExtra(key, extraValue.value)
