@@ -43,13 +43,24 @@ object SaveFixtures {
 
     /**
      * JKSV-style Switch save: titleId folder containing a .nx_save_meta.bin sentinel
-     * alongside the save files. Used to test JKSV-format detection + structure
-     * preservation through extract.
+     * alongside the save files. Meta layout matches what SaveArchiver.parseTitleIdFromMeta
+     * reads: 4-byte "JKSV" magic, 1 byte padding, 8 little-endian bytes of titleId.
      */
     fun switchJksvFolder(parent: File, titleId: String = "01007EF00011E000"): File {
         val folder = switchTitleFolder(parent, titleId)
-        File(folder, ".nx_save_meta.bin").writeBytes(byteArrayOf(0x4A, 0x4B, 0x53, 0x56))
+        File(folder, ".nx_save_meta.bin").writeBytes(jksvMetaBytes(titleId))
         return folder
+    }
+
+    fun jksvMetaBytes(titleId: String): ByteArray {
+        require(titleId.length == 16) { "titleId must be 16 hex chars" }
+        val titleIdLong = titleId.toULong(radix = 16).toLong()
+        val bytes = ByteArray(13)
+        byteArrayOf(0x4A, 0x4B, 0x53, 0x56).copyInto(bytes, 0)
+        java.nio.ByteBuffer.wrap(bytes, 5, 8)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            .putLong(titleIdLong)
+        return bytes
     }
 
     /**
