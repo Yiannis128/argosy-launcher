@@ -256,23 +256,26 @@ class AndroidDataAccessor @Inject constructor(
     }
 
     fun moveDirectory(sourcePath: String, destPath: String): Boolean {
-        val sourceDir = File(sourcePath) // Source is always unrestricted (cache)
+        val sourceDir = File(sourcePath)
         val destDir = File(transformPath(destPath))
 
         return try {
             destDir.parentFile?.mkdirs()
 
-            // Try atomic rename first
             if (sourceDir.renameTo(destDir)) return true
 
-            // Fallback: copy then delete
-            if (sourceDir.copyRecursively(destDir, overwrite = true)) {
+            if (destDir.exists()) destDir.deleteRecursively()
+            val copied = sourceDir.copyRecursively(destDir, overwrite = true)
+            if (copied) {
                 sourceDir.deleteRecursively()
                 return true
             }
+            destDir.deleteRecursively()
+            sourceDir.deleteRecursively()
             false
         } catch (e: Exception) {
             Logger.error(TAG, "[AltAccess] moveDirectory failed | dest=$destPath, error=${e.message}")
+            runCatching { sourceDir.deleteRecursively() }
             false
         }
     }
