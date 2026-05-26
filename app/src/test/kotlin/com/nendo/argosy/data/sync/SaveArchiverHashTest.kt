@@ -45,6 +45,8 @@ class SaveArchiverHashTest {
             val file = File(path)
             if (file.exists() && file.canRead()) file.inputStream() else null
         }
+        every { fal.exists(any()) } answers { File(firstArg<String>()).exists() }
+        every { fal.isDirectory(any()) } answers { File(firstArg<String>()).isDirectory }
         saveArchiver = SaveArchiver(
             androidDataAccessor = mockk<AndroidDataAccessor>(relaxed = true),
             fal = fal
@@ -192,9 +194,6 @@ class SaveArchiverHashTest {
         )
     }
 
-    // Regression: zipFolder and calculateFolderAsZipHash must enumerate from the
-    // same source, so files only visible via the union (not direct File.listFiles)
-    // appear in both the zip and the precomputed hash.
     @Test
     fun `zip and folder hash stay in sync for union-only files`() {
         val folder = File(tempDir, "union").apply { mkdirs() }
@@ -227,6 +226,8 @@ class SaveArchiverHashTest {
             val p = firstArg<String>()
             if (p == ghostPath) ghostBacking.inputStream() else File(p).inputStream()
         }
+        every { unionFal.exists(any()) } answers { firstArg<String>() == folder.absolutePath || File(firstArg<String>()).exists() }
+        every { unionFal.isDirectory(any()) } answers { firstArg<String>() == folder.absolutePath || File(firstArg<String>()).isDirectory }
 
         val unionArchiver = SaveArchiver(
             androidDataAccessor = mockk<AndroidDataAccessor>(relaxed = true),

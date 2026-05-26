@@ -124,6 +124,7 @@ class FileAccessLayerImpl @Inject constructor(
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             androidDataAccessor.listFiles(path)?.forEach { file ->
                 val info = file.toFileInfo()
+                    .let { it.copy(path = androidDataAccessor.normalizePathForDisplay(it.path)) }
                 byName.putIfAbsent(info.name, info)
             }
         }

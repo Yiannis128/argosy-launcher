@@ -67,12 +67,13 @@ class SaveArchiver @Inject constructor(
     }
 
     fun zipFolder(sourceFolder: File, targetZip: File): Boolean {
-        if (!sourceFolder.exists() || !sourceFolder.isDirectory) {
-            Logger.warn(TAG, "[SaveSync] ARCHIVE | Source folder invalid | path=${sourceFolder.absolutePath}, exists=${sourceFolder.exists()}, isDir=${sourceFolder.isDirectory}")
+        val path = sourceFolder.absolutePath
+        if (!fal.exists(path) || !fal.isDirectory(path)) {
+            Logger.warn(TAG, "[SaveSync] ARCHIVE | Source folder invalid | path=$path, exists=${fal.exists(path)}, isDir=${fal.isDirectory(path)}")
             return false
         }
 
-        val (fileCount, totalSize) = countFilesUnion(sourceFolder.absolutePath)
+        val (fileCount, totalSize) = countFilesUnion(path)
         Logger.debug(TAG, "[SaveSync] ARCHIVE | Zipping folder | source=${sourceFolder.name}, files=$fileCount, size=${totalSize}bytes")
 
         return try {
@@ -97,7 +98,7 @@ class SaveArchiver @Inject constructor(
      * profile folders sharing a 9-char disc id prefix).
      */
     fun zipFolders(sourceFolders: List<File>, targetZip: File): Boolean {
-        val validFolders = sourceFolders.filter { it.exists() && it.isDirectory }
+        val validFolders = sourceFolders.filter { fal.exists(it.absolutePath) && fal.isDirectory(it.absolutePath) }
         if (validFolders.isEmpty()) {
             Logger.warn(TAG, "[SaveSync] ARCHIVE | No valid folders to zip")
             return false

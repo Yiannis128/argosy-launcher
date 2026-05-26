@@ -46,10 +46,6 @@ class SaveSyncQueuerImpl @Inject constructor(
         val emulatorId = emulatorResolver.resolveEmulatorId(packageToResolve) ?: return false
         if (!SavePathRegistry.canSyncWithSettings(emulatorId, prefs.saveSyncEnabled)) return false
 
-        // Only PENDING/IN_PROGRESS rows mean "an upload is already in flight."
-        // FAILED rows would otherwise suppress every retry until processQueue's
-        // next start runs promoteEligibleFailedToPending -- on flaky connections
-        // that can be hours away.
         val activeQueued = pendingSyncQueueDao.getByGameId(gameId).any { row ->
             row.syncType == SyncType.SAVE_FILE &&
                 (row.status == SyncStatus.PENDING || row.status == SyncStatus.IN_PROGRESS)
