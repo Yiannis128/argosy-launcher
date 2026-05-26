@@ -34,6 +34,7 @@ class SaveDownloaderTest {
         emulatorResolver = mockk(relaxed = true),
         gameDao = mockk(relaxed = true),
         titleDbRepository = mockk(relaxed = true),
+        titleIdExtractor = mockk(relaxed = true),
         saveArchiver = mockk(relaxed = true),
         savePathResolver = mockk(relaxed = true),
         saveCacheManager = dagger.Lazy { mockk(relaxed = true) },

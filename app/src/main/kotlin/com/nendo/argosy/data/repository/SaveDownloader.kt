@@ -33,6 +33,7 @@ class SaveDownloader @Inject constructor(
     private val emulatorResolver: EmulatorResolver,
     private val gameDao: GameDao,
     private val titleDbRepository: TitleDbRepository,
+    private val titleIdExtractor: com.nendo.argosy.data.emulator.TitleIdExtractor,
     private val saveArchiver: SaveArchiver,
     private val savePathResolver: SavePathResolver,
     private val saveCacheManager: dagger.Lazy<SaveCacheManager>,
@@ -390,7 +391,9 @@ class SaveDownloader @Inject constructor(
                     return@withContext SaveSyncResult.Error("Insufficient disk space")
                 }
 
-                val resolvedSaveId = game.saveId ?: gameDao.getSaveId(gameId) ?: game.titleId ?: gameDao.getTitleId(gameId)
+                val resolvedSaveId = game.saveId ?: gameDao.getSaveId(gameId)
+                    ?: game.titleId ?: gameDao.getTitleId(gameId)
+                    ?: extractSaveIdNow(gameId, game.localPath, game.platformSlug, emulatorPackage)
 
                 val saveContext = SaveContext(
                     config = config!!,
@@ -979,6 +982,24 @@ class SaveDownloader @Inject constructor(
         } catch (e: Exception) {
             Logger.warn(TAG, "[SaveSync] flushPendingDeviceSync | gameId=$gameId | Failed, will retry later", e)
         }
+    }
+
+    private suspend fun extractSaveIdNow(
+        gameId: Long,
+        romPath: String?,
+        platformSlug: String,
+        emulatorPackage: String?
+    ): String? {
+        if (romPath.isNullOrBlank()) return null
+        val romFile = File(romPath)
+        if (!romFile.exists()) return null
+        val result = titleIdExtractor.extractTitleIdWithSource(romFile, platformSlug, emulatorPackage) ?: run {
+            Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | extractSaveIdNow: sigil returned null | rom=${romFile.name}, platform=$platformSlug")
+            return null
+        }
+        Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | extractSaveIdNow: cached titleId=${result.titleId} saveId=${result.saveId} (fromBinary=${result.fromBinary})")
+        gameDao.setTitleAndSaveIdWithLock(gameId, result.titleId, result.saveId, result.fromBinary)
+        return result.saveId
     }
 
     companion object {
