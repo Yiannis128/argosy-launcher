@@ -203,10 +203,9 @@ class SaveSyncRepository @Inject constructor(
         emulatorId: String,
         channelName: String? = null,
         forceOverwrite: Boolean = false,
-        isHardcore: Boolean = false,
-        bypassSkipCheck: Boolean = false
+        isHardcore: Boolean = false
     ): SaveSyncResult = uploadMutexes.computeIfAbsent(gameId to channelName) { Mutex() }.withLock {
-        apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, bypassSkipCheck)
+        apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore)
     }
 
     suspend fun uploadCacheEntry(

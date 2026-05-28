@@ -504,8 +504,7 @@ class SyncCoordinator @Inject constructor(
             gameId = item.gameId,
             emulatorId = payload.emulatorId,
             channelName = payload.channelName,
-            forceOverwrite = payload.source == QueueSource.NEGOTIATE,
-            bypassSkipCheck = payload.source == QueueSource.NEGOTIATE
+            forceOverwrite = false
         )
 
         when (result) {

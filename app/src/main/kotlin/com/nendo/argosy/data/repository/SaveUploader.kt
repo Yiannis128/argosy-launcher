@@ -49,8 +49,7 @@ class SaveUploader @Inject constructor(
         emulatorId: String,
         channelName: String? = null,
         forceOverwrite: Boolean = false,
-        isHardcore: Boolean = false,
-        bypassSkipCheck: Boolean = false
+        isHardcore: Boolean = false
     ): SaveSyncResult = withContext(Dispatchers.IO) {
         Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId emulator=$emulatorId channel=$channelName | Starting upload")
         val client = apiClient.get()
@@ -215,7 +214,7 @@ class SaveUploader @Inject constructor(
                 )
             }
 
-            if (!bypassSkipCheck && syncEntity?.lastUploadedHash == contentHash) {
+            if (syncEntity?.lastUploadedHash == contentHash) {
                 Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Skipped - content unchanged (hash=$contentHash)")
                 if (prepared.isTemporary) fileToUpload.delete()
                 tempTrailerFile?.delete()
