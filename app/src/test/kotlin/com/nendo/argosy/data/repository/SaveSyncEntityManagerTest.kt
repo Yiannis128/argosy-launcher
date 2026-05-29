@@ -121,14 +121,12 @@ class SaveSyncEntityManagerTest {
             gameId = 1L, rommId = 100L, emulatorId = "eden",
             channelName = null, localPath = "/restored",
             rommSaveId = 99L, serverTimestamp = Instant.ofEpochMilli(2_000),
-            contentHash = "deadbeef",
         )
 
         val written = captured.captured
         assertEquals(SaveSyncEntity.STATUS_SYNCED, written.syncStatus)
         assertEquals("/restored", written.localSavePath)
         assertEquals(99L, written.rommSaveId)
-        assertEquals("deadbeef", written.lastUploadedHash)
     }
 
     @Test
@@ -146,7 +144,7 @@ class SaveSyncEntityManagerTest {
         manager.markRestored(
             gameId = 1L, rommId = 100L, emulatorId = "eden",
             channelName = null, localPath = "/new",
-            rommSaveId = null, serverTimestamp = null, contentHash = null,
+            rommSaveId = null, serverTimestamp = null,
         )
 
         assertEquals("Existing rommSaveId must be preserved when caller passes null", 77L, captured.captured.rommSaveId)

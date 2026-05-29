@@ -39,8 +39,7 @@ class SaveSyncEntityManagerMarkRestoredTest {
             channelName = "slot1",
             localPath = "/storage/saves/g.srm",
             rommSaveId = 555L,
-            serverTimestamp = serverTs,
-            contentHash = "abc"
+            serverTimestamp = serverTs
         )
 
         assertEquals(0L, captured.captured.id)
@@ -51,7 +50,7 @@ class SaveSyncEntityManagerMarkRestoredTest {
         assertEquals("/storage/saves/g.srm", captured.captured.localSavePath)
         assertEquals(555L, captured.captured.rommSaveId)
         assertEquals(serverTs, captured.captured.serverUpdatedAt)
-        assertEquals("abc", captured.captured.lastUploadedHash)
+        assertNull("Fresh row has no server-verified hash to carry forward", captured.captured.lastUploadedHash)
         assertEquals(SaveSyncEntity.STATUS_SYNCED, captured.captured.syncStatus)
         assert(captured.captured.lastSyncedAt != null)
         assert(captured.captured.localUpdatedAt != null)
@@ -82,14 +81,13 @@ class SaveSyncEntityManagerMarkRestoredTest {
             channelName = "slot1",
             localPath = "/storage/saves/g.srm",
             rommSaveId = 555L,
-            serverTimestamp = null,
-            contentHash = "new-hash"
+            serverTimestamp = null
         )
 
         assertEquals(42L, captured.captured.id)
         assertEquals(555L, captured.captured.rommSaveId)
         assertEquals(SaveSyncEntity.STATUS_SYNCED, captured.captured.syncStatus)
-        assertEquals("new-hash", captured.captured.lastUploadedHash)
+        assertEquals("Existing server-verified hash must be carried forward", "old-hash", captured.captured.lastUploadedHash)
     }
 
     @Test
@@ -114,8 +112,7 @@ class SaveSyncEntityManagerMarkRestoredTest {
             channelName = null,
             localPath = "/storage/saves/g.srm",
             rommSaveId = null,
-            serverTimestamp = null,
-            contentHash = null
+            serverTimestamp = null
         )
 
         assertEquals(999L, captured.captured.rommSaveId)
@@ -147,8 +144,7 @@ class SaveSyncEntityManagerMarkRestoredTest {
             channelName = "slot1",
             localPath = "/storage/saves/g.srm",
             rommSaveId = 555L,
-            serverTimestamp = null,
-            contentHash = "h"
+            serverTimestamp = null
         )
 
         assertEquals(42L, captured.captured.id)
