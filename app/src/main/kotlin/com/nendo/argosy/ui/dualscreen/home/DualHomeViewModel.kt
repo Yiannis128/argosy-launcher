@@ -1172,6 +1172,8 @@ class DualHomeViewModel(
     private fun applyFilters(filters: DualActiveFilters) {
         val wantHidden = filters.source == "HIDDEN"
         if (wantHidden != libraryLoadedHidden) {
+            val options = buildFilterOptions(_uiState.value.filterCategory, filters)
+            _uiState.update { it.copy(filterOptions = options) }
             val platformId = _uiState.value.activeFilters.platformId
             if (platformId != null) loadLibraryGamesForPlatform(platformId, hidden = wantHidden)
             else loadLibraryGames(hidden = wantHidden)
