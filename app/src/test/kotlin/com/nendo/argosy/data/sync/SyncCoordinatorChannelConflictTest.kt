@@ -127,7 +127,7 @@ class SyncCoordinatorChannelConflictTest {
             saveCacheDao.clearDirtyFlagForChannel(1L, "slot1", excludeId = -1)
         }
         coVerify(exactly = 0) {
-            mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any())
+            mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any())
         }
 
         cacheFile.delete()
@@ -147,7 +147,7 @@ class SyncCoordinatorChannelConflictTest {
             mockSyncRepo.checkForConflict(1L, "retroarch", "slot1")
         } returns null
         coEvery {
-            mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any())
+            mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any())
         } returns SaveSyncResult.Success(rommSaveId = 42L)
 
         coordinator = SyncCoordinator(
@@ -180,7 +180,8 @@ class SyncCoordinatorChannelConflictTest {
                 channelName = "slot1",
                 cacheFile = cacheFile,
                 contentHash = "hash123",
-                overwrite = false
+                overwrite = false,
+                uploadedCacheId = 10L
             )
         }
 
@@ -201,7 +202,7 @@ class SyncCoordinatorChannelConflictTest {
             mockSyncRepo.checkForConflict(1L, "retroarch", "slot1")
         } returns null
         coEvery {
-            mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any())
+            mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any())
         } returns SaveSyncResult.Conflict(
             gameId = 1L,
             localTimestamp = Instant.now(),
@@ -271,7 +272,7 @@ class SyncCoordinatorChannelConflictTest {
         coordinator.processQueue()
 
         coVerify(exactly = 0) { saveCacheDao.getNeedingRemoteSync() }
-        coVerify(exactly = 0) { mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { mockSyncRepo.downloadPendingServerSaves() }
         coVerify(exactly = 0) { mockSyncRepo.rekeySaveSyncToLocalEmulators() }
 
