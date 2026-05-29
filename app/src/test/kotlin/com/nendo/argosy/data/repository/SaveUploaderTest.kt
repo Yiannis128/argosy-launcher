@@ -489,7 +489,16 @@ class SaveUploaderTest {
     fun `hardcore upload with null channelName threads through without misbehavior (coverage gap)`() = runTest {
         coEvery {
             saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, SaveSyncApiClient.DEFAULT_SAVE_NAME)
-        } returns null
+        } returns SaveSyncEntity(
+            id = 1L,
+            gameId = gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = null,
+            localSavePath = preparedFile.absolutePath,
+            syncStatus = SaveSyncEntity.STATUS_PENDING_UPLOAD,
+            lastUploadedHash = null
+        )
         every { saveArchiver.calculateContentHash(any()) } returns "hc-hash"
         coEvery { saveCacheDao.getByGameAndHash(any(), any()) } returns null
         coEvery {
