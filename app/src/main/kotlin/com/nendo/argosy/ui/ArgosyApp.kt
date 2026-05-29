@@ -1508,9 +1508,12 @@ fun ArgosyApp(
                                         dualScreenManager.handleDirectAction("SELECT_DISC", gameId)
                                     }
                                     GameDetailOption.REFRESH_METADATA,
-                                    GameDetailOption.DELETE,
-                                    GameDetailOption.HIDE -> {
+                                    GameDetailOption.DELETE -> {
                                         dualScreenManager.handleDirectAction(option.name, gameId)
+                                    }
+                                    GameDetailOption.HIDE -> {
+                                        val action = if (vm.uiState.value.isHidden) "UNHIDE" else "HIDE"
+                                        dualScreenManager.handleDirectAction(action, gameId)
                                     }
                                 }
                             },

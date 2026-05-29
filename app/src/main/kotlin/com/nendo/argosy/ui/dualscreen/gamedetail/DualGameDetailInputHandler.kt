@@ -454,7 +454,10 @@ class DualGameDetailInputHandler(
             GameDetailOption.UPDATES_DLC -> onBroadcastDirectAction("UPDATES_DLC", gameId, null)
             GameDetailOption.REFRESH_METADATA -> onBroadcastDirectAction("REFRESH_METADATA", gameId, null)
             GameDetailOption.DELETE -> onBroadcastDirectAction("DELETE", gameId, null)
-            GameDetailOption.HIDE -> onBroadcastDirectAction("HIDE", gameId, null)
+            GameDetailOption.HIDE -> {
+                val action = if (vm.uiState.value.isHidden) "UNHIDE" else "HIDE"
+                onBroadcastDirectAction(action, gameId, null)
+            }
         }
     }
 
