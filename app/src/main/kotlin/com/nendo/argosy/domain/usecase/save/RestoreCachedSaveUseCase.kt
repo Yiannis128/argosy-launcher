@@ -86,7 +86,6 @@ class RestoreCachedSaveUseCase @Inject constructor(
         gameDao.updateActiveSaveChannel(gameId, targetChannel)
 
         if (game.rommId != null) {
-            val contentHash = saveCacheManager.calculateLocalSaveHash(targetPath)
             saveSyncRepository.markRestored(
                 gameId = gameId,
                 rommId = game.rommId,
@@ -94,8 +93,7 @@ class RestoreCachedSaveUseCase @Inject constructor(
                 channelName = targetChannel,
                 localPath = targetPath,
                 rommSaveId = entry.serverSaveId,
-                serverTimestamp = entry.timestamp,
-                contentHash = contentHash
+                serverTimestamp = entry.timestamp
             )
         }
 

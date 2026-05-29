@@ -284,9 +284,8 @@ class SaveSyncRepository @Inject constructor(
         channelName: String?,
         localPath: String,
         rommSaveId: Long?,
-        serverTimestamp: Instant?,
-        contentHash: String?
-    ) = entityManager.markRestored(gameId, rommId, emulatorId, channelName, localPath, rommSaveId, serverTimestamp, contentHash)
+        serverTimestamp: Instant?
+    ) = entityManager.markRestored(gameId, rommId, emulatorId, channelName, localPath, rommSaveId, serverTimestamp)
 
     suspend fun preLaunchSync(gameId: Long, rommId: Long, emulatorId: String): PreLaunchSyncResult =
         conflictResolver.preLaunchSync(gameId, rommId, emulatorId)
