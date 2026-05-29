@@ -68,7 +68,7 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         emit(SyncState.CheckingConnection)
 
-        val syncResult = saveSyncRepository.preLaunchSync(gameId, game.rommId, emulatorId)
+        val syncResult = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName = null)
 
         when (syncResult) {
             is PreLaunchSyncResult.NoConnection -> {
@@ -166,7 +166,7 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         titleIdDownloadObserver.extractTitleIdForGame(gameId)
 
-        val syncResult = saveSyncRepository.preLaunchSync(gameId, game.rommId, emulatorId)
+        val syncResult = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName)
 
         when (syncResult) {
             is PreLaunchSyncResult.NoConnection -> {

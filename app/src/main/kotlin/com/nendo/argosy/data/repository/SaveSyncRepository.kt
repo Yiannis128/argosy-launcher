@@ -294,10 +294,6 @@ class SaveSyncRepository @Inject constructor(
         serverTimestamp: Instant?
     ) = entityManager.markRestored(gameId, rommId, emulatorId, channelName, localPath, rommSaveId, serverTimestamp)
 
-    @Deprecated("Use preLaunchSyncForGame(gameId, rommId, emulatorId, channelName) instead", ReplaceWith("preLaunchSyncForGame(gameId, rommId, emulatorId, null)"))
-    suspend fun preLaunchSync(gameId: Long, rommId: Long, emulatorId: String): PreLaunchSyncResult =
-        preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null)
-
     suspend fun preLaunchSyncForGame(
         gameId: Long,
         rommId: Long,
