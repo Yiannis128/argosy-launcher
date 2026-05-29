@@ -68,8 +68,8 @@ class SaveSyncConflictResolver @Inject constructor(
             try {
                 val serverSaves = client.checkSavesForGame(gameId, rommId)
                     .filterNot { SaveSyncApiClient.isStateShapedSave(it) }
-                val matchingSaves = serverSaves.filter { it.emulator == emulatorId || it.emulator == null }
-                Logger.debug(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Found ${serverSaves.size} server saves | matching=$emulatorId: ${matchingSaves.size}, channels=${matchingSaves.map { it.fileNameNoExt }}")
+                val matchingSaves = serverSaves
+                Logger.debug(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Found ${serverSaves.size} server saves (no emulator filter applied -- saves are core-independent), channels=${matchingSaves.map { it.fileNameNoExt }}")
 
                 val game = gameDao.getById(gameId)
                 val romBaseName = game?.localPath?.let { File(it).nameWithoutExtension }
@@ -519,7 +519,7 @@ class SaveSyncConflictResolver @Inject constructor(
         }
 
         val romBaseName = game.localPath?.let { File(it).nameWithoutExtension }
-        val matchingSaves = serverSaves.filter { it.emulator == emulatorId || it.emulator == null }
+        val matchingSaves = serverSaves
         val serverSave = selectServerSaveForChannel(
             matchingSaves = matchingSaves,
             channelName = channelName,

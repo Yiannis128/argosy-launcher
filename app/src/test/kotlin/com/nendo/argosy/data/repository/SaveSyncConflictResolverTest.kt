@@ -501,6 +501,30 @@ class SaveSyncConflictResolverTest {
     }
 
     @Test
+    fun `preLaunchSync server save with different emulator id still matches (saves are core-independent)`() = runTest {
+        val serverSave = RomMSave(
+            id = 1L,
+            romId = 100L,
+            userId = 1L,
+            fileName = "argosy-latest.srm",
+            emulator = "different-emulator-on-uploading-device",
+            updatedAt = "2025-01-15T12:00:00Z",
+            deviceSyncs = listOf(RomMDeviceSync(deviceId = "device-1", isCurrent = false)),
+            fileNameNoExt = "argosy-latest"
+        )
+        coEvery { mockApiClient.checkSavesForGame(1L, 100L) } returns listOf(serverSave)
+        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any()) } returns null
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any()) } returns null
+
+        val result = resolver.preLaunchSync(1L, 100L, "retroarch")
+
+        assertTrue(
+            "Save with a different RomM emulator label should still match (save files key on rom+slot, not core), got $result",
+            result is PreLaunchSyncResult.ServerIsNewer
+        )
+    }
+
+    @Test
     fun `preLaunchSync server save with null emulator still matches`() = runTest {
         val serverSave = RomMSave(
             id = 1L,
