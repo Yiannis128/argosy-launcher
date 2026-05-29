@@ -192,4 +192,61 @@ class SaveCacheManagerCachingTest {
         assertTrue(result is SaveCacheManager.CacheResult.Failed)
         coVerify(exactly = 0) { saveCacheDao.insert(any()) }
     }
+
+    @Test
+    fun `cacheCurrentSave must create a per-channel row when the hash exists in a different channel (audit Bug A4)`() = runTest {
+        val save = File(tempDir, "game.srm").apply { writeBytes(ByteArray(1024) { 0x77 }) }
+        val existingInCheckpoint = SaveCacheEntity(
+            id = 999L,
+            gameId = 1L,
+            emulatorId = "retroarch",
+            cachedAt = Instant.now(),
+            saveSize = 1024L,
+            cachePath = "1/checkpoint/game.srm",
+            channelName = "checkpoint",
+            contentHash = "shared-H",
+        )
+        coEvery { saveCacheDao.getByGameAndHash(1L, any()) } returns existingInCheckpoint
+
+        val result = manager.cacheCurrentSave(
+            gameId = 1L,
+            emulatorId = "retroarch",
+            savePath = save.absolutePath,
+            channelName = "manual-clone",
+            skipDuplicateCheck = false,
+        )
+
+        assertTrue(
+            "Cloning a save into a new channel must Create a per-channel row, not be rejected as a cross-channel Duplicate (audit Bug A4): got $result",
+            result is SaveCacheManager.CacheResult.Created
+        )
+        coVerify(exactly = 1) { saveCacheDao.insert(any()) }
+    }
+
+    @Test
+    fun `cacheAsRollback must create a per-channel row when the hash exists in a different channel (audit Bug A4)`() = runTest {
+        val save = File(tempDir, "game.srm").apply { writeBytes(ByteArray(2048) { 0x55 }) }
+        val existingInChannel = SaveCacheEntity(
+            id = 888L,
+            gameId = 1L,
+            emulatorId = "retroarch",
+            cachedAt = Instant.now(),
+            saveSize = 2048L,
+            cachePath = "1/some-channel/game.srm",
+            channelName = "checkpoint",
+            contentHash = "shared-H",
+        )
+        coEvery { saveCacheDao.getByGameAndHash(1L, any()) } returns existingInChannel
+
+        val result = manager.cacheAsRollback(
+            gameId = 1L,
+            emulatorId = "retroarch",
+            savePath = save.absolutePath,
+        )
+
+        assertTrue(
+            "cacheAsRollback must Create a rollback row even when an identical hash sits in another channel (audit Bug A4): got $result",
+            result is SaveCacheManager.CacheResult.Created
+        )
+    }
 }
