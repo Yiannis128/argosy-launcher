@@ -107,7 +107,9 @@ class SaveSyncEntityManager @Inject constructor(
             serverUpdatedAt = existing?.serverUpdatedAt,
             lastSyncedAt = existing?.lastSyncedAt,
             lastUploadedHash = existing?.lastUploadedHash,
-            syncStatus = existing?.syncStatus ?: SaveSyncEntity.STATUS_PENDING_UPLOAD
+            syncStatus = existing?.syncStatus ?: SaveSyncEntity.STATUS_PENDING_UPLOAD,
+            lastSyncDeviceId = existing?.lastSyncDeviceId,
+            lastSyncDeviceName = existing?.lastSyncDeviceName
         )
         saveSyncDao.upsert(entity)
         return entity
