@@ -3,7 +3,6 @@ package com.nendo.argosy.data.sync
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
-import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
@@ -20,10 +19,7 @@ import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.data.repository.StateCacheManager
-import com.nendo.argosy.data.sync.strategy.ConflictAutoResolver
 import com.nendo.argosy.data.sync.strategy.LocalSaveState
-import com.nendo.argosy.data.sync.strategy.ReconcileAction
-import com.nendo.argosy.data.sync.strategy.ReconcileOperation
 import com.nendo.argosy.data.sync.strategy.ReconcilePlan
 import com.nendo.argosy.data.sync.strategy.SaveSyncStrategySelector
 import com.nendo.argosy.util.Logger
@@ -53,8 +49,8 @@ class SyncCoordinator @Inject constructor(
     private val syncPreferencesRepository: SyncPreferencesRepository,
     private val payloadCodec: SyncPayloadCodec,
     private val strategySelector: SaveSyncStrategySelector,
-    private val conflictAutoResolver: ConflictAutoResolver,
-    private val pendingConflictDao: PendingConflictDao
+    private val pendingConflictDao: PendingConflictDao,
+    private val reconcileEffectApplier: ReconcileEffectApplier
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -141,8 +137,7 @@ class SyncCoordinator @Inject constructor(
     }
 
     private suspend fun applyPlan(plan: ReconcilePlan): Pair<Int, Int> {
-        var conflicts = 0
-        var applied = 0
+        var outcome = ReconcileEffectOutcome.NONE
         var skippedNullSlot = 0
         var skippedStateShaped = 0
         val stateSlotPattern = Regex("""^state_""", RegexOption.IGNORE_CASE)
@@ -155,67 +150,7 @@ class SyncCoordinator @Inject constructor(
                 skippedStateShaped++
                 continue
             }
-            when (op.action) {
-                ReconcileAction.NO_OP -> Unit
-                ReconcileAction.UPLOAD -> {
-                    if (queueUploadForOp(op, plan.sessionId)) applied++
-                }
-                ReconcileAction.DOWNLOAD -> {
-                    if (markServerNewerForOp(op)) applied++
-                }
-                ReconcileAction.CONFLICT -> {
-                    val game = gameDao.getByRommId(op.romId)
-                    val existing = game?.id?.let { gid ->
-                        val emu = op.emulator ?: ""
-                        if (op.slot != null) {
-                            saveSyncDao.getByGameEmulatorAndChannel(gid, emu, op.slot)
-                        } else {
-                            saveSyncDao.getByGameAndEmulator(gid, emu)
-                        }
-                    }
-                    val clientHash = existing?.lastUploadedHash
-                    val localTime = resolveLocalTimeFromEntity(existing, fallback = null)
-                    when (val res = conflictAutoResolver.classify(op, clientHash)) {
-                        is ConflictAutoResolver.Resolution.AsIs -> {
-                            if (game != null) {
-                                val opServerTime = op.serverUpdatedAt?.let { parseInstantOrNull(it) }
-                                val existing = pendingConflictDao.findByGameAndSave(game.id, op.saveId)
-                                val previouslyDismissedUnchanged = existing != null &&
-                                    existing.dismissed &&
-                                    existing.serverUpdatedAt == opServerTime &&
-                                    existing.serverHash == op.serverContentHash
-                                if (previouslyDismissedUnchanged) {
-                                    Logger.debug(TAG, "applyPlan: skipping CONFLICT for romId=${op.romId} saveId=${op.saveId} (previously dismissed, server unchanged)")
-                                } else {
-                                    pendingConflictDao.upsert(
-                                        PendingConflictEntity(
-                                            gameId = game.id,
-                                            rommSaveId = op.saveId,
-                                            fileName = op.fileName,
-                                            slot = op.slot,
-                                            emulator = op.emulator,
-                                            localUpdatedAt = localTime,
-                                            serverUpdatedAt = opServerTime,
-                                            localHash = clientHash,
-                                            serverHash = op.serverContentHash,
-                                            reason = op.reason
-                                        )
-                                    )
-                                    conflicts++
-                                }
-                            }
-                        }
-                        is ConflictAutoResolver.Resolution.KeepLocal -> {
-                            if (queueUploadForOp(op, plan.sessionId)) applied++
-                            Logger.info(TAG, "auto-resolved conflict romId=${op.romId} -> KeepLocal (${res.ruleId})")
-                        }
-                        is ConflictAutoResolver.Resolution.KeepServer -> {
-                            if (markServerNewerForOp(op)) applied++
-                            Logger.info(TAG, "auto-resolved conflict romId=${op.romId} -> KeepServer (${res.ruleId})")
-                        }
-                    }
-                }
-            }
+            outcome += reconcileEffectApplier.apply(op, plan.sessionId)
         }
         if (skippedNullSlot > 0) {
             Logger.info(TAG, "applyPlan: skipped $skippedNullSlot operations with null slot (legacy archived saves)")
@@ -223,71 +158,7 @@ class SyncCoordinator @Inject constructor(
         if (skippedStateShaped > 0) {
             Logger.info(TAG, "applyPlan: skipped $skippedStateShaped operations with state-shaped slot (legacy state-in-save rows)")
         }
-        return conflicts to applied
-    }
-
-    private suspend fun queueUploadForOp(op: ReconcileOperation, sessionId: Long?): Boolean {
-        val game = gameDao.getByRommId(op.romId) ?: run {
-            Logger.debug(TAG, "applyPlan UPLOAD: no local game for romId=${op.romId}, skipping")
-            return false
-        }
-        val emulatorId = canonicalEmulatorId(op.emulator, game) ?: run {
-            Logger.debug(TAG, "applyPlan UPLOAD: no canonical emulator for romId=${op.romId} (op.emulator=${op.emulator}), skipping")
-            return false
-        }
-        val payload = SaveFilePayload(emulatorId = emulatorId, channelName = op.slot, source = QueueSource.NEGOTIATE)
-        pendingSyncQueueDao.deleteByGameAndType(game.id, SyncType.SAVE_FILE)
-        pendingSyncQueueDao.insert(
-            PendingSyncQueueEntity(
-                gameId = game.id,
-                rommId = op.romId,
-                syncType = SyncType.SAVE_FILE,
-                priority = SyncPriority.SAVE_FILE,
-                payloadJson = payloadCodec.encode(payload),
-                sessionId = sessionId
-            )
-        )
-        return true
-    }
-
-    private suspend fun markServerNewerForOp(op: ReconcileOperation): Boolean {
-        val game = gameDao.getByRommId(op.romId) ?: run {
-            Logger.debug(TAG, "applyPlan DOWNLOAD: no local game for romId=${op.romId}, skipping")
-            return false
-        }
-        if (game.localPath == null) {
-            Logger.debug(TAG, "applyPlan DOWNLOAD: game ${game.id} has no local ROM, skipping")
-            return false
-        }
-        val emulatorId = canonicalEmulatorId(op.emulator, game) ?: run {
-            Logger.debug(TAG, "applyPlan DOWNLOAD: no canonical emulator for gameId=${game.id} (op.emulator=${op.emulator}), skipping")
-            return false
-        }
-        val existing = if (op.slot != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, op.slot)
-        } else {
-            saveSyncDao.getByGameAndEmulator(game.id, emulatorId)
-        }
-        val serverTime = op.serverUpdatedAt?.let { parseInstantOrNull(it) }
-        saveSyncDao.upsert(
-            SaveSyncEntity(
-                id = existing?.id ?: 0,
-                gameId = game.id,
-                rommId = op.romId,
-                emulatorId = emulatorId,
-                channelName = op.slot,
-                rommSaveId = op.saveId,
-                localSavePath = existing?.localSavePath,
-                localUpdatedAt = existing?.localUpdatedAt,
-                serverUpdatedAt = serverTime,
-                lastSyncedAt = existing?.lastSyncedAt,
-                syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER,
-                lastUploadedHash = existing?.lastUploadedHash,
-                lastSyncDeviceId = existing?.lastSyncDeviceId,
-                lastSyncDeviceName = existing?.lastSyncDeviceName
-            )
-        )
-        return true
+        return outcome.conflicts to outcome.applied
     }
 
     private suspend fun resolveConflictLocalTime(
@@ -319,12 +190,6 @@ class SyncCoordinator @Inject constructor(
                 existing.serverUpdatedAt ?: fileMtime ?: existing.localUpdatedAt ?: fallback
             else -> fileMtime ?: existing.localUpdatedAt ?: fallback
         }
-    }
-
-    private fun parseInstantOrNull(value: String): Instant? = try {
-        Instant.parse(value)
-    } catch (_: Exception) {
-        null
     }
 
     data class ReconcileSummary(
@@ -885,11 +750,6 @@ class SyncCoordinator @Inject constructor(
 
     suspend fun queueFavoriteChange(gameId: Long, rommId: Long, isFavorite: Boolean) {
         queuePropertyChange(gameId, rommId, SyncType.FAVORITE, intValue = if (isFavorite) 1 else 0)
-    }
-
-    private suspend fun canonicalEmulatorId(raw: String?, game: GameEntity): String? {
-        return saveSyncRepository.get().resolveEmulatorForGame(game)
-            ?: raw?.takeUnless { it.isBlank() || it == "default" }
     }
 
     private suspend fun canonicalizeStaleEmulatorIds() {

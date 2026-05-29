@@ -87,6 +87,16 @@ class SyncCoordinatorApplyPlanTest {
 
         mockSaveSyncRepository = mockk(relaxed = true)
         coEvery { mockSaveSyncRepository.resolveEmulatorForGame(any()) } returns "mgba"
+        val payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build())
+        val effectApplier = ReconcileEffectApplier(
+            pendingSyncQueueDao = pendingSyncQueueDao,
+            saveSyncDao = saveSyncDao,
+            gameDao = gameDao,
+            pendingConflictDao = pendingConflictDao,
+            conflictAutoResolver = conflictAutoResolver,
+            saveSyncRepository = dagger.Lazy { mockSaveSyncRepository },
+            payloadCodec = payloadCodec
+        )
         coordinator = SyncCoordinator(
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = mockk(relaxed = true),
@@ -99,10 +109,10 @@ class SyncCoordinatorApplyPlanTest {
             stateCacheManager = dagger.Lazy { mockk<StateCacheManager>(relaxed = true) },
             syncQueueManager = SyncQueueManager(),
             syncPreferencesRepository = syncPrefs,
-            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
+            payloadCodec = payloadCodec,
             strategySelector = strategySelector,
-            conflictAutoResolver = conflictAutoResolver,
-            pendingConflictDao = pendingConflictDao
+            pendingConflictDao = pendingConflictDao,
+            reconcileEffectApplier = effectApplier
         )
 
         every { strategySelector.current() } returns fakeStrategy

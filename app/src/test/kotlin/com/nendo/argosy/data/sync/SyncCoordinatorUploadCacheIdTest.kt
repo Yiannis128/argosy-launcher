@@ -79,6 +79,15 @@ class SyncCoordinatorUploadCacheIdTest {
         coEvery { saveSyncRepository.flushPendingDeviceSync(any()) } returns Unit
         coEvery { saveSyncRepository.uploadSave(any(), any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
 
+        val effectApplier = ReconcileEffectApplier(
+            pendingSyncQueueDao = pendingSyncQueueDao,
+            saveSyncDao = saveSyncDao,
+            gameDao = gameDao,
+            pendingConflictDao = pendingConflictDao,
+            conflictAutoResolver = conflictAutoResolver,
+            saveSyncRepository = Lazy { saveSyncRepository },
+            payloadCodec = payloadCodec
+        )
         coordinator = SyncCoordinator(
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
@@ -93,8 +102,8 @@ class SyncCoordinatorUploadCacheIdTest {
             syncPreferencesRepository = syncPreferencesRepository,
             payloadCodec = payloadCodec,
             strategySelector = strategySelector,
-            conflictAutoResolver = conflictAutoResolver,
             pendingConflictDao = pendingConflictDao,
+            reconcileEffectApplier = effectApplier,
         )
     }
 

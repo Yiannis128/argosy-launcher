@@ -81,6 +81,15 @@ class SyncCoordinatorProcessQueueTest {
         coEvery { saveSyncRepository.downloadPendingServerSaves() } returns 0
         coEvery { pendingSyncQueueDao.distinctSessions() } returns emptyList()
 
+        val effectApplier = ReconcileEffectApplier(
+            pendingSyncQueueDao = pendingSyncQueueDao,
+            saveSyncDao = saveSyncDao,
+            gameDao = gameDao,
+            pendingConflictDao = pendingConflictDao,
+            conflictAutoResolver = conflictAutoResolver,
+            saveSyncRepository = Lazy { saveSyncRepository },
+            payloadCodec = payloadCodec
+        )
         coordinator = SyncCoordinator(
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
@@ -95,8 +104,8 @@ class SyncCoordinatorProcessQueueTest {
             syncPreferencesRepository = syncPreferencesRepository,
             payloadCodec = payloadCodec,
             strategySelector = strategySelector,
-            conflictAutoResolver = conflictAutoResolver,
             pendingConflictDao = pendingConflictDao,
+            reconcileEffectApplier = effectApplier,
         )
     }
 
