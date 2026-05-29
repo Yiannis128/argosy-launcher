@@ -805,6 +805,7 @@ class SyncCoordinator @Inject constructor(
                 emulatorId = cache.emulatorId,
                 channelName = null,
                 forceOverwrite = forceOverwrite,
+                isHardcore = cache.isHardcore,
                 uploadedCacheId = cache.id
             )
 
