@@ -44,6 +44,10 @@ class GetUnifiedSavesUseCase @Inject constructor(
         val localOnly = entries.count { it.source == UnifiedSaveEntry.Source.LOCAL }
         val serverOnly = entries.count { it.source == UnifiedSaveEntry.Source.SERVER }
         val droppedServerByClaimedSlot = (serverSaves.size - (both + serverOnly)).coerceAtLeast(0)
+        val deviceBreakdown: Map<String?, Int> = serverSaves
+            .flatMap { it.deviceSyncs.orEmpty().map { sync -> sync.deviceId as String? } }
+            .groupingBy { it }
+            .eachCount()
         com.nendo.argosy.util.SaveDebugLogger.logUnifiedBuilt(
             gameId = gameId,
             totalLocal = localCaches.size,
@@ -51,7 +55,8 @@ class GetUnifiedSavesUseCase @Inject constructor(
             mergedBoth = both,
             localOnly = localOnly,
             serverOnly = serverOnly,
-            unmatchedServerByClaimedSlot = droppedServerByClaimedSlot
+            unmatchedServerByClaimedSlot = droppedServerByClaimedSlot,
+            serverDeviceBreakdown = deviceBreakdown
         )
         return sorted
     }

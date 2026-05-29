@@ -539,7 +539,8 @@ object SaveDebugLogger {
         mergedBoth: Int,
         localOnly: Int,
         serverOnly: Int,
-        unmatchedServerByClaimedSlot: Int
+        unmatchedServerByClaimedSlot: Int,
+        serverDeviceBreakdown: Map<String?, Int> = emptyMap()
     ) {
         log(
             event = "UNIFIED_BUILT",
@@ -551,6 +552,13 @@ object SaveDebugLogger {
                 append(" -> both=$mergedBoth, localOnly=$localOnly, serverOnly=$serverOnly")
                 if (unmatchedServerByClaimedSlot > 0) {
                     append(", droppedServer(slotClaimed)=$unmatchedServerByClaimedSlot")
+                }
+                if (serverDeviceBreakdown.isNotEmpty()) {
+                    append(", deviceIds=[")
+                    serverDeviceBreakdown.entries.joinToString(",") { (devId, count) ->
+                        "${devId ?: "null"}:$count"
+                    }.let(::append)
+                    append("]")
                 }
             }
         )
