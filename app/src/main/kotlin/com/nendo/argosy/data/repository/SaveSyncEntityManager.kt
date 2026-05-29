@@ -106,6 +106,7 @@ class SaveSyncEntityManager @Inject constructor(
             localUpdatedAt = localUpdatedAt ?: existing?.localUpdatedAt,
             serverUpdatedAt = existing?.serverUpdatedAt,
             lastSyncedAt = existing?.lastSyncedAt,
+            lastUploadedHash = existing?.lastUploadedHash,
             syncStatus = existing?.syncStatus ?: SaveSyncEntity.STATUS_PENDING_UPLOAD
         )
         saveSyncDao.upsert(entity)
