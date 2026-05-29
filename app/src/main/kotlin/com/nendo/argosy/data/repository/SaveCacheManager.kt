@@ -117,7 +117,7 @@ class SaveCacheManager @Inject constructor(
 
             // Check for duplicate save by hash (skip for new games to allow fresh start saves)
             if (!skipDuplicateCheck) {
-                val existingWithHash = saveCacheDao.getByGameAndHash(gameId, contentHash)
+                val existingWithHash = saveCacheDao.getAllByGameChannelAndHash(gameId, channelName, contentHash).firstOrNull()
                 if (existingWithHash != null) {
                     Log.d(TAG, "Duplicate save detected for game $gameId (hash=$contentHash, hardcore=$isHardcore), skipping cache")
                     SaveDebugLogger.logCacheDuplicate(
@@ -335,7 +335,7 @@ class SaveCacheManager @Inject constructor(
                 saveArchiver.calculateFileHash(saveFile) to saveFile
             }
 
-            val existingWithHash = saveCacheDao.getByGameAndHash(gameId, contentHash)
+            val existingWithHash = saveCacheDao.getAllByGameChannelAndHash(gameId, null, contentHash).firstOrNull()
             if (existingWithHash != null) {
                 Log.d(TAG, "Rollback skipped - identical save already cached (hash=$contentHash)")
                 tempFile?.delete()

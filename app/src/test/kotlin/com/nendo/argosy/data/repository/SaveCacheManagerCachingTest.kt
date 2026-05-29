@@ -82,8 +82,11 @@ class SaveCacheManagerCachingTest {
             id = 99L, gameId = 1L, emulatorId = "retroarch",
             cachedAt = Instant.now(), saveSize = 1024L,
             cachePath = "1/old/game.srm", contentHash = "deadbeef",
+            channelName = SaveSyncApiClient.AUTOSAVE_SLOT_NAME,
         )
-        coEvery { saveCacheDao.getByGameAndHash(1L, any()) } returns existing
+        coEvery {
+            saveCacheDao.getAllByGameChannelAndHash(1L, SaveSyncApiClient.AUTOSAVE_SLOT_NAME, any())
+        } returns listOf(existing)
 
         val result = manager.cacheCurrentSave(
             gameId = 1L, emulatorId = "retroarch", savePath = save.absolutePath,
@@ -112,7 +115,7 @@ class SaveCacheManagerCachingTest {
 
         assertTrue(result is SaveCacheManager.CacheResult.Duplicate)
         assertEquals("cafebabe", (result as SaveCacheManager.CacheResult.Duplicate).contentHash)
-        coVerify(exactly = 0) { saveCacheDao.getByGameAndHash(any(), any()) }
+        coVerify(exactly = 0) { saveCacheDao.getAllByGameChannelAndHash(any(), any(), any()) }
         coVerify(exactly = 0) { saveCacheDao.insert(any()) }
     }
 
