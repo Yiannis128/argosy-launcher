@@ -151,6 +151,7 @@ class GameLaunchDelegate @Inject constructor(
         discId: Long? = null,
         channelName: String? = null,
         skipPreLaunchSync: Boolean = false,
+        overrideLaunchMode: LaunchMode? = null,
         onLaunch: (Intent) -> Unit,
         onLaunchFailed: () -> Unit = {}
     ) {
@@ -199,7 +200,7 @@ class GameLaunchDelegate @Inject constructor(
 
                 if (canResume) {
                     val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId, prefetchedGame = game)
-                    dispatchPrimaryLaunchResult(result, channelName, launchMode = null, onLaunch, onLaunchFailed)
+                    dispatchPrimaryLaunchResult(result, channelName, launchMode = overrideLaunchMode, onLaunch, onLaunchFailed)
                     return@launch
                 }
 
@@ -336,6 +337,7 @@ class GameLaunchDelegate @Inject constructor(
 
                 val launchMode = when {
                     hardcoreConflictChoice == HardcoreConflictChoice.KEEP_HARDCORE -> LaunchMode.RESUME_HARDCORE
+                    overrideLaunchMode != null -> overrideLaunchMode
                     isActiveSaveHardcore(gameId) -> LaunchMode.RESUME_HARDCORE
                     else -> null
                 }

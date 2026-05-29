@@ -844,22 +844,25 @@ class GameDetailViewModel @Inject constructor(
     fun handlePlayOption(action: com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction) {
         playOptionsDelegate.dismissPlayOptions()
         viewModelScope.launch {
-            val launchMode = when (action) {
-                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.Resume,
+            when (action) {
+                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.Resume ->
+                    launchWithMode(com.nendo.argosy.libretro.LaunchMode.RESUME, skipPreLaunchSync = false)
                 is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.ResumeNoSync ->
-                    com.nendo.argosy.libretro.LaunchMode.RESUME
-                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.NewCasual ->
-                    com.nendo.argosy.libretro.LaunchMode.NEW_CASUAL
-                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.NewHardcore ->
-                    com.nendo.argosy.libretro.LaunchMode.NEW_HARDCORE
+                    launchWithMode(com.nendo.argosy.libretro.LaunchMode.RESUME, skipPreLaunchSync = true)
                 is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.ResumeHardcore ->
-                    com.nendo.argosy.libretro.LaunchMode.RESUME_HARDCORE
+                    launchWithMode(com.nendo.argosy.libretro.LaunchMode.RESUME_HARDCORE, skipPreLaunchSync = false)
+                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.NewCasual ->
+                    launchWithMode(com.nendo.argosy.libretro.LaunchMode.NEW_CASUAL, skipPreLaunchSync = false)
+                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.NewHardcore ->
+                    launchWithMode(com.nendo.argosy.libretro.LaunchMode.NEW_HARDCORE, skipPreLaunchSync = false)
             }
-            launchWithMode(launchMode)
         }
     }
 
-    private suspend fun launchWithMode(launchMode: com.nendo.argosy.libretro.LaunchMode) {
+    private suspend fun launchWithMode(
+        launchMode: com.nendo.argosy.libretro.LaunchMode,
+        skipPreLaunchSync: Boolean
+    ) {
         if (launchMode == com.nendo.argosy.libretro.LaunchMode.NEW_CASUAL ||
             launchMode == com.nendo.argosy.libretro.LaunchMode.NEW_HARDCORE) {
             gameRepository.updateActiveSaveChannel(currentGameId, null)
@@ -872,12 +875,26 @@ class GameDetailViewModel @Inject constructor(
             }
         }
 
-        gameLaunchDelegate.launchSimple(
-            scope = viewModelScope,
-            gameId = currentGameId,
-            launchMode = launchMode,
-            callbacks = makeLaunchCallbacks()
-        )
+        val isResume = launchMode == com.nendo.argosy.libretro.LaunchMode.RESUME ||
+            launchMode == com.nendo.argosy.libretro.LaunchMode.RESUME_HARDCORE
+        if (isResume) {
+            val callbacks = makeLaunchCallbacks()
+            gameLaunchDelegate.launchGame(
+                scope = viewModelScope,
+                gameId = currentGameId,
+                skipPreLaunchSync = skipPreLaunchSync,
+                overrideLaunchMode = launchMode,
+                onLaunch = callbacks.onLaunch,
+                onLaunchFailed = { callbacks.onLaunchFailed() }
+            )
+        } else {
+            gameLaunchDelegate.launchSimple(
+                scope = viewModelScope,
+                gameId = currentGameId,
+                launchMode = launchMode,
+                callbacks = makeLaunchCallbacks()
+            )
+        }
     }
 
     private fun makeLaunchCallbacks(): com.nendo.argosy.ui.screens.common.LaunchResultCallbacks =
