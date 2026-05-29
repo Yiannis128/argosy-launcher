@@ -968,6 +968,42 @@ class PlaySessionTracker @Inject constructor(
         scope.launch { endSession(skipSaveSync = skipSaveSync) }
     }
 
+    /** Cache the current session's save to local Room with needsRemoteSync=true, synchronously. Called from the in-game Quit handler so the save is persisted before libretro core teardown begins -- teardown can be slow enough on some cores (PSP shader cache, etc.) to trigger an OS-imposed process kill, taking endSession's coroutine with it. The upload itself is handled later by SaveSyncQueuer / the sync coordinator off the queued row. */
+    suspend fun cacheCurrentSessionForQuit(): SaveCacheManager.CacheResult? {
+        val session = _activeSession.value ?: return null
+        val game = gameDao.getById(session.gameId) ?: return null
+        val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
+            ?: return null
+        val savePath = saveSyncRepository.get().discoverSavePath(
+            emulatorId = emulatorId,
+            gameTitle = game.title,
+            platformSlug = game.platformSlug,
+            romPath = game.localPath,
+            cachedSaveId = game.saveId ?: game.titleId,
+            coreName = session.coreName,
+            emulatorPackage = session.emulatorPackage,
+            gameId = session.gameId
+        ) ?: return null
+        val activeChannel = if (session.isHardcore) null else session.channelName
+        return try {
+            saveCacheManager.get().cacheCurrentSave(
+                gameId = session.gameId,
+                emulatorId = emulatorId,
+                savePath = savePath,
+                channelName = activeChannel,
+                isLocked = false,
+                isHardcore = session.isHardcore,
+                skipDuplicateCheck = false,
+                needsRemoteSync = true
+            ).also { result ->
+                Logger.debug(TAG, "[SaveSync] QUIT gameId=${session.gameId} | Pre-quit cache result=${result::class.simpleName}")
+            }
+        } catch (e: Exception) {
+            Logger.error(TAG, "[SaveSync] QUIT gameId=${session.gameId} | Pre-quit cache failed", e)
+            SaveCacheManager.CacheResult.Failed
+        }
+    }
+
     fun forceStopService() {
         GameSessionService.stop(application)
         scope.launch { clearSessionAndBroadcast() }

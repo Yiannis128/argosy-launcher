@@ -112,6 +112,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -1157,7 +1158,16 @@ class LibretroActivity : ComponentActivity() {
             }
             InGameMenuAction.Quit -> {
                 performAutoSaveState()
-                finish()
+                lifecycleScope.launch {
+                    try {
+                        withContext(kotlinx.coroutines.NonCancellable) {
+                            playSessionTracker.cacheCurrentSessionForQuit()
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Pre-quit save cache failed", e)
+                    }
+                    finish()
+                }
             }
             InGameMenuAction.OpenToFriends -> {
                 hideMenu()
