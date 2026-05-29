@@ -32,6 +32,9 @@ captures/
 !gradle/wrapper/gradle-wrapper.jar
 !libs/maven/**/*.jar
 *.war
+
+# Kotlin Language Server (fwcd) local classpath cache
+kls_database.db
 *.nar
 *.ear
 *.zip
