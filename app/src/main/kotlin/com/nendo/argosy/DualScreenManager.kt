@@ -214,6 +214,19 @@ class DualScreenManager(
     val dualCollectionShowcase: StateFlow<DualCollectionShowcaseState> =
         _dualCollectionShowcase
 
+    init {
+        scope.launch {
+            preferencesRepository.userPreferences.collect { prefs ->
+                _dualScreenShowcase.update {
+                    it.copy(
+                        useGameBackground = prefs.useGameBackground,
+                        customWallpaperPath = prefs.customBackgroundPath
+                    )
+                }
+            }
+        }
+    }
+
     private val _dualSyncOverlay = MutableStateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?>(null)
     val dualSyncOverlay: StateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?> = _dualSyncOverlay
 
@@ -496,10 +509,14 @@ class DualScreenManager(
     }
 
     fun onGameSelected(showcase: DualHomeShowcaseState) {
-        val gameId = showcase.gameId
+        val withWallpaper = showcase.copy(
+            useGameBackground = _dualScreenShowcase.value.useGameBackground,
+            customWallpaperPath = _dualScreenShowcase.value.customWallpaperPath
+        )
+        val gameId = withWallpaper.gameId
         if (gameId > 0) {
             scope.launch(Dispatchers.IO) {
-                val validated = validateShowcaseImagePaths(showcase)
+                val validated = validateShowcaseImagePaths(withWallpaper)
                 _dualScreenShowcase.value = validated
                 val entity = gameDao.getById(gameId) ?: return@launch
                 val rommId = entity.rommId
@@ -508,7 +525,7 @@ class DualScreenManager(
                 fetchAchievementsUseCase(gameId = gameId, rommId = rommId, raId = raId)
             }
         } else {
-            _dualScreenShowcase.value = showcase
+            _dualScreenShowcase.value = withWallpaper
         }
     }
 
