@@ -306,6 +306,78 @@ class SaveSyncConflictResolver @Inject constructor(
         }
     }
 
+    /** Copies the latest local cache row's bytes onto the active emulator's save path when the user has switched emulators since that cache was written. Restores cross-emulator portability (PPSSPP <-> built-in PSP) without round-tripping through the server. */
+    suspend fun crossEmulatorMigrateIfNeeded(gameId: Long, currentEmulatorId: String) = withContext(Dispatchers.IO) {
+        val game = gameDao.getById(gameId) ?: return@withContext
+        val latestCache = saveCacheDao.getByGame(gameId)
+            .filter { !it.contentHash.isNullOrBlank() }
+            .maxByOrNull { it.cachedAt }
+            ?: return@withContext
+        if (latestCache.emulatorId == currentEmulatorId) return@withContext
+
+        val targetPath = resolveTargetPathForEmulator(gameId, game, currentEmulatorId) ?: run {
+            Logger.warn(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Cross-emulator sync skipped | could not resolve save path for emulator=$currentEmulatorId")
+            return@withContext
+        }
+
+        val existingHash = saveCacheManager.get().calculateLocalSaveHash(targetPath)
+        if (existingHash != null && existingHash == latestCache.contentHash) return@withContext
+        if (existingHash != null) {
+            val existingMtime = savePathResolver.findNewestFileTime(targetPath).takeIf { it > 0 }
+                ?: File(targetPath).lastModified()
+            if (latestCache.cachedAt.toEpochMilli() <= existingMtime) return@withContext
+        }
+
+        Logger.info(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Cross-emulator sync | from=${latestCache.emulatorId} to=$currentEmulatorId cacheId=${latestCache.id} target=$targetPath diskExists=${existingHash != null}")
+        com.nendo.argosy.util.SaveDebugLogger.logCustom(
+            event = "CROSS_EMULATOR_SYNC",
+            gameId = gameId,
+            gameName = game.title,
+            channel = latestCache.channelName,
+            details = "from=${latestCache.emulatorId} to=$currentEmulatorId cacheId=${latestCache.id} target=${File(targetPath).name} diskExists=${existingHash != null}"
+        )
+        val restored = saveCacheManager.get().restoreSave(latestCache.id, targetPath)
+        if (!restored) {
+            Logger.warn(TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | Cross-emulator restore FAILED | cacheId=${latestCache.id} target=$targetPath")
+        }
+    }
+
+    private suspend fun resolveTargetPathForEmulator(
+        gameId: Long,
+        game: com.nendo.argosy.data.local.entity.GameEntity,
+        currentEmulatorId: String
+    ): String? {
+        val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
+        val coreName = apiClient.get().resolveCoreForGame(game)
+
+        val discovered = savePathResolver.discoverSavePath(
+            emulatorId = currentEmulatorId,
+            gameTitle = game.title,
+            platformSlug = game.platformSlug,
+            romPath = game.localPath,
+            cachedSaveId = game.saveId ?: game.titleId,
+            coreName = coreName,
+            emulatorPackage = emulatorPackage,
+            gameId = gameId
+        )
+        if (discovered != null) return discovered
+
+        val userOverride = emulatorSaveConfigDao.getByEmulator(currentEmulatorId)
+            ?.takeIf { it.isUserOverride }
+            ?.savePathPattern
+            ?.takeIf { it.isNotBlank() }
+        if (userOverride != null) return userOverride
+
+        val config = com.nendo.argosy.data.emulator.SavePathRegistry.getConfigForPlatform(currentEmulatorId, game.platformSlug)
+            ?: com.nendo.argosy.data.emulator.SavePathRegistry.getConfig(currentEmulatorId)
+            ?: return null
+        val candidates = com.nendo.argosy.data.emulator.SavePathRegistry.resolvePathWithPackage(
+            config, emulatorPackage, appContext.filesDir.absolutePath, fal.externalStorageRoots()
+        )
+        return candidates.firstOrNull { fal.exists(it) && fal.isDirectory(it) }
+            ?: candidates.firstOrNull()
+    }
+
     companion object {
         private const val TAG = "SaveSyncConflictResolver"
     }

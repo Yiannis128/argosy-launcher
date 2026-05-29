@@ -175,6 +175,8 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         titleIdDownloadObserver.extractTitleIdForGame(gameId)
 
+        saveSyncRepository.crossEmulatorMigrateIfNeeded(gameId, emulatorId)
+
         val syncResult = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName)
 
         when (syncResult) {

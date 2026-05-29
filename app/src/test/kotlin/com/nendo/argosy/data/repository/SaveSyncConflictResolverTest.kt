@@ -239,4 +239,81 @@ class SaveSyncConflictResolverTest {
         coEvery { mockApiClient.checkSavesForGame(1L, 100L) } returns listOf(serverSave)
         coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any()) } returns entityWithRealPath
     }
+
+    private fun makeCache(
+        id: Long,
+        emulatorId: String,
+        contentHash: String? = "cache-hash",
+        cachedAtMs: Long = 1_000_000L
+    ) = com.nendo.argosy.data.local.entity.SaveCacheEntity(
+        id = id,
+        gameId = 1L,
+        emulatorId = emulatorId,
+        cachedAt = Instant.ofEpochMilli(cachedAtMs),
+        saveSize = 1024L,
+        cachePath = "cache/$id",
+        contentHash = contentHash
+    )
+
+    @Test
+    fun `crossEmulatorMigrateIfNeeded copies cache when latest cache emulator differs`() = runTest {
+        val cache = makeCache(id = 7L, emulatorId = "ppsspp")
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
+        coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns "argosy.builtin.libretro"
+        coEvery { mockApiClient.resolveCoreForGame(testGame) } returns "ppsspp_libretro"
+        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns "/builtin/target.srm"
+        coEvery { mockCacheManager.calculateLocalSaveHash("/builtin/target.srm") } returns null
+        coEvery { mockCacheManager.restoreSave(7L, "/builtin/target.srm") } returns true
+
+        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "builtin")
+
+        io.mockk.coVerify(exactly = 1) { mockCacheManager.restoreSave(7L, "/builtin/target.srm") }
+    }
+
+    @Test
+    fun `crossEmulatorMigrateIfNeeded no-ops when latest cache emulator matches current`() = runTest {
+        val cache = makeCache(id = 7L, emulatorId = "builtin")
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
+
+        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "builtin")
+
+        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
+    }
+
+    @Test
+    fun `crossEmulatorMigrateIfNeeded no-ops when no cache has a content hash`() = runTest {
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(makeCache(id = 7L, emulatorId = "ppsspp", contentHash = null))
+
+        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "builtin")
+
+        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
+    }
+
+    @Test
+    fun `crossEmulatorMigrateIfNeeded no-ops when disk hash already matches cache hash`() = runTest {
+        val cache = makeCache(id = 7L, emulatorId = "ppsspp", contentHash = "same-hash")
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
+        coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns "argosy.builtin.libretro"
+        coEvery { mockApiClient.resolveCoreForGame(testGame) } returns "ppsspp_libretro"
+        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns "/builtin/target.srm"
+        coEvery { mockCacheManager.calculateLocalSaveHash("/builtin/target.srm") } returns "same-hash"
+
+        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "builtin")
+
+        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
+    }
+
+    @Test
+    fun `crossEmulatorMigrateIfNeeded no-ops when target path cannot be resolved`() = runTest {
+        val cache = makeCache(id = 7L, emulatorId = "ppsspp")
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
+        coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns null
+        coEvery { mockApiClient.resolveCoreForGame(testGame) } returns null
+        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
+        coEvery { emulatorSaveConfigDao.getByEmulator(any()) } returns null
+
+        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "completely-unknown-emulator-id")
+
+        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
+    }
 }
