@@ -97,6 +97,33 @@ class SaveSyncEntityManagerTest {
     }
 
     @Test
+    fun `createOrUpdateSyncEntity preserves existing lastUploadedHash (server-verified value must not be nulled out)`() = runTest {
+        val existing = SaveSyncEntity(
+            id = 42L, gameId = 1L, rommId = 100L, emulatorId = "eden",
+            channelName = "manual", rommSaveId = 5L,
+            localSavePath = "/old", localUpdatedAt = Instant.ofEpochMilli(500),
+            serverUpdatedAt = Instant.ofEpochMilli(600), lastSyncedAt = Instant.ofEpochMilli(700),
+            syncStatus = SaveSyncEntity.STATUS_SYNCED,
+            lastUploadedHash = "server-verified-abc",
+        )
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "manual") } returns existing
+        val captured = slot<SaveSyncEntity>()
+        coEvery { saveSyncDao.upsert(capture(captured)) } returns 42L
+
+        manager.createOrUpdateSyncEntity(
+            gameId = 1L, rommId = 100L, emulatorId = "eden",
+            localPath = "/new", localUpdatedAt = Instant.ofEpochMilli(1_000),
+            channelName = "manual",
+        )
+
+        assertEquals(
+            "lastUploadedHash from existing row must survive the upsert (audit Bug A1)",
+            "server-verified-abc",
+            captured.captured.lastUploadedHash
+        )
+    }
+
+    @Test
     fun `createOrUpdateSyncEntity uses channel-keyed lookup when channelName provided`() = runTest {
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "manual") } returns null
         coEvery { saveSyncDao.upsert(any()) } returns 1L
