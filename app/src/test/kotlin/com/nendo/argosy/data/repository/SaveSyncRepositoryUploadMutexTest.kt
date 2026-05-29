@@ -24,6 +24,8 @@ class SaveSyncRepositoryUploadMutexTest {
     private val entityManager = mockk<SaveSyncEntityManager>(relaxed = true)
     private val stateCacheManager = mockk<StateCacheManager>(relaxed = true)
     private val syncQueueManager = mockk<SyncQueueManager>(relaxed = true)
+    private val saveSyncDao = mockk<com.nendo.argosy.data.local.dao.SaveSyncDao>(relaxed = true)
+    private val saveCacheDao = mockk<com.nendo.argosy.data.local.dao.SaveCacheDao>(relaxed = true)
 
     private lateinit var repo: SaveSyncRepository
 
@@ -31,7 +33,7 @@ class SaveSyncRepositoryUploadMutexTest {
     fun setUp() {
         repo = SaveSyncRepository(
             apiClient, conflictResolver, orchestrator, entityManager,
-            stateCacheManager, syncQueueManager,
+            stateCacheManager, syncQueueManager, saveSyncDao, saveCacheDao,
         )
     }
 

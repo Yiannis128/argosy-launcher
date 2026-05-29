@@ -160,6 +160,16 @@ interface SaveCacheDao {
     @Query("SELECT COUNT(*) FROM save_cache WHERE needsRemoteSync = 1")
     suspend fun countNeedingRemoteSync(): Int
 
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM save_cache
+            WHERE gameId = :gameId
+              AND needsRemoteSync = 1
+              AND IFNULL(channelName, '') = IFNULL(:channelName, '')
+        )
+    """)
+    suspend fun hasNeedingRemoteSync(gameId: Long, channelName: String?): Boolean
+
     @Query("SELECT COUNT(*) FROM save_cache WHERE needsRemoteSync = 1")
     fun observeNeedingRemoteSyncCount(): Flow<Int>
 

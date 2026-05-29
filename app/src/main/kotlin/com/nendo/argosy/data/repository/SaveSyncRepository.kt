@@ -1,5 +1,7 @@
 package com.nendo.argosy.data.repository
 
+import com.nendo.argosy.data.local.dao.SaveCacheDao
+import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMCapabilities
@@ -8,6 +10,7 @@ import com.nendo.argosy.data.sync.ConflictInfo
 import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.data.sync.SyncQueueManager
 import com.nendo.argosy.data.sync.SyncQueueState
+import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -104,8 +107,12 @@ class SaveSyncRepository @Inject constructor(
     private val orchestrator: SaveSyncOrchestrator,
     private val entityManager: SaveSyncEntityManager,
     private val stateCacheManager: StateCacheManager,
-    private val syncQueueManager: SyncQueueManager
+    private val syncQueueManager: SyncQueueManager,
+    private val saveSyncDao: SaveSyncDao,
+    private val saveCacheDao: SaveCacheDao
 ) {
+    private val PRE_LAUNCH_TAG = "SaveSyncRepository"
+
     val syncQueueState: StateFlow<SyncQueueState> = entityManager.syncQueueState
 
     fun setApi(api: RomMApi?) = apiClient.setApi(api)
@@ -287,8 +294,70 @@ class SaveSyncRepository @Inject constructor(
         serverTimestamp: Instant?
     ) = entityManager.markRestored(gameId, rommId, emulatorId, channelName, localPath, rommSaveId, serverTimestamp)
 
+    @Deprecated("Use preLaunchSyncForGame(gameId, rommId, emulatorId, channelName) instead", ReplaceWith("preLaunchSyncForGame(gameId, rommId, emulatorId, null)"))
     suspend fun preLaunchSync(gameId: Long, rommId: Long, emulatorId: String): PreLaunchSyncResult =
-        conflictResolver.preLaunchSync(gameId, rommId, emulatorId)
+        preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null)
+
+    suspend fun preLaunchSyncForGame(
+        gameId: Long,
+        rommId: Long,
+        emulatorId: String,
+        channelName: String?
+    ): PreLaunchSyncResult = withContext(Dispatchers.IO) {
+        val myDeviceId = apiClient.getDeviceId() ?: run {
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | No deviceId (pre-4.7 server or sync disabled) | decision=NoConnection")
+            return@withContext PreLaunchSyncResult.NoConnection
+        }
+        val effectiveChannel = channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME
+
+        val existing = saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, effectiveChannel)
+        if (existing?.userSelectedRestorePoint == true) {
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | userSelectedRestorePoint=true | decision=LocalIsNewer")
+            return@withContext PreLaunchSyncResult.LocalIsNewer
+        }
+
+        apiClient.flushPendingDeviceSync(gameId)
+
+        val serverSaves = try {
+            apiClient.checkSavesForGame(gameId, rommId)
+                .filterNot { SaveSyncApiClient.isStateShapedSave(it) }
+        } catch (e: Exception) {
+            Logger.warn(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | checkSavesForGame failed; decision=NoConnection", e)
+            return@withContext PreLaunchSyncResult.NoConnection
+        }
+
+        val active = serverSaves.firstOrNull { save ->
+            save.slot != null && SaveSyncApiClient.equalsNormalized(save.slot, effectiveChannel)
+        }
+        val localDirty = saveCacheDao.hasNeedingRemoteSync(gameId, channelName)
+
+        if (active == null) {
+            val decision = if (localDirty) PreLaunchSyncResult.LocalIsNewer else PreLaunchSyncResult.NoServerSave
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | no server save for slot | localDirty=$localDirty | decision=${decision::class.simpleName}")
+            return@withContext decision
+        }
+
+        val ourSync = active.deviceSyncs?.firstOrNull { it.deviceId == myDeviceId }
+        val serverHasNewer = ourSync?.isCurrent != true
+
+        val decision: PreLaunchSyncResult = when {
+            !serverHasNewer -> PreLaunchSyncResult.LocalIsNewer
+            !localDirty -> PreLaunchSyncResult.ServerIsNewer(
+                serverTimestamp = SaveSyncApiClient.parseTimestamp(active.updatedAt),
+                channelName = effectiveChannel,
+                serverSaveId = active.id
+            )
+            else -> PreLaunchSyncResult.LocalModified(
+                localSavePath = existing?.localSavePath ?: "",
+                serverTimestamp = SaveSyncApiClient.parseTimestamp(active.updatedAt),
+                channelName = effectiveChannel,
+                serverSaveId = active.id
+            )
+        }
+
+        Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | serverIsCurrent=${ourSync?.isCurrent == true} serverHasNewer=$serverHasNewer localDirty=$localDirty | decision=${decision::class.simpleName} serverSaveId=${active.id}")
+        decision
+    }
 
     suspend fun markUserSelectedRestorePoint(gameId: Long, emulatorId: String, channelName: String?) =
         entityManager.markUserSelectedRestorePoint(gameId, emulatorId, channelName)
