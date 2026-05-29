@@ -254,6 +254,62 @@ class SaveUploaderTest {
         coVerify(exactly = 1) { saveCacheDao.updateRommSaveId(20L, 999L) }
     }
 
+    @Test
+    fun `skip-check self-heal must scope to caller channel (audit Bug A3)`() = runTest {
+        val channelACache = SaveCacheEntity(
+            id = 100L,
+            gameId = gameId,
+            emulatorId = emulatorId,
+            cachedAt = Instant.parse("2026-05-01T00:00:00Z"),
+            saveSize = 256L,
+            cachePath = "a/path",
+            channelName = "channel-A",
+            contentHash = "shared-hash",
+            rommSaveId = null,
+        )
+        val channelBCache = SaveCacheEntity(
+            id = 200L,
+            gameId = gameId,
+            emulatorId = emulatorId,
+            cachedAt = Instant.parse("2026-05-02T00:00:00Z"),
+            saveSize = 256L,
+            cachePath = "b/path",
+            channelName = "channel-B",
+            contentHash = "shared-hash",
+            rommSaveId = null,
+        )
+
+        coEvery {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, "channel-A")
+        } returns SaveSyncEntity(
+            id = 11L,
+            gameId = gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = "channel-A",
+            rommSaveId = 555L,
+            localSavePath = preparedFile.absolutePath,
+            syncStatus = SaveSyncEntity.STATUS_SYNCED,
+            lastUploadedHash = "shared-hash"
+        )
+        every { saveArchiver.calculateContentHash(any()) } returns "shared-hash"
+        coEvery { saveCacheDao.getByGameAndHash(gameId, "shared-hash") } returns channelBCache
+        coEvery {
+            saveCacheDao.getAllByGameChannelAndHash(gameId, "channel-A", "shared-hash")
+        } returns listOf(channelACache)
+
+        val result = uploader.uploadSave(gameId, emulatorId, channelName = "channel-A")
+
+        assertTrue("expected Success but got $result", result is SaveSyncResult.Success)
+        assertEquals(true, (result as SaveSyncResult.Success).noOp)
+        coVerify(exactly = 1) {
+            saveCacheDao.updateRommSaveId(100L, 555L)
+        }
+        coVerify(exactly = 0) {
+            saveCacheDao.updateRommSaveId(200L, any())
+        }
+    }
+
     private fun serverSaveOf(id: Long, contentHash: String): RomMSave = RomMSave(
         id = id,
         romId = rommId,
