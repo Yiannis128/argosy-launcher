@@ -176,6 +176,16 @@ class LaunchWithSyncUseCaseTest {
     }
 
     @Test
+    fun `skipPreLaunchSync=true emits Skipped before any sync work`() = runTest {
+        val progress = useCase.invokeWithProgress(gameId, skipPreLaunchSync = true).toList()
+
+        assertEquals(listOf(SyncProgress.Skipped), progress)
+        io.mockk.coVerify(exactly = 0) {
+            saveSyncRepository.preLaunchSyncForGame(any(), any(), any(), any())
+        }
+    }
+
+    @Test
     fun `saveSync disabled in prefs emits Skipped before any API call`() = runTest {
         every { preferencesRepository.userPreferences } returns MutableStateFlow(
             UserPreferences(saveSyncEnabled = false)

@@ -150,6 +150,7 @@ class GameLaunchDelegate @Inject constructor(
         gameId: Long,
         discId: Long? = null,
         channelName: String? = null,
+        skipPreLaunchSync: Boolean = false,
         onLaunch: (Intent) -> Unit,
         onLaunchFailed: () -> Unit = {}
     ) {
@@ -226,7 +227,7 @@ class GameLaunchDelegate @Inject constructor(
                 var localModifiedInfo: SyncProgress.LocalModified? = null
                 var localModifiedChoice: LocalModifiedChoice? = null
 
-                launchWithSyncUseCase.invokeWithProgress(gameId, channelName).collect { progress ->
+                launchWithSyncUseCase.invokeWithProgress(gameId, channelName, skipPreLaunchSync).collect { progress ->
                     if (canSync && progress != SyncProgress.Skipped && progress != SyncProgress.Idle) {
                         when (progress) {
                             is SyncProgress.HardcoreConflict -> {

@@ -800,6 +800,7 @@ private fun GameDetailModals(
             hasRASupport = uiState.hasRASupport,
             isRALoggedIn = uiState.isRALoggedIn,
             isOnline = uiState.isOnline,
+            canSkipSync = uiState.isOnline,
             onAction = viewModel::handlePlayOption,
             onDismiss = viewModel::dismissPlayOptions
         )

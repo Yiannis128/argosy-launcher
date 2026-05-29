@@ -107,12 +107,21 @@ class LaunchWithSyncUseCase @Inject constructor(
         }
     }
 
-    fun invokeWithProgress(gameId: Long, channelName: String? = null): Flow<SyncProgress> = flow {
+    fun invokeWithProgress(
+        gameId: Long,
+        channelName: String? = null,
+        skipPreLaunchSync: Boolean = false
+    ): Flow<SyncProgress> = flow {
         if (channelName != null) {
             val currentChannel = gameDao.getActiveSaveChannel(gameId)
             if (currentChannel != channelName) {
                 gameDao.updateActiveSaveChannel(gameId, channelName)
             }
+        }
+
+        if (skipPreLaunchSync) {
+            emit(SyncProgress.Skipped)
+            return@flow
         }
 
         val prefs = preferencesRepository.userPreferences.first()

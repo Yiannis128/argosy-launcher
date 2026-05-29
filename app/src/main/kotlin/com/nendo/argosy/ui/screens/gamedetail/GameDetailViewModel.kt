@@ -845,7 +845,8 @@ class GameDetailViewModel @Inject constructor(
         playOptionsDelegate.dismissPlayOptions()
         viewModelScope.launch {
             val launchMode = when (action) {
-                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.Resume ->
+                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.Resume,
+                is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.ResumeNoSync ->
                     com.nendo.argosy.libretro.LaunchMode.RESUME
                 is com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction.NewCasual ->
                     com.nendo.argosy.libretro.LaunchMode.NEW_CASUAL

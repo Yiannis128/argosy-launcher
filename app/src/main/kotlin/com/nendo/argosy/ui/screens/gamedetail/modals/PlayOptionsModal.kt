@@ -32,6 +32,7 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 
 sealed class PlayOptionAction {
     data object Resume : PlayOptionAction()
+    data object ResumeNoSync : PlayOptionAction()
     data object NewCasual : PlayOptionAction()
     data object NewHardcore : PlayOptionAction()
     data object ResumeHardcore : PlayOptionAction()
@@ -45,6 +46,7 @@ fun PlayOptionsModal(
     hasRASupport: Boolean,
     isRALoggedIn: Boolean,
     isOnline: Boolean,
+    canSkipSync: Boolean = false,
     onAction: (PlayOptionAction) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -65,6 +67,17 @@ fun PlayOptionsModal(
                     label = "Latest",
                     isFocused = focusIndex == idx,
                     onClick = { onAction(PlayOptionAction.Resume) }
+                )
+            }
+
+            if (hasSaves && canSkipSync) {
+                val idx = currentIndex++
+                PlayOptionRow(
+                    icon = Icons.Default.PlayArrow,
+                    label = "Play without syncing",
+                    subtext = "Skip the pre-launch save sync check",
+                    isFocused = focusIndex == idx,
+                    onClick = { onAction(PlayOptionAction.ResumeNoSync) }
                 )
             }
 
