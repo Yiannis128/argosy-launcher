@@ -310,6 +310,211 @@ class SaveUploaderTest {
         }
     }
 
+    @Test
+    fun `skip-check adopt-by-older-row updates older row rommSaveId with no discard (coverage gap)`() = runTest {
+        val older = SaveCacheEntity(
+            id = 10L,
+            gameId = gameId,
+            emulatorId = emulatorId,
+            cachedAt = Instant.parse("2026-05-01T00:00:00Z"),
+            saveSize = 256L,
+            cachePath = "older/path",
+            channelName = "manual",
+            contentHash = "h-older",
+            rommSaveId = null,
+        )
+
+        coEvery {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, "manual")
+        } returns SaveSyncEntity(
+            id = 1L,
+            gameId = gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = "manual",
+            localSavePath = preparedFile.absolutePath,
+            syncStatus = SaveSyncEntity.STATUS_PENDING_UPLOAD,
+            lastUploadedHash = null
+        )
+        every { saveArchiver.calculateContentHash(any()) } returns "h-older"
+        coEvery { saveCacheDao.getByGameAndHash(gameId, "h-older") } returns older
+        coEvery {
+            saveCacheDao.getAllByGameChannelAndHash(gameId, "manual", "h-older")
+        } returns listOf(older)
+
+        val serverSave = serverSaveOf(id = 999L, contentHash = "h-older")
+        coEvery {
+            romMApi.uploadSaveWithDevice(any(), any(), any(), any(), any(), any(), any(), any<MultipartBody.Part>(), any())
+        } returns Response.success(serverSave)
+
+        val result = uploader.uploadSave(
+            gameId = gameId,
+            emulatorId = emulatorId,
+            channelName = "manual",
+            uploadedCacheId = null
+        )
+
+        assertTrue("expected Success but got $result", result is SaveSyncResult.Success)
+        coVerify(exactly = 1) { saveCacheDao.updateRommSaveId(10L, 999L) }
+        coVerify(exactly = 0) { saveCacheManager.deleteCachedSave(any()) }
+    }
+
+    @Test
+    fun `serverSave with null contentHash does not leak local hash into SaveSyncEntity write (coverage gap)`() = runTest {
+        coEvery {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, "manual")
+        } returns SaveSyncEntity(
+            id = 1L,
+            gameId = gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = "manual",
+            localSavePath = preparedFile.absolutePath,
+            syncStatus = SaveSyncEntity.STATUS_PENDING_UPLOAD,
+            lastUploadedHash = null
+        )
+        every { saveArchiver.calculateContentHash(any()) } returns "local-hash"
+        coEvery { saveCacheDao.getByGameAndHash(any(), any()) } returns null
+        coEvery {
+            saveCacheDao.getAllByGameChannelAndHash(any(), any(), any())
+        } returns emptyList()
+
+        val serverSave = RomMSave(
+            id = 999L,
+            romId = rommId,
+            userId = 1L,
+            emulator = emulatorId,
+            fileName = "manual.srm",
+            updatedAt = "2026-05-02T00:00:00Z",
+            contentHash = null
+        )
+        coEvery {
+            romMApi.uploadSaveWithDevice(any(), any(), any(), any(), any(), any(), any(), any<MultipartBody.Part>(), any())
+        } returns Response.success(serverSave)
+
+        val capturedEntities = mutableListOf<SaveSyncEntity>()
+        coEvery { saveSyncDao.upsert(capture(capturedEntities)) } returns 1L
+
+        val result = uploader.uploadSave(
+            gameId = gameId,
+            emulatorId = emulatorId,
+            channelName = "manual",
+            uploadedCacheId = null
+        )
+
+        assertTrue("expected Success but got $result", result is SaveSyncResult.Success)
+        assertTrue("upsert must have been called", capturedEntities.isNotEmpty())
+        val written = capturedEntities.last()
+        assertEquals(
+            "When server reports null contentHash, SaveSyncEntity.lastUploadedHash must stay null (no local-hash leak)",
+            null,
+            written.lastUploadedHash
+        )
+    }
+
+    @Test
+    fun `post-upload reconcile with multiple older rows in channel picks the first (pin current behavior)`() = runTest {
+        val olderA = SaveCacheEntity(
+            id = 10L,
+            gameId = gameId,
+            emulatorId = emulatorId,
+            cachedAt = Instant.parse("2026-05-01T00:00:00Z"),
+            saveSize = 256L,
+            cachePath = "older-a/path",
+            channelName = "manual",
+            contentHash = "shared",
+            rommSaveId = null,
+        )
+        val olderB = SaveCacheEntity(
+            id = 11L,
+            gameId = gameId,
+            emulatorId = emulatorId,
+            cachedAt = Instant.parse("2026-05-01T12:00:00Z"),
+            saveSize = 256L,
+            cachePath = "older-b/path",
+            channelName = "manual",
+            contentHash = "shared",
+            rommSaveId = null,
+        )
+        val newlyUploaded = SaveCacheEntity(
+            id = 20L,
+            gameId = gameId,
+            emulatorId = emulatorId,
+            cachedAt = Instant.parse("2026-05-02T00:00:00Z"),
+            saveSize = 256L,
+            cachePath = "newer/path",
+            channelName = "manual",
+            contentHash = "shared",
+            rommSaveId = null,
+        )
+
+        coEvery {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, "manual")
+        } returns SaveSyncEntity(
+            id = 1L,
+            gameId = gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = "manual",
+            localSavePath = preparedFile.absolutePath,
+            syncStatus = SaveSyncEntity.STATUS_PENDING_UPLOAD,
+            lastUploadedHash = null
+        )
+        every { saveArchiver.calculateContentHash(any()) } returns "shared"
+        coEvery { saveCacheDao.getByGameAndHash(any(), any()) } returns olderA
+        coEvery {
+            saveCacheDao.getAllByGameChannelAndHash(gameId, "manual", "shared")
+        } returns listOf(olderA, olderB, newlyUploaded)
+
+        val serverSave = serverSaveOf(id = 999L, contentHash = "shared")
+        coEvery {
+            romMApi.uploadSaveWithDevice(any(), any(), any(), any(), any(), any(), any(), any<MultipartBody.Part>(), any())
+        } returns Response.success(serverSave)
+
+        val result = uploader.uploadSave(
+            gameId = gameId,
+            emulatorId = emulatorId,
+            channelName = "manual",
+            uploadedCacheId = 20L
+        )
+
+        assertTrue("expected Success but got $result", result is SaveSyncResult.Success)
+        coVerify(exactly = 1) { saveCacheManager.deleteCachedSave(20L) }
+        coVerify(exactly = 1) { saveCacheDao.updateRommSaveId(10L, 999L) }
+        coVerify(exactly = 0) { saveCacheDao.updateRommSaveId(11L, any()) }
+        coVerify(exactly = 0) { saveCacheDao.updateRommSaveId(20L, any()) }
+    }
+
+    @Test
+    fun `hardcore upload with null channelName threads through without misbehavior (coverage gap)`() = runTest {
+        coEvery {
+            saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, SaveSyncApiClient.DEFAULT_SAVE_NAME)
+        } returns null
+        every { saveArchiver.calculateContentHash(any()) } returns "hc-hash"
+        coEvery { saveCacheDao.getByGameAndHash(any(), any()) } returns null
+        coEvery {
+            saveCacheDao.getAllByGameChannelAndHash(gameId, null, "hc-hash")
+        } returns emptyList()
+
+        val serverSave = serverSaveOf(id = 7L, contentHash = "hc-hash")
+        coEvery {
+            romMApi.uploadSaveWithDevice(any(), any(), any(), any(), any(), any(), any(), any<MultipartBody.Part>(), any())
+        } returns Response.success(serverSave)
+
+        val result = uploader.uploadSave(
+            gameId = gameId,
+            emulatorId = emulatorId,
+            channelName = null,
+            isHardcore = true,
+            uploadedCacheId = null
+        )
+
+        assertTrue("expected Success but got $result", result is SaveSyncResult.Success)
+        coVerify(exactly = 1) {
+            saveCacheDao.getAllByGameChannelAndHash(gameId, null, "hc-hash")
+        }
+    }
+
     private fun serverSaveOf(id: Long, contentHash: String): RomMSave = RomMSave(
         id = id,
         romId = rommId,
