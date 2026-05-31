@@ -9,6 +9,7 @@ data class RomMCapabilities(
 ) {
     companion object {
         const val SYNC_ENGINE_MIN_VERSION = "4.9.0"
+        const val DEVICE_SYNC_MIN_VERSION = "4.8.0"
 
         val NONE = RomMCapabilities(
             serverVersion = "",
@@ -21,11 +22,12 @@ data class RomMCapabilities(
         fun from(version: String?, libretroEnabled: Boolean? = null): RomMCapabilities {
             if (version.isNullOrBlank() || version == "unknown") return NONE
             val syncEngine = compareVersions(version, SYNC_ENGINE_MIN_VERSION) >= 0
+            val deviceSync = compareVersions(version, DEVICE_SYNC_MIN_VERSION) >= 0
             return RomMCapabilities(
                 serverVersion = version,
                 supportsSyncNegotiate = syncEngine,
                 supportsPlaySessionIngest = syncEngine,
-                supportsDeviceSyncMode = syncEngine,
+                supportsDeviceSyncMode = deviceSync,
                 supportsLibretroThumbnails = libretroEnabled ?: syncEngine,
             )
         }
