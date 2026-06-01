@@ -98,11 +98,15 @@ class ImageCacheManager @Inject constructor(
     val localCoverWritten: SharedFlow<Pair<Long, String>> = _localCoverWritten.asSharedFlow()
 
     private val defaultCacheDir: File by lazy {
-        File(context.cacheDir, "images").also {
+        File(context.filesDir, "images").also {
             it.mkdirs()
             ensureNoMedia(it)
         }
     }
+
+    private val legacyImagesDir: File get() = File(context.cacheDir, "images")
+    private val legacySteamDir: File get() = File(context.cacheDir, "steam")
+    private val steamCoverDir: File get() = File(context.filesDir, "steam")
 
     private var customCacheBasePath: String? = null
 
@@ -534,6 +538,52 @@ class ImageCacheManager @Inject constructor(
         ensureNoMedia(destDir)
         failed == 0
     }
+
+    fun needsLegacyCacheDirsMigration(): Boolean {
+        val imagesPending = hasContent(legacyImagesDir) &&
+            legacyImagesDir.absolutePath != cacheDir.absolutePath
+        return imagesPending || hasContent(legacySteamDir)
+    }
+
+    suspend fun migrateLegacyCacheDirs() = withContext(cacheDispatcher) {
+        val imagesTarget = cacheDir
+        if (hasContent(legacyImagesDir) && legacyImagesDir.absolutePath != imagesTarget.absolutePath) {
+            moveLegacyDir(legacyImagesDir, imagesTarget)
+        }
+        if (hasContent(legacySteamDir)) {
+            moveLegacyDir(legacySteamDir, steamCoverDir.also { it.mkdirs() })
+        }
+    }
+
+    private suspend fun moveLegacyDir(source: File, dest: File) {
+        dest.mkdirs()
+        val files = source.walk().filter { it.isFile && it.name != ".nomedia" }.toList()
+        var failed = 0
+        files.forEach { file ->
+            try {
+                val target = File(dest, file.relativeTo(source).path)
+                target.parentFile?.mkdirs()
+                if (!file.renameTo(target)) {
+                    file.copyTo(target, overwrite = true)
+                    file.delete()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Legacy cache migration failed for ${file.name}: ${e.message}")
+                failed++
+            }
+        }
+        if (failed == 0) {
+            source.listFiles()?.forEach { entry ->
+                if (entry.isDirectory) entry.deleteRecursively()
+                else if (entry.name != ".nomedia") entry.delete()
+            }
+            updateDatabasePaths(source.absolutePath, dest.absolutePath)
+        }
+        ensureNoMedia(dest)
+    }
+
+    private fun hasContent(dir: File): Boolean =
+        dir.isDirectory && (dir.listFiles()?.any { it.name != ".nomedia" } == true)
 
     private suspend fun updateDatabasePaths(oldBasePath: String, newBasePath: String) {
         val infos = gameDao.getAllImageCacheInfo()
