@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -77,8 +78,6 @@ import kotlin.math.abs
 private val CARD_WIDTH = 100.dp
 private val FOCUSED_CARD_WIDTH = 140.dp
 private val CARD_SPACING = 12.dp
-
-private val GRID_CARD_WIDTH = 100.dp
 
 @Composable
 fun DualHomeLowerScreen(
@@ -517,7 +516,7 @@ fun DualHomeLibraryGrid(
 ) {
     val gridState = rememberLazyGridState()
     val gameCount = gridItems.count { it is DualLibraryGridItem.Game }
-    val gridCardHeight = GRID_CARD_WIDTH / LocalBoxArtStyle.current.aspectRatio
+    val coverAspectRatio = LocalBoxArtStyle.current.aspectRatio
 
     val targetGridIndex = gridItems.indexOfFirst {
         it is DualLibraryGridItem.Game && it.gameIndex == focusedIndex
@@ -579,7 +578,8 @@ fun DualHomeLibraryGrid(
                             is DualLibraryGridItem.Game -> {
                                 Box(
                                     modifier = Modifier
-                                        .size(width = GRID_CARD_WIDTH, height = gridCardHeight)
+                                        .fillMaxWidth()
+                                        .aspectRatio(coverAspectRatio)
                                         .touchOnly { onGameTapped(item.gameIndex) }
                                 ) {
                                     GameCard(
