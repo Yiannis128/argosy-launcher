@@ -409,11 +409,14 @@ class SaveCacheManager @Inject constructor(
                 val targetFile = fal.getTransformedFile(targetPath)
                 val game = gameDao.getById(entity.gameId)
                 val preserveRoots = game?.platformSlug?.let { PlatformDefinitions.getCanonicalSlug(it) } == "psp"
-                if (preserveRoots) {
+                Log.d(TAG, "[RESTORE] cache=$cacheId zip=${cacheFile.name} size=${cacheFile.length()} target=$targetPath transformed=${targetFile.absolutePath} exists=${targetFile.exists()} dir=${targetFile.isDirectory} preserveRoots=$preserveRoots platform=${game?.platformSlug}")
+                val ok = if (preserveRoots) {
                     saveArchiver.unzipToFolder(cacheFile, targetFile)
                 } else {
                     saveArchiver.unzipSingleFolder(cacheFile, targetFile)
                 }
+                Log.d(TAG, "[RESTORE] unzip returned=$ok | post-restore listing of $targetPath: ${restoreListing(targetPath)}")
+                ok
             } else {
                 val parentPath = targetPath.substringBeforeLast('/')
                 if (parentPath.isNotEmpty() && parentPath != targetPath) {
@@ -453,6 +456,7 @@ class SaveCacheManager @Inject constructor(
                 val game = gameDao.getById(entity.gameId)
                 val actualHash = computeRestoredHash(game, targetPath)
                 val match = actualHash != null && actualHash == entity.contentHash
+                Log.d(TAG, "[RESTORE_VERIFY] cache=$cacheId target=$targetPath expected=${entity.contentHash} actual=$actualHash match=$match | hashedListing=${restoreListing(targetPath)}")
                 SaveDebugLogger.logRestoreVerify(
                     gameId = entity.gameId,
                     cacheId = cacheId,
@@ -461,8 +465,9 @@ class SaveCacheManager @Inject constructor(
                     actualHash = actualHash,
                     match = match
                 )
-                if (!match) {
-                    Log.w(TAG, "Restore hash mismatch for cache $cacheId: expected=${entity.contentHash}, actual=$actualHash, target=$targetPath")
+                if (entity.contentHash != null && actualHash != null && !match) {
+                    Log.w(TAG, "Restore hash mismatch for cache $cacheId: expected=${entity.contentHash}, actual=$actualHash, target=$targetPath -- failing restore so caller falls through to network fetch")
+                    return@withContext false
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Restore verify failed for cache $cacheId: ${e.message}")
@@ -574,6 +579,20 @@ class SaveCacheManager @Inject constructor(
         return handler.findAllSaveFoldersBySaveId(savePath, saveId)
             .map { fal.getTransformedFile(it) }
             .filter { it.exists() && it.isDirectory }
+    }
+
+    private fun restoreListing(targetPath: String): String = try {
+        val f = fal.getTransformedFile(targetPath)
+        when {
+            !f.exists() -> "MISSING"
+            f.isFile -> "FILE size=${f.length()}"
+            else -> {
+                val children = f.listFiles()?.sortedBy { it.name } ?: emptyList()
+                "DIR count=${children.size} [" + children.joinToString(", ") { "${it.name}:${if (it.isDirectory) "d" else it.length().toString()}" } + "]"
+            }
+        }
+    } catch (e: Exception) {
+        "LISTING_ERROR ${e.message}"
     }
 
     private suspend fun computeRestoredHash(game: GameEntity?, targetPath: String): String? {

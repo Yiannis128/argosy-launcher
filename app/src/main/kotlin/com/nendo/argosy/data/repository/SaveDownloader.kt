@@ -573,27 +573,8 @@ class SaveDownloader @Inject constructor(
                 }
             }
 
-            val downloadedHash = saveCacheManager.get().calculateLocalSaveHash(targetPath)
             val serverTimestamp = SaveSyncApiClient.parseTimestamp(serverSave.updatedAt)
             File(targetPath).setLastModified(serverTimestamp.toEpochMilli())
-            val uploaderDeviceSync = serverSave.deviceSyncs
-                ?.filter { !it.isCurrent }
-                ?.maxByOrNull { it.lastSyncedAt ?: "" }
-            saveSyncDao.upsert(
-                syncEntity.copy(
-                    localSavePath = targetPath,
-                    localUpdatedAt = serverTimestamp,
-                    lastSyncedAt = Instant.now(),
-                    serverUpdatedAt = serverTimestamp,
-                    lastUploadedHash = serverSave.contentHash,
-                    syncStatus = SaveSyncEntity.STATUS_SYNCED,
-                    lastSyncDeviceId = uploaderDeviceSync?.deviceId ?: syncEntity.lastSyncDeviceId,
-                    lastSyncDeviceName = uploaderDeviceSync?.deviceName ?: syncEntity.lastSyncDeviceName
-                )
-            )
-
-            Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | wrote lastUploadedHash=${serverSave.contentHash} serverUpdatedAt=$serverTimestamp")
-            confirmDeviceSynced(serverSave.id)
 
             if (isSwitchEmulator && game.titleId == null) {
                 val extractedTitleId = File(targetPath).name
@@ -633,6 +614,24 @@ class SaveDownloader @Inject constructor(
             } catch (e: Exception) {
                 Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cache creation failed", e)
             }
+
+            val completedUploaderSync = serverSave.deviceSyncs
+                ?.filter { !it.isCurrent }
+                ?.maxByOrNull { it.lastSyncedAt ?: "" }
+            saveSyncDao.upsert(
+                syncEntity.copy(
+                    rommSaveId = serverSave.id,
+                    localSavePath = targetPath,
+                    localUpdatedAt = serverTimestamp,
+                    serverUpdatedAt = serverTimestamp,
+                    lastSyncedAt = Instant.now(),
+                    syncStatus = SaveSyncEntity.STATUS_SYNCED,
+                    lastUploadedHash = serverSave.contentHash,
+                    lastSyncDeviceId = completedUploaderSync?.deviceId ?: syncEntity.lastSyncDeviceId,
+                    lastSyncDeviceName = completedUploaderSync?.deviceName ?: syncEntity.lastSyncDeviceName
+                )
+            )
+            confirmDeviceSynced(serverSave.id)
 
             Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Complete | path=$targetPath, channel=$effectiveChannelName")
 
