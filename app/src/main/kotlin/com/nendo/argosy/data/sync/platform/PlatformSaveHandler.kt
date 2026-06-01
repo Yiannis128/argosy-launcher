@@ -42,6 +42,8 @@ interface PlatformSaveHandler {
      * null (handler does not own a folder layout). Folder-based handlers override this.
      */
     fun constructSavePath(baseDir: String, saveId: String): String? = null
+
+    fun isCanonicalFolderPath(savePath: String, saveId: String): Boolean = true
 }
 
 data class SaveContext(

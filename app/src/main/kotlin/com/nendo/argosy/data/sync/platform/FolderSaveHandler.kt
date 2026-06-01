@@ -61,6 +61,8 @@ open class FolderSaveHandler(
         val targetFolder = File(targetPath)
         targetFolder.mkdirs()
 
+        context.saveId?.let { pruneNonCanonicalSiblings(targetFolder, it) }
+
         val archiveRoot = saveArchiver.peekRootFolderName(tempFile)
         val success = try {
             saveArchiver.unzipSingleFolder(tempFile, targetFolder)
@@ -123,4 +125,15 @@ open class FolderSaveHandler(
      */
     protected open fun folderMatches(folderName: String, saveId: String): Boolean =
         folderName.equals(saveId, ignoreCase = true)
+
+    private fun pruneNonCanonicalSiblings(canonicalTarget: File, saveId: String) {
+        val parent = canonicalTarget.parentFile ?: return
+        fal.listFiles(parent.path).orEmpty()
+            .filter { it.isDirectory && it.path != canonicalTarget.path }
+            .filter { folderMatches(it.name, saveId) && !isCanonicalFolderPath(it.path, saveId) }
+            .forEach {
+                Logger.warn(tag, "extractDownload: removing non-canonical sibling save folder | path=${it.path}, saveId=$saveId")
+                File(it.path).deleteRecursively()
+            }
+    }
 }

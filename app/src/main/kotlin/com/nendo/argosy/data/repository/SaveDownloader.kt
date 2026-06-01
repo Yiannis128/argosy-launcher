@@ -152,9 +152,13 @@ class SaveDownloader @Inject constructor(
                     Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Switch emulator, will discover active profile")
                 }
             } else {
-                val cached = syncEntity.localSavePath?.takeIf { fal.exists(it) }
+                val folderHandler = client.getHandler(config, game.platformSlug, resolvedEmulatorId)
+                val folderSaveId = game.saveId ?: game.titleId
+                val cached = syncEntity.localSavePath
+                    ?.takeIf { fal.exists(it) }
+                    ?.takeIf { folderSaveId == null || folderHandler.isCanonicalFolderPath(it, folderSaveId) }
                 if (syncEntity.localSavePath != null && cached == null) {
-                    Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cached folder path no longer exists on disk, re-discovering | stalePath=${syncEntity.localSavePath}")
+                    Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cached folder path stale or non-canonical, re-discovering | stalePath=${syncEntity.localSavePath}")
                 }
                 val discovered = if (cached == null) {
                     savePathResolver.discoverSavePath(

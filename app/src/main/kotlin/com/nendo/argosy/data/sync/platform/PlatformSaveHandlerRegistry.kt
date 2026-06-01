@@ -372,6 +372,9 @@ private class Ps2FolderHandler(
         }
     }
 
+    override fun isCanonicalFolderPath(savePath: String, saveId: String): Boolean =
+        File(savePath).name.equals(toFolderName(saveId), ignoreCase = true)
+
     override fun constructSavePath(baseDir: String, saveId: String): String? {
         if (isFolderCard(baseDir)) {
             return "$baseDir/${toFolderName(saveId)}"
