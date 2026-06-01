@@ -332,7 +332,7 @@ object EmulatorRegistry {
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
-                "wonderswan", "wsc",
+                "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
                 "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
             ),
@@ -352,7 +352,7 @@ object EmulatorRegistry {
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
-                "wonderswan", "wsc",
+                "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
                 "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
             ),
@@ -953,6 +953,7 @@ object EmulatorRegistry {
         "ngpc" to listOf("retroarch", "retroarch_64"),
         "wonderswan" to listOf("builtin", "retroarch", "retroarch_64"),
         "wsc" to listOf("builtin", "retroarch", "retroarch_64"),
+        "pokemini" to listOf("builtin", "retroarch", "retroarch_64"),
         "xbox360" to listOf("ax360e", "ax360e_free"),
         "steam" to listOf("gamehub", "gamehub_lite", "gamenative"),
         "c64" to listOf("retroarch", "retroarch_64"),
@@ -1003,6 +1004,7 @@ object EmulatorRegistry {
         "msx2" to "bluemsx",
         "wonderswan" to "mednafen_wswan",
         "wsc" to "mednafen_wswan",
+        "pokemini" to "pokemini",
         "c64" to "vice_x64",
         "vic20" to "vice_xvic",
         "pc9800" to "np2kai"
@@ -1049,6 +1051,7 @@ object EmulatorRegistry {
         "msx2" to listOf("bluemsx", "fmsx"),
         "wonderswan" to listOf("mednafen_wswan"),
         "wsc" to listOf("mednafen_wswan"),
+        "pokemini" to listOf("pokemini"),
         "c64" to listOf("vice_x64", "vice_x64sc"),
         "vic20" to listOf("vice_xvic"),
         "pc9800" to listOf("np2kai")
@@ -1217,6 +1220,9 @@ object EmulatorRegistry {
         ),
         "wsc" to listOf(
             RetroArchCore("mednafen_wswan", "Mednafen WonderSwan")
+        ),
+        "pokemini" to listOf(
+            RetroArchCore("pokemini", "PokeMini")
         ),
         "c64" to listOf(
             RetroArchCore("vice_x64", "VICE x64", saveDirName = "VICE x64"),
@@ -1462,7 +1468,7 @@ object EmulatorRegistry {
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
-                "wonderswan", "wsc",
+                "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
                 "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
             ),
