@@ -155,8 +155,11 @@ class DualHomeInputHandler(
                 } else {
                     val game = state.selectedGame
                     if (game != null) {
-                        val action = if (game.isPlayable) "PLAY" else "DOWNLOAD"
-                        onBroadcastDirectAction(action, game.id)
+                        if (game.isSteamGame && !game.isPlayable) {
+                            onSelectGame(game.id)
+                        } else {
+                            onBroadcastDirectAction(if (game.isPlayable) "PLAY" else "DOWNLOAD", game.id)
+                        }
                         InputResult.HANDLED
                     } else InputResult.UNHANDLED
                 }
@@ -250,8 +253,11 @@ class DualHomeInputHandler(
             com.nendo.argosy.ui.input.GamepadEvent.Confirm -> {
                 val game = viewModel.focusedCollectionGame()
                 if (game != null) {
-                    val action = if (game.isPlayable) "PLAY" else "DOWNLOAD"
-                    onBroadcastDirectAction(action, game.id)
+                    if (game.isSteamGame && !game.isPlayable) {
+                        onSelectGame(game.id)
+                    } else {
+                        onBroadcastDirectAction(if (game.isPlayable) "PLAY" else "DOWNLOAD", game.id)
+                    }
                 }
                 InputResult.HANDLED
             }
@@ -330,8 +336,11 @@ class DualHomeInputHandler(
                 val state = viewModel.uiState.value
                 val game = state.libraryGames.getOrNull(state.libraryFocusedIndex)
                 if (game != null) {
-                    val action = if (game.isPlayable) "PLAY" else "DOWNLOAD"
-                    onBroadcastDirectAction(action, game.id)
+                    if (game.isSteamGame && !game.isPlayable) {
+                        onSelectGame(game.id)
+                    } else {
+                        onBroadcastDirectAction(if (game.isPlayable) "PLAY" else "DOWNLOAD", game.id)
+                    }
                 }
                 InputResult.HANDLED
             }
