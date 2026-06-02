@@ -228,7 +228,7 @@ class AndroidGameScanner @Inject constructor(
 
         val gameId = gameDao.insert(game)
 
-        // Prefer Play Store cover over app icon
+        imageCacheManager.queueAppIconCache(gameId, app.packageName)
         if (details?.coverUrl != null) {
             imageCacheManager.queueCoverCacheByGameId(details.coverUrl, gameId)
             details.screenshotUrls.firstOrNull()?.let { url ->
@@ -237,9 +237,6 @@ class AndroidGameScanner @Inject constructor(
             if (details.screenshotUrls.isNotEmpty()) {
                 imageCacheManager.queueScreenshotCacheByGameId(gameId, details.screenshotUrls)
             }
-        } else {
-            // Fall back to app icon only if no Play Store cover
-            imageCacheManager.queueAppIconCache(gameId, app.packageName)
         }
 
         return ProcessResult.ADDED
