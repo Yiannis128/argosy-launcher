@@ -276,6 +276,7 @@ class AndroidGameScanner @Inject constructor(
 
         val installedByName = appsRepository.getInstalledApps(includeSystemApps = false)
             .filter { !isEmulatorPackage(it.packageName) }
+            .filter { appCategoryDao.getByPackageName(it.packageName)?.isGame != false }
             .groupBy { matchKey(it.label) }
 
         var relinked = 0
@@ -308,8 +309,19 @@ class AndroidGameScanner @Inject constructor(
         for (game in androidGames) {
             val packageName = game.packageName ?: continue
             if (packageName !in installedPackages) {
-                Log.d(TAG, "Removing uninstalled game: ${game.title}")
-                gameDao.delete(game)
+                if (game.rommId != null) {
+                    Log.d(TAG, "Reverting uninstalled RomM game to downloadable: ${game.title}")
+                    gameDao.update(
+                        game.copy(
+                            source = GameSource.ROMM_REMOTE,
+                            packageName = null,
+                            localPath = null
+                        )
+                    )
+                } else {
+                    Log.d(TAG, "Removing uninstalled game: ${game.title}")
+                    gameDao.delete(game)
+                }
             }
         }
 
