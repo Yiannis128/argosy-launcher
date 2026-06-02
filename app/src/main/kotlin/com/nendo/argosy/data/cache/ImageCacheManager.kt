@@ -1346,6 +1346,14 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    private fun shouldClearMissingPath(path: String): Boolean {
+        if (!path.startsWith("/")) return false
+        val file = File(path)
+        if (file.exists()) return false
+        val parent = file.parentFile ?: return false
+        return parent.exists() && parent.isDirectory
+    }
+
     suspend fun validateAndCleanCache(
         onProgress: (suspend (phase: String, current: Int, total: Int) -> Unit)? = null
     ): CacheValidationResult {
@@ -1376,19 +1384,17 @@ class ImageCacheManager @Inject constructor(
         onProgress?.invoke("Validating $totalGames game paths...", 0, totalGames)
 
         infos.forEachIndexed { index, info ->
-            if (info.coverPath?.startsWith("/") == true && !File(info.coverPath).exists()) {
+            if (info.coverPath != null && shouldClearMissingPath(info.coverPath)) {
                 gameDao.clearCoverPath(info.id)
                 cleared++
             }
-            if (info.backgroundPath?.startsWith("/") == true && !File(info.backgroundPath).exists()) {
+            if (info.backgroundPath != null && shouldClearMissingPath(info.backgroundPath)) {
                 gameDao.clearBackgroundPath(info.id)
                 cleared++
             }
             if (info.cachedScreenshotPaths != null) {
                 val paths = info.cachedScreenshotPaths.split(",")
-                val validPaths = paths.filter { path ->
-                    !path.startsWith("/") || File(path).exists()
-                }
+                val validPaths = paths.filter { path -> !shouldClearMissingPath(path) }
                 if (validPaths.size != paths.size) {
                     if (validPaths.isEmpty()) {
                         gameDao.clearCachedScreenshotPaths(info.id)
@@ -1407,7 +1413,7 @@ class ImageCacheManager @Inject constructor(
         onProgress?.invoke("Checking ${platforms.size} platform logos...", 0, platforms.size)
 
         platforms.forEach { platform ->
-            if (platform.logoPath?.startsWith("/") == true && !File(platform.logoPath).exists()) {
+            if (platform.logoPath != null && shouldClearMissingPath(platform.logoPath)) {
                 platformDao.clearLogoPath(platform.id)
                 cleared++
             }
