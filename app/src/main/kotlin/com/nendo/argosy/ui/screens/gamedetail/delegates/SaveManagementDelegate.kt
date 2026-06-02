@@ -101,7 +101,8 @@ class SaveManagementDelegate @Inject constructor(
                 return@launch
             }
             val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
-            val savePath = computeEffectiveSavePath(emulatorId, game.platformSlug, emulatorPackage)
+            val coreName = saveSyncRepository.resolveCoreForGame(gameId)
+            val savePath = computeEffectiveSavePath(emulatorId, game.platformSlug, emulatorPackage, coreName)
             saveChannelDelegate.show(
                 scope = scope,
                 gameId = gameId,
@@ -116,13 +117,14 @@ class SaveManagementDelegate @Inject constructor(
     private suspend fun computeEffectiveSavePath(
         emulatorId: String,
         platformSlug: String,
-        emulatorPackage: String?
+        emulatorPackage: String?,
+        coreName: String? = null
     ): String? {
         if (com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(emulatorId)) {
-            val coreName = SavePathRegistry.getRetroArchCore(platformSlug)
+            val resolvedCore = coreName ?: SavePathRegistry.getRetroArchCore(platformSlug)
             val req = com.nendo.argosy.data.emulator.RetroArchPathResolver.Request(
                 emulatorId = emulatorId,
-                coreName = coreName,
+                coreName = resolvedCore,
                 romPath = null,
             )
             return when (val display = retroArchPathResolver.displaySavePath(req)) {
