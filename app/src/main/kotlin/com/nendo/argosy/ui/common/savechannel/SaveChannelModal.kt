@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -127,6 +128,15 @@ fun SaveChannelModal(
             }
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
+
+            if (state.isLoadingServer) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                )
+                Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            }
 
             val itemHeight = Dimens.settingsItemMinHeight
             val maxVisibleItems = 4
@@ -350,7 +360,7 @@ private fun SavesTabContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    itemsIndexed(state.saveHistory, key = { _, item -> "${item.cacheId}_${item.timestamp}" }) { index, item ->
+                    itemsIndexed(state.saveHistory, key = { _, item -> item.historyKey }) { index, item ->
                         HistoryRow(
                             item = item,
                             isSelected = index == state.selectedHistoryIndex &&

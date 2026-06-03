@@ -10,6 +10,7 @@ enum class RenameMode { SAVE_AS, RENAME, NEW_SLOT }
 data class SaveChannelState(
     val isVisible: Boolean = false,
     val isLoading: Boolean = false,
+    val isLoadingServer: Boolean = false,
     val isSyncing: Boolean = false,
     val selectedTab: SaveTab = SaveTab.SAVES,
     val saveSlots: List<SaveSlotItem> = emptyList(),

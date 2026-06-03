@@ -54,6 +54,38 @@ class SaveChannelSavesDelegateTest {
         isArchival = archival
     )
 
+    private fun serverArchival(serverSaveId: Long, ms: Long) = UnifiedSaveEntry(
+        localCacheId = null,
+        serverSaveId = serverSaveId,
+        timestamp = Instant.ofEpochMilli(ms),
+        size = 100L,
+        channelName = null,
+        source = UnifiedSaveEntry.Source.SERVER,
+        isArchival = true
+    )
+
+    @Test
+    fun `archived server-only saves sharing a timestamp produce unique history keys`() {
+        val entries = listOf(
+            serverArchival(serverSaveId = 1, ms = 1000),
+            serverArchival(serverSaveId = 2, ms = 1000),
+            serverArchival(serverSaveId = 3, ms = 1000)
+        )
+        holder.rawEntries = entries
+        val slots = delegate.buildSaveSlots(entries, activeChannel = null)
+        val archivedIndex = slots.indexOfFirst { it.isArchivedBucket }
+        holder.state.value = holder.state.value.copy(
+            saveSlots = slots,
+            selectedSlotIndex = archivedIndex
+        )
+
+        delegate.updateHistoryForFocusedSlot()
+
+        val keys = holder.state.value.saveHistory.map { it.historyKey }
+        assertEquals(3, keys.size)
+        assertEquals("history keys must be unique", keys.size, keys.toSet().size)
+    }
+
     @Test
     fun `channel colliding with autosave does not produce duplicate slot keys`() {
         val entries = listOf(entry(channelName = "Autosave", userCreated = true))

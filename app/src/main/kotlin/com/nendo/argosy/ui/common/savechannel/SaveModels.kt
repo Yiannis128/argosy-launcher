@@ -30,5 +30,9 @@ data class SaveHistoryItem(
     val isLatest: Boolean,
     val isHardcore: Boolean,
     val isRollback: Boolean,
-    val isArchival: Boolean = false
-)
+    val isArchival: Boolean = false,
+    val serverSaveId: Long? = null
+) {
+    val historyKey: String get() =
+        if (cacheId >= 0) "c$cacheId" else "s${serverSaveId ?: timestamp}"
+}

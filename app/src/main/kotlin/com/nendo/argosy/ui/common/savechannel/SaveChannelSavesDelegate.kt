@@ -169,6 +169,7 @@ class SaveChannelSavesDelegate @Inject constructor(
             }
             SaveHistoryItem(
                 cacheId = entry.localCacheId ?: -1,
+                serverSaveId = entry.serverSaveId,
                 timestamp = entry.timestamp.toEpochMilli(),
                 size = entry.size,
                 channelName = entry.channelName,
@@ -955,6 +956,12 @@ class SaveChannelSavesDelegate @Inject constructor(
 
     suspend fun loadInitialEntries(): List<UnifiedSaveEntry> {
         val entries = getUnifiedSavesUseCase(currentGameId, expandHistory = true)
+        holder.rawEntries = entries
+        return entries
+    }
+
+    suspend fun loadLocalEntries(): List<UnifiedSaveEntry> {
+        val entries = getUnifiedSavesUseCase.localOnly(currentGameId)
         holder.rawEntries = entries
         return entries
     }
