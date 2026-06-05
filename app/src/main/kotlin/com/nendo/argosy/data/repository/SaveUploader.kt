@@ -11,6 +11,7 @@ import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.remote.romm.RomMDeleteSavesRequest
 import com.nendo.argosy.data.remote.romm.RomMSave
+import com.nendo.argosy.data.remote.romm.originDeviceName
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.SavePathResolver
@@ -354,9 +355,9 @@ class SaveUploader @Inject constructor(
                         serverUpdatedAt = serverTimestamp,
                         lastSyncedAt = Instant.now(),
                         syncStatus = SaveSyncEntity.STATUS_SYNCED,
-                        lastUploadedHash = serverSave.contentHash,
-                        lastSyncDeviceId = currentDeviceSync?.deviceId ?: deviceId ?: syncEntity?.lastSyncDeviceId,
-                        lastSyncDeviceName = currentDeviceSync?.deviceName ?: syncEntity?.lastSyncDeviceName,
+                        lastUploadedHash = serverSave.contentHash?.takeIf { client.getCapabilities().trustsServerHash },
+                        lastSyncDeviceId = serverSave.originDeviceId ?: currentDeviceSync?.deviceId ?: deviceId ?: syncEntity?.lastSyncDeviceId,
+                        lastSyncDeviceName = serverSave.originDeviceName() ?: currentDeviceSync?.deviceName ?: syncEntity?.lastSyncDeviceName,
                         userSelectedRestorePoint = false
                     )
                 )

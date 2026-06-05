@@ -9,6 +9,7 @@ import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.remote.romm.RomMDeviceIdRequest
+import com.nendo.argosy.data.remote.romm.originDeviceName
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.SavePathResolver
@@ -248,9 +249,9 @@ class SaveDownloader @Inject constructor(
                             serverUpdatedAt = serverTimestamp,
                             lastSyncedAt = Instant.now(),
                             syncStatus = SaveSyncEntity.STATUS_SYNCED,
-                            lastUploadedHash = serverSave.contentHash,
-                            lastSyncDeviceId = currentDeviceSync?.deviceId ?: deviceId ?: syncEntity.lastSyncDeviceId,
-                            lastSyncDeviceName = currentDeviceSync?.deviceName ?: syncEntity.lastSyncDeviceName
+                            lastUploadedHash = serverSave.contentHash?.takeIf { client.getCapabilities().trustsServerHash },
+                            lastSyncDeviceId = serverSave.originDeviceId ?: currentDeviceSync?.deviceId ?: deviceId ?: syncEntity.lastSyncDeviceId,
+                            lastSyncDeviceName = serverSave.originDeviceName() ?: currentDeviceSync?.deviceName ?: syncEntity.lastSyncDeviceName
                         )
                     )
                     if (serverTimestamp != null && cachedMatch.cachedAt != serverTimestamp) {
@@ -630,9 +631,9 @@ class SaveDownloader @Inject constructor(
                     serverUpdatedAt = serverTimestamp,
                     lastSyncedAt = Instant.now(),
                     syncStatus = SaveSyncEntity.STATUS_SYNCED,
-                    lastUploadedHash = serverSave.contentHash,
-                    lastSyncDeviceId = completedUploaderSync?.deviceId ?: syncEntity.lastSyncDeviceId,
-                    lastSyncDeviceName = completedUploaderSync?.deviceName ?: syncEntity.lastSyncDeviceName
+                    lastUploadedHash = serverSave.contentHash?.takeIf { client.getCapabilities().trustsServerHash },
+                    lastSyncDeviceId = serverSave.originDeviceId ?: completedUploaderSync?.deviceId ?: syncEntity.lastSyncDeviceId,
+                    lastSyncDeviceName = serverSave.originDeviceName() ?: completedUploaderSync?.deviceName ?: syncEntity.lastSyncDeviceName
                 )
             )
             confirmDeviceSynced(serverSave.id)

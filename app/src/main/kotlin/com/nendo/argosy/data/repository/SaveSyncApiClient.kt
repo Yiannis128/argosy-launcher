@@ -171,7 +171,20 @@ class SaveSyncApiClient @Inject constructor(
             return@withContext emptyList()
         }
 
-        response.body() ?: emptyList()
+        val saves = response.body() ?: emptyList()
+        adoptServerHashes(gameId, saves)
+        saves
+    }
+
+    private suspend fun adoptServerHashes(gameId: Long, serverSaves: List<RomMSave>) {
+        if (serverSaves.isEmpty() || !capabilities.trustsServerHash) return
+        val hashByServerId = serverSaves.associate { it.id to it.contentHash }
+        saveSyncDao.getByGame(gameId).forEach { row ->
+            val hash = row.rommSaveId?.let { hashByServerId[it] } ?: return@forEach
+            if (row.lastUploadedHash != hash) {
+                saveSyncDao.updateLastUploadedHash(row.id, hash)
+            }
+        }
     }
 
     suspend fun checkForServerUpdates(platformId: Long): List<SaveSyncEntity> = withContext(Dispatchers.IO) {
