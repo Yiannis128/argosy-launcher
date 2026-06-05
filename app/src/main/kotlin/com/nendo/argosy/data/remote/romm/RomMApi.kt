@@ -92,6 +92,14 @@ interface RomMApi {
         @Query("is_favorite") isFavorite: Boolean? = null
     ): Response<List<RomMCollection>>
 
+    @GET("api/collections/virtual")
+    suspend fun getVirtualCollections(
+        @Query("type") type: String
+    ): Response<List<RomMAutoCollection>>
+
+    @GET("api/collections/smart")
+    suspend fun getSmartCollections(): Response<List<RomMAutoCollection>>
+
     @Multipart
     @POST("api/collections")
     suspend fun createCollection(

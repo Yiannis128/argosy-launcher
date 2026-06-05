@@ -118,6 +118,8 @@ class RomMRepository @Inject constructor(
 
     suspend fun syncCollections(): RomMResult<Unit> = collectionSyncService.syncCollections()
 
+    suspend fun syncAutoCollections(): RomMResult<Unit> = collectionSyncService.syncAutoCollections()
+
     suspend fun syncFavorites(): RomMResult<Unit> = collectionSyncService.syncFavorites()
 
     suspend fun refreshFavoritesIfNeeded(): RomMResult<Unit> = collectionSyncService.refreshFavoritesIfNeeded()

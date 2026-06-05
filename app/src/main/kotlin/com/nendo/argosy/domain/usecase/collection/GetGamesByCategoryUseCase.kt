@@ -14,7 +14,8 @@ import javax.inject.Inject
 
 enum class CategoryType {
     GENRE,
-    GAME_MODE
+    GAME_MODE,
+    SERIES
 }
 
 class GetGamesByCategoryUseCase @Inject constructor(
@@ -25,6 +26,7 @@ class GetGamesByCategoryUseCase @Inject constructor(
         val collectionType = when (categoryType) {
             CategoryType.GENRE -> CollectionType.GENRE
             CategoryType.GAME_MODE -> CollectionType.GAME_MODE
+            CategoryType.SERIES -> CollectionType.SERIES
         }
         return collectionDao.observeGameIdsByTypeAndName(collectionType, categoryName)
             .map { ids ->

@@ -274,6 +274,13 @@ data class RomMCollection(
 )
 
 @JsonClass(generateAdapter = true)
+data class RomMAutoCollection(
+    @Json(name = "name") val name: String,
+    @Json(name = "description") val description: String? = null,
+    @Json(name = "rom_ids") val romIds: List<Long> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
 data class RomMCollectionCreate(
     @Json(name = "name") val name: String,
     @Json(name = "description") val description: String? = null,

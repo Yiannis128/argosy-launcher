@@ -117,6 +117,9 @@ interface CollectionDao {
     @Query("SELECT * FROM collections WHERE type = :type ORDER BY name ASC")
     fun observeByType(type: CollectionType): Flow<List<CollectionEntity>>
 
+    @Query("SELECT * FROM collections WHERE type IN (:types) ORDER BY name ASC")
+    fun observeByTypes(types: List<CollectionType>): Flow<List<CollectionEntity>>
+
     @Query("SELECT * FROM collections WHERE type = :type ORDER BY name ASC")
     suspend fun getAllByType(type: CollectionType): List<CollectionEntity>
 

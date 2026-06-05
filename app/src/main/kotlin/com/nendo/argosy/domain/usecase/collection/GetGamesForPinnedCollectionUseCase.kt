@@ -3,6 +3,7 @@ package com.nendo.argosy.domain.usecase.collection
 import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.getByIdsChunked
+import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.domain.model.PinnedCollection
 import kotlinx.coroutines.flow.Flow
@@ -22,17 +23,25 @@ class GetGamesForPinnedCollectionUseCase @Inject constructor(
                 }
             }
             is PinnedCollection.Virtual -> {
-                gameDao.observeAllCategoryInfo().map { items ->
-                    val matchingIds = items.filter { info ->
-                        val field = when (pinned.type) {
-                            CategoryType.GENRE -> info.genre
-                            CategoryType.GAME_MODE -> info.gameModes
-                        }
-                        field?.split(",")?.any {
-                            it.trim().equals(pinned.categoryName, ignoreCase = true)
-                        } == true
-                    }.map { it.id }
-                    gameDao.getByIdsChunked(matchingIds).sortedBy { it.sortTitle }
+                if (pinned.type == CategoryType.SERIES) {
+                    collectionDao.observeGameIdsByTypeAndName(CollectionType.SERIES, pinned.categoryName).map { ids ->
+                        val byId = gameDao.getByIdsChunked(ids).associateBy { it.id }
+                        ids.mapNotNull { byId[it] }.sortedBy { it.sortTitle }
+                    }
+                } else {
+                    gameDao.observeAllCategoryInfo().map { items ->
+                        val matchingIds = items.filter { info ->
+                            val field = when (pinned.type) {
+                                CategoryType.GENRE -> info.genre
+                                CategoryType.GAME_MODE -> info.gameModes
+                                CategoryType.SERIES -> null
+                            }
+                            field?.split(",")?.any {
+                                it.trim().equals(pinned.categoryName, ignoreCase = true)
+                            } == true
+                        }.map { it.id }
+                        gameDao.getByIdsChunked(matchingIds).sortedBy { it.sortTitle }
+                    }
                 }
             }
         }

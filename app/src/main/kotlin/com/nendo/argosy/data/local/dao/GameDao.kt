@@ -238,6 +238,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE rommId = :rommId")
     suspend fun getByRommId(rommId: Long): GameEntity?
 
+    @Query("SELECT id, rommId FROM games WHERE rommId IS NOT NULL")
+    suspend fun getRommIdMappings(): List<RommIdMapping>
+
     @Query("SELECT * FROM games WHERE igdbId = :igdbId")
     suspend fun getByIgdbId(igdbId: Long): GameEntity?
 
@@ -763,6 +766,11 @@ data class GameImageCacheInfo(
     val coverPath: String?,
     val backgroundPath: String?,
     val cachedScreenshotPaths: String?
+)
+
+data class RommIdMapping(
+    val id: Long,
+    val rommId: Long
 )
 
 private const val ID_FETCH_BATCH_SIZE = 100
