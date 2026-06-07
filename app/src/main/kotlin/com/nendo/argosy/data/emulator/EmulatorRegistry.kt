@@ -334,7 +334,7 @@ object EmulatorRegistry {
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -354,7 +354,7 @@ object EmulatorRegistry {
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -958,7 +958,8 @@ object EmulatorRegistry {
         "steam" to listOf("gamehub", "gamehub_lite", "gamenative"),
         "c64" to listOf("retroarch", "retroarch_64"),
         "vic20" to listOf("retroarch", "retroarch_64"),
-        "pc9800" to listOf("retroarch", "retroarch_64")
+        "pc9800" to listOf("retroarch", "retroarch_64"),
+        "pico8" to listOf("builtin", "retroarch", "retroarch_64")
     )
 
     fun getPreferredCore(platformId: String): String? {
@@ -1007,7 +1008,8 @@ object EmulatorRegistry {
         "pokemini" to "pokemini",
         "c64" to "vice_x64",
         "vic20" to "vice_xvic",
-        "pc9800" to "np2kai"
+        "pc9800" to "np2kai",
+        "pico8" to "fake08"
     )
 
     fun getRetroArchCorePatterns(): Map<String, List<String>> = mapOf(
@@ -1052,6 +1054,7 @@ object EmulatorRegistry {
         "wonderswan" to listOf("mednafen_wswan"),
         "wsc" to listOf("mednafen_wswan"),
         "pokemini" to listOf("pokemini"),
+        "pico8" to listOf("fake08", "retro8"),
         "c64" to listOf("vice_x64", "vice_x64sc"),
         "vic20" to listOf("vice_xvic"),
         "pc9800" to listOf("np2kai")
@@ -1247,6 +1250,10 @@ object EmulatorRegistry {
         ),
         "pc9800" to listOf(
             RetroArchCore("np2kai", "Neko Project II Kai")
+        ),
+        "pico8" to listOf(
+            RetroArchCore("fake08", "FAKE-08"),
+            RetroArchCore("retro8", "Retro8")
         )
     )
 
@@ -1485,7 +1492,7 @@ object EmulatorRegistry {
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc"
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
