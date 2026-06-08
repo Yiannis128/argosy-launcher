@@ -192,6 +192,7 @@ fun FileBrowserScreen(
                 FileBrowserFooter(
                     mode = mode,
                     currentPath = state.currentPath,
+                    onOpenFocused = { viewModel.confirmFocusedItem() },
                     onUseCurrentFolder = { viewModel.selectCurrentDirectory() },
                     onNewFolder = { viewModel.showCreateFolderDialog() },
                     onCancel = onDismiss
@@ -638,6 +639,7 @@ private fun FileItem(
 private fun FileBrowserFooter(
     mode: FileBrowserMode,
     currentPath: String,
+    onOpenFocused: () -> Unit,
     onUseCurrentFolder: () -> Unit,
     onNewFolder: () -> Unit,
     onCancel: () -> Unit
@@ -664,6 +666,7 @@ private fun FileBrowserFooter(
         hints = hints,
         onHintClick = { button ->
             when (button) {
+                InputButton.A -> onOpenFocused()
                 InputButton.Y -> onNewFolder()
                 InputButton.X -> onUseCurrentFolder()
                 InputButton.B -> onCancel()
