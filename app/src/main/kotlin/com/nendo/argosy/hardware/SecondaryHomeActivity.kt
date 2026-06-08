@@ -531,6 +531,11 @@ class SecondaryHomeActivity :
             dualHomeViewModel.refresh()
             return
         }
+        if (type == "STEAM_INSTALL_DONE") {
+            dualHomeViewModel.refresh()
+            if (gameId > 0) dualGameDetailViewModel?.loadGame(gameId)
+            return
+        }
         val vm = dualGameDetailViewModel ?: return
         when (type) {
             "DELETE_START" -> { if (gameId > 0) vm.onDeleteStarted() }
@@ -742,10 +747,12 @@ class SecondaryHomeActivity :
             DualHomeViewMode.COLLECTION_GAMES -> {
                 dualHomeViewModel.moveCollectionGamesFocus(index - s.collectionGamesFocusedIndex)
                 broadcasts.broadcastCollectionGameSelection()
+                s.collectionGames.getOrNull(index)?.let { selectGame(it.id) }
             }
             DualHomeViewMode.LIBRARY_GRID -> {
                 dualHomeViewModel.setLibraryFocusIndex(index)
                 broadcasts.broadcastLibraryGameSelection()
+                s.libraryGames.getOrNull(index)?.let { selectGame(it.id) }
             }
             else -> {}
         }

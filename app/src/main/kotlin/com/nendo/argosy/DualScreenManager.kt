@@ -1300,6 +1300,7 @@ class DualScreenManager(
                 gameDao.setSteamLauncher(gameId, launcherPackage)
             }
             _swappedGameDetailViewModel?.loadGame(gameId)
+            companionHost?.onDirectActionResult("STEAM_INSTALL_DONE", gameId)
         }
     }
 

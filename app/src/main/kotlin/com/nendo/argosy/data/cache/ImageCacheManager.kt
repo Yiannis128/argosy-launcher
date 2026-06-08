@@ -984,11 +984,12 @@ class ImageCacheManager @Inject constructor(
 
     private suspend fun processCoverRequest(request: ImageCacheRequest) {
         val isGameIdRequest = request.gameId != null
-        val currentDbPath = if (isGameIdRequest) {
-            gameDao.getById(request.gameId!!)?.coverPath
+        val game = if (isGameIdRequest) {
+            gameDao.getById(request.gameId!!)
         } else {
-            gameDao.getByRommId(request.id)?.coverPath
+            gameDao.getByRommId(request.id)
         }
+        val currentDbPath = game?.coverPath
         if (currentDbPath != null && currentDbPath.startsWith("/") && File(currentDbPath).exists()) {
             return
         }
@@ -1013,7 +1014,9 @@ class ImageCacheManager @Inject constructor(
             }
         }
 
-        val bitmap = downloadAndResize(request.url, 400) ?: return
+        val bitmap = downloadAndResize(request.url, 400)
+            ?: game?.steamAppId?.let { downloadSteamCoverFallback(it) }
+            ?: return
 
         FileOutputStream(cachedFile).use { out ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
@@ -1034,6 +1037,17 @@ class ImageCacheManager @Inject constructor(
         } else {
             updateGameCover(request.id, cachedFile.absolutePath)
         }
+    }
+
+    private fun downloadSteamCoverFallback(steamAppId: Long): Bitmap? {
+        val fallbackUrls = listOf(
+            "https://steamcdn-a.akamaihd.net/steam/apps/$steamAppId/header.jpg",
+            "https://steamcdn-a.akamaihd.net/steam/apps/$steamAppId/capsule_616x353.jpg"
+        )
+        for (url in fallbackUrls) {
+            downloadAndResize(url, 400)?.let { return it }
+        }
+        return null
     }
 
     private suspend fun updateGameCover(rommId: Long, localPath: String) {
