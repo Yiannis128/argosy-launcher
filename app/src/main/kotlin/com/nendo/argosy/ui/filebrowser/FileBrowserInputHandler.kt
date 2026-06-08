@@ -6,7 +6,8 @@ import com.nendo.argosy.ui.input.InputResult
 class FileBrowserInputHandler(
     private val viewModel: FileBrowserViewModel,
     private val onDismiss: () -> Unit,
-    private val onRequestPermission: () -> Unit
+    private val onRequestPermission: () -> Unit,
+    private val onUseCurrentFolder: () -> Unit
 ) : InputHandler {
 
     override fun onUp(): InputResult {
@@ -48,7 +49,7 @@ class FileBrowserInputHandler(
     }
 
     override fun onContextMenu(): InputResult {
-        viewModel.selectCurrentDirectory()
+        onUseCurrentFolder()
         return InputResult.HANDLED
     }
 

@@ -98,8 +98,15 @@ fun FileBrowserScreen(
         viewModel.setFileFilter(fileFilter)
     }
 
-    val inputHandler = remember(onDismiss, requestStoragePermission) {
-        FileBrowserInputHandler(viewModel, onDismiss, requestStoragePermission)
+    val useCurrentFolder = remember(onPathSelected) {
+        {
+            val current = viewModel.state.value.currentPath
+            if (current.isNotEmpty()) onPathSelected(current)
+        }
+    }
+
+    val inputHandler = remember(onDismiss, requestStoragePermission, useCurrentFolder) {
+        FileBrowserInputHandler(viewModel, onDismiss, requestStoragePermission, useCurrentFolder)
     }
 
     DisposableEffect(inputHandler) {
@@ -193,7 +200,7 @@ fun FileBrowserScreen(
                     mode = mode,
                     currentPath = state.currentPath,
                     onOpenFocused = { viewModel.confirmFocusedItem() },
-                    onUseCurrentFolder = { viewModel.selectCurrentDirectory() },
+                    onUseCurrentFolder = useCurrentFolder,
                     onNewFolder = { viewModel.showCreateFolderDialog() },
                     onCancel = onDismiss
                 )

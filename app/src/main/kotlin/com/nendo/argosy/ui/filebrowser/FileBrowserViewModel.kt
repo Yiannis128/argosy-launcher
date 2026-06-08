@@ -237,13 +237,6 @@ class FileBrowserViewModel @Inject constructor(
         }
     }
 
-    fun selectCurrentDirectory() {
-        val path = _state.value.currentPath
-        if (path.isNotEmpty()) {
-            selectPath(path)
-        }
-    }
-
     private fun selectPath(path: String) {
         viewModelScope.launch {
             _resultPath.emit(path)
