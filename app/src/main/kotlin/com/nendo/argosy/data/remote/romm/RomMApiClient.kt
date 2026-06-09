@@ -31,7 +31,7 @@ class RomMApiClient @Inject constructor(
         orderDir: String = "asc",
         limit: Int = 100,
         offset: Int = 0,
-        expandFilesAndSiblings: Boolean = false
+        includeFiles: Boolean = false
     ): Map<String, String> {
         return buildMap {
             platformId?.let {
@@ -43,9 +43,8 @@ class RomMApiClient @Inject constructor(
             put("order_dir", orderDir)
             put("limit", limit.toString())
             put("offset", offset.toString())
-            if (expandFilesAndSiblings) {
+            if (includeFiles) {
                 put("with_files", "true")
-                put("with_siblings", "true")
             }
         }
     }

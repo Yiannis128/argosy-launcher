@@ -555,7 +555,7 @@ class RomMLibrarySyncService @Inject constructor(
                     platformId = platform.id,
                     limit = SYNC_PAGE_SIZE,
                     offset = offset,
-                    expandFilesAndSiblings = true
+                    includeFiles = true
                 )
             )
 
@@ -582,7 +582,7 @@ class RomMLibrarySyncService @Inject constructor(
                 }
 
                 if (rom.isFolderMultiDisc) {
-                    val discSiblings = rom.siblings?.filter { it.isDiscVariant } ?: emptyList()
+                    val discSiblings = rom.effectiveSiblings.filter { it.isDiscVariant }
                     if (discSiblings.isNotEmpty()) {
                         val siblingIds = discSiblings.map { it.id }
                         skipIndividualDiscIds.addAll(siblingIds)
@@ -608,7 +608,7 @@ class RomMLibrarySyncService @Inject constructor(
 
                     val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
                     if (isSiblingBasedMultiDisc && rom.id !in processedDiscIds) {
-                        val discSiblings = rom.siblings?.filter { it.isDiscVariant } ?: emptyList()
+                        val discSiblings = rom.effectiveSiblings.filter { it.isDiscVariant }
                         val siblingIds = discSiblings.map { it.id }
 
                         processedDiscIds.add(rom.id)
