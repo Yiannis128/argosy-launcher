@@ -82,6 +82,10 @@ class SecondaryHomeBroadcastHelper(
         )
     }
 
+    fun openSteamChooserForHome(gameId: Long) {
+        dsm.openSteamChooserForHome(gameId)
+    }
+
     fun broadcastUpdatesModalOpen(vm: DualGameDetailViewModel) {
         val updates = vm.updateFiles.value
         val dlc = vm.dlcFiles.value

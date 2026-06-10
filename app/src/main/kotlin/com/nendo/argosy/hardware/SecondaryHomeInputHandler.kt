@@ -16,6 +16,7 @@ import com.nendo.argosy.ui.dualscreen.home.ForwardingMode
 import com.nendo.argosy.hardware.CompanionScreen
 import com.nendo.argosy.ui.input.GamepadEvent
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.screens.home.HomeGameUi
 import com.nendo.argosy.ui.screens.secondaryhome.SecondaryHomeViewModel
 
 class SecondaryHomeInputHandler(
@@ -396,6 +397,14 @@ class SecondaryHomeInputHandler(
         }
     }
 
+    private fun confirmGame(game: HomeGameUi) {
+        if (game.isSteamGame && !game.isPlayable) {
+            broadcasts.openSteamChooserForHome(game.id)
+        } else {
+            broadcasts.broadcastDirectAction(if (game.isPlayable) "PLAY" else "DOWNLOAD", game.id)
+        }
+    }
+
     private fun handleCarouselInput(event: GamepadEvent): InputResult {
         val state = dualHomeViewModel.uiState.value
         val inAppBar = state.focusZone == DualHomeFocusZone.APP_BAR
@@ -509,8 +518,7 @@ class SecondaryHomeInputHandler(
                 } else {
                     val game = state.selectedGame
                     if (game != null) {
-                        val action = if (game.isPlayable) "PLAY" else "DOWNLOAD"
-                        broadcasts.broadcastDirectAction(action, game.id)
+                        confirmGame(game)
                         InputResult.HANDLED
                     } else InputResult.UNHANDLED
                 }
@@ -600,10 +608,7 @@ class SecondaryHomeInputHandler(
             }
             GamepadEvent.Confirm -> {
                 val game = dualHomeViewModel.focusedCollectionGame()
-                if (game != null) {
-                    val action = if (game.isPlayable) "PLAY" else "DOWNLOAD"
-                    broadcasts.broadcastDirectAction(action, game.id)
-                }
+                if (game != null) confirmGame(game)
                 InputResult.HANDLED
             }
             GamepadEvent.ContextMenu -> {
@@ -677,10 +682,7 @@ class SecondaryHomeInputHandler(
             GamepadEvent.Confirm -> {
                 val s = dualHomeViewModel.uiState.value
                 val game = s.libraryGames.getOrNull(s.libraryFocusedIndex)
-                if (game != null) {
-                    val action = if (game.isPlayable) "PLAY" else "DOWNLOAD"
-                    broadcasts.broadcastDirectAction(action, game.id)
-                }
+                if (game != null) confirmGame(game)
                 InputResult.HANDLED
             }
             GamepadEvent.ContextMenu -> {

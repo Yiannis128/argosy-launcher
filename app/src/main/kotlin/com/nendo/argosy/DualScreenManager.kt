@@ -740,6 +740,25 @@ class DualScreenManager(
         refocusMain()
     }
 
+    fun openSteamChooserForHome(gameId: Long) {
+        scope.launch(Dispatchers.IO) {
+            val game = gameDao.getById(gameId) ?: return@launch
+            if (game.steamAppId == null) return@launch
+            val options = com.nendo.argosy.data.launcher.SteamLaunchers.getMarkOptions(appContext)
+            _dualGameDetailState.value = DualGameDetailUpperState(
+                gameId = gameId,
+                title = game.title,
+                coverPath = game.coverPath,
+                modalType = ActiveModal.STEAM_INSTALL,
+                steamInstallOptionNames = options.map { it.displayName },
+                steamInstallOptionPackages = options.map { it.launcherPackage },
+                steamInstallFocusIndex = 0,
+                isHomeChooser = true
+            )
+            refocusMain()
+        }
+    }
+
     fun onModalClose() {
         companionHost?.onModalResult(
             dismissed = true,
@@ -1073,6 +1092,11 @@ class DualScreenManager(
 
     fun dismissDualModal() {
         Log.d("UpdatesDLC", "dismissDualModal called, current modal=${_dualGameDetailState.value?.modalType}", Exception("stacktrace"))
+        if (_dualGameDetailState.value?.isHomeChooser == true) {
+            _dualGameDetailState.value = null
+            companionHost?.refocusSelf()
+            return
+        }
         companionHost?.onModalResult(
             dismissed = true, type = _dualGameDetailState.value?.modalType?.name,
             value = 0, statusSelected = null, selectedIndex = -1,
@@ -1282,12 +1306,17 @@ class DualScreenManager(
         val state = _dualGameDetailState.value ?: return
         val index = state.steamInstallFocusIndex
         val gameId = state.gameId
-        companionHost?.onModalResult(
-            dismissed = false, type = ActiveModal.STEAM_INSTALL.name,
-            value = 0, statusSelected = null, selectedIndex = index,
-            collectionToggleId = -1, collectionCreateName = null
-        )
-        _dualGameDetailState.update { it?.copy(modalType = ActiveModal.NONE) }
+        val homeChooser = state.isHomeChooser
+        if (homeChooser) {
+            _dualGameDetailState.value = null
+        } else {
+            companionHost?.onModalResult(
+                dismissed = false, type = ActiveModal.STEAM_INSTALL.name,
+                value = 0, statusSelected = null, selectedIndex = index,
+                collectionToggleId = -1, collectionCreateName = null
+            )
+            _dualGameDetailState.update { it?.copy(modalType = ActiveModal.NONE) }
+        }
         scope.launch(Dispatchers.IO) {
             val game = gameDao.getById(gameId) ?: return@launch
             val steamAppId = game.steamAppId ?: return@launch
@@ -1299,7 +1328,11 @@ class DualScreenManager(
                     ?: return@launch
                 gameDao.setSteamLauncher(gameId, launcherPackage)
             }
-            _swappedGameDetailViewModel?.loadGame(gameId)
+            if (homeChooser) {
+                companionHost?.refocusSelf()
+            } else {
+                _swappedGameDetailViewModel?.loadGame(gameId)
+            }
             companionHost?.onDirectActionResult("STEAM_INSTALL_DONE", gameId)
         }
     }
@@ -1658,6 +1691,11 @@ class DualScreenManager(
 
     fun resyncCompanionState() {
         broadcastForegroundState(true)
+        if (_dualGameDetailState.value?.isHomeChooser == true) {
+            _dualGameDetailState.value = null
+            companionHost?.onOverlayClosed()
+            return
+        }
         val detailState = _dualGameDetailState.value
         if (detailState?.modalType != null &&
             detailState.modalType != ActiveModal.NONE

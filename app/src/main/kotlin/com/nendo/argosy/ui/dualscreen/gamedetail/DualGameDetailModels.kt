@@ -154,7 +154,8 @@ data class DualGameDetailUpperState(
     val discPickerFocusIndex: Int = 0,
     val steamInstallOptionNames: List<String> = emptyList(),
     val steamInstallOptionPackages: List<String> = emptyList(),
-    val steamInstallFocusIndex: Int = 0
+    val steamInstallFocusIndex: Int = 0,
+    val isHomeChooser: Boolean = false
 )
 
 data class SaveEntryData(

@@ -198,7 +198,7 @@ fun DualGameDetailUpperScreen(
 }
 
 @Composable
-private fun DualSteamInstallPickerContent(
+internal fun DualSteamInstallPickerContent(
     optionNames: List<String>,
     focusIndex: Int,
     onSelect: (Int) -> Unit,

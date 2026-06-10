@@ -74,6 +74,7 @@ import com.nendo.argosy.DualScreenManager
 import com.nendo.argosy.ui.dualscreen.gamedetail.ActiveModal
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailInputHandler
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailUpperScreen
+import com.nendo.argosy.ui.dualscreen.gamedetail.DualSteamInstallPickerContent
 import com.nendo.argosy.ui.dualscreen.gamedetail.GameDetailOption
 import com.nendo.argosy.ui.dualscreen.gamedetail.DualGameDetailUpperState
 import com.nendo.argosy.ui.dualscreen.home.DualCollectionShowcase
@@ -965,7 +966,7 @@ fun ArgosyApp(
                 // Dual-screen mode: show showcase on upper display when companion is active
                 if (showDualOverlay) {
                     val detailState = gameDetailUpperState
-                    if (detailState != null) {
+                    if (detailState != null && !detailState.isHomeChooser) {
                         DualGameDetailUpperScreen(
                             state = detailState,
                             onModalRatingSelect = { value ->
@@ -1094,6 +1095,20 @@ fun ArgosyApp(
                                 )
                             },
                             modifier = Modifier.blur(contentBlur)
+                        )
+                    }
+
+                    if (detailState?.isHomeChooser == true &&
+                        detailState.modalType == ActiveModal.STEAM_INSTALL
+                    ) {
+                        DualSteamInstallPickerContent(
+                            optionNames = detailState.steamInstallOptionNames,
+                            focusIndex = detailState.steamInstallFocusIndex,
+                            onSelect = { index ->
+                                activity?.setDualSteamInstallFocus(index)
+                                activity?.confirmDualSteamInstallSelection()
+                            },
+                            onDismiss = { activity?.dismissDualModal() }
                         )
                     }
 
