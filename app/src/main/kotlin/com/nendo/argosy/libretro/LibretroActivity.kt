@@ -283,7 +283,8 @@ class LibretroActivity : ComponentActivity() {
 
         val game = kotlinx.coroutines.runBlocking { gameDao.getById(gameId) }
         platformId = game?.platformId ?: -1L
-        platformSlug = game?.platformSlug ?: ""
+        platformSlug = intent.getStringExtra(EXTRA_PLATFORM_SLUG)?.takeIf { it.isNotBlank() }
+            ?: game?.platformSlug ?: ""
         activeSaveChannel = game?.activeSaveChannel
 
         initializeSaveState(savesDir, statesDir, activeSaveChannel)
@@ -1748,6 +1749,7 @@ class LibretroActivity : ComponentActivity() {
         const val EXTRA_SYSTEM_DIR = "system_dir"
         const val EXTRA_GAME_NAME = "game_name"
         const val EXTRA_GAME_ID = "game_id"
+        const val EXTRA_PLATFORM_SLUG = "platform_slug"
         const val EXTRA_CORE_NAME = "core_name"
         const val EXTRA_CORE_VAR_KEYS = "core_var_keys"
         const val EXTRA_CORE_VAR_VALUES = "core_var_values"

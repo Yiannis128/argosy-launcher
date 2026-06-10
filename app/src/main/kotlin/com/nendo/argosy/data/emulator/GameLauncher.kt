@@ -478,6 +478,7 @@ class GameLauncher @Inject constructor(
             putExtra(LibretroActivity.EXTRA_SYSTEM_DIR, systemDir.absolutePath)
             putExtra(LibretroActivity.EXTRA_GAME_NAME, game.title)
             putExtra(LibretroActivity.EXTRA_GAME_ID, game.id)
+            putExtra(LibretroActivity.EXTRA_PLATFORM_SLUG, game.platformSlug)
             putExtra(LibretroActivity.EXTRA_CORE_NAME, coreName)
             putExtra(LibretroActivity.EXTRA_CORE_VAR_KEYS, coreVariables.map { it.key }.toTypedArray())
             putExtra(LibretroActivity.EXTRA_CORE_VAR_VALUES, coreVariables.map { it.value }.toTypedArray())

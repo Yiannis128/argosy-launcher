@@ -2,6 +2,7 @@ package com.nendo.argosy.data.repository
 
 import android.view.KeyEvent
 import com.nendo.argosy.core.input.DetectedLayout
+import com.nendo.argosy.data.platform.PlatformDefinitions
 
 object RetroButton {
     const val B = 0
@@ -280,13 +281,15 @@ object MappingPlatforms {
 
     fun dbPlatformIdForSlug(slug: String): String? = dbPlatformId(indexForPlatformSlug(slug))
 
-    fun indexForPlatformSlug(slug: String): Int = when (slug) {
-        "atari2600" -> ALL.indexOf(ATARI_SINGLE)
-        "atari5200" -> ALL.indexOf(ATARI_5200)
-        "vectrex" -> ALL.indexOf(VECTREX)
-        "intellivision" -> ALL.indexOf(INTV)
-        "saturn" -> ALL.indexOf(SATURN)
-        "arcade", "cps1", "cps2", "cps3", "neogeocd" -> ALL.indexOf(ARCADE6)
+    fun indexForPlatformSlug(slug: String): Int = ALL.indexOf(profileForSlug(slug))
+
+    fun profileForSlug(slug: String): MappingPlatform = when (PlatformDefinitions.getCanonicalSlug(slug).lowercase()) {
+        "atari2600" -> ATARI_SINGLE
+        "atari5200" -> ATARI_5200
+        "vectrex" -> VECTREX
+        "intellivision" -> INTV
+        "saturn" -> SATURN
+        "arcade", "cps1", "cps2", "cps3", "neogeocd" -> ARCADE6
 
         "nes", "fds", "gameandwatch",
         "sg1000", "sms", "gg",
@@ -294,28 +297,28 @@ object MappingPlatforms {
         "coleco", "odyssey2", "channelf",
         "pokemini", "wonderswan", "wsc",
         "megaduck", "supervision", "arduboy", "uzebox",
-        "ngp", "ngpc" -> ALL.indexOf(NES)
+        "ngp", "ngpc", "pico8" -> NES
 
-        "gb", "gbc" -> ALL.indexOf(GB)
+        "gb", "gbc" -> GB
 
-        "gba" -> ALL.indexOf(GBA)
+        "gba" -> GBA
 
         "snes", "satellaview", "vb",
-        "tg16", "supergrafx", "tgcd", "pcfx" -> ALL.indexOf(SNES)
+        "tg16", "supergrafx", "tgcd", "pcfx" -> SNES
 
-        "n64", "n64dd" -> ALL.indexOf(N64)
+        "n64", "n64dd" -> N64
 
         "psx", "ps2", "psp", "vita",
         "gc", "wii", "dc",
         "nds", "dsi", "3ds", "n3ds",
-        "jaguar", "jaguarcd" -> ALL.indexOf(PSX)
+        "jaguar", "jaguarcd" -> PSX
 
-        "3do" -> ALL.indexOf(THREEDO)
+        "3do" -> THREEDO
 
         "genesis", "scd", "32x", "pico",
-        "neogeo" -> ALL.indexOf(GENESIS)
+        "neogeo" -> GENESIS
 
-        else -> 0
+        else -> UNIVERSAL
     }
 }
 

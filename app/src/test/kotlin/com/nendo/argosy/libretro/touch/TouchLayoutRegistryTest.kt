@@ -1,12 +1,42 @@
 package com.nendo.argosy.libretro.touch
 
+import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.repository.MappingPlatforms
+import com.nendo.argosy.libretro.LibretroCoreRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TouchLayoutRegistryTest {
+
+    private val keyboardOnlyBuiltins = setOf("dos", "pc9800")
+
+    @Test
+    fun `every built-in platform has a deliberate non-generic touch layout`() {
+        val genericFallback = TouchLayoutRegistry.forPlatform("__no_such_platform__")
+        LibretroCoreRegistry.getSupportedPlatforms()
+            .filter { PlatformDefinitions.getCanonicalSlug(it) !in keyboardOnlyBuiltins }
+            .forEach { slug ->
+                assertNotEquals(
+                    "Built-in platform '$slug' falls through to the generic touch layout",
+                    genericFallback,
+                    TouchLayoutRegistry.forPlatform(slug)
+                )
+            }
+    }
+
+    @Test
+    fun `touch layout profile agrees with input mapping for every built-in platform`() {
+        LibretroCoreRegistry.getSupportedPlatforms().forEach { slug ->
+            assertEquals(
+                "Touch and input profile diverge for '$slug'",
+                MappingPlatforms.profileForSlug(slug),
+                TouchLayoutRegistry.forPlatform(slug).mappingPlatform
+            )
+        }
+    }
 
     @Test
     fun `nes returns NES preset with 2 face buttons and no shoulders`() {

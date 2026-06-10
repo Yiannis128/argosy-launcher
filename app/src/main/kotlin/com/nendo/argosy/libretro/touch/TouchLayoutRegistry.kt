@@ -14,14 +14,18 @@ object TouchLayoutRegistry {
 
     fun forPlatform(slug: String, genesis6Button: Boolean = false, colouredPsx: Boolean = false): TouchLayoutSpec {
         val canonical = PlatformDefinitions.getCanonicalSlug(slug).lowercase()
-        return when (canonical) {
-            "nes", "fds" -> nesLike(MappingPlatforms.NES, label1 = "B", label2 = "A")
-            "gb", "gbc" -> nesLike(MappingPlatforms.GB, label1 = "B", label2 = "A")
+        val layout = when (canonical) {
+            "nes", "fds" -> nesLike(label1 = "B", label2 = "A")
+            "gb", "gbc" -> nesLike(label1 = "B", label2 = "A")
             "gba" -> gba()
-            "sms", "gg" -> nesLike(MappingPlatforms.NES, label1 = "1", label2 = "2", systemSelectLabel = null)
-            "gameandwatch", "pokemini" -> nesLike(MappingPlatforms.NES, label1 = "A", label2 = "B")
-            "ngp", "ngpc" -> nesLike(MappingPlatforms.NES, label1 = "B", label2 = "A", systemStartLabel = "Option", systemSelectLabel = null)
-            "wonderswan", "wsc" -> nesLike(MappingPlatforms.NES, label1 = "B", label2 = "A", systemSelectLabel = null)
+            "sms", "gg" -> nesLike(label1 = "1", label2 = "2", systemSelectLabel = null)
+            "gameandwatch", "pokemini" -> nesLike(label1 = "A", label2 = "B")
+            "ngp", "ngpc" -> nesLike(label1 = "B", label2 = "A", systemStartLabel = "Option", systemSelectLabel = null)
+            "wonderswan", "wsc" -> nesLike(label1 = "B", label2 = "A", systemSelectLabel = null)
+            "coleco", "channelf", "odyssey2" -> nesLike(label1 = "1", label2 = "2")
+            "pico8" -> nesLike(label1 = "X", label2 = "O")
+            "c64", "amiga", "amigacd32", "cdtv", "msx", "msx2", "amstradcpc", "zx" ->
+                nesLike(label1 = "1", label2 = "2")
             "lynx" -> lynx()
             "snes" -> snes()
             "tg16", "pce", "turbografx16", "pcengine", "tgcd", "supergrafx", "pcfx" -> pcEngine()
@@ -34,7 +38,7 @@ object TouchLayoutRegistry {
             "dreamcast", "dc" -> dreamcast()
             "n64", "n64dd" -> n64()
             "gc", "ngc", "gamecube", "wii" -> psxLike(true, false, shoulderPair = true)
-            "nds", "ds" -> psxLike(false, false, shoulderPair = true)
+            "nds", "ds", "dsi" -> psxLike(false, false, shoulderPair = true)
             "arcade", "cps1", "cps2", "cps3", "neogeocd" -> arcade6()
             "neogeo" -> genesis(false)
             "genesis", "megadrive", "scd", "segacd", "32x", "pico" -> genesis(genesis6Button)
@@ -44,18 +48,18 @@ object TouchLayoutRegistry {
             "atari5200" -> atari5200()
             "atari7800" -> atari7800()
             "3do" -> threedo()
+            "dos", "pc9800" -> generic()
             else -> generic()
         }
+        return layout.copy(mappingPlatform = MappingPlatforms.profileForSlug(canonical))
     }
 
     private fun nesLike(
-        platform: com.nendo.argosy.data.repository.MappingPlatform,
         label1: String,
         label2: String,
         systemStartLabel: String? = "Start",
         systemSelectLabel: String? = "Select"
     ): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = platform,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(slot(RetroButton.B, label1), slot(RetroButton.A, label2)),
@@ -69,7 +73,6 @@ object TouchLayoutRegistry {
     )
 
     private fun gba(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.GBA,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(slot(RetroButton.B, "B"), slot(RetroButton.A, "A")),
@@ -80,7 +83,6 @@ object TouchLayoutRegistry {
     )
 
     private fun lynx(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.NES,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(slot(RetroButton.B, "B"), slot(RetroButton.A, "A")),
@@ -91,7 +93,6 @@ object TouchLayoutRegistry {
     )
 
     private fun snes(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.SNES,
         dpad = DpadStyle.EightWay,
         face = FaceShape.Diamond4,
         faceSlots = listOf(
@@ -107,7 +108,6 @@ object TouchLayoutRegistry {
     )
 
     private fun pcEngine(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.SNES,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(slot(RetroButton.Y, "II"), slot(RetroButton.B, "I")),
@@ -118,7 +118,6 @@ object TouchLayoutRegistry {
     )
 
     private fun saturn(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.SATURN,
         dpad = DpadStyle.EightWay,
         face = FaceShape.Stack2x3,
         faceSlots = listOf(
@@ -145,7 +144,6 @@ object TouchLayoutRegistry {
         val ciTint = if (coloured) PSX_CIRCLE else null
         val crTint = if (coloured) PSX_CROSS else null
         return TouchLayoutSpec(
-            mappingPlatform = MappingPlatforms.PSX,
             dpad = DpadStyle.EightWay,
             face = FaceShape.Diamond4,
             faceSlots = listOf(
@@ -169,7 +167,6 @@ object TouchLayoutRegistry {
     }
 
     private fun dreamcast(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.PSX,
         dpad = DpadStyle.EightWay,
         face = FaceShape.Diamond4,
         faceSlots = listOf(
@@ -185,7 +182,6 @@ object TouchLayoutRegistry {
     )
 
     private fun n64(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.N64,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(
@@ -204,7 +200,6 @@ object TouchLayoutRegistry {
     )
 
     private fun arcade6(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.ARCADE6,
         dpad = DpadStyle.EightWay,
         face = FaceShape.Row6,
         faceSlots = listOf(
@@ -239,7 +234,6 @@ object TouchLayoutRegistry {
             )
         }
         return TouchLayoutSpec(
-            mappingPlatform = MappingPlatforms.GENESIS,
             dpad = DpadStyle.EightWay,
             face = if (sixButton) FaceShape.Stack2x3 else FaceShape.HorizontalTrio,
             faceSlots = faceSlots,
@@ -252,7 +246,6 @@ object TouchLayoutRegistry {
     }
 
     private fun vectrex(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.VECTREX,
         dpad = DpadStyle.AnalogOnly,
         face = FaceShape.Row4,
         faceSlots = listOf(
@@ -268,7 +261,6 @@ object TouchLayoutRegistry {
     )
 
     private fun intellivision(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.INTV,
         dpad = DpadStyle.None,
         face = FaceShape.NbuttonCluster,
         faceSlots = listOf(
@@ -290,7 +282,6 @@ object TouchLayoutRegistry {
     )
 
     private fun atari2600(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.ATARI_SINGLE,
         dpad = DpadStyle.EightWay,
         face = FaceShape.Single,
         faceSlots = listOf(slot(RetroButton.B, "Fire")),
@@ -301,7 +292,6 @@ object TouchLayoutRegistry {
     )
 
     private fun atari5200(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.ATARI_5200,
         dpad = DpadStyle.AnalogOnly,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(slot(RetroButton.B, "A"), slot(RetroButton.A, "B")),
@@ -312,7 +302,6 @@ object TouchLayoutRegistry {
     )
 
     private fun atari7800(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.ATARI_SINGLE,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalPair,
         faceSlots = listOf(slot(RetroButton.B, "A"), slot(RetroButton.A, "B")),
@@ -323,7 +312,6 @@ object TouchLayoutRegistry {
     )
 
     private fun threedo(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.THREEDO,
         dpad = DpadStyle.EightWay,
         face = FaceShape.HorizontalTrio,
         faceSlots = listOf(
@@ -338,7 +326,6 @@ object TouchLayoutRegistry {
     )
 
     private fun generic(): TouchLayoutSpec = TouchLayoutSpec(
-        mappingPlatform = MappingPlatforms.UNIVERSAL,
         dpad = DpadStyle.EightWay,
         face = FaceShape.Diamond4,
         faceSlots = listOf(
