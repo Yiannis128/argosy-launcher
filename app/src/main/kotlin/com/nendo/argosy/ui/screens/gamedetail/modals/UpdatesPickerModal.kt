@@ -94,7 +94,10 @@ fun UpdatesPickerModal(
                     .clip(RoundedCornerShape(Dimens.radiusMd)),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
             ) {
-                itemsIndexed(files, key = { _, file -> file.fileName }) { index, file ->
+                itemsIndexed(
+                    files,
+                    key = { index, file -> "${file.type}_${file.gameFileId ?: file.filePath}_$index" }
+                ) { index, file ->
                     UpdateFileItem(
                         file = file,
                         isFocused = focusIndex == index,
