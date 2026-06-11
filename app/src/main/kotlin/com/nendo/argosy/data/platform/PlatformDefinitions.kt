@@ -110,6 +110,8 @@ object PlatformDefinitions {
         "segapico" to "pico",
         "sega_pico" to "pico",
         "sega-pico" to "pico",
+        "pico-8" to "pico8",
+        "pico_8" to "pico8",
         // Sony
         "ps" to "psx",
         "ps1" to "psx",
