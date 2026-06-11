@@ -174,9 +174,7 @@ fun DualGameDetailUpperScreen(
             ActiveModal.UPDATES_DLC -> UpdatesPickerModal(
                 files = state.updateFiles + state.dlcFiles,
                 focusIndex = state.updatesPickerFocusIndex,
-                isEdenGame = state.isEdenGame,
                 onDownload = {},
-                onApplyAll = {},
                 onDismiss = onModalDismiss
             )
             ActiveModal.DISC_PICKER -> DualDiscPickerContent(

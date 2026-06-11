@@ -85,7 +85,6 @@ class DualScreenManager(
     internal val sessionStateStore: SessionStateStore,
     internal val preferencesRepository: UserPreferencesRepository,
     internal val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
-    private val edenContentManager: com.nendo.argosy.data.emulator.EdenContentManager,
     private val notificationManager: com.nendo.argosy.core.notification.NotificationManager,
     internal val emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao,
     internal val configureEmulatorUseCase: com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase,
@@ -698,21 +697,8 @@ class DualScreenManager(
                 modalType = ActiveModal.UPDATES_DLC,
                 updateFiles = updateFiles,
                 dlcFiles = dlcFiles,
-                updatesPickerFocusIndex = 0,
-                isEdenGame = false
+                updatesPickerFocusIndex = 0
             )
-        }
-        val currentGameId = _dualGameDetailState.value?.gameId ?: -1L
-        if (currentGameId > 0) {
-            scope.launch(Dispatchers.IO) {
-                val game = gameDao.getById(currentGameId) ?: return@launch
-                val emId = emulatorResolver.getEmulatorIdForGame(
-                    currentGameId, game.platformId, game.platformSlug
-                )
-                if (emId == "eden") {
-                    _dualGameDetailState.update { s -> s?.copy(isEdenGame = true) }
-                }
-            }
         }
         refocusMain()
     }
@@ -836,30 +822,6 @@ class DualScreenManager(
             }
             "SELECT_DISC" -> handleSelectDisc(gameId)
             "PLAY_DISC" -> handleDualPlayDisc(gameId, channelName)
-            "INSTALL_UPDATE_FILE" -> {
-                Log.d("UpdatesDLC", "handleDirectAction: INSTALL_UPDATE_FILE gameId=$gameId")
-                scope.launch(Dispatchers.IO) {
-                    val game = gameDao.getById(gameId)
-                    Log.d("UpdatesDLC", "INSTALL: game=${game?.title}, localPath=${game?.localPath}")
-                    if (game == null) return@launch
-                    val localPath = game.localPath ?: return@launch
-                    val gameDir = java.io.File(localPath).parent ?: return@launch
-                    Log.d("UpdatesDLC", "INSTALL: registering dir=$gameDir with Eden")
-                    val success = edenContentManager.registerDirectory(gameDir)
-                    Log.d("UpdatesDLC", "INSTALL: Eden registerDirectory result=$success")
-                    if (success) {
-                        _dualGameDetailState.update { s ->
-                            s?.copy(
-                                updateFiles = s.updateFiles.map { it.copy(isAppliedToEmulator = true) },
-                                dlcFiles = s.dlcFiles.map { it.copy(isAppliedToEmulator = true) }
-                            )
-                        }
-                        notificationManager.showSuccess("Applied to Eden. Restart Eden to load changes.")
-                    } else {
-                        notificationManager.showError("Failed to register directory with Eden")
-                    }
-                }
-            }
         }
     }
 

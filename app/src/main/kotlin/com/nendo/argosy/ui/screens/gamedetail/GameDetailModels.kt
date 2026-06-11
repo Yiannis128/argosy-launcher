@@ -19,7 +19,6 @@ data class UpdateFileUi(
     val sizeBytes: Long,
     val type: UpdateFileType = UpdateFileType.UPDATE,
     val isDownloaded: Boolean = true,
-    val isAppliedToEmulator: Boolean = false,
     val gameFileId: Long? = null,
     val rommFileId: Long? = null,
     val romId: Long? = null
@@ -213,7 +212,6 @@ data class GameDetailUiState(
     val showCreateCollectionDialog: Boolean = false,
     val showAchievementList: Boolean = false,
     val achievementListFocusIndex: Int = 0,
-    val isEdenGame: Boolean = false,
     val hasVariants: Boolean = false,
     val hasSocialAccount: Boolean = false,
     val isPrivate: Boolean = false

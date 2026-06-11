@@ -975,30 +975,13 @@ class SecondaryHomeInputHandler(
                         val allFiles = vm.updateFiles.value + vm.dlcFiles.value
                         val idx = vm.updatesPickerFocusIndex.value
                         val file = allFiles.getOrNull(idx)
-                        Log.d("UpdatesDLC", "Confirm: idx=$idx, file=${file?.fileName}, downloaded=${file?.isDownloaded}, applied=${file?.isAppliedToEmulator}, gameFileId=${file?.gameFileId}")
-                        if (file != null) {
+                        if (file != null && !file.isDownloaded && file.gameFileId != null) {
                             val gameId = vm.uiState.value.gameId
-                            when {
-                                !file.isDownloaded && file.gameFileId != null -> {
-                                    Log.d("UpdatesDLC", "Confirm: broadcasting DOWNLOAD_UPDATE_FILE gameId=$gameId fileId=${file.gameFileId}")
-                                    broadcasts.broadcastDirectAction(
-                                        "DOWNLOAD_UPDATE_FILE",
-                                        gameId,
-                                        file.gameFileId.toString()
-                                    )
-                                }
-                                file.isDownloaded && !file.isAppliedToEmulator -> {
-                                    Log.d("UpdatesDLC", "Confirm: broadcasting INSTALL_UPDATE_FILE gameId=$gameId fileId=${file.gameFileId}")
-                                    broadcasts.broadcastDirectAction(
-                                        "INSTALL_UPDATE_FILE",
-                                        gameId,
-                                        file.gameFileId?.toString()
-                                    )
-                                }
-                                else -> {
-                                    Log.d("UpdatesDLC", "Confirm: no action for file state")
-                                }
-                            }
+                            broadcasts.broadcastDirectAction(
+                                "DOWNLOAD_UPDATE_FILE",
+                                gameId,
+                                file.gameFileId.toString()
+                            )
                         }
                     }
                     GamepadEvent.SecondaryAction -> {
@@ -1007,26 +990,12 @@ class SecondaryHomeInputHandler(
                         val downloadable = allFiles.filter {
                             !it.isDownloaded && it.gameFileId != null
                         }
-                        Log.d("UpdatesDLC", "SecondaryAction: ${downloadable.size} downloadable, ${allFiles.count { it.isDownloaded && !it.isAppliedToEmulator }} installable")
-                        if (downloadable.isNotEmpty()) {
-                            for (file in downloadable) {
-                                broadcasts.broadcastDirectAction(
-                                    "DOWNLOAD_UPDATE_FILE",
-                                    gameId,
-                                    file.gameFileId.toString()
-                                )
-                            }
-                        } else {
-                            val installable = allFiles.filter {
-                                it.isDownloaded && !it.isAppliedToEmulator
-                            }
-                            for (file in installable) {
-                                broadcasts.broadcastDirectAction(
-                                    "INSTALL_UPDATE_FILE",
-                                    gameId,
-                                    file.gameFileId?.toString()
-                                )
-                            }
+                        for (file in downloadable) {
+                            broadcasts.broadcastDirectAction(
+                                "DOWNLOAD_UPDATE_FILE",
+                                gameId,
+                                file.gameFileId.toString()
+                            )
                         }
                     }
                     GamepadEvent.Back -> {

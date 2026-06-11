@@ -17,7 +17,6 @@ import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.download.nsz.NszDecompressor
-import com.nendo.argosy.data.emulator.EdenContentManager
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.M3uManager
 import com.nendo.argosy.DualScreenManagerHolder
@@ -142,7 +141,6 @@ class DownloadManager @Inject constructor(
     private val m3uManager: M3uManager,
     private val thermalManager: dagger.Lazy<DownloadThermalManager>,
     private val emulatorResolver: EmulatorResolver,
-    private val edenContentManager: EdenContentManager,
     private val steamContentManager: dagger.Lazy<com.nendo.argosy.data.steam.SteamContentManager>
 ) {
     private val _state = MutableStateFlow(DownloadQueueState())
@@ -886,7 +884,6 @@ class DownloadManager @Inject constructor(
             progress.isGameFileDownload && progress.gameFileId != null -> {
                 gameFileDao.updateLocalPath(progress.gameFileId, finalPath, Instant.now())
                 maybeComputeRomHashPrefix(progress.gameFileId, progress.gameId, finalPath)
-                autoApplyToEdenIfNeeded(progress, finalPath)
             }
             progress.isDiscDownload && progress.discId != null -> {
                 gameDiscDao.updateLocalPath(progress.discId, finalPath)
@@ -1351,28 +1348,6 @@ class DownloadManager @Inject constructor(
             if (tempFile.exists()) tempFile.delete()
 
             downloadQueueDao.deleteByGameId(gameId)
-        }
-    }
-
-    private suspend fun autoApplyToEdenIfNeeded(progress: DownloadProgress, finalPath: String) {
-        if (!progress.isGameFileDownload) return
-        val category = progress.fileCategory ?: return
-        if (category != "update" && category != "dlc") return
-
-        try {
-            val game = gameDao.getById(progress.gameId) ?: return
-            val emulatorId = emulatorResolver.getEmulatorIdForGame(
-                progress.gameId, game.platformId, game.platformSlug
-            )
-            if (emulatorId != "eden") return
-
-            // extcontent is auto-discovered by Eden -- no config.ini registration needed
-            if (ZipExtractor.isNswPlatform(progress.platformSlug)) return
-
-            val gameDir = File(finalPath).parentFile?.parent ?: return
-            edenContentManager.registerDirectory(gameDir)
-        } catch (e: Exception) {
-            Log.w(TAG, "Auto-apply to Eden failed: ${e.message}")
         }
     }
 

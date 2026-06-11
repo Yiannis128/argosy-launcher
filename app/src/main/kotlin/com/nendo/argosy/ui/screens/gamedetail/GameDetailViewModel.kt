@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.download.ZipExtractor
-import com.nendo.argosy.data.emulator.EdenContentManager
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.LaunchConfig
@@ -94,7 +93,6 @@ class GameDetailViewModel @Inject constructor(
     private val modalResetSignal: ModalResetSignal,
     private val titleIdDownloadObserver: com.nendo.argosy.data.emulator.TitleIdDownloadObserver,
     private val displayAffinityHelper: com.nendo.argosy.util.DisplayAffinityHelper,
-    private val edenContentManager: EdenContentManager,
     val pickerModalDelegate: PickerModalDelegate,
     private val achievementDelegate: AchievementDelegate,
     private val downloadDelegate: DownloadDelegate,
@@ -367,9 +365,6 @@ class GameDetailViewModel @Inject constructor(
                     game.title, game.platformSlug, game.coverPath, game.rommFileName
                 )
             }
-            is PickerSelection.ApplyUpdate -> {
-                applyUpdateToEmulator(selection.file)
-            }
             is PickerSelection.Variant -> {
                 gameLaunchDelegate.launchSimple(
                     scope = viewModelScope,
@@ -485,13 +480,7 @@ class GameDetailViewModel @Inject constructor(
                 saveManagement.loadSaveStatusInfo(gameId, emulatorId!!, game.activeSaveChannel, game.activeSaveTimestamp)
             } else null
 
-            val emulatorIdForEden = emulatorResolver.getEmulatorIdForGame(gameId, game.platformId, game.platformSlug)
-            val isEdenGame = emulatorIdForEden == "eden"
-            val edenApplied = if (isEdenGame && game.localPath != null) {
-                val gameDir = java.io.File(game.localPath).parent
-                gameDir != null && edenContentManager.isDirectoryRegistered(gameDir)
-            } else false
-            val (updateFilesUi, dlcFilesUi) = loadUpdateAndDlcFiles(gameId, game.platformSlug, game.localPath, edenApplied)
+            val (updateFilesUi, dlcFilesUi) = loadUpdateAndDlcFiles(gameId, game.platformSlug, game.localPath)
 
             variantScanner.scanForVariants(game)
             val hasVariants = gameFileDao.getVariantsForGame(gameId).isNotEmpty()
@@ -529,7 +518,6 @@ class GameDetailViewModel @Inject constructor(
                     saveStatusInfo = saveStatusInfo,
                     updateFiles = updateFilesUi,
                     dlcFiles = dlcFilesUi,
-                    isEdenGame = isEdenGame,
                     hasVariants = hasVariants,
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
@@ -693,7 +681,7 @@ class GameDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadUpdateAndDlcFiles(
-        gameId: Long, platformSlug: String, localPath: String?, edenApplied: Boolean = false
+        gameId: Long, platformSlug: String, localPath: String?
     ): Pair<List<UpdateFileUi>, List<UpdateFileUi>> {
         val remoteFiles = gameFileDao.getFilesForGame(gameId)
 
@@ -710,7 +698,7 @@ class GameDetailViewModel @Inject constructor(
             UpdateFileUi(
                 fileName = file.fileName, filePath = file.filePath,
                 sizeBytes = file.fileSize, type = UpdateFileType.UPDATE,
-                isDownloaded = downloaded, isAppliedToEmulator = downloaded && edenApplied,
+                isDownloaded = downloaded,
                 gameFileId = file.id, rommFileId = file.rommFileId, romId = file.romId
             )
         }
@@ -720,7 +708,7 @@ class GameDetailViewModel @Inject constructor(
             UpdateFileUi(
                 fileName = file.fileName, filePath = file.filePath,
                 sizeBytes = file.fileSize, type = UpdateFileType.DLC,
-                isDownloaded = downloaded, isAppliedToEmulator = downloaded && edenApplied,
+                isDownloaded = downloaded,
                 gameFileId = file.id, rommFileId = file.rommFileId, romId = file.romId
             )
         }
@@ -731,7 +719,7 @@ class GameDetailViewModel @Inject constructor(
                 .map { file ->
                     UpdateFileUi(fileName = file.name, filePath = file.absolutePath,
                         sizeBytes = file.length(), type = UpdateFileType.UPDATE,
-                        isDownloaded = true, isAppliedToEmulator = edenApplied)
+                        isDownloaded = true)
                 }
         } else emptyList()
 
@@ -741,7 +729,7 @@ class GameDetailViewModel @Inject constructor(
                 .map { file ->
                     UpdateFileUi(fileName = file.name, filePath = file.absolutePath,
                         sizeBytes = file.length(), type = UpdateFileType.DLC,
-                        isDownloaded = true, isAppliedToEmulator = edenApplied)
+                        isDownloaded = true)
                 }
         } else emptyList()
 
@@ -1277,39 +1265,7 @@ class GameDetailViewModel @Inject constructor(
     }
 
     private fun confirmUpdatesSelection() {
-        pickerModalDelegate.confirmUpdatesSelection(_uiState.value.updateFiles, _uiState.value.dlcFiles, _uiState.value.isEdenGame)
-    }
-
-    fun applyUpdateToEmulator(file: UpdateFileUi) {
-        viewModelScope.launch {
-            val game = gameRepository.getById(currentGameId) ?: return@launch
-            val localPath = game.localPath ?: return@launch
-            val gameDir = java.io.File(localPath).parent ?: return@launch
-            val success = edenContentManager.registerDirectory(gameDir)
-            if (success) {
-                markAllFilesAsApplied()
-                notificationManager.showSuccess("Applied to Eden. Restart Eden to load changes.")
-            } else {
-                notificationManager.showError("Failed to register directory with Eden")
-            }
-        }
-    }
-
-    fun applyAllUpdatesToEmulator() {
-        applyUpdateToEmulator(_uiState.value.updateFiles.firstOrNull() ?: _uiState.value.dlcFiles.firstOrNull() ?: return)
-    }
-
-    private fun markAllFilesAsApplied() {
-        _uiState.update { state ->
-            state.copy(
-                updateFiles = state.updateFiles.map {
-                    if (it.isDownloaded) it.copy(isAppliedToEmulator = true) else it
-                },
-                dlcFiles = state.dlcFiles.map {
-                    if (it.isDownloaded) it.copy(isAppliedToEmulator = true) else it
-                }
-            )
-        }
+        pickerModalDelegate.confirmUpdatesSelection(_uiState.value.updateFiles, _uiState.value.dlcFiles)
     }
 
     fun installAllUpdatesAndDlc() { pickerModalDelegate.dismissUpdatesPicker(); playGame() }
@@ -1777,11 +1733,6 @@ class GameDetailViewModel @Inject constructor(
         override fun onSecondaryAction(): InputResult {
             val state = _uiState.value
             val saveState = state.saveChannel
-            val pickerState = pickerModalDelegate.state.value
-            if (pickerState.showUpdatesPicker && state.isEdenGame) {
-                val hasUnapplied = (state.updateFiles + state.dlcFiles).any { it.isDownloaded && !it.isAppliedToEmulator }
-                if (hasUnapplied) { applyAllUpdatesToEmulator(); return InputResult.HANDLED }
-            }
             if (saveState.isVisible && !saveState.showRestoreConfirmation && !saveState.showRenameDialog && !saveState.showDeleteConfirmation && !saveState.showMigrateConfirmation && !saveState.showDeleteLegacyConfirmation) {
                 saveChannelSecondaryAction(); return InputResult.HANDLED
             }

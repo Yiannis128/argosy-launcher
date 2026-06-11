@@ -147,7 +147,6 @@ data class DualGameDetailUpperState(
     val updateFiles: List<UpdateFileUi> = emptyList(),
     val dlcFiles: List<UpdateFileUi> = emptyList(),
     val updatesPickerFocusIndex: Int = 0,
-    val isEdenGame: Boolean = false,
     val focusedStateEntry: UnifiedStateEntry? = null,
     val statePreviewScreenshotPath: String? = null,
     val discPickerOptions: List<DiscOption> = emptyList(),

@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.FolderZip
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,9 +43,7 @@ import com.nendo.argosy.ui.theme.LocalLauncherTheme
 fun UpdatesPickerModal(
     files: List<UpdateFileUi>,
     focusIndex: Int,
-    isEdenGame: Boolean,
     onDownload: (UpdateFileUi) -> Unit,
-    onApplyAll: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -61,9 +58,7 @@ fun UpdatesPickerModal(
 
     val focusedFile = files.getOrNull(focusIndex)
     val focusedNeedsDownload = focusedFile != null && !focusedFile.isDownloaded && focusedFile.gameFileId != null
-    val focusedNeedsInstall = isEdenGame && focusedFile != null && focusedFile.isDownloaded && !focusedFile.isAppliedToEmulator
     val hasAnyDownloadable = files.any { !it.isDownloaded && it.gameFileId != null }
-    val hasAnyInstallable = isEdenGame && files.any { it.isDownloaded && !it.isAppliedToEmulator }
 
     Box(
         modifier = Modifier
@@ -115,16 +110,8 @@ fun UpdatesPickerModal(
             FooterBar(
                 hints = listOfNotNull(
                     InputButton.DPAD_VERTICAL to "Navigate",
-                    when {
-                        focusedNeedsDownload -> InputButton.A to "Download"
-                        focusedNeedsInstall -> InputButton.A to "Install"
-                        else -> null
-                    },
-                    when {
-                        hasAnyDownloadable -> InputButton.X to "Download All"
-                        hasAnyInstallable -> InputButton.X to "Install All"
-                        else -> null
-                    },
+                    if (focusedNeedsDownload) InputButton.A to "Download" else null,
+                    if (hasAnyDownloadable) InputButton.X to "Download All" else null,
                     InputButton.B to "Back"
                 )
             )
@@ -156,14 +143,9 @@ private fun UpdateFileItem(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    val icon = when {
-        file.isAppliedToEmulator -> Icons.Filled.CheckCircle
-        file.isDownloaded -> Icons.Outlined.FolderZip
-        else -> Icons.Outlined.CloudDownload
-    }
+    val icon = if (file.isDownloaded) Icons.Outlined.FolderZip else Icons.Outlined.CloudDownload
     val iconTint = when {
         isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-        file.isAppliedToEmulator -> MaterialTheme.colorScheme.primary
         file.isDownloaded -> MaterialTheme.colorScheme.onSurface
         else -> secondaryColor
     }

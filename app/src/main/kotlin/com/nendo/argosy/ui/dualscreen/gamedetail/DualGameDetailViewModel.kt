@@ -1020,7 +1020,7 @@ class DualGameDetailViewModel(
             UpdateFileUi(
                 fileName = file.fileName, filePath = file.filePath,
                 sizeBytes = file.fileSize, type = UpdateFileType.UPDATE,
-                isDownloaded = downloaded, isAppliedToEmulator = false,
+                isDownloaded = downloaded,
                 gameFileId = file.id, rommFileId = file.rommFileId,
                 romId = file.romId
             )
@@ -1031,7 +1031,7 @@ class DualGameDetailViewModel(
             UpdateFileUi(
                 fileName = file.fileName, filePath = file.filePath,
                 sizeBytes = file.fileSize, type = UpdateFileType.DLC,
-                isDownloaded = downloaded, isAppliedToEmulator = false,
+                isDownloaded = downloaded,
                 gameFileId = file.id, rommFileId = file.rommFileId,
                 romId = file.romId
             )
@@ -1044,7 +1044,7 @@ class DualGameDetailViewModel(
                     UpdateFileUi(
                         fileName = file.name, filePath = file.absolutePath,
                         sizeBytes = file.length(), type = UpdateFileType.UPDATE,
-                        isDownloaded = true, isAppliedToEmulator = false
+                        isDownloaded = true
                     )
                 }
         } else emptyList()
@@ -1056,7 +1056,7 @@ class DualGameDetailViewModel(
                     UpdateFileUi(
                         fileName = file.name, filePath = file.absolutePath,
                         sizeBytes = file.length(), type = UpdateFileType.DLC,
-                        isDownloaded = true, isAppliedToEmulator = false
+                        isDownloaded = true
                     )
                 }
         } else emptyList()
