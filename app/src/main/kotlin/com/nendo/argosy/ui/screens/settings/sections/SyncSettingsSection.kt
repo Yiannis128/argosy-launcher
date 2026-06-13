@@ -177,9 +177,15 @@ fun SyncSettingsSection(
         if (uiState.syncSettings.showPlatformFiltersModal) {
             PlatformFiltersModal(
                 platforms = uiState.syncSettings.platformFiltersList,
+                filterMode = uiState.syncSettings.platformFilterMode,
+                searchQuery = uiState.syncSettings.platformFilterSearchQuery,
+                sortMode = uiState.syncSettings.platformFilterSortMode,
                 focusIndex = uiState.syncSettings.platformFiltersModalFocusIndex,
                 isLoading = uiState.syncSettings.isLoadingPlatforms,
                 onTogglePlatform = { viewModel.togglePlatformSyncEnabled(it) },
+                onSortModeChange = { viewModel.setPlatformFilterSortMode(it) },
+                onFilterModeChange = { viewModel.cyclePlatformFilterMode() },
+                onSearchQueryChange = { viewModel.setPlatformFilterSearchQuery(it) },
                 onDismiss = { viewModel.dismissPlatformFiltersModal() }
             )
         }

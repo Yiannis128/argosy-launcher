@@ -18,6 +18,7 @@ import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.ui.screens.settings.PlatformFilterItem
 import com.nendo.argosy.ui.screens.settings.SyncSettingsState
+import com.nendo.argosy.util.PlatformFilterLogic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -425,7 +426,7 @@ class SyncSettingsDelegate @Inject constructor(
                 notificationManager.showError("Failed to fetch platforms: ${result.exceptionOrNull()?.message}")
             }
 
-            val platforms = platformRepository.getAllPlatformsOrdered().map { entity ->
+            val allPlatforms = platformRepository.getAllPlatformsOrdered().map { entity ->
                 PlatformFilterItem(
                     id = entity.id,
                     name = entity.name,
@@ -434,14 +435,21 @@ class SyncSettingsDelegate @Inject constructor(
                     syncEnabled = entity.syncEnabled
                 )
             }
-            val enabledCount = platforms.count { it.syncEnabled }
+            val filtered = PlatformFilterLogic.filterAndSortPlatformFilterItems(
+                items = allPlatforms,
+                searchQuery = _state.value.platformFilterSearchQuery,
+                filterMode = _state.value.platformFilterMode,
+                sortMode = _state.value.platformFilterSortMode
+            )
+            val enabledCount = allPlatforms.count { it.syncEnabled }
             _state.update {
                 it.copy(
-                    platformFiltersList = platforms,
+                    platformFiltersAllPlatforms = allPlatforms,
+                    platformFiltersList = filtered,
                     isLoadingPlatforms = false,
                     platformFiltersModalFocusIndex = 0,
                     enabledPlatformCount = enabledCount,
-                    totalPlatforms = platforms.size
+                    totalPlatforms = allPlatforms.size
                 )
             }
         }
@@ -449,6 +457,43 @@ class SyncSettingsDelegate @Inject constructor(
 
     fun dismissPlatformFiltersModal() {
         _state.update { it.copy(showPlatformFiltersModal = false) }
+    }
+
+    fun applyPlatformFilters(resetFocus: Boolean = false) {
+        _state.update { state ->
+            val filtered = PlatformFilterLogic.filterAndSortPlatformFilterItems(
+                items = state.platformFiltersAllPlatforms,
+                searchQuery = state.platformFilterSearchQuery,
+                filterMode = state.platformFilterMode,
+                sortMode = state.platformFilterSortMode
+            )
+            state.copy(
+                platformFiltersList = filtered,
+                platformFiltersModalFocusIndex = if (resetFocus) 0 else state.platformFiltersModalFocusIndex.coerceIn(0, (filtered.size - 1).coerceAtLeast(0))
+            )
+        }
+    }
+
+    fun setPlatformFilterSortMode(mode: PlatformFilterLogic.SortMode) {
+        _state.update { it.copy(platformFilterSortMode = mode) }
+        applyPlatformFilters(resetFocus = true)
+    }
+
+    fun setPlatformFilterSearchQuery(query: String) {
+        _state.update { it.copy(platformFilterSearchQuery = query) }
+        applyPlatformFilters(resetFocus = true)
+    }
+
+    fun cyclePlatformFilterMode() {
+        _state.update {
+            val nextMode = when (it.platformFilterMode) {
+                PlatformFilterLogic.FilterMode.ALL -> PlatformFilterLogic.FilterMode.HAS_GAMES
+                PlatformFilterLogic.FilterMode.HAS_GAMES -> PlatformFilterLogic.FilterMode.ENABLED
+                PlatformFilterLogic.FilterMode.ENABLED -> PlatformFilterLogic.FilterMode.ALL
+            }
+            it.copy(platformFilterMode = nextMode)
+        }
+        applyPlatformFilters(resetFocus = true)
     }
 
     fun movePlatformFiltersModalFocus(delta: Int) {
@@ -472,15 +517,19 @@ class SyncSettingsDelegate @Inject constructor(
             platformRepository.updateSyncEnabled(platformId, newEnabled)
 
             _state.update { state ->
-                val updatedList = state.platformFiltersList.map { item ->
+                // Update the master list
+                val updatedAllPlatforms = state.platformFiltersAllPlatforms.map { item ->
                     if (item.id == platformId) item.copy(syncEnabled = newEnabled) else item
                 }
-                val enabledCount = updatedList.count { it.syncEnabled }
+                val enabledCount = updatedAllPlatforms.count { it.syncEnabled }
+
                 state.copy(
-                    platformFiltersList = updatedList,
+                    platformFiltersAllPlatforms = updatedAllPlatforms,
                     enabledPlatformCount = enabledCount
                 )
             }
+            // Re-apply filters to ensure view remains consistent (e.g. removing disabled items if in ENABLED mode)
+            applyPlatformFilters()
         }
     }
 

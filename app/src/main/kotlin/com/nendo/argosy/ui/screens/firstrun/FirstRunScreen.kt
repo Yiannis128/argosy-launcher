@@ -74,7 +74,16 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.ui.components.PermissionCard
 import com.nendo.argosy.ui.components.SwitchPreference
@@ -82,6 +91,7 @@ import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.util.PlatformFilterLogic
 
 @Composable
 fun FirstRunScreen(
@@ -253,11 +263,17 @@ fun FirstRunScreen(
                 )
                 FirstRunStep.PLATFORM_SELECT -> PlatformSelectStep(
                     platforms = uiState.platforms,
+                    filterMode = uiState.platformFilterMode,
+                    searchQuery = uiState.platformFilterSearchQuery,
+                    sortMode = uiState.platformFilterSortMode,
                     focusedIndex = uiState.focusedIndex,
                     buttonFocusIndex = uiState.platformButtonFocus,
-                    onToggle = { viewModel.togglePlatform(it) },
-                    onToggleAll = { viewModel.toggleAllPlatforms() },
-                    onContinue = { viewModel.proceedFromPlatformSelect() }
+                    onToggle = viewModel::togglePlatform,
+                    onToggleAll = viewModel::toggleAllPlatforms,
+                    onSortModeChange = viewModel::setPlatformFilterSortMode,
+                    onFilterModeChange = { viewModel.cyclePlatformFilterMode() },
+                    onSearchQueryChange = viewModel::setPlatformFilterSearchQuery,
+                    onContinue = viewModel::proceedFromPlatformSelect
                 )
                 FirstRunStep.CORE_PROMPT -> CorePromptStep(
                     missingCoreCount = uiState.missingCoreCount,
@@ -789,10 +805,16 @@ private fun ImageCacheStep(
 @Composable
 private fun PlatformSelectStep(
     platforms: List<PlatformEntity>,
+    filterMode: PlatformFilterLogic.FilterMode,
+    searchQuery: String,
+    sortMode: PlatformFilterLogic.SortMode,
     focusedIndex: Int,
     buttonFocusIndex: Int,
     onToggle: (Long) -> Unit,
     onToggleAll: () -> Unit,
+    onSortModeChange: (PlatformFilterLogic.SortMode) -> Unit,
+    onFilterModeChange: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onContinue: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -803,6 +825,13 @@ private fun PlatformSelectStep(
     LaunchedEffect(focusedIndex) {
         if (platforms.isNotEmpty() && focusedIndex in platforms.indices) {
             listState.animateScrollToItem(focusedIndex)
+        }
+    }
+
+    // Scroll to top when the filtered list criteria changes (e.g. search, sort, filter)
+    LaunchedEffect(searchQuery, filterMode, sortMode) {
+        if (platforms.isNotEmpty()) {
+            listState.scrollToItem(0)
         }
     }
 
@@ -828,6 +857,132 @@ private fun PlatformSelectStep(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(0.9f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
+            var showSortMenu by remember { mutableStateOf(false) }
+
+            if (showSearch) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = { Text("Search platforms...") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, "Search")
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            onSearchQueryChange("")
+                            showSearch = false
+                        }) {
+                            Icon(Icons.Default.Close, "Clear")
+                        }
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            } else {
+                Text(
+                    text = "${platforms.size} platforms",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+                if (!showSearch) {
+                    IconButton(onClick = { showSearch = true }) {
+                        Icon(Icons.Default.Search, "Search")
+                    }
+                }
+
+                Box {
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Sort, "Sort")
+                    }
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Default") },
+                            onClick = {
+                                onSortModeChange(PlatformFilterLogic.SortMode.DEFAULT)
+                                showSortMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Name (A-Z)") },
+                            onClick = {
+                                onSortModeChange(PlatformFilterLogic.SortMode.NAME_ASC)
+                                showSortMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Name (Z-A)") },
+                            onClick = {
+                                onSortModeChange(PlatformFilterLogic.SortMode.NAME_DESC)
+                                showSortMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Most Games") },
+                            onClick = {
+                                onSortModeChange(PlatformFilterLogic.SortMode.MOST_GAMES)
+                                showSortMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Least Games") },
+                            onClick = {
+                                onSortModeChange(PlatformFilterLogic.SortMode.LEAST_GAMES)
+                                showSortMenu = false
+                            }
+                        )
+                    }
+                }
+
+                val filterLabel = when (filterMode) {
+                    PlatformFilterLogic.FilterMode.ALL -> "All"
+                    PlatformFilterLogic.FilterMode.HAS_GAMES -> "Has Games"
+                    PlatformFilterLogic.FilterMode.ENABLED -> "Enabled"
+                }
+
+                if (filterMode != PlatformFilterLogic.FilterMode.ALL) {
+                    FilterChip(
+                        selected = true,
+                        onClick = onFilterModeChange,
+                        label = { Text(filterLabel) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.FilterList,
+                                contentDescription = null,
+                                modifier = Modifier.size(Dimens.iconXs)
+                            )
+                        }
+                    )
+                } else {
+                    IconButton(
+                        onClick = onFilterModeChange
+                    ) {
+                        Icon(
+                            Icons.Default.FilterList,
+                            "Filter platforms"
+                        )
+                    }
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
         LazyColumn(

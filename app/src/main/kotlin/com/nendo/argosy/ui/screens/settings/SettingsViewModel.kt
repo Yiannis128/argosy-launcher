@@ -49,6 +49,7 @@ import com.nendo.argosy.ui.screens.settings.delegates.StorageSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.SyncSettingsDelegate
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.util.LogLevel
+
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -796,6 +797,18 @@ class SettingsViewModel @Inject constructor(
     fun movePlatformFiltersModalFocus(delta: Int) = syncDelegate.movePlatformFiltersModalFocus(delta)
     fun confirmPlatformFiltersModalSelection() = syncDelegate.confirmPlatformFiltersModalSelection(viewModelScope)
     fun togglePlatformSyncEnabled(platformId: Long) = syncDelegate.togglePlatformSyncEnabled(viewModelScope, platformId)
+
+    fun setPlatformFilterSortMode(mode: com.nendo.argosy.util.PlatformFilterLogic.SortMode) {
+        syncDelegate.setPlatformFilterSortMode(mode)
+    }
+
+    fun setPlatformFilterSearchQuery(query: String) {
+        syncDelegate.setPlatformFilterSearchQuery(query)
+    }
+
+    fun cyclePlatformFilterMode() {
+        syncDelegate.cyclePlatformFilterMode()
+    }
 
     fun showRegionPicker() = routeShowRegionPicker(this)
     fun dismissRegionPicker() = routeDismissRegionPicker(this)
