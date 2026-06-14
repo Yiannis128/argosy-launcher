@@ -1400,17 +1400,47 @@ class GameLauncher @Inject constructor(
         }
 
         if (romFile.extension.equals("zip", ignoreCase = true)) {
-            val fromZip = findScummVMGameIdInZip(romFile)
-            if (fromZip != null) {
-                Logger.debug(TAG, "[ScummVM] Found game ID in zip: $fromZip")
-                return fromZip
+            findScummVMGameIdInZip(romFile)?.let {
+                Logger.debug(TAG, "[ScummVM] Found game ID in zip: $it")
+                return it
             }
-            val fallback = romFile.nameWithoutExtension.lowercase()
-            Logger.debug(TAG, "[ScummVM] Using zip filename as game ID: $fallback")
-            return fallback
+        }
+
+        if (romFile.extension.equals("7z", ignoreCase = true)) {
+            findScummVMGameIdIn7z(romFile)?.let {
+                Logger.debug(TAG, "[ScummVM] Found game ID in 7z: $it")
+                return it
+            }
+        }
+
+        val derived = (if (romFile.isDirectory) romFile.name else romFile.nameWithoutExtension)
+            .lowercase()
+            .takeIf { it.isNotBlank() }
+        if (derived != null) {
+            Logger.debug(TAG, "[ScummVM] No .scummvm stub found; deriving game ID from name: $derived")
+            return derived
         }
 
         return null
+    }
+
+    private fun findScummVMGameIdIn7z(file: File): String? {
+        return try {
+            org.apache.commons.compress.archivers.sevenz.SevenZFile.builder().setFile(file).get().use { sevenZ ->
+                var entry = sevenZ.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory && entry.name.endsWith(".scummvm", ignoreCase = true)) {
+                        val content = sevenZ.getInputStream(entry).bufferedReader().readText().trim()
+                        return@use if (content.isNotEmpty()) parseScummVMGameId(content) else null
+                    }
+                    entry = sevenZ.nextEntry
+                }
+                null
+            }
+        } catch (e: Exception) {
+            Logger.warn(TAG, "[ScummVM] Failed to read .scummvm from 7z: ${file.name}", e)
+            null
+        }
     }
 
     private fun findScummVMGameIdInZip(zipFile: File): String? {
