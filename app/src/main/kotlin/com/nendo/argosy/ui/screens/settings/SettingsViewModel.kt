@@ -810,8 +810,16 @@ class SettingsViewModel @Inject constructor(
     fun showPlatformFiltersModal() = routeShowPlatformFiltersModal(this)
     fun dismissPlatformFiltersModal() = routeDismissPlatformFiltersModal(this)
 
-    fun movePlatformFiltersModalFocus(delta: Int) = syncDelegate.movePlatformFiltersModalFocus(delta)
-    fun confirmPlatformFiltersModalSelection() = syncDelegate.confirmPlatformFiltersModalSelection(viewModelScope)
+    fun platformFiltersUp() = syncDelegate.platformFiltersUp()
+    fun platformFiltersDown() = syncDelegate.platformFiltersDown()
+    fun platformFiltersLeft() = syncDelegate.platformFiltersLeft()
+    fun platformFiltersRight() = syncDelegate.platformFiltersRight()
+    fun platformFiltersConfirm() = syncDelegate.platformFiltersConfirm(viewModelScope)
+    fun platformFiltersBack() = syncDelegate.platformFiltersBack()
+    fun openPlatformSearch() = syncDelegate.openPlatformSearch()
+    fun closePlatformSearch() = syncDelegate.closePlatformSearch()
+    fun openPlatformSortMenu() = syncDelegate.openPlatformSortMenu()
+    fun closePlatformSortMenu() = syncDelegate.closePlatformSortMenu()
     fun togglePlatformSyncEnabled(platformId: Long) = syncDelegate.togglePlatformSyncEnabled(viewModelScope, platformId)
 
     fun setPlatformFilterSortMode(mode: PlatformFilterLogic.SortMode) = syncDelegate.setPlatformFilterSortMode(mode)

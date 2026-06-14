@@ -224,10 +224,12 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
     private fun interceptPlatformFiltersModal(state: SettingsUiState, method: InputMethod): InputResult? {
         if (!state.syncSettings.showPlatformFiltersModal) return null
         return when (method) {
-            InputMethod.UP -> { viewModel.movePlatformFiltersModalFocus(-1); InputResult.HANDLED }
-            InputMethod.DOWN -> { viewModel.movePlatformFiltersModalFocus(1); InputResult.HANDLED }
-            InputMethod.CONFIRM -> { viewModel.confirmPlatformFiltersModalSelection(); InputResult.handled(SoundType.TOGGLE) }
-            InputMethod.BACK -> { viewModel.dismissPlatformFiltersModal(); InputResult.HANDLED }
+            InputMethod.UP -> { viewModel.platformFiltersUp(); InputResult.HANDLED }
+            InputMethod.DOWN -> { viewModel.platformFiltersDown(); InputResult.HANDLED }
+            InputMethod.LEFT -> { viewModel.platformFiltersLeft(); InputResult.HANDLED }
+            InputMethod.RIGHT -> { viewModel.platformFiltersRight(); InputResult.HANDLED }
+            InputMethod.CONFIRM -> { viewModel.platformFiltersConfirm(); InputResult.handled(SoundType.TOGGLE) }
+            InputMethod.BACK -> { viewModel.platformFiltersBack(); InputResult.HANDLED }
             else -> InputResult.HANDLED
         }
     }

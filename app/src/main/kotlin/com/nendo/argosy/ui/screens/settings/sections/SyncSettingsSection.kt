@@ -179,13 +179,24 @@ fun SyncSettingsSection(
                 platforms = uiState.syncSettings.platformFiltersList,
                 filterMode = uiState.syncSettings.platformFilterMode,
                 searchQuery = uiState.syncSettings.platformFilterSearchQuery,
-                sortMode = uiState.syncSettings.platformFilterSortMode,
                 focusIndex = uiState.syncSettings.platformFiltersModalFocusIndex,
                 isLoading = uiState.syncSettings.isLoadingPlatforms,
+                headerFocused = uiState.syncSettings.platformFiltersHeaderFocused,
+                headerIndex = uiState.syncSettings.platformFiltersHeaderIndex,
+                searchActive = uiState.syncSettings.platformFiltersSearchActive,
+                sortMenuOpen = uiState.syncSettings.platformFiltersSortMenuOpen,
+                sortMenuIndex = uiState.syncSettings.platformFiltersSortMenuIndex,
                 onTogglePlatform = { viewModel.togglePlatformSyncEnabled(it) },
-                onSortModeChange = { viewModel.setPlatformFilterSortMode(it) },
-                onFilterModeChange = { viewModel.cyclePlatformFilterMode() },
                 onSearchQueryChange = { viewModel.setPlatformFilterSearchQuery(it) },
+                onSortModeChange = {
+                    viewModel.setPlatformFilterSortMode(it)
+                    viewModel.closePlatformSortMenu()
+                },
+                onFilterModeChange = { viewModel.cyclePlatformFilterMode() },
+                onOpenSearch = { viewModel.openPlatformSearch() },
+                onCloseSearch = { viewModel.closePlatformSearch() },
+                onOpenSortMenu = { viewModel.openPlatformSortMenu() },
+                onCloseSortMenu = { viewModel.closePlatformSortMenu() },
                 onDismiss = { viewModel.dismissPlatformFiltersModal() }
             )
         }

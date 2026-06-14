@@ -18,6 +18,9 @@ import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.ui.screens.settings.PlatformFilterItem
 import com.nendo.argosy.ui.screens.settings.SyncSettingsState
+import com.nendo.argosy.ui.components.PLATFORM_HEADER_COUNT
+import com.nendo.argosy.ui.components.PLATFORM_HEADER_SEARCH
+import com.nendo.argosy.ui.components.PLATFORM_HEADER_SORT
 import com.nendo.argosy.util.PlatformFilterLogic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -419,7 +422,16 @@ class SyncSettingsDelegate @Inject constructor(
 
     fun showPlatformFiltersModal(scope: CoroutineScope) {
         scope.launch {
-            _state.update { it.copy(showPlatformFiltersModal = true, isLoadingPlatforms = true) }
+            _state.update {
+                it.copy(
+                    showPlatformFiltersModal = true,
+                    isLoadingPlatforms = true,
+                    platformFiltersHeaderFocused = false,
+                    platformFiltersHeaderIndex = 0,
+                    platformFiltersSearchActive = false,
+                    platformFiltersSortMenuOpen = false
+                )
+            }
 
             val result = rommRepository.syncPlatformsOnly()
             if (result.isFailure) {
@@ -456,7 +468,14 @@ class SyncSettingsDelegate @Inject constructor(
     }
 
     fun dismissPlatformFiltersModal() {
-        _state.update { it.copy(showPlatformFiltersModal = false) }
+        _state.update {
+            it.copy(
+                showPlatformFiltersModal = false,
+                platformFiltersSearchActive = false,
+                platformFiltersSortMenuOpen = false,
+                platformFiltersHeaderFocused = false
+            )
+        }
     }
 
     fun applyPlatformFilters(resetFocus: Boolean = false) {
@@ -496,19 +515,104 @@ class SyncSettingsDelegate @Inject constructor(
         applyPlatformFilters(resetFocus = true)
     }
 
-    fun movePlatformFiltersModalFocus(delta: Int) {
-        _state.update { state ->
-            val maxIndex = (state.platformFiltersList.size - 1).coerceAtLeast(0)
-            val newIndex = (state.platformFiltersModalFocusIndex + delta).coerceIn(0, maxIndex)
-            state.copy(platformFiltersModalFocusIndex = newIndex)
+    fun platformFiltersUp() {
+        _state.update { s ->
+            when {
+                s.platformFiltersSortMenuOpen -> s.copy(
+                    platformFiltersSortMenuIndex = (s.platformFiltersSortMenuIndex - 1).mod(PlatformFilterLogic.SortMode.entries.size)
+                )
+                s.platformFiltersSearchActive -> s
+                s.platformFiltersHeaderFocused -> s
+                s.platformFiltersModalFocusIndex <= 0 -> s.copy(platformFiltersHeaderFocused = true)
+                else -> s.copy(platformFiltersModalFocusIndex = s.platformFiltersModalFocusIndex - 1)
+            }
         }
     }
 
-    fun confirmPlatformFiltersModalSelection(scope: CoroutineScope) {
-        val state = _state.value
-        val platform = state.platformFiltersList.getOrNull(state.platformFiltersModalFocusIndex) ?: return
-        togglePlatformSyncEnabled(scope, platform.id)
+    fun platformFiltersDown() {
+        _state.update { s ->
+            when {
+                s.platformFiltersSortMenuOpen -> s.copy(
+                    platformFiltersSortMenuIndex = (s.platformFiltersSortMenuIndex + 1).mod(PlatformFilterLogic.SortMode.entries.size)
+                )
+                s.platformFiltersSearchActive -> s
+                s.platformFiltersHeaderFocused -> s.copy(platformFiltersHeaderFocused = false, platformFiltersModalFocusIndex = 0)
+                else -> {
+                    val maxIndex = (s.platformFiltersList.size - 1).coerceAtLeast(0)
+                    s.copy(platformFiltersModalFocusIndex = (s.platformFiltersModalFocusIndex + 1).coerceAtMost(maxIndex))
+                }
+            }
+        }
     }
+
+    fun platformFiltersLeft() = movePlatformFiltersHeader(-1)
+
+    fun platformFiltersRight() = movePlatformFiltersHeader(1)
+
+    private fun movePlatformFiltersHeader(delta: Int) {
+        _state.update { s ->
+            if (s.platformFiltersHeaderFocused && !s.platformFiltersSortMenuOpen && !s.platformFiltersSearchActive) {
+                s.copy(platformFiltersHeaderIndex = (s.platformFiltersHeaderIndex + delta).mod(PLATFORM_HEADER_COUNT))
+            } else {
+                s
+            }
+        }
+    }
+
+    fun platformFiltersConfirm(scope: CoroutineScope) {
+        val s = _state.value
+        when {
+            s.platformFiltersSortMenuOpen -> {
+                val mode = PlatformFilterLogic.SortMode.entries[s.platformFiltersSortMenuIndex]
+                _state.update { it.copy(platformFiltersSortMenuOpen = false) }
+                setPlatformFilterSortMode(mode)
+            }
+            s.platformFiltersSearchActive -> _state.update { it.copy(platformFiltersSearchActive = false) }
+            s.platformFiltersHeaderFocused -> when (s.platformFiltersHeaderIndex) {
+                PLATFORM_HEADER_SEARCH -> _state.update { it.copy(platformFiltersSearchActive = true) }
+                PLATFORM_HEADER_SORT -> _state.update {
+                    it.copy(
+                        platformFiltersSortMenuOpen = true,
+                        platformFiltersSortMenuIndex = PlatformFilterLogic.SortMode.entries
+                            .indexOf(it.platformFilterSortMode).coerceAtLeast(0)
+                    )
+                }
+                else -> cyclePlatformFilterMode()
+            }
+            else -> {
+                val platform = s.platformFiltersList.getOrNull(s.platformFiltersModalFocusIndex) ?: return
+                togglePlatformSyncEnabled(scope, platform.id)
+            }
+        }
+    }
+
+    fun platformFiltersBack() {
+        _state.update { s ->
+            when {
+                s.platformFiltersSortMenuOpen -> s.copy(platformFiltersSortMenuOpen = false)
+                s.platformFiltersSearchActive -> s.copy(platformFiltersSearchActive = false)
+                else -> s.copy(
+                    showPlatformFiltersModal = false,
+                    platformFiltersHeaderFocused = false
+                )
+            }
+        }
+    }
+
+    fun openPlatformSearch() = _state.update { it.copy(platformFiltersHeaderFocused = true, platformFiltersHeaderIndex = PLATFORM_HEADER_SEARCH, platformFiltersSearchActive = true) }
+
+    fun closePlatformSearch() = _state.update { it.copy(platformFiltersSearchActive = false) }
+
+    fun openPlatformSortMenu() = _state.update {
+        it.copy(
+            platformFiltersHeaderFocused = true,
+            platformFiltersHeaderIndex = PLATFORM_HEADER_SORT,
+            platformFiltersSortMenuOpen = true,
+            platformFiltersSortMenuIndex = PlatformFilterLogic.SortMode.entries.indexOf(it.platformFilterSortMode).coerceAtLeast(0)
+        )
+    }
+
+    fun closePlatformSortMenu() = _state.update { it.copy(platformFiltersSortMenuOpen = false) }
 
     fun togglePlatformSyncEnabled(scope: CoroutineScope, platformId: Long) {
         scope.launch {
@@ -621,4 +725,5 @@ class SyncSettingsDelegate @Inject constructor(
             }
         }
     }
+
 }
