@@ -19,6 +19,9 @@ import com.nendo.argosy.libretro.formatCoreDownloadError
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.ui.input.HapticFeedbackManager
 import com.nendo.argosy.ui.input.HapticPattern
+import com.nendo.argosy.ui.components.PLATFORM_HEADER_COUNT
+import com.nendo.argosy.ui.components.PLATFORM_HEADER_SEARCH
+import com.nendo.argosy.ui.components.PLATFORM_HEADER_SORT
 import com.nendo.argosy.util.PermissionHelper
 import com.nendo.argosy.util.PlatformFilterLogic
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -82,6 +85,11 @@ data class FirstRunUiState(
     val platformFilterSortMode: PlatformFilterLogic.SortMode = PlatformFilterLogic.SortMode.DEFAULT,
     val platformFilterMode: PlatformFilterLogic.FilterMode = PlatformFilterLogic.FilterMode.ALL,
     val platformFilterSearchQuery: String = "",
+    val platformHeaderFocused: Boolean = false,
+    val platformHeaderIndex: Int = 0,
+    val platformSearchActive: Boolean = false,
+    val platformSortMenuOpen: Boolean = false,
+    val platformSortMenuIndex: Int = 0,
     val platformButtonFocus: Int = 1,
     val missingCoreCount: Int = 0,
     val coreDownloads: List<CoreDownloadState> = emptyList(),
@@ -353,6 +361,23 @@ class FirstRunViewModel @Inject constructor(
         applyPlatformFilters(resetFocus = true)
     }
 
+    fun openPlatformSearch() = _uiState.update {
+        it.copy(platformHeaderFocused = true, platformHeaderIndex = PLATFORM_HEADER_SEARCH, platformSearchActive = true)
+    }
+
+    fun closePlatformSearch() = _uiState.update { it.copy(platformSearchActive = false) }
+
+    fun openPlatformSortMenu() = _uiState.update {
+        it.copy(
+            platformHeaderFocused = true,
+            platformHeaderIndex = PLATFORM_HEADER_SORT,
+            platformSortMenuOpen = true,
+            platformSortMenuIndex = PlatformFilterLogic.SortMode.entries.indexOf(it.platformFilterSortMode).coerceAtLeast(0)
+        )
+    }
+
+    fun closePlatformSortMenu() = _uiState.update { it.copy(platformSortMenuOpen = false) }
+
     private fun applyPlatformFilters(resetFocus: Boolean = false) {
         val state = _uiState.value
         val allPlatforms = state.platformsAll
@@ -396,6 +421,25 @@ class FirstRunViewModel @Inject constructor(
 
     fun moveFocus(delta: Int): Boolean {
         val state = _uiState.value
+        if (state.currentStep == FirstRunStep.PLATFORM_SELECT) {
+            when {
+                state.platformSortMenuOpen -> {
+                    _uiState.update {
+                        it.copy(platformSortMenuIndex = (it.platformSortMenuIndex + delta).mod(PlatformFilterLogic.SortMode.entries.size))
+                    }
+                    return true
+                }
+                state.platformSearchActive -> return true
+                state.platformHeaderFocused -> {
+                    if (delta > 0) _uiState.update { it.copy(platformHeaderFocused = false, focusedIndex = 0) }
+                    return true
+                }
+                delta < 0 && state.focusedIndex == 0 -> {
+                    _uiState.update { it.copy(platformHeaderFocused = true) }
+                    return true
+                }
+            }
+        }
         val maxIndex = getMaxFocusIndex()
         val newIndex = (state.focusedIndex + delta).coerceIn(0, maxIndex)
         if (newIndex == state.focusedIndex) {
@@ -413,6 +457,10 @@ class FirstRunViewModel @Inject constructor(
     fun moveButtonFocus(delta: Int): Boolean {
         val state = _uiState.value
         if (state.currentStep != FirstRunStep.PLATFORM_SELECT) return false
+        if (state.platformHeaderFocused && !state.platformSortMenuOpen && !state.platformSearchActive) {
+            _uiState.update { it.copy(platformHeaderIndex = (it.platformHeaderIndex + delta).mod(PLATFORM_HEADER_COUNT)) }
+            return true
+        }
         if (state.focusedIndex < state.platforms.size) return false
         val newIndex = (state.platformButtonFocus + delta).coerceIn(0, 1)
         if (newIndex == state.platformButtonFocus) {
@@ -680,11 +728,29 @@ class FirstRunViewModel @Inject constructor(
                     else skipImageCachePath()
                 }
             }
-            FirstRunStep.PLATFORM_SELECT -> {
-                if (state.focusedIndex >= state.platforms.size) {
+            FirstRunStep.PLATFORM_SELECT -> when {
+                state.platformSortMenuOpen -> {
+                    val mode = PlatformFilterLogic.SortMode.entries[state.platformSortMenuIndex]
+                    _uiState.update { it.copy(platformSortMenuOpen = false) }
+                    setPlatformFilterSortMode(mode)
+                }
+                state.platformSearchActive -> _uiState.update { it.copy(platformSearchActive = false) }
+                state.platformHeaderFocused -> when (state.platformHeaderIndex) {
+                    PLATFORM_HEADER_SEARCH -> _uiState.update { it.copy(platformSearchActive = true) }
+                    PLATFORM_HEADER_SORT -> _uiState.update {
+                        it.copy(
+                            platformSortMenuOpen = true,
+                            platformSortMenuIndex = PlatformFilterLogic.SortMode.entries
+                                .indexOf(it.platformFilterSortMode).coerceAtLeast(0)
+                        )
+                    }
+                    else -> cyclePlatformFilterMode()
+                }
+                state.focusedIndex >= state.platforms.size -> {
                     if (state.platformButtonFocus == 0) toggleAllPlatforms()
                     else proceedFromPlatformSelect()
-                } else {
+                }
+                else -> {
                     val platform = state.platforms.getOrNull(state.focusedIndex)
                     if (platform != null) togglePlatform(platform.id)
                 }

@@ -74,18 +74,11 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.ui.components.PermissionCard
+import com.nendo.argosy.ui.components.PlatformFilterHeader
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
@@ -265,14 +258,25 @@ fun FirstRunScreen(
                     platforms = uiState.platforms,
                     filterMode = uiState.platformFilterMode,
                     searchQuery = uiState.platformFilterSearchQuery,
-                    sortMode = uiState.platformFilterSortMode,
                     focusedIndex = uiState.focusedIndex,
                     buttonFocusIndex = uiState.platformButtonFocus,
+                    headerFocused = uiState.platformHeaderFocused,
+                    headerIndex = uiState.platformHeaderIndex,
+                    searchActive = uiState.platformSearchActive,
+                    sortMenuOpen = uiState.platformSortMenuOpen,
+                    sortMenuIndex = uiState.platformSortMenuIndex,
                     onToggle = viewModel::togglePlatform,
                     onToggleAll = viewModel::toggleAllPlatforms,
-                    onSortModeChange = viewModel::setPlatformFilterSortMode,
+                    onSortModeChange = {
+                        viewModel.setPlatformFilterSortMode(it)
+                        viewModel.closePlatformSortMenu()
+                    },
                     onFilterModeChange = { viewModel.cyclePlatformFilterMode() },
                     onSearchQueryChange = viewModel::setPlatformFilterSearchQuery,
+                    onOpenSearch = viewModel::openPlatformSearch,
+                    onCloseSearch = viewModel::closePlatformSearch,
+                    onOpenSortMenu = viewModel::openPlatformSortMenu,
+                    onCloseSortMenu = viewModel::closePlatformSortMenu,
                     onContinue = viewModel::proceedFromPlatformSelect
                 )
                 FirstRunStep.CORE_PROMPT -> CorePromptStep(
@@ -807,30 +811,32 @@ private fun PlatformSelectStep(
     platforms: List<PlatformEntity>,
     filterMode: PlatformFilterLogic.FilterMode,
     searchQuery: String,
-    sortMode: PlatformFilterLogic.SortMode,
     focusedIndex: Int,
     buttonFocusIndex: Int,
+    headerFocused: Boolean,
+    headerIndex: Int,
+    searchActive: Boolean,
+    sortMenuOpen: Boolean,
+    sortMenuIndex: Int,
     onToggle: (Long) -> Unit,
     onToggleAll: () -> Unit,
     onSortModeChange: (PlatformFilterLogic.SortMode) -> Unit,
     onFilterModeChange: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
+    onOpenSearch: () -> Unit,
+    onCloseSearch: () -> Unit,
+    onOpenSortMenu: () -> Unit,
+    onCloseSortMenu: () -> Unit,
     onContinue: () -> Unit
 ) {
     val listState = rememberLazyListState()
     val enabledCount = platforms.count { it.syncEnabled }
     val allEnabled = platforms.isNotEmpty() && enabledCount == platforms.size
-    val isOnButtons = focusedIndex >= platforms.size
+    val isOnButtons = !headerFocused && focusedIndex >= platforms.size
 
-    LaunchedEffect(focusedIndex) {
-        if (platforms.isNotEmpty() && focusedIndex in platforms.indices) {
+    LaunchedEffect(focusedIndex, headerFocused) {
+        if (!headerFocused && platforms.isNotEmpty() && focusedIndex in platforms.indices) {
             listState.animateScrollToItem(focusedIndex)
-        }
-    }
-
-    LaunchedEffect(searchQuery, filterMode, sortMode) {
-        if (platforms.isNotEmpty()) {
-            listState.scrollToItem(0)
         }
     }
 
@@ -858,130 +864,24 @@ private fun PlatformSelectStep(
         )
         Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(0.9f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
-            var showSortMenu by remember { mutableStateOf(false) }
-
-            if (showSearch) {
-                TextField(
-                    value = searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Search platforms...") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, "Search")
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            onSearchQueryChange("")
-                            showSearch = false
-                        }) {
-                            Icon(Icons.Default.Close, "Clear")
-                        }
-                    },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                )
-            } else {
-                Text(
-                    text = "${platforms.size} platforms",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
-                if (!showSearch) {
-                    IconButton(onClick = { showSearch = true }) {
-                        Icon(Icons.Default.Search, "Search")
-                    }
-                }
-
-                Box {
-                    IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, "Sort")
-                    }
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Default") },
-                            onClick = {
-                                onSortModeChange(PlatformFilterLogic.SortMode.DEFAULT)
-                                showSortMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Name (A-Z)") },
-                            onClick = {
-                                onSortModeChange(PlatformFilterLogic.SortMode.NAME_ASC)
-                                showSortMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Name (Z-A)") },
-                            onClick = {
-                                onSortModeChange(PlatformFilterLogic.SortMode.NAME_DESC)
-                                showSortMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Most Games") },
-                            onClick = {
-                                onSortModeChange(PlatformFilterLogic.SortMode.MOST_GAMES)
-                                showSortMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Least Games") },
-                            onClick = {
-                                onSortModeChange(PlatformFilterLogic.SortMode.LEAST_GAMES)
-                                showSortMenu = false
-                            }
-                        )
-                    }
-                }
-
-                val filterLabel = when (filterMode) {
-                    PlatformFilterLogic.FilterMode.ALL -> "All"
-                    PlatformFilterLogic.FilterMode.HAS_GAMES -> "Has Games"
-                    PlatformFilterLogic.FilterMode.ENABLED -> "Enabled"
-                }
-
-                if (filterMode != PlatformFilterLogic.FilterMode.ALL) {
-                    FilterChip(
-                        selected = true,
-                        onClick = onFilterModeChange,
-                        label = { Text(filterLabel) },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.FilterList,
-                                contentDescription = null,
-                                modifier = Modifier.size(Dimens.iconXs)
-                            )
-                        }
-                    )
-                } else {
-                    IconButton(
-                        onClick = onFilterModeChange
-                    ) {
-                        Icon(
-                            Icons.Default.FilterList,
-                            "Filter platforms"
-                        )
-                    }
-                }
-            }
-        }
+        PlatformFilterHeader(
+            platformCount = platforms.size,
+            filterMode = filterMode,
+            searchQuery = searchQuery,
+            headerFocused = headerFocused,
+            headerIndex = headerIndex,
+            searchActive = searchActive,
+            sortMenuOpen = sortMenuOpen,
+            sortMenuIndex = sortMenuIndex,
+            onSearchQueryChange = onSearchQueryChange,
+            onSortModeChange = onSortModeChange,
+            onFilterModeChange = onFilterModeChange,
+            onOpenSearch = onOpenSearch,
+            onCloseSearch = onCloseSearch,
+            onOpenSortMenu = onOpenSortMenu,
+            onCloseSortMenu = onCloseSortMenu,
+            modifier = Modifier.fillMaxWidth(0.9f)
+        )
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
         LazyColumn(
@@ -992,7 +892,7 @@ private fun PlatformSelectStep(
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             itemsIndexed(platforms, key = { _, p -> p.id }) { index, platform ->
-                val isFocused = index == focusedIndex
+                val isFocused = !headerFocused && index == focusedIndex
                 SwitchPreference(
                     title = platform.name,
                     subtitle = "${platform.gameCount} games",
