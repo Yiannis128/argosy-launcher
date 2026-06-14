@@ -13,6 +13,7 @@ romm-test.properties
 # Android/Gradle
 *.iml
 .gradle/
+.kotlin/
 local.properties
 .idea/
 *.hprof
@@ -33,8 +34,8 @@ captures/
 !libs/maven/**/*.jar
 *.war
 
-# Kotlin Language Server (fwcd) local classpath cache
-kls_database.db
+# Kotlin Language Server (fwcd) local classpath cache (db + sqlite sidecars)
+kls_database.db*
 *.nar
 *.ear
 *.zip
