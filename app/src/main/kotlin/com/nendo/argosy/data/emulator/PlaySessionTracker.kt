@@ -546,10 +546,26 @@ class PlaySessionTracker @Inject constructor(
             if (prefs.saveSyncEnabled && channelName != null) {
                 val activeSaveTimestamp = game?.activeSaveTimestamp
                 val latestCache = saveCacheDao.getLatestCasualSaveInChannel(gameId, channelName)
-                val isOnOlderSave = if (activeSaveTimestamp == null) {
-                    false
-                } else {
-                    latestCache != null && activeSaveTimestamp < latestCache.cachedAt.toEpochMilli()
+                val isOnOlderSave = when {
+                    activeSaveTimestamp == null || latestCache == null -> false
+                    activeSaveTimestamp >= latestCache.cachedAt.toEpochMilli() -> false
+                    else -> {
+                        val emuId = game?.let { emulatorResolver.resolveEmulatorId(emulatorPackage) }
+                        val onDiskPath = emuId?.let {
+                            saveSyncRepository.get().discoverSavePath(
+                                emulatorId = it,
+                                gameTitle = game.title,
+                                platformSlug = game.platformSlug,
+                                romPath = game.localPath,
+                                cachedSaveId = game.saveId ?: game.titleId,
+                                coreName = coreName,
+                                emulatorPackage = emulatorPackage,
+                                gameId = gameId
+                            )
+                        }
+                        val onDiskHash = onDiskPath?.let { saveCacheManager.get().calculateLocalSaveHash(it) }
+                        onDiskHash == null || latestCache.contentHash == null || onDiskHash != latestCache.contentHash
+                    }
                 }
                 saveSyncRepository.get().setSessionOnOlderSave(gameId, isOnOlderSave)
                 _activeSession.value = _activeSession.value?.copy(isOnOlderSave = isOnOlderSave)
@@ -700,14 +716,11 @@ class PlaySessionTracker @Inject constructor(
                         markGameIncompleteIfNeeded(session, sessionDuration)
                         if (!effectiveSkipSaveSync) syncAndCacheSave(session) else null
                     }
+                    saveJob.await()
+                }
 
-                    val stateJob = async {
-                        if (!effectiveSkipSaveSync) syncStateData(session)
-                    }
-
-                    val result = saveJob.await()
-                    stateJob.await()
-                    result
+                if (!effectiveSkipSaveSync) {
+                    scope.launch { syncStateData(session) }
                 }
 
                 saveSyncRepository.get().clearSessionOnOlderSave(session.gameId)
@@ -887,6 +900,18 @@ class PlaySessionTracker @Inject constructor(
                     type = NotificationType.SUCCESS,
                     imagePath = game?.coverPath,
                     duration = NotificationDuration.MEDIUM,
+                    key = "sync-${session.gameId}",
+                    immediate = true
+                )
+            }
+            is SyncSaveOnSessionEndUseCase.Result.NoChange -> {
+                Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Sync result: NO_CHANGE")
+                notificationManager.show(
+                    title = "No save changes",
+                    subtitle = game?.title,
+                    type = NotificationType.INFO,
+                    imagePath = game?.coverPath,
+                    duration = NotificationDuration.SHORT,
                     key = "sync-${session.gameId}",
                     immediate = true
                 )

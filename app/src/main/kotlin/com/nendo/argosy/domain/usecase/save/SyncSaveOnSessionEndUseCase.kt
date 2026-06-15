@@ -33,6 +33,7 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
             val serverTimestamp: Instant? = null
         ) : Result()
         data object Queued : Result()
+        data object NoChange : Result()
         data class Conflict(
             val gameId: Long,
             val emulatorId: String,
@@ -161,7 +162,10 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
         }
 
         return when (val syncResult = saveSyncRepository.uploadSave(gameId, emulatorId, activeChannel, isHardcore = isHardcore)) {
-            is SaveSyncResult.Success -> {
+            is SaveSyncResult.Success -> if (syncResult.noOp) {
+                Logger.info(TAG, "[SaveSync] SESSION gameId=$gameId | Result=NO_CHANGE | Save already in sync")
+                Result.NoChange
+            } else {
                 Logger.info(TAG, "[SaveSync] SESSION gameId=$gameId | Result=UPLOADED | Save synced successfully | rommSaveId=${syncResult.rommSaveId}")
                 Result.Uploaded(
                     rommSaveId = syncResult.rommSaveId,
