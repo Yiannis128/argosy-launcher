@@ -129,6 +129,6 @@ class MoreOptionsDelegate @Inject constructor(
     }
 
     companion object {
-        val TITLE_ID_PLATFORMS = setOf("switch", "wiiu", "3ds", "vita", "psvita", "psp", "wii", "ps2")
+        val TITLE_ID_PLATFORMS = com.nendo.argosy.data.platform.PlatformDefinitions.TITLE_ID_PLATFORMS
     }
 }

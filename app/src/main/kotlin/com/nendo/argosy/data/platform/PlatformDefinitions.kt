@@ -18,6 +18,11 @@ data class PlatformDef(
 
 object PlatformDefinitions {
 
+    /** Platforms whose saves are keyed by an extracted disc/cart title or game ID (via Sigil) rather than ROM filename. Single source of truth -- consumed by title-id extraction and the game-detail "Refresh Title ID" option. */
+    val TITLE_ID_PLATFORMS = setOf(
+        "switch", "vita", "psvita", "psp", "3ds", "wiiu", "wii", "gc", "ngc", "gamecube", "ps2"
+    )
+
     // Slug aliases: maps alternate slugs to canonical slug
     private val slugAliases = mapOf(
         // Nintendo

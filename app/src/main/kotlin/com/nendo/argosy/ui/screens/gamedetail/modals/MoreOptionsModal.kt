@@ -56,7 +56,7 @@ fun MoreOptionsModal(
     val canTrackProgress = game.isRommGame || game.isAndroidApp
     val isEmulatedGame = !game.isSteamGame && !game.isAndroidApp
     val hasUpdates = updateCount > 0
-    val usesTitleId = game.platformSlug in setOf("switch", "wiiu", "3ds", "vita", "psvita", "psp", "wii", "ps2")
+    val usesTitleId = game.platformSlug in com.nendo.argosy.data.platform.PlatformDefinitions.TITLE_ID_PLATFORMS
 
     val entries = buildList<MoreMenuEntry> {
         if (game.canManageSaves) {
