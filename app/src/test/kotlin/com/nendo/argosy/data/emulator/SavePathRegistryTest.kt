@@ -103,6 +103,29 @@ class SavePathRegistryTest {
     }
 
     @Test
+    fun `getConfigForPlatform routes built-in GameCube to the GCI folder config`() {
+        val config = SavePathRegistry.getConfigForPlatform("builtin", "gc")
+        assertNotNull(config)
+        assertEquals("builtin", config!!.emulatorId)
+        assertTrue("built-in GameCube must use GCI folder handling", config.usesGciFormat)
+        assertEquals(listOf("gci"), config.saveExtensions)
+    }
+
+    @Test
+    fun `getConfigForPlatform canonicalizes ngc alias to the built-in GameCube GCI config`() {
+        val config = SavePathRegistry.getConfigForPlatform("builtin", "ngc")
+        assertNotNull(config)
+        assertTrue("ngc alias must resolve to the GCI config", config!!.usesGciFormat)
+    }
+
+    @Test
+    fun `getConfigForPlatform still resolves retroarch GameCube via raw slug fallback`() {
+        val config = SavePathRegistry.getConfigForPlatform("retroarch", "ngc")
+        assertNotNull(config)
+        assertEquals("retroarch_ngc", config!!.emulatorId)
+    }
+
+    @Test
     fun `getConfig returns null for an unsupported emulator`() {
         val cfg = SavePathRegistry.getConfig("redream")
         assertNull("redream is marked supported=false", cfg)

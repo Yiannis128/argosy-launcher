@@ -546,11 +546,17 @@ class PlaySessionTracker @Inject constructor(
             if (prefs.saveSyncEnabled && channelName != null) {
                 val activeSaveTimestamp = game?.activeSaveTimestamp
                 val latestCache = saveCacheDao.getLatestCasualSaveInChannel(gameId, channelName)
+                val sessionEmuId = if (game != null) emulatorResolver.resolveEmulatorId(emulatorPackage) else null
+                val usesBundledSave = if (game != null && sessionEmuId != null) {
+                    val cfg = SavePathRegistry.getConfigForPlatform(sessionEmuId, game.platformSlug)
+                    cfg?.usesGciFormat == true || cfg?.usesFolderBasedSaves == true
+                } else false
                 val isOnOlderSave = when {
+                    usesBundledSave -> false
                     activeSaveTimestamp == null || latestCache == null -> false
                     activeSaveTimestamp >= latestCache.cachedAt.toEpochMilli() -> false
                     else -> {
-                        val emuId = game?.let { emulatorResolver.resolveEmulatorId(emulatorPackage) }
+                        val emuId = sessionEmuId
                         val onDiskPath = emuId?.let {
                             saveSyncRepository.get().discoverSavePath(
                                 emulatorId = it,

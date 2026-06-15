@@ -436,6 +436,7 @@ class LibretroActivity : ComponentActivity() {
             gameId = gameId,
             gameDao = gameDao,
             saveCacheManager = saveCacheManager,
+            usesExternalMemcard = com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug) == "gc",
             channelName = channelName
         )
         val restoreResult = kotlinx.coroutines.runBlocking {

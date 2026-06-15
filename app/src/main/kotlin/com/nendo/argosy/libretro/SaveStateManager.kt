@@ -20,6 +20,7 @@ class SaveStateManager(
     private val gameId: Long,
     private val gameDao: GameDao,
     private val saveCacheManager: SaveCacheManager,
+    private val usesExternalMemcard: Boolean = false,
     channelName: String? = null
 ) {
     private var lastSramHash: String? = null
@@ -93,6 +94,10 @@ class SaveStateManager(
     }
 
     suspend fun restoreSaveForLaunchMode(launchMode: LaunchMode): RestoreResult {
+        if (usesExternalMemcard) {
+            Log.d(TAG, "External memcard (GCI folder) - skipping flat .srm restore")
+            return RestoreResult(null)
+        }
         if (gameId < 0) {
             Log.w(TAG, "No valid gameId, using existing save")
             val bytes = getSramFile().takeIf { it.exists() }?.readBytes()
@@ -191,6 +196,7 @@ class SaveStateManager(
     }
 
     fun saveSram(retroView: GLRetroView) {
+        if (usesExternalMemcard) return
         try {
             val sramData = retroView.serializeSRAM()
             if (sramData.isEmpty()) return

@@ -524,6 +524,15 @@ object SavePathRegistry {
             usesFolderBasedSaves = true,
             usesInternalStorage = true,
             supported = true
+        ),
+
+        "${BUILTIN_EMULATOR_ID}_gc" to SavePathConfig(
+            emulatorId = BUILTIN_EMULATOR_ID,
+            defaultPaths = listOf("{filesDir}/${AppPaths.LIBRETRO_SAVES_SUBDIR}/User/GC"),
+            saveExtensions = listOf("gci"),
+            usesGciFormat = true,
+            usesInternalStorage = true,
+            supported = true
         )
     )
 
@@ -576,8 +585,10 @@ object SavePathRegistry {
     }
 
     fun getConfigForPlatform(emulatorId: String, platformSlug: String): SavePathConfig? {
-        val platformVariantId = "${emulatorId}_${platformSlug}"
-        return configs[platformVariantId] ?: configs[emulatorId]
+        val canonicalSlug = PlatformDefinitions.getCanonicalSlug(platformSlug)
+        return configs["${emulatorId}_$canonicalSlug"]
+            ?: configs["${emulatorId}_$platformSlug"]
+            ?: configs[emulatorId]
     }
 
     fun getConfigForPlatformByPackage(packageName: String, platformSlug: String): SavePathConfig? {

@@ -93,7 +93,7 @@ class GciSaveHandler @Inject constructor(
         val resolvedPaths = if (basePathOverride != null) {
             listOf(basePathOverride)
         } else {
-            SavePathRegistry.resolvePath(config, "ngc", null)
+            SavePathRegistry.resolvePath(config, "ngc", context.filesDir.absolutePath)
         }
         Logger.debug(TAG, "Searching ${resolvedPaths.size} paths for GCI saves${if (basePathOverride != null) " (user override)" else ""}")
 
@@ -131,7 +131,7 @@ class GciSaveHandler @Inject constructor(
         val resolvedPaths = if (basePathOverride != null) {
             listOf(basePathOverride)
         } else {
-            SavePathRegistry.resolvePath(config, "ngc", null)
+            SavePathRegistry.resolvePath(config, "ngc", context.filesDir.absolutePath)
         }
 
         val allGciFiles = mutableListOf<String>()
@@ -179,7 +179,7 @@ class GciSaveHandler @Inject constructor(
             return@withContext emptyList()
         }
 
-        val basePaths = SavePathRegistry.resolvePath(config, "ngc", null)
+        val basePaths = SavePathRegistry.resolvePath(config, "ngc", context.filesDir.absolutePath)
         val baseDir = basePaths.firstOrNull { fal.exists(it) && fal.isDirectory(it) }
             ?: basePaths.firstOrNull()
             ?: run {
@@ -260,7 +260,7 @@ class GciSaveHandler @Inject constructor(
             gciInfo.internalFilename
         )
 
-        val basePaths = SavePathRegistry.resolvePath(config, "ngc", null)
+        val basePaths = SavePathRegistry.resolvePath(config, "ngc", context.filesDir.absolutePath)
         val baseDir = basePaths.firstOrNull { fal.exists(it) && fal.isDirectory(it) }
             ?: basePaths.firstOrNull()
             ?: return@withContext null
