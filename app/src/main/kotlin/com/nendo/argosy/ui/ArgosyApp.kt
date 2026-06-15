@@ -645,13 +645,18 @@ fun ArgosyApp(
     val steamDownloadPrompt by viewModel.steamDownloadPromptController.prompt.collectAsState()
 
     LaunchedEffect(saveConflictInfo, backgroundConflictInfo, dualModalActive, isDualConflictMode, netplayInvitePrompt, netplayJoinModalActive, netplayJoinNeedsInput, steamDownloadPrompt, resumeCount) {
+        inputDispatcher.setCriticalHandler(
+            when {
+                saveConflictInfo != null && !isDualConflictMode -> saveConflictInputHandler
+                backgroundConflictInfo != null -> backgroundConflictInputHandler
+                else -> null
+            }
+        )
         when {
             steamDownloadPrompt != null -> inputDispatcher.subscribeDrawer(steamDownloadPromptInputHandler)
             netplayJoinNeedsInput || netplayJoinModalActive -> inputDispatcher.subscribeDrawer(netplayJoinInputHandler)
             netplayInvitePrompt != null -> inputDispatcher.subscribeDrawer(netplayInviteInputHandler)
             dualModalActive -> inputDispatcher.subscribeDrawer(dualModalInputHandler)
-            saveConflictInfo != null && !isDualConflictMode -> inputDispatcher.subscribeDrawer(saveConflictInputHandler)
-            backgroundConflictInfo != null -> inputDispatcher.subscribeDrawer(backgroundConflictInputHandler)
             else -> inputDispatcher.unsubscribeDrawer()
         }
     }

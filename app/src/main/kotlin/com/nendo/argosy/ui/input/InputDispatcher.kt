@@ -11,6 +11,7 @@ class InputDispatcher(
     private val soundManager: SoundFeedbackManager? = null
 ) {
     private val modalStack = mutableListOf<InputHandler>()
+    private var criticalHandler: InputHandler? = null
     private var drawerHandler: InputHandler? = null
     private var viewHandler: InputHandler? = null
     private var pendingInput: GamepadInput? = null
@@ -77,6 +78,13 @@ class InputDispatcher(
         pendingViewSubscription = null
     }
 
+    /** Top-priority slot for app-level modals (save-conflict resolution) that must capture input
+     * over any screen or drawer. Unlike modalStack, it is never cleared by screen subscriptions. */
+    fun setCriticalHandler(handler: InputHandler?) {
+        criticalHandler = handler
+        processPendingEvent()
+    }
+
     fun subscribeDrawer(handler: InputHandler) {
         clearModals()
         drawerHandler = handler
@@ -127,7 +135,7 @@ class InputDispatcher(
             return InputResult.HANDLED
         }
 
-        val handler = modalStack.lastOrNull() ?: drawerHandler ?: viewHandler
+        val handler = criticalHandler ?: modalStack.lastOrNull() ?: drawerHandler ?: viewHandler
         if (handler == null) {
             pendingInput = input
             return InputResult.UNHANDLED
