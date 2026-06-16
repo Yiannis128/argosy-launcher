@@ -305,8 +305,7 @@ class GLRetroView(
 
     fun disablePreviewMode() {
         previewModeEnabled = false
-        isEmulationReady = true
-        onPause()
+        onResume()
     }
 
     fun getGLRetroEvents(): Flow<GLRetroEvents> {
