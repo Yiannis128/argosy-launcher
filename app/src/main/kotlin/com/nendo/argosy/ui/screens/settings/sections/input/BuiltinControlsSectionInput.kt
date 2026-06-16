@@ -88,7 +88,7 @@ internal class BuiltinControlsSectionInput(
         }
     }
 
-    override fun onContextMenu(): InputResult {
+    override fun onSecondaryAction(): InputResult {
         val state = viewModel.uiState.value
         if (state.builtinVideo.isGlobalContext) return InputResult.UNHANDLED
         val item = builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)

@@ -53,7 +53,7 @@ internal class BuiltinVideoSectionInput(
                 }
                 InputResult.HANDLED
             }
-            else -> InputResult.UNHANDLED
+            else -> resetFocusedSettingOverride()
         }
     }
 
@@ -182,7 +182,7 @@ internal class BuiltinVideoSectionInput(
         }
     }
 
-    override fun onContextMenu(): InputResult {
+    private fun resetFocusedSettingOverride(): InputResult {
         val state = viewModel.uiState.value
         if (state.builtinVideo.isGlobalContext) return InputResult.UNHANDLED
         val videoState = state.builtinVideo

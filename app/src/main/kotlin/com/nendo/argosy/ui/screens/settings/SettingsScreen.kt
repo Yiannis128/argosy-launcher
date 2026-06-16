@@ -1130,7 +1130,7 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
                 onUpdate = { _, _ -> }
             )
             if (currentSetting != null && accessor.hasOverride(currentSetting)) {
-                add(InputButton.X to "Reset")
+                add(InputButton.Y to "Reset")
             }
         }
         if (uiState.currentSection == SettingsSection.BUILTIN_CONTROLS && !uiState.builtinVideo.isGlobalContext) {
@@ -1146,7 +1146,7 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
                 else -> false
             }
             if (hasOverride) {
-                add(InputButton.X to "Reset")
+                add(InputButton.Y to "Reset")
             }
         }
         add(InputButton.B to "Back")

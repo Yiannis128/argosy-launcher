@@ -38,7 +38,7 @@ internal class CoreOptionsSectionInput(
         }
     }
 
-    override fun onContextMenu(): InputResult {
+    override fun onSecondaryAction(): InputResult {
         val state = viewModel.uiState.value
         val item = coreOptionsItemAtFocusIndex(state.focusedIndex, state.coreOptions)
         if (item is CoreOptionItem.Option && item.isOverridden) {
