@@ -348,6 +348,37 @@ float Video::getTextureHeight() {
 }
 
 std::vector<uint8_t> Video::captureRawFrame(int& outWidth, int& outHeight) {
+    {
+        std::lock_guard<std::mutex> lock(frameMutex);
+        if (!hwAccelerated && !lastFrameData.empty() && lastFrameWidth > 0 && lastFrameHeight > 0) {
+            outWidth = lastFrameWidth;
+            outHeight = lastFrameHeight;
+            std::vector<uint8_t> rgba((size_t) outWidth * outHeight * 4);
+            for (int y = 0; y < outHeight; y++) {
+                const uint8_t* srcRow = lastFrameData.data() + (size_t) y * lastFramePitch;
+                uint8_t* dstRow = rgba.data() + (size_t) y * outWidth * 4;
+                for (int x = 0; x < outWidth; x++) {
+                    uint8_t r, g, b;
+                    if (framePixelFormat == RETRO_PIXEL_FORMAT_XRGB8888) {
+                        const uint8_t* p = srcRow + x * 4;
+                        b = p[0]; g = p[1]; r = p[2];
+                    } else if (framePixelFormat == RETRO_PIXEL_FORMAT_0RGB1555) {
+                        uint16_t p = *reinterpret_cast<const uint16_t*>(srcRow + x * 2);
+                        uint8_t r5 = (p >> 10) & 0x1F, g5 = (p >> 5) & 0x1F, b5 = p & 0x1F;
+                        r = (r5 << 3) | (r5 >> 2); g = (g5 << 3) | (g5 >> 2); b = (b5 << 3) | (b5 >> 2);
+                    } else {
+                        uint16_t p = *reinterpret_cast<const uint16_t*>(srcRow + x * 2);
+                        uint8_t r5 = (p >> 11) & 0x1F, g6 = (p >> 5) & 0x3F, b5 = p & 0x1F;
+                        r = (r5 << 3) | (r5 >> 2); g = (g6 << 2) | (g6 >> 4); b = (b5 << 3) | (b5 >> 2);
+                    }
+                    uint8_t* d = dstRow + x * 4;
+                    d[0] = r; d[1] = g; d[2] = b; d[3] = 255;
+                }
+            }
+            return rgba;
+        }
+    }
+
     outWidth = (int)getTextureWidth();
     outHeight = (int)getTextureHeight();
     if (outWidth == 0 || outHeight == 0) return {};
@@ -383,6 +414,15 @@ void Video::onNewFrame(const void *data, unsigned width, unsigned height, size_t
     if (data != nullptr && data != RETRO_HW_FRAME_BUFFER_VALID) {
         renderer->onNewFrame(data, width, height, pitch);
         videoLayout.updateContentSize(width, height);
+        {
+            std::lock_guard<std::mutex> lock(frameMutex);
+            size_t frameBytes = (size_t) height * pitch;
+            const auto* src = static_cast<const uint8_t*>(data);
+            lastFrameData.assign(src, src + frameBytes);
+            lastFrameWidth = (int) width;
+            lastFrameHeight = (int) height;
+            lastFramePitch = pitch;
+        }
         isDirty = true;
     } else if (data == RETRO_HW_FRAME_BUFFER_VALID) {
         renderer->lastFrameSize = { (int)width, (int)height };
@@ -620,6 +660,7 @@ void Video::initializeRenderer(RenderingOptions renderingOptions) {
     }
 
     renderer->setPixelFormat(renderingOptions.pixelFormat);
+    framePixelFormat = renderingOptions.pixelFormat;
     updateProgram();
 }
 

@@ -24,6 +24,7 @@
 #include <optional>
 #include <array>
 #include <vector>
+#include <mutex>
 
 #include "renderers/renderer.h"
 #include "shadermanager.h"
@@ -148,6 +149,15 @@ private:
     VideoLayout videoLayout;
 
     Renderer* renderer;
+
+    // Last software frame retained for raw capture (software cores read back black
+    // from an FBO since their source texture is not a color-renderable format).
+    int framePixelFormat = 0;
+    std::mutex frameMutex;
+    std::vector<uint8_t> lastFrameData;
+    int lastFrameWidth = 0;
+    int lastFrameHeight = 0;
+    size_t lastFramePitch = 0;
 
     // Shared EGL context for HW-accelerated cores
     EGLDisplay eglDisplay = EGL_NO_DISPLAY;
