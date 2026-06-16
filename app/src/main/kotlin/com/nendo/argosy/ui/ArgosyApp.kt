@@ -1722,7 +1722,6 @@ fun ArgosyApp(
                         viewModel.coreCrashController.setFocus(index)
                         viewModel.coreCrashController.confirmFocused()
                     },
-                    onLaunch = { viewModel.launchFromCoreCrash() },
                     onDismiss = { viewModel.coreCrashController.dismiss() }
                 )
             }

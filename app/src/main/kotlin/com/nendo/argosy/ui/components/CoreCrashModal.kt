@@ -52,7 +52,6 @@ fun CoreCrashModal(
     focusedIndex: Int,
     downloading: CoreDownloadProgress?,
     onSelect: (Int) -> Unit,
-    onLaunch: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val readyToLaunch = downloading?.done == true && !downloading.failed
@@ -83,14 +82,6 @@ fun CoreCrashModal(
                 progress = { downloading.fraction },
                 modifier = Modifier.fillMaxWidth()
             )
-            if (readyToLaunch) {
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                CoreCrashOptionRow(
-                    label = "Launch game",
-                    focused = true,
-                    onClick = onLaunch
-                )
-            }
             return@Modal
         }
 
