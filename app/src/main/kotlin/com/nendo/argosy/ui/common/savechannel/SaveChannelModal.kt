@@ -755,6 +755,8 @@ private fun buildFooterHints(state: SaveChannelState): List<FooterHintItem> {
                     hints.add(FooterHintItem(InputButton.X, "Preview"))
                 }
                 hints.add(FooterHintItem(InputButton.Y, "Delete"))
+            } else if (focused?.serverStateId != null) {
+                hints.add(FooterHintItem(InputButton.A, "Download"))
             }
         }
     }

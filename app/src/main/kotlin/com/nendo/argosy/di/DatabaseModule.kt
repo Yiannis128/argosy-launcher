@@ -33,6 +33,7 @@ import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.dao.SocialGameCacheDao
 import com.nendo.argosy.data.local.dao.StateCacheDao
+import com.nendo.argosy.data.local.dao.StateTombstoneDao
 import com.nendo.argosy.data.local.dao.CachedLicenseDao
 import com.nendo.argosy.data.local.dao.SteamAccountDao
 import com.nendo.argosy.data.local.dao.SteamDownloadQueueDao
@@ -106,6 +107,10 @@ object DatabaseModule {
     @Provides
     fun provideStateCacheDao(database: ALauncherDatabase): StateCacheDao =
         database.stateCacheDao()
+
+    @Provides
+    fun provideStateTombstoneDao(database: ALauncherDatabase): StateTombstoneDao =
+        database.stateTombstoneDao()
 
     @Provides
     fun provideOrphanedFileDao(database: ALauncherDatabase): OrphanedFileDao =

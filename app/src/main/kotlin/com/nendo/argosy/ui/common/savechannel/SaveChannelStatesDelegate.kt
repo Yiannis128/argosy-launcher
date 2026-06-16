@@ -75,8 +75,11 @@ class SaveChannelStatesDelegate @Inject constructor(
 
     fun confirmFocusedState(scope: CoroutineScope) {
         val state = _state.value
-        val stateEntry = state.focusedStateEntry
-        if (stateEntry == null || stateEntry.localCacheId == null) {
+        val stateEntry = state.focusedStateEntry ?: return
+        if (stateEntry.localCacheId == null) {
+            if (stateEntry.serverStateId != null) {
+                forceDownloadState(scope, stateEntry)
+            }
             return
         }
         if (stateEntry.versionStatus == UnifiedStateEntry.VersionStatus.MISMATCH) {
@@ -88,6 +91,18 @@ class SaveChannelStatesDelegate @Inject constructor(
             }
         } else {
             restoreState(scope, stateEntry, forceRestore = false)
+        }
+    }
+
+    private fun forceDownloadState(scope: CoroutineScope, stateEntry: UnifiedStateEntry) {
+        val serverStateId = stateEntry.serverStateId ?: return
+        scope.launch {
+            stateCacheManager.clearStateTombstone(serverStateId)
+            refreshStates()
+            val slotLabel = if (stateEntry.slotNumber == -1) {
+                "auto state"
+            } else "state slot ${stateEntry.slotNumber}"
+            notificationManager.showSuccess("Downloaded $slotLabel")
         }
     }
 
@@ -201,6 +216,7 @@ class SaveChannelStatesDelegate @Inject constructor(
 
         scope.launch {
             stateCacheManager.deleteState(cacheId)
+            entry.serverStateId?.let { stateCacheManager.tombstoneServerState(currentGameId, it) }
             refreshStates()
             _state.update {
                 it.copy(

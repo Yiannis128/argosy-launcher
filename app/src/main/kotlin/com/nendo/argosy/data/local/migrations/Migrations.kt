@@ -1750,3 +1750,24 @@ object Migration_120_121 : Migration(120, 121) {
         )
     }
 }
+
+object Migration_121_122 : Migration(121, 122) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS state_tombstones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                gameId INTEGER NOT NULL,
+                rommSaveId INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_state_tombstones_rommSaveId ON state_tombstones(rommSaveId)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_state_tombstones_gameId ON state_tombstones(gameId)"
+        )
+    }
+}

@@ -13,6 +13,8 @@ import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.dao.StateCacheDao
+import com.nendo.argosy.data.local.dao.StateTombstoneDao
+import com.nendo.argosy.data.local.entity.StateTombstoneEntity
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.StateCacheEntity
 import com.nendo.argosy.data.local.entity.SyncPriority
@@ -51,6 +53,7 @@ class StateCacheManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
     private val stateCacheDao: StateCacheDao,
+    private val stateTombstoneDao: StateTombstoneDao,
     private val saveCacheDao: SaveCacheDao,
     private val saveSyncDao: SaveSyncDao,
     private val pendingSyncQueueDao: PendingSyncQueueDao,
@@ -313,6 +316,29 @@ class StateCacheManager @Inject constructor(
 
         stateCacheDao.deleteById(cacheId)
         Log.d(TAG, "Deleted state cache $cacheId")
+    }
+
+    suspend fun tombstoneServerState(gameId: Long, rommSaveId: Long) = withContext(Dispatchers.IO) {
+        stateTombstoneDao.insert(
+            StateTombstoneEntity(gameId = gameId, rommSaveId = rommSaveId, createdAt = Instant.now())
+        )
+        Log.d(TAG, "Tombstoned server state $rommSaveId for game $gameId")
+    }
+
+    suspend fun clearStateTombstone(rommSaveId: Long) = withContext(Dispatchers.IO) {
+        stateTombstoneDao.deleteByServerId(rommSaveId)
+    }
+
+    suspend fun getStateTombstones(gameId: Long): Set<Long> = withContext(Dispatchers.IO) {
+        stateTombstoneDao.getServerIdsForGame(gameId).toSet()
+    }
+
+    suspend fun pruneStateTombstones(gameId: Long, presentServerIds: Collection<Long>) = withContext(Dispatchers.IO) {
+        val present = presentServerIds.toSet()
+        val stale = stateTombstoneDao.getServerIdsForGame(gameId).filter { it !in present }
+        if (stale.isNotEmpty()) {
+            stateTombstoneDao.deleteByServerIds(stale)
+        }
     }
 
     fun getStatesForGame(gameId: Long): Flow<List<StateCacheEntity>> =
@@ -967,6 +993,18 @@ class StateCacheManager @Inject constructor(
             }
         }
         return md.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    fun parseServerStateTimestamp(timestamp: String): Instant? = parseTimestamp(timestamp)
+
+    fun parseStateFileTimestamp(fileName: String): Instant? {
+        val match = Regex("""\[(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})]""").find(fileName) ?: return null
+        return try {
+            java.time.LocalDateTime.parse(match.groupValues[1], UPLOAD_TIMESTAMP_FORMAT)
+                .atZone(java.time.ZoneId.systemDefault()).toInstant()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun parseTimestamp(timestamp: String): Instant? {

@@ -7,8 +7,10 @@ import com.nendo.argosy.data.emulator.VersionValidationResult
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.StateCacheEntity
 import com.nendo.argosy.data.repository.SaveSyncRepository
+import com.nendo.argosy.data.remote.romm.RomMState
 import com.nendo.argosy.data.repository.StateCacheManager
 import com.nendo.argosy.domain.model.UnifiedStateEntry
+import java.time.Instant
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -37,10 +39,9 @@ class GetUnifiedStatesUseCase @Inject constructor(
             ?: emulatorResolver.getEmulatorIdForGame(gameId, game.platformId, game.platformSlug)
         if (effectiveEmulatorId == null) return emptyList()
 
-        // Fetch server states and sync to local cache
-        if (rommId != null) {
+        val remoteOnlyStates = if (rommId != null) {
             syncServerStates(rommId, gameId, game.platformSlug, effectiveEmulatorId, channelName, currentCoreId)
-        }
+        } else emptyList()
 
         val localStates = if (channelName != null) {
             stateCacheManager.getStatesForChannel(gameId, channelName)
@@ -53,6 +54,7 @@ class GetUnifiedStatesUseCase @Inject constructor(
 
         return buildSlotList(
             localStates = localStates,
+            remoteOnlyStates = remoteOnlyStates,
             maxSlots = maxSlots,
             channelName = channelName,
             currentCoreId = currentCoreId,
@@ -67,43 +69,66 @@ class GetUnifiedStatesUseCase @Inject constructor(
         emulatorId: String,
         channelName: String?,
         coreId: String?
-    ) {
-        val api = saveSyncRepository.getApi() ?: return
+    ): List<RomMState> {
+        val api = saveSyncRepository.getApi() ?: return emptyList()
 
-        // Migrate any states stuck in saves first
         saveSyncRepository.checkSavesForGame(gameId, rommId)
 
-        // Fetch and cache server states
         val serverStates = stateCacheManager.checkServerStates(rommId, api)
-        val localStates = stateCacheManager.getByGameAndEmulator(gameId, emulatorId)
-        val localByRommId = localStates.filter { it.rommSaveId != null }.associateBy { it.rommSaveId }
 
-        val toFetch = serverStates.filter { serverState ->
-            if (localByRommId[serverState.id] != null) return@filter false
+        val channelMatched = serverStates.filter { serverState ->
             val parsed = stateCacheManager.parseStateFileName(serverState.fileName)
             channelName == null || parsed.channelName == channelName
         }
-        if (toFetch.isEmpty()) return
 
-        val gate = Semaphore(MAX_PARALLEL_STATE_DOWNLOADS)
-        coroutineScope {
-            toFetch.map { serverState ->
-                async {
-                    gate.withPermit {
-                        stateCacheManager.downloadStateFromRomM(
-                            rommStateId = serverState.id,
-                            fileName = serverState.fileName,
-                            api = api,
-                            gameId = gameId,
-                            platformSlug = platformSlug,
-                            emulatorId = emulatorId,
-                            coreId = coreId,
-                            serverState = serverState
-                        )
-                    }
-                }
-            }.awaitAll()
+        channelMatched
+            .groupBy { stateCacheManager.parseStateFileName(it.fileName).slotNumber }
+            .forEach { (_, states) ->
+                if (states.size <= 1) return@forEach
+                val canonical = states.maxByOrNull {
+                    stateCacheManager.parseStateFileTimestamp(it.fileName) ?: Instant.EPOCH
+                } ?: return@forEach
+                states.filter { it.id != canonical.id }
+                    .forEach { stateCacheManager.tombstoneServerState(gameId, it.id) }
+            }
+
+        stateCacheManager.pruneStateTombstones(gameId, serverStates.map { it.id })
+        val tombstoned = stateCacheManager.getStateTombstones(gameId)
+
+        stateCacheManager.getByGameAndEmulator(gameId, emulatorId)
+            .filter { it.rommSaveId != null && it.rommSaveId in tombstoned }
+            .forEach { stateCacheManager.deleteState(it.id) }
+
+        val localByRommId = stateCacheManager.getByGameAndEmulator(gameId, emulatorId)
+            .filter { it.rommSaveId != null }.associateBy { it.rommSaveId }
+
+        val toFetch = channelMatched.filter { serverState ->
+            serverState.id !in tombstoned && localByRommId[serverState.id] == null
         }
+
+        if (toFetch.isNotEmpty()) {
+            val gate = Semaphore(MAX_PARALLEL_STATE_DOWNLOADS)
+            coroutineScope {
+                toFetch.map { serverState ->
+                    async {
+                        gate.withPermit {
+                            stateCacheManager.downloadStateFromRomM(
+                                rommStateId = serverState.id,
+                                fileName = serverState.fileName,
+                                api = api,
+                                gameId = gameId,
+                                platformSlug = platformSlug,
+                                emulatorId = emulatorId,
+                                coreId = coreId,
+                                serverState = serverState
+                            )
+                        }
+                    }
+                }.awaitAll()
+            }
+        }
+
+        return channelMatched.filter { it.id in tombstoned }
     }
 
     companion object {
@@ -112,51 +137,76 @@ class GetUnifiedStatesUseCase @Inject constructor(
 
     private fun buildSlotList(
         localStates: List<StateCacheEntity>,
+        remoteOnlyStates: List<RomMState>,
         maxSlots: Int,
         channelName: String?,
         currentCoreId: String?,
         currentCoreVersion: String?
     ): List<UnifiedStateEntry> {
         val statesBySlot = localStates.associateBy { it.slotNumber }
+        val remoteBySlot = remoteOnlyStates
+            .groupBy { stateCacheManager.parseStateFileName(it.fileName).slotNumber }
+            .mapValues { (_, states) ->
+                states.maxByOrNull { stateCacheManager.parseStateFileTimestamp(it.fileName) ?: Instant.EPOCH }!!
+            }
+            .filterKeys { statesBySlot[it] == null }
         val result = mutableListOf<UnifiedStateEntry>()
 
-        val autoSlotState = statesBySlot[-1]
-        if (autoSlotState != null) {
-            result.add(
-                createEntry(
-                    cache = autoSlotState,
-                    channelName = channelName,
-                    currentCoreId = currentCoreId,
-                    currentCoreVersion = currentCoreVersion
-                )
-            )
-        } else {
-            result.add(UnifiedStateEntry.empty(-1))
-        }
+        result.add(slotEntry(-1, statesBySlot, remoteBySlot, channelName, currentCoreId, currentCoreVersion))
 
         val slotsToShow = if (maxSlots < 0) {
-            localStates.filter { it.slotNumber >= 0 }.map { it.slotNumber }.maxOrNull()?.plus(1) ?: 10
+            (localStates.map { it.slotNumber } + remoteBySlot.keys)
+                .filter { it >= 0 }.maxOrNull()?.plus(1) ?: 10
         } else {
             maxSlots
         }
 
         for (slot in 0 until slotsToShow) {
-            val state = statesBySlot[slot]
-            if (state != null) {
-                result.add(
-                    createEntry(
-                        cache = state,
-                        channelName = channelName,
-                        currentCoreId = currentCoreId,
-                        currentCoreVersion = currentCoreVersion
-                    )
-                )
-            } else {
-                result.add(UnifiedStateEntry.empty(slot))
-            }
+            result.add(slotEntry(slot, statesBySlot, remoteBySlot, channelName, currentCoreId, currentCoreVersion))
         }
 
         return result
+    }
+
+    private fun slotEntry(
+        slot: Int,
+        statesBySlot: Map<Int, StateCacheEntity>,
+        remoteBySlot: Map<Int, RomMState>,
+        channelName: String?,
+        currentCoreId: String?,
+        currentCoreVersion: String?
+    ): UnifiedStateEntry {
+        statesBySlot[slot]?.let {
+            return createEntry(it, channelName, currentCoreId, currentCoreVersion)
+        }
+        remoteBySlot[slot]?.let {
+            return createServerOnlyEntry(it, slot, channelName)
+        }
+        return UnifiedStateEntry.empty(slot)
+    }
+
+    private fun createServerOnlyEntry(
+        state: RomMState,
+        slot: Int,
+        channelName: String?
+    ): UnifiedStateEntry {
+        val parsed = stateCacheManager.parseStateFileName(state.fileName)
+        return UnifiedStateEntry(
+            localCacheId = null,
+            serverStateId = state.id,
+            slotNumber = slot,
+            timestamp = stateCacheManager.parseServerStateTimestamp(state.updatedAt) ?: Instant.EPOCH,
+            size = state.fileSizeBytes,
+            channelName = channelName ?: parsed.channelName,
+            coreId = null,
+            coreVersion = null,
+            screenshotPath = null,
+            source = UnifiedStateEntry.Source.SERVER,
+            isActive = false,
+            isLocked = false,
+            versionStatus = UnifiedStateEntry.VersionStatus.UNKNOWN,
+            syncStatus = UnifiedStateEntry.SyncStatus.SERVER_ONLY
+        )
     }
 
     private fun createEntry(
