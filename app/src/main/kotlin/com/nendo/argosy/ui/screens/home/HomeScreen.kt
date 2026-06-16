@@ -530,12 +530,17 @@ fun HomeScreen(
                     .graphicsLayer { alpha = backgroundAlpha }
             ) {
                 if (effectiveBackgroundPath != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(rememberFileImageModel(effectiveBackgroundPath))
+                    val backgroundContext = LocalContext.current
+                    val backgroundModel = rememberFileImageModel(effectiveBackgroundPath)
+                    val backgroundRequest = remember(backgroundModel) {
+                        ImageRequest.Builder(backgroundContext)
+                            .data(backgroundModel)
                             .size(640, 360)
                             .transitionFactory(AlwaysCrossfadeFactory(380))
-                            .build(),
+                            .build()
+                    }
+                    AsyncImage(
+                        model = backgroundRequest,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         colorFilter = ColorFilter.colorMatrix(saturationMatrix),
