@@ -893,6 +893,19 @@ class ArgosyViewModel @Inject constructor(
     private val _netplayInviteLaunch = kotlinx.coroutines.flow.MutableSharedFlow<android.content.Intent>(extraBufferCapacity = 4)
     val netplayInviteLaunch: kotlinx.coroutines.flow.SharedFlow<android.content.Intent> = _netplayInviteLaunch
 
+    private val _coreCrashLaunch = kotlinx.coroutines.flow.MutableSharedFlow<android.content.Intent>(extraBufferCapacity = 1)
+    val coreCrashLaunch: kotlinx.coroutines.flow.SharedFlow<android.content.Intent> = _coreCrashLaunch
+
+    fun launchFromCoreCrash() {
+        val gameId = coreCrashController.prompt.value?.gameId ?: return
+        coreCrashController.dismiss()
+        viewModelScope.launch {
+            (launchGameUseCase(gameId = gameId) as? LaunchResult.Success)?.let {
+                _coreCrashLaunch.tryEmit(it.intent)
+            }
+        }
+    }
+
     private fun observeNetplayInvites() {
         viewModelScope.launch {
             socialRepository.netplayInvites.collect { payload ->

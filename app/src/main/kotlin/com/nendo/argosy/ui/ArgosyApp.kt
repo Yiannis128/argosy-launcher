@@ -655,7 +655,12 @@ fun ArgosyApp(
             override fun onLeft(): InputResult { viewModel.coreCrashController.moveFocus(-1); return InputResult.HANDLED }
             override fun onRight(): InputResult { viewModel.coreCrashController.moveFocus(1); return InputResult.HANDLED }
             override fun onConfirm(): InputResult {
-                viewModel.coreCrashController.confirmFocused()
+                val dl = viewModel.coreCrashController.downloading.value
+                if (dl?.done == true && !dl.failed) {
+                    viewModel.launchFromCoreCrash()
+                } else {
+                    viewModel.coreCrashController.confirmFocused()
+                }
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onBack(): InputResult {
@@ -695,6 +700,12 @@ fun ArgosyApp(
 
     LaunchedEffect(viewModel) {
         viewModel.netplayInviteLaunch.collect { intent ->
+            context.startActivity(intent)
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.coreCrashLaunch.collect { intent ->
             context.startActivity(intent)
         }
     }
@@ -1711,6 +1722,7 @@ fun ArgosyApp(
                         viewModel.coreCrashController.setFocus(index)
                         viewModel.coreCrashController.confirmFocused()
                     },
+                    onLaunch = { viewModel.launchFromCoreCrash() },
                     onDismiss = { viewModel.coreCrashController.dismiss() }
                 )
             }

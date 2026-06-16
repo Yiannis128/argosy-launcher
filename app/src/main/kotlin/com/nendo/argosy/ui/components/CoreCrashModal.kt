@@ -24,6 +24,7 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 
 data class CoreCrashPrompt(
     val coreId: String,
+    val gameId: Long,
     val displayName: String,
     val platformId: Long,
     val platformSlug: String,
@@ -51,16 +52,20 @@ fun CoreCrashModal(
     focusedIndex: Int,
     downloading: CoreDownloadProgress?,
     onSelect: (Int) -> Unit,
+    onLaunch: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val readyToLaunch = downloading?.done == true && !downloading.failed
     Modal(
         title = "Core Crashed",
         baseWidth = 420.dp,
         onDismiss = onDismiss,
-        footerHints = listOf(
-            InputButton.A to "Select",
-            InputButton.B to "Dismiss"
-        )
+        footerHints = when {
+            downloading == null -> listOf(InputButton.A to "Select", InputButton.B to "Dismiss")
+            readyToLaunch -> listOf(InputButton.A to "Launch game", InputButton.B to "Dismiss")
+            downloading.done -> listOf(InputButton.B to "Dismiss")
+            else -> listOf(InputButton.B to "Cancel")
+        }
     ) {
         if (downloading != null) {
             Text(
@@ -78,6 +83,14 @@ fun CoreCrashModal(
                 progress = { downloading.fraction },
                 modifier = Modifier.fillMaxWidth()
             )
+            if (readyToLaunch) {
+                Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                CoreCrashOptionRow(
+                    label = "Launch game",
+                    focused = true,
+                    onClick = onLaunch
+                )
+            }
             return@Modal
         }
 

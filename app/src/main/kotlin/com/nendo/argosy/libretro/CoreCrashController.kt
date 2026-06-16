@@ -60,6 +60,7 @@ class CoreCrashController @Inject constructor(
         _focusIndex.value = 0
         _prompt.value = CoreCrashPrompt(
             coreId = crash.coreId,
+            gameId = crash.gameId,
             displayName = displayName,
             platformId = game.platformId,
             platformSlug = game.platformSlug,
