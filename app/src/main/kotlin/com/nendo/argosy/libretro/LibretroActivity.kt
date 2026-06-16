@@ -111,6 +111,9 @@ import com.swordfish.libretrodroid.GLRetroView
 import com.swordfish.libretrodroid.GLRetroViewData
 import com.swordfish.libretrodroid.LibretroDroid
 import com.swordfish.libretrodroid.Variable
+import com.nendo.argosy.libretro.coreoptions.CoreOptionManifestRegistry
+import com.nendo.argosy.data.local.entity.CoreOptionOverrideEntity
+import com.nendo.argosy.ui.screens.settings.CoreOptionViewItem
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -142,6 +145,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var effectiveLibretroSettingsResolver: EffectiveLibretroSettingsResolver
     @Inject lateinit var platformLibretroSettingsDao: com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao
     @Inject lateinit var frameRegistry: FrameRegistry
+    @Inject lateinit var coreOptionsRepository: com.nendo.argosy.data.repository.CoreOptionsRepository
 
     private var coreLoadedSuccessfully = false
     @Volatile private var coreDestroyed = false
@@ -217,6 +221,7 @@ class LibretroActivity : ComponentActivity() {
     private var currentOrientationState by mutableStateOf(android.content.res.Configuration.ORIENTATION_LANDSCAPE)
     private var currentRotationState by mutableStateOf(0)
     private var touchSettingsState by mutableStateOf(com.nendo.argosy.data.preferences.BuiltinEmulatorSettings())
+    private var coreOptionOverrides by mutableStateOf<Map<String, String>>(emptyMap())
     private var inputDeviceListener: android.hardware.input.InputManager.InputDeviceListener? = null
     private var splitColumn: android.widget.LinearLayout? = null
     private var touchEditMode by mutableStateOf(false)
@@ -336,6 +341,7 @@ class LibretroActivity : ComponentActivity() {
 
         corePath = intent.getStringExtra(EXTRA_CORE_PATH)!!
         resolvedCoreId = resolveCoreIdFromPath(corePath)
+        loadCoreOptionOverrides()
         createRetroView(corePath, systemDir, savesDir, settings, restoredSram)
         achievementBridge = LibretroAchievementBridge(
             gameDao = gameDao,
@@ -1025,6 +1031,60 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun loadCoreOptionOverrides() {
+        val coreId = resolvedCoreId ?: return
+        if (CoreOptionManifestRegistry.getManifest(coreId) == null) return
+        lifecycleScope.launch {
+            coreOptionOverrides = withContext(Dispatchers.IO) {
+                coreOptionsRepository.getOverridesForCore(coreId)
+                    .associate { it.optionKey to it.value }
+            }
+        }
+    }
+
+    private fun buildCoreOptionItems(): List<CoreOptionViewItem> {
+        val coreId = resolvedCoreId ?: return emptyList()
+        val manifest = CoreOptionManifestRegistry.getManifest(coreId) ?: return emptyList()
+        return manifest.options.map { def ->
+            val overrideValue = coreOptionOverrides[def.key]
+            CoreOptionViewItem(
+                key = def.key,
+                displayName = def.displayName,
+                description = def.description,
+                values = def.values,
+                currentValue = overrideValue ?: def.defaultValue,
+                isOverridden = overrideValue != null,
+                valueLabels = def.valueLabels
+            )
+        }
+    }
+
+    private fun cycleCoreOption(optionKey: String, direction: Int) {
+        val coreId = resolvedCoreId ?: return
+        val def = CoreOptionManifestRegistry.getManifest(coreId)
+            ?.options?.firstOrNull { it.key == optionKey } ?: return
+        if (def.values.isEmpty()) return
+        val current = coreOptionOverrides[optionKey] ?: def.defaultValue
+        val currentIndex = def.values.indexOf(current).coerceAtLeast(0)
+        val newValue = def.values[(currentIndex + direction).mod(def.values.size)]
+        coreOptionOverrides = coreOptionOverrides + (optionKey to newValue)
+        if (::retroView.isInitialized) retroView.updateVariables(Variable(optionKey, newValue))
+        lifecycleScope.launch(Dispatchers.IO) {
+            coreOptionsRepository.upsert(CoreOptionOverrideEntity(coreId, optionKey, newValue))
+        }
+    }
+
+    private fun resetCoreOption(optionKey: String) {
+        val coreId = resolvedCoreId ?: return
+        val def = CoreOptionManifestRegistry.getManifest(coreId)
+            ?.options?.firstOrNull { it.key == optionKey } ?: return
+        coreOptionOverrides = coreOptionOverrides - optionKey
+        if (::retroView.isInitialized) retroView.updateVariables(Variable(optionKey, def.defaultValue))
+        lifecycleScope.launch(Dispatchers.IO) {
+            coreOptionsRepository.delete(coreId, optionKey)
+        }
+    }
+
     @androidx.compose.runtime.Composable
     private fun buildSettingsScreen(): InputHandler {
         return InGameSettingsScreen(
@@ -1064,6 +1124,12 @@ class LibretroActivity : ComponentActivity() {
                 touchGenesis6Button = touchSettingsState.touchControlsGenesis6Button
             ),
             onControlsAction = ::handleControlsAction,
+            coreOptions = buildCoreOptionItems(),
+            coreOptionsSupported = resolvedCoreId?.let {
+                CoreOptionManifestRegistry.getManifest(it) != null
+            } ?: false,
+            onCoreOptionCycle = ::cycleCoreOption,
+            onCoreOptionReset = ::resetCoreOption,
             modalCallbacks = buildModalCallbacks(),
             onDismiss = {
                 settingsVisible = false

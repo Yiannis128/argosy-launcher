@@ -51,6 +51,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.NavigationPreference
 import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.screens.settings.CoreOptionViewItem
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.components.ControllerOrderModal
@@ -69,7 +70,8 @@ import com.nendo.argosy.ui.util.touchOnly
 
 enum class InGameSettingsTab(val label: String) {
     VIDEO("Video"),
-    CONTROLS("Controls")
+    CONTROLS("Controls"),
+    CORE_OPTIONS("Core Options")
 }
 
 data class InGameControlsState(
@@ -192,6 +194,10 @@ fun InGameSettingsScreen(
     menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP,
     controlsState: InGameControlsState,
     onControlsAction: (InGameControlsAction) -> Unit,
+    coreOptions: List<CoreOptionViewItem>,
+    coreOptionsSupported: Boolean,
+    onCoreOptionCycle: (String, Int) -> Unit,
+    onCoreOptionReset: (String) -> Unit,
     modalCallbacks: InGameModalCallbacks,
     onDismiss: () -> Unit
 ): InputHandler {
@@ -199,6 +205,7 @@ fun InGameSettingsScreen(
     var focusedIndex by remember { mutableIntStateOf(0) }
     val videoListState = rememberLazyListState()
     val controlsListState = rememberLazyListState()
+    val coreOptionsListState = rememberLazyListState()
     var showControllerOrderModal by remember { mutableStateOf(false) }
     var showInputMappingModal by remember { mutableStateOf(false) }
     var showHotkeysModal by remember { mutableStateOf(false) }
@@ -209,6 +216,10 @@ fun InGameSettingsScreen(
     val currentOnDismiss = rememberUpdatedState(onDismiss)
     val currentControlsState = rememberUpdatedState(controlsState)
     val currentOnControlsAction = rememberUpdatedState(onControlsAction)
+    val currentCoreOptions = rememberUpdatedState(coreOptions)
+    val currentCoreOptionsSupported = rememberUpdatedState(coreOptionsSupported)
+    val currentOnCoreOptionCycle = rememberUpdatedState(onCoreOptionCycle)
+    val currentOnCoreOptionReset = rememberUpdatedState(onCoreOptionReset)
 
     val controlsVisibility = remember(platformSlug) {
         InGameControlsVisibility(
@@ -226,12 +237,20 @@ fun InGameSettingsScreen(
     fun getMaxFocusIndex(): Int = when (currentTab) {
         InGameSettingsTab.VIDEO -> maxVideoFocusIndex
         InGameSettingsTab.CONTROLS -> controlsMaxFocusIndex
+        InGameSettingsTab.CORE_OPTIONS -> (currentCoreOptions.value.size - 1).coerceAtLeast(0)
     }
 
     fun getSettingAtIndex(index: Int): LibretroSettingDef? = when (currentTab) {
         InGameSettingsTab.VIDEO -> libretroSettingsItemAtFocusIndex(index, platformSlug, canEnableBFI)
         InGameSettingsTab.CONTROLS -> null
+        InGameSettingsTab.CORE_OPTIONS -> null
     }
+
+    fun isTabEnabled(tab: InGameSettingsTab): Boolean =
+        tab != InGameSettingsTab.CORE_OPTIONS || currentCoreOptionsSupported.value
+
+    fun coreOptionKeyAt(index: Int): String? =
+        currentCoreOptions.value.getOrNull(index)?.key
 
     fun handleControlsConfirm() {
         val item = controlsLayout.itemAtFocusIndex(focusedIndex, controlsVisibility) ?: return
@@ -269,10 +288,15 @@ fun InGameSettingsScreen(
 
     fun switchTab(direction: Int) {
         val tabs = InGameSettingsTab.entries
-        val currentIndex = tabs.indexOf(currentTab)
-        val newIndex = (currentIndex + direction + tabs.size) % tabs.size
-        currentTab = tabs[newIndex]
-        focusedIndex = 0
+        var newIndex = tabs.indexOf(currentTab)
+        repeat(tabs.size) {
+            newIndex = (newIndex + direction).mod(tabs.size)
+            if (isTabEnabled(tabs[newIndex])) {
+                currentTab = tabs[newIndex]
+                focusedIndex = 0
+                return
+            }
+        }
     }
 
     val inputHandler = remember {
@@ -294,6 +318,10 @@ fun InGameSettingsScreen(
             }
 
             override fun onLeft(): InputResult {
+                if (currentTab == InGameSettingsTab.CORE_OPTIONS) {
+                    coreOptionKeyAt(focusedIndex)?.let { currentOnCoreOptionCycle.value(it, -1) }
+                    return InputResult.HANDLED
+                }
                 val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.HANDLED
                 if (accessor.isActionItem(setting)) return InputResult.HANDLED
                 if (setting.type is LibretroSettingDef.SettingType.Cycle) {
@@ -303,6 +331,10 @@ fun InGameSettingsScreen(
             }
 
             override fun onRight(): InputResult {
+                if (currentTab == InGameSettingsTab.CORE_OPTIONS) {
+                    coreOptionKeyAt(focusedIndex)?.let { currentOnCoreOptionCycle.value(it, 1) }
+                    return InputResult.HANDLED
+                }
                 val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.HANDLED
                 if (accessor.isActionItem(setting)) return InputResult.HANDLED
                 if (setting.type is LibretroSettingDef.SettingType.Cycle) {
@@ -323,7 +355,16 @@ fun InGameSettingsScreen(
                         }
                     }
                     InGameSettingsTab.CONTROLS -> handleControlsConfirm()
+                    InGameSettingsTab.CORE_OPTIONS ->
+                        coreOptionKeyAt(focusedIndex)?.let { currentOnCoreOptionCycle.value(it, 1) }
                 }
+                return InputResult.HANDLED
+            }
+
+            override fun onSecondaryAction(): InputResult {
+                if (currentTab != InGameSettingsTab.CORE_OPTIONS) return InputResult.UNHANDLED
+                val option = currentCoreOptions.value.getOrNull(focusedIndex) ?: return InputResult.HANDLED
+                if (option.isOverridden) currentOnCoreOptionReset.value(option.key)
                 return InputResult.HANDLED
             }
 
@@ -367,6 +408,7 @@ fun InGameSettingsScreen(
             ) {
                 SettingsTabHeader(
                     currentTab = currentTab,
+                    isTabEnabled = { isTabEnabled(it) },
                     onTabSelect = { tab ->
                         currentTab = tab
                         focusedIndex = 0
@@ -407,6 +449,16 @@ fun InGameSettingsScreen(
                                     }
                                 },
                                 listState = controlsListState
+                            )
+                        }
+
+                        InGameSettingsTab.CORE_OPTIONS -> {
+                            InGameCoreOptionsSection(
+                                options = coreOptions,
+                                focusedIndex = focusedIndex,
+                                onCycle = { onCoreOptionCycle(it, 1) },
+                                onReset = onCoreOptionReset,
+                                listState = coreOptionsListState
                             )
                         }
                     }
@@ -470,6 +522,10 @@ private fun buildSettingsFooterHints(tab: InGameSettingsTab): List<Pair<InputBut
                 add(InputButton.A to "Select")
             }
             InGameSettingsTab.CONTROLS -> {
+                add(InputButton.A to "Select")
+            }
+            InGameSettingsTab.CORE_OPTIONS -> {
+                add(InputButton.DPAD_HORIZONTAL to "Adjust")
                 add(InputButton.A to "Select")
             }
         }
@@ -643,6 +699,7 @@ private fun InGameControlsSection(
 @Composable
 private fun SettingsTabHeader(
     currentTab: InGameSettingsTab,
+    isTabEnabled: (InGameSettingsTab) -> Boolean,
     onTabSelect: (InGameSettingsTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -653,10 +710,12 @@ private fun SettingsTabHeader(
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)
     ) {
         InGameSettingsTab.entries.forEach { tab ->
+            val enabled = isTabEnabled(tab)
             SettingsTabIndicator(
                 label = tab.label,
                 isSelected = tab == currentTab,
-                onClick = { onTabSelect(tab) }
+                isEnabled = enabled,
+                onClick = { if (enabled) onTabSelect(tab) }
             )
         }
     }
@@ -666,6 +725,7 @@ private fun SettingsTabHeader(
 private fun SettingsTabIndicator(
     label: String,
     isSelected: Boolean,
+    isEnabled: Boolean,
     onClick: () -> Unit
 ) {
     Column(
@@ -675,10 +735,10 @@ private fun SettingsTabIndicator(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
+            color = when {
+                !isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                isSelected -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
