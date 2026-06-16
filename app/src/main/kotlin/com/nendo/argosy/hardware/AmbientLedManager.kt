@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -28,6 +30,12 @@ data class SideColors(
     val low: Color,
     val mid: Color,
     val high: Color
+)
+
+private data class LedFrame(
+    val left: Color,
+    val right: Color,
+    val brightness: Float
 )
 
 data class AmbientLedState(
@@ -78,10 +86,16 @@ class AmbientLedManager @Inject constructor(
     private var currentLeftColors: SideColors? = null
     private var currentRightColors: SideColors? = null
     private var transitionJob: Job? = null
+    private var hoverTransitionJob: Job? = null
+    private var targetHoverLeft: Color? = null
+    private var targetHoverRight: Color? = null
     private var uiColorsInitialized = false
+
+    private val ledFrames = Channel<LedFrame>(Channel.CONFLATED)
 
     init {
         observePreferences()
+        startLedWriter()
     }
 
     private fun observePreferences() {
@@ -161,17 +175,47 @@ class AmbientLedManager @Inject constructor(
     }
 
     fun setHoverColors(primary: Color, secondary: Color?) {
-        _state.value = _state.value.copy(
-            hoverLeftColor = primary,
-            hoverRightColor = secondary ?: primary
-        )
+        val left = primary
+        val right = secondary ?: primary
+        targetHoverLeft = left
+        targetHoverRight = right
+
         val ctx = _state.value.context
-        if (isEnabled && (ctx == AmbientLedContext.ARGOSY_UI || ctx == AmbientLedContext.GAME_HOVER)) {
-            updateLeds()
+        val active = isEnabled && (ctx == AmbientLedContext.ARGOSY_UI || ctx == AmbientLedContext.GAME_HOVER)
+
+        if (_state.value.hoverLeftColor == null || !active) {
+            hoverTransitionJob?.cancel()
+            _state.value = _state.value.copy(hoverLeftColor = left, hoverRightColor = right)
+            if (active) updateLeds()
+            return
+        }
+
+        startHoverTransition()
+    }
+
+    private fun startHoverTransition() {
+        val startLeft = _state.value.hoverLeftColor ?: return
+        val startRight = _state.value.hoverRightColor ?: startLeft
+        hoverTransitionJob?.cancel()
+        hoverTransitionJob = launchTransition { progress ->
+            val endLeft = targetHoverLeft ?: return@launchTransition
+            val endRight = targetHoverRight ?: endLeft
+            _state.value = _state.value.copy(
+                hoverLeftColor = lerp(startLeft, endLeft, progress),
+                hoverRightColor = lerp(startRight, endRight, progress)
+            )
+            val ctx = _state.value.context
+            if (isEnabled && (ctx == AmbientLedContext.ARGOSY_UI || ctx == AmbientLedContext.GAME_HOVER)) {
+                updateLeds()
+            }
         }
     }
 
     fun clearHoverColors() {
+        hoverTransitionJob?.cancel()
+        hoverTransitionJob = null
+        targetHoverLeft = null
+        targetHoverRight = null
         _state.value = _state.value.copy(
             hoverLeftColor = null,
             hoverRightColor = null
@@ -204,34 +248,32 @@ class AmbientLedManager @Inject constructor(
     }
 
     private fun startColorTransition() {
-        transitionJob = scope.launch {
-            val startTime = System.currentTimeMillis()
-            val duration = transitionMs
-
-            val startLeft = currentLeftColors ?: return@launch
-            val startRight = currentRightColors ?: return@launch
-            val endLeft = targetLeftColors ?: return@launch
-            val endRight = targetRightColors ?: return@launch
-
-            while (isActive) {
-                val elapsed = System.currentTimeMillis() - startTime
-                val progress = if (duration <= 0) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
-
-                currentLeftColors = lerpSideColors(startLeft, endLeft, progress)
-                currentRightColors = lerpSideColors(startRight, endRight, progress)
-
-                _state.value = _state.value.copy(
-                    leftSideColors = currentLeftColors,
-                    rightSideColors = currentRightColors
-                )
-
-                if (isEnabled && _state.value.context == AmbientLedContext.IN_GAME) {
-                    updateLeds()
-                }
-
-                if (progress >= 1f) break
-                delay(16)
+        val startLeft = currentLeftColors ?: return
+        val startRight = currentRightColors ?: return
+        val endLeft = targetLeftColors ?: return
+        val endRight = targetRightColors ?: return
+        transitionJob = launchTransition { progress ->
+            currentLeftColors = lerpSideColors(startLeft, endLeft, progress)
+            currentRightColors = lerpSideColors(startRight, endRight, progress)
+            _state.value = _state.value.copy(
+                leftSideColors = currentLeftColors,
+                rightSideColors = currentRightColors
+            )
+            if (isEnabled && _state.value.context == AmbientLedContext.IN_GAME) {
+                updateLeds()
             }
+        }
+    }
+
+    private fun launchTransition(onProgress: (Float) -> Unit): Job = scope.launch {
+        val startTime = System.currentTimeMillis()
+        val duration = transitionMs
+        while (isActive) {
+            val elapsed = System.currentTimeMillis() - startTime
+            val progress = if (duration <= 0) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+            onProgress(progress)
+            if (progress >= 1f) break
+            delay(FRAME_MS)
         }
     }
 
@@ -286,15 +328,12 @@ class AmbientLedManager @Inject constructor(
         }
     }
 
-    private var ledUpdateJob: Job? = null
-
     private fun updateLeds() {
         val currentState = _state.value
         val (leftColor, rightColor) = when (currentState.context) {
             AmbientLedContext.ARGOSY_UI, AmbientLedContext.GAME_HOVER -> {
                 val left = currentState.hoverLeftColor ?: currentState.uiLeftColor
                 val right = currentState.hoverRightColor ?: currentState.uiRightColor
-                Log.d(TAG, "updateLeds UI/HOVER: hoverLeft=${currentState.hoverLeftColor}, uiLeft=${currentState.uiLeftColor}, using=$left")
                 Pair(left, right)
             }
             AmbientLedContext.IN_GAME -> {
@@ -313,12 +352,32 @@ class AmbientLedManager @Inject constructor(
         }
 
         val brightness = currentState.brightness * brightnessScalar
-        ledUpdateJob?.cancel()
-        ledUpdateJob = scope.launch(Dispatchers.IO) {
-            ledController.setColor(leftColor, rightColor)
-            ledController.setBrightness(brightness)
+        ledFrames.trySend(LedFrame(leftColor, rightColor, brightness))
+    }
+
+    private fun startLedWriter() {
+        scope.launch(Dispatchers.IO) {
+            var lastLeft: Color? = null
+            var lastRight: Color? = null
+            var lastBrightness = -1f
+            for (frame in ledFrames) {
+                val colorChanged = lastLeft == null || lastRight == null ||
+                    colorDelta(lastLeft, frame.left) > COLOR_EPSILON ||
+                    colorDelta(lastRight, frame.right) > COLOR_EPSILON
+                val brightnessChanged = abs(lastBrightness - frame.brightness) > BRIGHTNESS_EPSILON
+                if (!colorChanged && !brightnessChanged) continue
+                ledController.setColor(frame.left, frame.right)
+                ledController.setBrightness(frame.brightness)
+                lastLeft = frame.left
+                lastRight = frame.right
+                lastBrightness = frame.brightness
+                delay(MIN_WRITE_INTERVAL_MS)
+            }
         }
     }
+
+    private fun colorDelta(a: Color, b: Color): Float =
+        abs(a.red - b.red) + abs(a.green - b.green) + abs(a.blue - b.blue)
 
     private fun blendForIntensity(intensity: Float, colors: SideColors): Color {
         return when {
@@ -447,5 +506,9 @@ class AmbientLedManager @Inject constructor(
 
     companion object {
         private const val TAG = "AmbientLedManager"
+        private const val FRAME_MS = 16L
+        private const val MIN_WRITE_INTERVAL_MS = 33L
+        private const val COLOR_EPSILON = 0.012f
+        private const val BRIGHTNESS_EPSILON = 0.01f
     }
 }
