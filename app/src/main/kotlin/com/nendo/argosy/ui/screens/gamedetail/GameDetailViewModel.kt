@@ -1154,6 +1154,18 @@ class GameDetailViewModel @Inject constructor(
 
     fun confirmDeleteLegacyChannel() = saveManagement.saveChannelDelegate.confirmDeleteLegacyChannel(viewModelScope)
 
+    fun dismissStateDeleteConfirmation() = saveManagement.saveChannelDelegate.dismissStateDeleteConfirmation()
+
+    fun confirmDeleteState() = saveManagement.saveChannelDelegate.confirmDeleteState(viewModelScope)
+
+    fun dismissVersionMismatch() = saveManagement.saveChannelDelegate.dismissVersionMismatch()
+
+    fun confirmVersionMismatch() = saveManagement.saveChannelDelegate.confirmVersionMismatch(viewModelScope)
+
+    fun dismissStateReplaceAutoConfirmation() = saveManagement.saveChannelDelegate.dismissStateReplaceAutoConfirmation()
+
+    fun confirmReplaceAutoWithSlot() = saveManagement.saveChannelDelegate.confirmReplaceAutoWithSlot(viewModelScope)
+
     private fun handleSaveStatusChanged(event: SaveStatusEvent) {
         _uiState.update { state ->
             state.copy(
@@ -1665,6 +1677,10 @@ class GameDetailViewModel @Inject constructor(
                 saveState.showRestoreConfirmation -> restoreSave(syncToServer = false)
                 saveState.showMigrateConfirmation -> confirmMigrateChannel()
                 saveState.showDeleteLegacyConfirmation -> confirmDeleteLegacyChannel()
+                saveState.showVersionMismatchDialog -> confirmVersionMismatch()
+                saveState.showStateDeleteConfirmation -> confirmDeleteState()
+                saveState.showStateReplaceAutoConfirmation -> confirmReplaceAutoWithSlot()
+                saveState.showScreenshotPreview -> dismissScreenshotPreview()
                 saveState.isVisible -> confirmSaveCacheSelection()
                 state.showScreenshotViewer -> closeScreenshotViewer()
                 state.showPermissionModal -> return InputResult.UNHANDLED
@@ -1697,6 +1713,9 @@ class GameDetailViewModel @Inject constructor(
                 saveState.showRestoreConfirmation -> dismissRestoreConfirmation()
                 saveState.showMigrateConfirmation -> dismissMigrateConfirmation()
                 saveState.showDeleteLegacyConfirmation -> dismissDeleteLegacyConfirmation()
+                saveState.showVersionMismatchDialog -> dismissVersionMismatch()
+                saveState.showStateDeleteConfirmation -> dismissStateDeleteConfirmation()
+                saveState.showStateReplaceAutoConfirmation -> dismissStateReplaceAutoConfirmation()
                 saveState.showScreenshotPreview -> dismissScreenshotPreview()
                 saveState.isVisible -> dismissSaveCacheDialog()
                 state.showScreenshotViewer -> closeScreenshotViewer()
@@ -1729,6 +1748,9 @@ class GameDetailViewModel @Inject constructor(
             if (saveState.showDeleteConfirmation) { dismissDeleteConfirmation(); return InputResult.UNHANDLED }
             if (saveState.showRestoreConfirmation) { dismissRestoreConfirmation(); return InputResult.UNHANDLED }
             if (saveState.showScreenshotPreview) { dismissScreenshotPreview(); return InputResult.UNHANDLED }
+            if (saveState.showVersionMismatchDialog) { dismissVersionMismatch(); return InputResult.UNHANDLED }
+            if (saveState.showStateDeleteConfirmation) { dismissStateDeleteConfirmation(); return InputResult.UNHANDLED }
+            if (saveState.showStateReplaceAutoConfirmation) { dismissStateReplaceAutoConfirmation(); return InputResult.UNHANDLED }
             if (saveState.isVisible) { dismissSaveCacheDialog(); return InputResult.UNHANDLED }
             if (state.showRatingPicker) { dismissRatingPicker(); return InputResult.UNHANDLED }
             if (state.showStatusPicker) { dismissStatusPicker(); return InputResult.UNHANDLED }
