@@ -12,6 +12,7 @@ import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
 import com.nendo.argosy.data.local.dao.ControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerOrderDao
 import com.nendo.argosy.data.local.dao.CoreVersionDao
+import com.nendo.argosy.data.local.dao.CoreVersionHistoryDao
 import com.nendo.argosy.data.local.dao.HotkeyDao
 import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
@@ -139,6 +140,10 @@ object DatabaseModule {
     @Provides
     fun provideCoreVersionDao(database: ALauncherDatabase): CoreVersionDao =
         database.coreVersionDao()
+
+    @Provides
+    fun provideCoreVersionHistoryDao(database: ALauncherDatabase): CoreVersionHistoryDao =
+        database.coreVersionHistoryDao()
 
     @Provides
     fun provideControllerOrderDao(database: ALauncherDatabase): ControllerOrderDao =

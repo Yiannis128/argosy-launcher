@@ -1779,3 +1779,28 @@ object Migration_122_123 : Migration(122, 123) {
         db.execSQL("ALTER TABLE core_versions ADD COLUMN corrupt INTEGER")
     }
 }
+
+object Migration_123_124 : Migration(123, 124) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS core_version_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                coreId TEXT NOT NULL,
+                version TEXT NOT NULL,
+                hash TEXT NOT NULL,
+                size INTEGER NOT NULL,
+                fileName TEXT NOT NULL,
+                archivedAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_core_version_history_coreId ON core_version_history(coreId)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_core_version_history_archivedAt ON core_version_history(archivedAt)"
+        )
+        db.execSQL("ALTER TABLE core_versions ADD COLUMN blockedVersion TEXT")
+    }
+}

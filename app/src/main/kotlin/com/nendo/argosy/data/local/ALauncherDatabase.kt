@@ -12,6 +12,7 @@ import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
 import com.nendo.argosy.data.local.dao.ControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerOrderDao
 import com.nendo.argosy.data.local.dao.CoreVersionDao
+import com.nendo.argosy.data.local.dao.CoreVersionHistoryDao
 import com.nendo.argosy.data.local.dao.HotkeyDao
 import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
@@ -50,6 +51,7 @@ import com.nendo.argosy.data.local.entity.CoreOptionOverrideEntity
 import com.nendo.argosy.data.local.entity.ControllerMappingEntity
 import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.data.local.entity.CoreVersionEntity
+import com.nendo.argosy.data.local.entity.CoreVersionHistoryEntity
 import com.nendo.argosy.data.local.entity.HotkeyEntity
 import com.nendo.argosy.data.local.entity.DownloadQueueEntity
 import com.nendo.argosy.data.local.entity.EmulatorConfigEntity
@@ -100,6 +102,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         PinnedCollectionEntity::class,
         GameFileEntity::class,
         CoreVersionEntity::class,
+        CoreVersionHistoryEntity::class,
         ControllerOrderEntity::class,
         ControllerMappingEntity::class,
         HotkeyEntity::class,
@@ -121,7 +124,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         PendingConflictEntity::class,
         com.nendo.argosy.data.local.entity.TouchLayoutOverrideEntity::class
     ],
-    version = 123,
+    version = 124,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -146,6 +149,7 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun pinnedCollectionDao(): PinnedCollectionDao
     abstract fun gameFileDao(): GameFileDao
     abstract fun coreVersionDao(): CoreVersionDao
+    abstract fun coreVersionHistoryDao(): CoreVersionHistoryDao
     abstract fun controllerOrderDao(): ControllerOrderDao
     abstract fun controllerMappingDao(): ControllerMappingDao
     abstract fun hotkeyDao(): HotkeyDao

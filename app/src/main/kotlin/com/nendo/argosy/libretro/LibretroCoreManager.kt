@@ -4,7 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.nendo.argosy.data.emulator.CoreSystemDataManager
 import com.nendo.argosy.data.local.dao.CoreVersionDao
+import com.nendo.argosy.data.local.dao.CoreVersionHistoryDao
 import com.nendo.argosy.data.local.entity.CoreVersionEntity
+import com.nendo.argosy.data.local.entity.CoreVersionHistoryEntity
 import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -21,15 +23,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "LibretroCoreManager"
+private const val CORE_HISTORY_LIMIT = 10
 
 @Singleton
 class LibretroCoreManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val coreVersionDao: CoreVersionDao,
+    private val coreVersionHistoryDao: CoreVersionHistoryDao,
     private val coreSystemDataManager: CoreSystemDataManager,
     private val compatCoreCache: CompatCoreCache
 ) {
     private val downloadedCoresDir = File(context.filesDir, "libretro/cores").apply { mkdirs() }
+    private val coreHistoryDir = File(context.filesDir, "libretro/core_history").apply { mkdirs() }
     private val nativeLibDir = context.applicationInfo.nativeLibraryDir
     private val abiMarkerFile = File(downloadedCoresDir, ".abi")
 
@@ -175,6 +180,7 @@ class LibretroCoreManager @Inject constructor(
                 if (targetFile.exists()) {
                     val existingHash = computeFileHash(targetFile)
                     compatCoreCache.storeCompatCore(targetFile, existingHash)
+                    archiveToHistory(coreInfo.coreId, targetFile, existingHash)
                 }
                 val zipUrl = "${LibretroBuildbot.baseUrl}/${coreInfo.fileName}.zip"
 
@@ -281,6 +287,31 @@ class LibretroCoreManager @Inject constructor(
 
         return NetplayCoreResolution.Unresolvable
     }
+
+    private suspend fun archiveToHistory(coreId: String, file: File, hash: String) {
+        val version = coreVersionDao.getByCoreId(coreId)?.installedVersion ?: return
+        if (coreVersionHistoryDao.getByCoreAndVersion(coreId, version) != null) return
+        val dir = File(coreHistoryDir, coreId).apply { mkdirs() }
+        val archived = File(dir, "$hash.so")
+        file.copyTo(archived, overwrite = true)
+        coreVersionHistoryDao.insert(
+            CoreVersionHistoryEntity(
+                coreId = coreId,
+                version = version,
+                hash = hash,
+                size = file.length(),
+                fileName = archived.name,
+                archivedAt = Instant.now()
+            )
+        )
+        coreVersionHistoryDao.getByCore(coreId).drop(CORE_HISTORY_LIMIT).forEach { stale ->
+            File(dir, stale.fileName).delete()
+            coreVersionHistoryDao.deleteById(stale.id)
+        }
+    }
+
+    suspend fun getCoreHistory(coreId: String): List<CoreVersionHistoryEntity> =
+        withContext(Dispatchers.IO) { coreVersionHistoryDao.getByCore(coreId) }
 
     suspend fun verifyDownloadedCore(coreInfo: LibretroCoreRegistry.CoreInfo): Boolean? =
         withContext(Dispatchers.IO) {
