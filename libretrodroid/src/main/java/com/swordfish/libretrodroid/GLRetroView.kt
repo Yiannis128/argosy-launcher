@@ -594,7 +594,9 @@ class GLRetroView(
             latch.countDown()
         }
 
-        latch.awaitUninterruptibly()
+        if (!latch.awaitUninterruptibly(GL_THREAD_OP_TIMEOUT_MS)) {
+            Log.w(TAG_LOG, "runOnGLThread: GL thread did not drain within ${GL_THREAD_OP_TIMEOUT_MS}ms")
+        }
         return result!!
     }
 
@@ -713,6 +715,8 @@ class GLRetroView(
 
     companion object {
         private val TAG_LOG = GLRetroView::class.java.simpleName
+
+        private const val GL_THREAD_OP_TIMEOUT_MS = 8000L
 
         const val MOTION_SOURCE_DPAD = LibretroDroid.MOTION_SOURCE_DPAD
         const val MOTION_SOURCE_ANALOG_LEFT = LibretroDroid.MOTION_SOURCE_ANALOG_LEFT

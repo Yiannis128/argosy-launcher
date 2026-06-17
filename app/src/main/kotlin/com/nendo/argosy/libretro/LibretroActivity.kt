@@ -1312,25 +1312,28 @@ class LibretroActivity : ComponentActivity() {
                 menuVisible = false
                 isClosing = true
                 lifecycleScope.launch {
-                    withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
-                        performAutoSaveState()
-                        try {
-                            playSessionTracker.cacheCurrentSessionForQuit()
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Pre-quit save cache failed", e)
+                    try {
+                        withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                            performAutoSaveState()
+                            try {
+                                playSessionTracker.cacheCurrentSessionForQuit()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Pre-quit save cache failed", e)
+                            }
+                            try {
+                                playSessionTracker.cacheCurrentSessionStatesForQuit()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Pre-quit state cache failed", e)
+                            }
+                            if (!isGuestJoinedSession) {
+                                saveStateManager.saveSram(retroView)
+                            }
+                            coreDestroyed = true
+                            retroView.destroyNative()
                         }
-                        try {
-                            playSessionTracker.cacheCurrentSessionStatesForQuit()
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Pre-quit state cache failed", e)
-                        }
-                        if (!isGuestJoinedSession) {
-                            saveStateManager.saveSram(retroView)
-                        }
-                        coreDestroyed = true
-                        retroView.destroyNative()
+                    } finally {
+                        finish()
                     }
-                    finish()
                 }
             }
             InGameMenuAction.OpenToFriends -> {
@@ -1774,6 +1777,10 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onPause() {
         if (::netplay.isInitialized) netplay.gracefullyEndIfActive()
+        if (isClosing) {
+            super.onPause()
+            return
+        }
         if (coreLoadedSuccessfully) {
             performAutoSaveState()
             if (!isGuestJoinedSession && !coreDestroyed) {

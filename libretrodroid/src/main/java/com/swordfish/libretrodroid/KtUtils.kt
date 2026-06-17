@@ -51,4 +51,17 @@ object KtUtils {
         } finally {
         }
     }
+
+    /** Bounded uninterruptible wait. Returns true if counted down, false on timeout. */
+    fun CountDownLatch.awaitUninterruptibly(timeoutMs: Long): Boolean {
+        val deadlineNanos = System.nanoTime() + timeoutMs * 1_000_000L
+        while (true) {
+            val remaining = deadlineNanos - System.nanoTime()
+            if (remaining <= 0) return false
+            try {
+                return await(remaining, java.util.concurrent.TimeUnit.NANOSECONDS)
+            } catch (e: InterruptedException) {
+            }
+        }
+    }
 }
