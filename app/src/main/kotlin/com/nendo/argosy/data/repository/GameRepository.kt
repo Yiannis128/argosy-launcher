@@ -335,7 +335,11 @@ class GameRepository @Inject constructor(
                     val candidate = File(categoryFolder, entry.fileName)
                     candidate.takeIf { it.isFile }
                 }
-            } ?: continue
+            } ?: platformDir.takeIf { it.isDirectory }
+                ?.walkTopDown()
+                ?.maxDepth(6)
+                ?.firstOrNull { it.isFile && it.name == entry.fileName && !it.name.startsWith("._") }
+            ?: continue
 
             gameFileDao.updateLocalPath(entry.fileId, found.absolutePath, Instant.now())
             repaired++

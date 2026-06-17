@@ -880,6 +880,11 @@ class DownloadManager @Inject constructor(
 
         Log.d(TAG, "finalizeCompletedFile: path=$finalPath, gameTitle=${progress.gameTitle}")
 
+        if (progress.isGameFileDownload && !File(finalPath).exists()) {
+            Log.w(TAG, "finalizeCompletedFile: downloaded file missing at $finalPath; not registering")
+            return DownloadResult.Failure("Downloaded file not found")
+        }
+
         when {
             progress.isGameFileDownload && progress.gameFileId != null -> {
                 gameFileDao.updateLocalPath(progress.gameFileId, finalPath, Instant.now())
