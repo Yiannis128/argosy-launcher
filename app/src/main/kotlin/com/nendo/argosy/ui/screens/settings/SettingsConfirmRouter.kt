@@ -441,10 +441,7 @@ private fun routeEmulatorsConfirm(vm: SettingsViewModel, state: SettingsUiState)
     when {
         state.focusedIndex == 0 -> vm.forceCheckEmulatorUpdates()
         state.focusedIndex >= 1 -> {
-            val platformIndex = state.focusedIndex - 1
-            if (platformIndex < state.emulators.platforms.size) {
-                vm.navigateToPlatformDetail(platformIndex)
-            }
+            vm.platformArrayIndexAtFocus(state.focusedIndex)?.let { vm.navigateToPlatformDetail(it) }
         }
     }
     return InputResult.HANDLED

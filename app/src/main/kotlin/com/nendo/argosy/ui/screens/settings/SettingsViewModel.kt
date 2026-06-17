@@ -960,6 +960,14 @@ class SettingsViewModel @Inject constructor(
                 it.config.platform.id == platformId
         }.coerceAtLeast(0)
     }
+
+    fun platformArrayIndexAtFocus(focusedIndex: Int): Int? {
+        val item = com.nendo.argosy.ui.screens.settings.sections.EmulatorsItem
+            .buildItems(_uiState.value.emulators.platforms)
+            .filter { it.isFocusable }
+            .getOrNull(focusedIndex)
+        return (item as? com.nendo.argosy.ui.screens.settings.sections.EmulatorsItem.PlatformItem)?.index
+    }
     fun enablePlatformAndReload(platformId: Long) {
         storageDelegate.togglePlatformSync(viewModelScope, platformId, true)
         viewModelScope.launch {
