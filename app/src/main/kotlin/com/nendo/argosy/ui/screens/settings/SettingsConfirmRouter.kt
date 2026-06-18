@@ -63,12 +63,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private fun rommConfigMaxIndex(server: ServerState): Int {
-    val isPairingCode = server.rommAuthMethod == RomMAuthMethod.PAIRING_CODE
-    val hasScanButton = isPairingCode && server.rommHasCamera
-    return when {
-        isPairingCode && hasScanButton -> 5  // URL, Auth, Code, Connect, Scan, Cancel
-        isPairingCode -> 4                    // URL, Auth, Code, Connect, Cancel
-        else -> 5                             // URL, Auth, User, Pass, Connect, Cancel
+    if (server.rommDevicePairing) return 0
+    return when (server.rommAuthMethod) {
+        RomMAuthMethod.DEVICE -> 3
+        RomMAuthMethod.PAIRING_CODE -> if (server.rommHasCamera) 5 else 4
+        RomMAuthMethod.PASSWORD -> 5
     }
 }
 
@@ -78,14 +77,17 @@ private data class RommConfigIndices(
     val cancelIndex: Int
 )
 
-private fun rommConfigIndices(server: ServerState): RommConfigIndices {
-    val isPairingCode = server.rommAuthMethod == RomMAuthMethod.PAIRING_CODE
-    val hasScanButton = isPairingCode && server.rommHasCamera
-    return when {
-        isPairingCode && hasScanButton -> RommConfigIndices(3, 4, 5)
-        isPairingCode -> RommConfigIndices(3, null, 4)
-        else -> RommConfigIndices(4, null, 5)
-    }
+private fun rommConfigIndices(server: ServerState): RommConfigIndices = when (server.rommAuthMethod) {
+    RomMAuthMethod.DEVICE -> RommConfigIndices(2, null, 3)
+    RomMAuthMethod.PAIRING_CODE ->
+        if (server.rommHasCamera) RommConfigIndices(3, 4, 5) else RommConfigIndices(3, null, 4)
+    RomMAuthMethod.PASSWORD -> RommConfigIndices(4, null, 5)
+}
+
+private fun nextRommAuthMethod(current: RomMAuthMethod): RomMAuthMethod = when (current) {
+    RomMAuthMethod.DEVICE -> RomMAuthMethod.PAIRING_CODE
+    RomMAuthMethod.PAIRING_CODE -> RomMAuthMethod.PASSWORD
+    RomMAuthMethod.PASSWORD -> RomMAuthMethod.DEVICE
 }
 
 internal fun routeConfirm(vm: SettingsViewModel): InputResult {
@@ -206,12 +208,13 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
 private fun routeServerConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val isOnline = state.server.connectionStatus == ConnectionStatus.ONLINE
     if (state.server.rommConfiguring) {
+        if (state.server.rommDevicePairing) {
+            vm.cancelRommConfig()
+            return InputResult.HANDLED
+        }
         val indices = rommConfigIndices(state.server)
         when (state.focusedIndex) {
-            1 -> {
-                val isPc = state.server.rommAuthMethod == RomMAuthMethod.PAIRING_CODE
-                vm.setRommAuthMethod(if (isPc) RomMAuthMethod.PASSWORD else RomMAuthMethod.PAIRING_CODE)
-            }
+            1 -> vm.setRommAuthMethod(nextRommAuthMethod(state.server.rommAuthMethod))
             indices.connectIndex -> vm.connectToRomm()
             indices.scanIndex -> vm.showRommScanner()
             indices.cancelIndex -> vm.cancelRommConfig()
@@ -697,10 +700,7 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
             state.server.connectionStatus == ConnectionStatus.OFFLINE
         val maxIndex = computeMaxFocusIndex(vm, state, isConnected)
         val newIndex = if (state.currentSection == SettingsSection.SERVER && state.server.rommConfiguring) {
-            val isPairingCode = state.server.rommAuthMethod == RomMAuthMethod.PAIRING_CODE
-            if (isPairingCode) {
-                computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
-            } else {
+            if (state.server.rommAuthMethod == RomMAuthMethod.PASSWORD && !state.server.rommDevicePairing) {
                 when {
                     delta > 0 && state.focusedIndex == 1 -> 2
                     delta > 0 && (state.focusedIndex == 2 || state.focusedIndex == 3) -> 4
@@ -708,6 +708,8 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
                     delta < 0 && (state.focusedIndex == 2 || state.focusedIndex == 3) -> 1
                     else -> computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
                 }
+            } else {
+                computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
             }
         } else {
             computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)

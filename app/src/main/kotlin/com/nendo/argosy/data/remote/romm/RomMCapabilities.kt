@@ -7,11 +7,13 @@ data class RomMCapabilities(
     val supportsDeviceSyncMode: Boolean,
     val supportsLibretroThumbnails: Boolean,
     val trustsServerHash: Boolean,
+    val supportsDeviceAuth: Boolean,
 ) {
     companion object {
         const val SYNC_ENGINE_MIN_VERSION = "4.9.0"
         const val DEVICE_SYNC_MIN_VERSION = "4.8.0"
         const val HASH_TRUST_MIN_VERSION = "4.9.0"
+        const val DEVICE_AUTH_MIN_VERSION = "5.0.0"
 
         val NONE = RomMCapabilities(
             serverVersion = "",
@@ -20,6 +22,7 @@ data class RomMCapabilities(
             supportsDeviceSyncMode = false,
             supportsLibretroThumbnails = false,
             trustsServerHash = false,
+            supportsDeviceAuth = false,
         )
 
         fun from(version: String?, libretroEnabled: Boolean? = null): RomMCapabilities {
@@ -33,6 +36,7 @@ data class RomMCapabilities(
                 supportsDeviceSyncMode = deviceSync,
                 supportsLibretroThumbnails = libretroEnabled ?: syncEngine,
                 trustsServerHash = compareVersions(version, HASH_TRUST_MIN_VERSION) >= 0,
+                supportsDeviceAuth = compareVersions(version, DEVICE_AUTH_MIN_VERSION) >= 0,
             )
         }
 

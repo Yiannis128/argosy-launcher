@@ -22,10 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.components.QrCodeWithOverlay
 import com.nendo.argosy.ui.components.QrScannerWithPermission
 import com.nendo.argosy.ui.screens.settings.RomMAuthMethod
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -46,6 +49,11 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         return
     }
 
+    if (uiState.server.rommDevicePairing) {
+        DevicePairingScreen(uiState, viewModel)
+        return
+    }
+
     val inputShape = RoundedCornerShape(Dimens.radiusMd)
     val urlFocusRequester = remember { FocusRequester() }
     val pairingCodeFocusRequester = remember { FocusRequester() }
@@ -53,15 +61,17 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val passwordFocusRequester = remember { FocusRequester() }
 
     val authMethod = uiState.server.rommAuthMethod
+    val isDevice = authMethod == RomMAuthMethod.DEVICE
     val isPairingCode = authMethod == RomMAuthMethod.PAIRING_CODE
+    val isPassword = authMethod == RomMAuthMethod.PASSWORD
     val hasCamera = uiState.server.rommHasCamera
 
     LaunchedEffect(uiState.server.rommFocusField) {
         when (uiState.server.rommFocusField) {
             0 -> urlFocusRequester.requestFocus()
             2 -> if (isPairingCode) pairingCodeFocusRequester.requestFocus()
-                 else usernameFocusRequester.requestFocus()
-            3 -> if (!isPairingCode) passwordFocusRequester.requestFocus()
+                 else if (isPassword) usernameFocusRequester.requestFocus()
+            3 -> if (isPassword) passwordFocusRequester.requestFocus()
         }
         if (uiState.server.rommFocusField != null) {
             viewModel.clearRommFocusField()
@@ -93,16 +103,30 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
 
         CyclePreference(
             title = "Auth Method",
-            value = if (isPairingCode) "Pairing Code" else "Password",
+            value = when (authMethod) {
+                RomMAuthMethod.DEVICE -> "Device Pairing"
+                RomMAuthMethod.PAIRING_CODE -> "Pairing Code"
+                RomMAuthMethod.PASSWORD -> "Password"
+            },
             isFocused = uiState.focusedIndex == 1,
             onClick = {
-                val next = if (isPairingCode) RomMAuthMethod.PASSWORD else RomMAuthMethod.PAIRING_CODE
+                val next = when (authMethod) {
+                    RomMAuthMethod.DEVICE -> RomMAuthMethod.PAIRING_CODE
+                    RomMAuthMethod.PAIRING_CODE -> RomMAuthMethod.PASSWORD
+                    RomMAuthMethod.PASSWORD -> RomMAuthMethod.DEVICE
+                }
                 viewModel.setRommAuthMethod(next)
             }
         )
 
-        if (isPairingCode) {
-            Column(
+        when {
+            isDevice -> Text(
+                text = "Pair this device by scanning a QR code with your phone, then approve it in RomM. Requires RomM 5.0 or newer.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Dimens.spacingSm)
+            )
+            isPairingCode -> Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -120,8 +144,7 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     focusRequester = pairingCodeFocusRequester
                 )
             }
-        } else {
-            Row(
+            isPassword -> Row(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -172,11 +195,20 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
 
         Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-        var buttonIndex = if (isPairingCode) 3 else 4
+        var buttonIndex = when (authMethod) {
+            RomMAuthMethod.DEVICE -> 2
+            RomMAuthMethod.PAIRING_CODE -> 3
+            RomMAuthMethod.PASSWORD -> 4
+        }
 
         ActionPreference(
-            title = if (uiState.server.rommConnecting) "Connecting..." else "Connect",
-            subtitle = "Connect to RomM server",
+            title = when {
+                uiState.server.rommConnecting && isDevice -> "Generating code..."
+                uiState.server.rommConnecting -> "Connecting..."
+                isDevice -> "Pair Device"
+                else -> "Connect"
+            },
+            subtitle = if (isDevice) "Generate a pairing QR code" else "Connect to RomM server",
             isFocused = uiState.focusedIndex == buttonIndex,
             onClick = { viewModel.connectToRomm() }
         )
@@ -196,6 +228,64 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             title = "Cancel",
             subtitle = "Return to Server settings",
             isFocused = uiState.focusedIndex == buttonIndex,
+            onClick = { viewModel.cancelRommConfig() }
+        )
+    }
+}
+
+@Composable
+private fun DevicePairingScreen(uiState: SettingsUiState, viewModel: SettingsViewModel) {
+    val server = uiState.server
+    Column(
+        modifier = Modifier
+            .padding(Dimens.spacingMd)
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+    ) {
+        Text(
+            text = "Scan to pair",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = "Scan this code with your phone, then approve this device in RomM.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        server.rommDeviceVerificationUrl?.let { url ->
+            QrCodeWithOverlay(data = url, size = 220.dp)
+        }
+
+        server.rommDeviceUserCode?.let { code ->
+            Text(
+                text = code,
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace)
+            )
+        }
+
+        server.rommDeviceVerificationUrl?.let { url ->
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (server.rommConfigError != null) {
+            Text(
+                text = server.rommConfigError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+
+        ActionPreference(
+            title = "Cancel",
+            subtitle = "Stop pairing",
+            isFocused = true,
             onClick = { viewModel.cancelRommConfig() }
         )
     }

@@ -12,8 +12,14 @@ import android.app.Application
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.remote.romm.DeviceAuthPoll
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.ui.screens.settings.RomMAuthMethod
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.libretro.formatCoreDownloadError
 import com.nendo.argosy.ui.input.GamepadInputHandler
@@ -63,6 +69,10 @@ data class FirstRunUiState(
     val focusedIndex: Int = 0,
     val rommUrl: String = "",
     val rommPairingCode: String = "",
+    val rommAuthMethod: RomMAuthMethod = RomMAuthMethod.DEVICE,
+    val rommDevicePairing: Boolean = false,
+    val rommDeviceUserCode: String? = null,
+    val rommDeviceVerificationUrl: String? = null,
     val rommShowScanner: Boolean = false,
     val rommHasCamera: Boolean = false,
     val isConnecting: Boolean = false,
@@ -116,6 +126,8 @@ class FirstRunViewModel @Inject constructor(
     )
     val uiState: StateFlow<FirstRunUiState> = _uiState.asStateFlow()
 
+    private var devicePollJob: Job? = null
+
     fun nextStep() {
         _uiState.update { state ->
             val nextStep = when (state.currentStep) {
@@ -145,6 +157,9 @@ class FirstRunViewModel @Inject constructor(
     }
 
     fun previousStep() {
+        devicePollJob?.cancel()
+        devicePollJob = null
+        romMRepository.cancelDeviceAuth()
         _uiState.update { state ->
             val prevStep = when (state.currentStep) {
                 FirstRunStep.WELCOME -> FirstRunStep.WELCOME
@@ -401,12 +416,11 @@ class FirstRunViewModel @Inject constructor(
         val state = _uiState.value
         return when (state.currentStep) {
             FirstRunStep.WELCOME -> 0
-            FirstRunStep.ROMM_LOGIN -> {
-                val hasScanButton = state.rommHasCamera
-                val connectIndex = 2
-                val scanIndex = if (hasScanButton) connectIndex + 1 else -1
-                val backIndex = if (hasScanButton) scanIndex + 1 else connectIndex + 1
-                backIndex
+            FirstRunStep.ROMM_LOGIN -> when {
+                state.rommDevicePairing -> 0
+                state.rommAuthMethod == RomMAuthMethod.DEVICE -> 3
+                state.rommHasCamera -> 5
+                else -> 4
             }
             FirstRunStep.ROMM_SUCCESS -> 0
             FirstRunStep.PERMISSIONS -> 4
@@ -504,17 +518,130 @@ class FirstRunViewModel @Inject constructor(
             it.copy(
                 rommShowScanner = false,
                 rommUrl = origin,
-                rommPairingCode = code
+                rommPairingCode = code,
+                rommAuthMethod = RomMAuthMethod.PAIRING_CODE
             )
         }
         connectToRomm()
     }
 
+    fun toggleRommAuthMethod() {
+        devicePollJob?.cancel()
+        devicePollJob = null
+        romMRepository.cancelDeviceAuth()
+        _uiState.update {
+            val next = if (it.rommAuthMethod == RomMAuthMethod.DEVICE) {
+                RomMAuthMethod.PAIRING_CODE
+            } else {
+                RomMAuthMethod.DEVICE
+            }
+            it.copy(
+                rommAuthMethod = next,
+                connectionError = null,
+                rommDevicePairing = false,
+                rommDeviceUserCode = null,
+                rommDeviceVerificationUrl = null,
+                focusedIndex = it.focusedIndex.coerceAtMost(1)
+            )
+        }
+    }
+
     fun connectToRomm() {
+        val state = _uiState.value
+        if (state.rommAuthMethod == RomMAuthMethod.DEVICE) {
+            startDevicePairing(state.rommUrl)
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isConnecting = true, connectionError = null) }
-            val state = _uiState.value
             connectWithPairingCode(state.rommUrl, state.rommPairingCode)
+        }
+    }
+
+    fun cancelDevicePairing() {
+        devicePollJob?.cancel()
+        devicePollJob = null
+        romMRepository.cancelDeviceAuth()
+        _uiState.update {
+            it.copy(
+                rommDevicePairing = false,
+                rommDeviceUserCode = null,
+                rommDeviceVerificationUrl = null,
+                isConnecting = false,
+                focusedIndex = 0
+            )
+        }
+    }
+
+    private fun startDevicePairing(url: String) {
+        if (url.isBlank()) {
+            _uiState.update { it.copy(connectionError = "Enter a server URL") }
+            return
+        }
+        devicePollJob?.cancel()
+        devicePollJob = viewModelScope.launch {
+            _uiState.update { it.copy(isConnecting = true, connectionError = null) }
+            when (val init = romMRepository.beginDeviceAuth(url)) {
+                is RomMResult.Success -> {
+                    val data = init.data
+                    _uiState.update {
+                        it.copy(
+                            isConnecting = false,
+                            rommDevicePairing = true,
+                            rommDeviceUserCode = data.userCode,
+                            rommDeviceVerificationUrl = data.verificationUrlComplete,
+                            connectionError = null
+                        )
+                    }
+                    pollForDeviceToken(data.deviceCode, data.interval, data.expiresIn)
+                }
+                is RomMResult.Error -> {
+                    _uiState.update { it.copy(isConnecting = false, connectionError = init.message) }
+                }
+            }
+        }
+    }
+
+    private suspend fun pollForDeviceToken(deviceCode: String, interval: Int, expiresIn: Int) {
+        var intervalMs = interval.coerceAtLeast(1) * 1000L
+        var elapsedMs = 0L
+        val deadlineMs = expiresIn.coerceAtLeast(1) * 1000L
+        while (currentCoroutineContext().isActive && elapsedMs < deadlineMs) {
+            delay(intervalMs)
+            elapsedMs += intervalMs
+            when (val poll = romMRepository.pollDeviceAuthOnce(deviceCode)) {
+                is DeviceAuthPoll.Approved -> {
+                    _uiState.update {
+                        it.copy(
+                            rommDevicePairing = false,
+                            rommDeviceUserCode = null,
+                            rommDeviceVerificationUrl = null
+                        )
+                    }
+                    onAuthSuccess()
+                    return
+                }
+                DeviceAuthPoll.Pending -> {}
+                DeviceAuthPoll.SlowDown -> intervalMs += 5000L
+                DeviceAuthPoll.Denied -> { failDevicePairing("Pairing was denied on the server"); return }
+                DeviceAuthPoll.Expired -> { failDevicePairing("Pairing code expired, start again"); return }
+                is DeviceAuthPoll.Failed -> { failDevicePairing(poll.message); return }
+            }
+        }
+        if (currentCoroutineContext().isActive) failDevicePairing("Pairing code expired, start again")
+    }
+
+    private fun failDevicePairing(message: String) {
+        romMRepository.cancelDeviceAuth()
+        _uiState.update {
+            it.copy(
+                rommDevicePairing = false,
+                rommDeviceUserCode = null,
+                rommDeviceVerificationUrl = null,
+                isConnecting = false,
+                connectionError = message,
+                focusedIndex = 0
+            )
         }
     }
 
@@ -690,15 +817,20 @@ class FirstRunViewModel @Inject constructor(
         when (state.currentStep) {
             FirstRunStep.WELCOME -> nextStep()
             FirstRunStep.ROMM_LOGIN -> {
-                val hasScanButton = state.rommHasCamera
-                val connectIndex = 2
-                val scanIndex = if (hasScanButton) connectIndex + 1 else -1
-                val backIndex = if (hasScanButton) scanIndex + 1 else connectIndex + 1
-                when (state.focusedIndex) {
-                    connectIndex -> if (!state.isConnecting && canConnect(state)) connectToRomm()
-                    scanIndex -> showScanner()
-                    backIndex -> previousStep()
-                    else -> setRommFocusField(state.focusedIndex)
+                if (state.rommDevicePairing) {
+                    cancelDevicePairing()
+                } else {
+                    val isDevice = state.rommAuthMethod == RomMAuthMethod.DEVICE
+                    val connectIndex = if (isDevice) 2 else 3
+                    val scanIndex = if (!isDevice && state.rommHasCamera) 4 else -1
+                    val backIndex = if (isDevice) 3 else if (state.rommHasCamera) 5 else 4
+                    when (state.focusedIndex) {
+                        1 -> toggleRommAuthMethod()
+                        connectIndex -> if (!state.isConnecting && canConnect(state)) connectToRomm()
+                        scanIndex -> showScanner()
+                        backIndex -> previousStep()
+                        else -> setRommFocusField(state.focusedIndex)
+                    }
                 }
             }
             FirstRunStep.ROMM_SUCCESS -> nextStep()
@@ -768,6 +900,7 @@ class FirstRunViewModel @Inject constructor(
     }
 
     private fun canConnect(state: FirstRunUiState): Boolean {
+        if (state.rommAuthMethod == RomMAuthMethod.DEVICE) return state.rommUrl.isNotBlank()
         val normalized = state.rommPairingCode.replace("-", "").replace(" ", "")
         return state.rommUrl.isNotBlank() && normalized.length == 8
     }

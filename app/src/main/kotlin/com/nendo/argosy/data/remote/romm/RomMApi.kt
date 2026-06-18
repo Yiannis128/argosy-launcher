@@ -38,6 +38,16 @@ interface RomMApi {
         @Body body: RomMPairingExchangeRequest
     ): Response<RomMPairingExchangeResponse>
 
+    @POST("api/auth/device/init")
+    suspend fun deviceAuthInit(
+        @Body body: RomMDeviceAuthInitRequest
+    ): Response<RomMDeviceAuthInitResponse>
+
+    @POST("api/auth/device/token")
+    suspend fun deviceAuthToken(
+        @Body body: RomMDeviceAuthTokenRequest
+    ): Response<RomMDeviceAuthTokenResponse>
+
     @GET("api/users/me")
     suspend fun getCurrentUser(): Response<RomMUser>
 

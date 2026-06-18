@@ -55,6 +55,14 @@ class RomMRepository @Inject constructor(
     suspend fun exchangePairingCode(url: String, code: String): RomMResult<String> =
         connectionManager.exchangePairingCode(url, code)
 
+    suspend fun beginDeviceAuth(url: String): RomMResult<RomMDeviceAuthInitResponse> =
+        connectionManager.beginDeviceAuth(url)
+
+    suspend fun pollDeviceAuthOnce(deviceCode: String): DeviceAuthPoll =
+        connectionManager.pollDeviceAuthOnce(deviceCode)
+
+    fun cancelDeviceAuth() = connectionManager.cancelDeviceAuth()
+
     fun disconnect() = connectionManager.disconnect()
 
     suspend fun checkConnection(retryCount: Int = 2) = connectionManager.checkConnection(retryCount)

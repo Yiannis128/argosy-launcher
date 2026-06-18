@@ -86,6 +86,7 @@ enum class ConnectionStatus {
 }
 
 enum class RomMAuthMethod {
+    DEVICE,
     PAIRING_CODE,
     PASSWORD
 }
@@ -648,6 +649,9 @@ data class ServerState(
     val rommConnecting: Boolean = false,
     val rommConfigError: String? = null,
     val rommFocusField: Int? = null,
+    val rommDevicePairing: Boolean = false,
+    val rommDeviceUserCode: String? = null,
+    val rommDeviceVerificationUrl: String? = null,
     val syncScreenshotsEnabled: Boolean = false
 )
 

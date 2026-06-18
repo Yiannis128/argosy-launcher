@@ -62,8 +62,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.components.QrCodeWithOverlay
+import com.nendo.argosy.ui.screens.settings.RomMAuthMethod
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -206,6 +209,10 @@ fun FirstRunScreen(
                 } else RommLoginStep(
                     url = uiState.rommUrl,
                     pairingCode = uiState.rommPairingCode,
+                    authMethod = uiState.rommAuthMethod,
+                    devicePairing = uiState.rommDevicePairing,
+                    deviceUserCode = uiState.rommDeviceUserCode,
+                    deviceVerificationUrl = uiState.rommDeviceVerificationUrl,
                     hasCamera = uiState.rommHasCamera,
                     isConnecting = uiState.isConnecting,
                     error = uiState.connectionError,
@@ -214,9 +221,11 @@ fun FirstRunScreen(
                     onUrlChange = viewModel::setRommUrl,
                     onPairingCodeChange = viewModel::setRommPairingCode,
                     onClearPairingCode = { viewModel.clearRommPairingCode() },
-                    onCodeComplete = { viewModel.setFocusedIndex(2) },
+                    onCodeComplete = { viewModel.setFocusedIndex(3) },
+                    onToggleAuthMethod = { viewModel.toggleRommAuthMethod() },
                     onConnect = { viewModel.connectToRomm() },
                     onScan = { viewModel.showScanner() },
+                    onCancelPairing = { viewModel.cancelDevicePairing() },
                     onBack = { viewModel.previousStep() },
                     onClearFocusField = { viewModel.clearRommFocusField() }
                 )
@@ -377,6 +386,10 @@ private fun WelcomeStep(isFocused: Boolean, onGetStarted: () -> Unit) {
 private fun RommLoginStep(
     url: String,
     pairingCode: String,
+    authMethod: RomMAuthMethod,
+    devicePairing: Boolean,
+    deviceUserCode: String?,
+    deviceVerificationUrl: String?,
     hasCamera: Boolean,
     isConnecting: Boolean,
     error: String?,
@@ -386,30 +399,42 @@ private fun RommLoginStep(
     onPairingCodeChange: (String) -> Unit,
     onClearPairingCode: () -> Unit,
     onCodeComplete: () -> Unit,
+    onToggleAuthMethod: () -> Unit,
     onConnect: () -> Unit,
     onScan: () -> Unit,
+    onCancelPairing: () -> Unit,
     onBack: () -> Unit,
     onClearFocusField: () -> Unit
 ) {
+    if (devicePairing) {
+        DevicePairingStep(
+            userCode = deviceUserCode,
+            verificationUrl = deviceVerificationUrl,
+            error = error,
+            onCancel = onCancelPairing
+        )
+        return
+    }
+
     val inputShape = RoundedCornerShape(Dimens.radiusMd)
     val urlFocusRequester = remember { FocusRequester() }
     val pairingCodeFocusRequester = remember { FocusRequester() }
     val focusManager: FocusManager = LocalFocusManager.current
     val keyboard: SoftwareKeyboardController? = LocalSoftwareKeyboardController.current
 
+    val isDevice = authMethod == RomMAuthMethod.DEVICE
     val normalizedCode = pairingCode.replace("-", "").replace(" ", "")
     val codeComplete = normalizedCode.length == 8
-    val canConnect = !isConnecting && url.isNotBlank() && codeComplete
+    val canConnect = !isConnecting && url.isNotBlank() && (isDevice || codeComplete)
 
-    val hasScanButton = hasCamera
-    val connectIndex = 2
-    val scanIndex = if (hasScanButton) connectIndex + 1 else -1
-    val backIndex = if (hasScanButton) scanIndex + 1 else connectIndex + 1
+    val connectIndex = if (isDevice) 2 else 3
+    val scanIndex = if (!isDevice && hasCamera) 4 else -1
+    val backIndex = if (isDevice) 3 else if (hasCamera) 5 else 4
 
     LaunchedEffect(rommFocusField) {
         when (rommFocusField) {
             0 -> urlFocusRequester.requestFocus()
-            1 -> pairingCodeFocusRequester.requestFocus()
+            2 -> pairingCodeFocusRequester.requestFocus()
         }
         if (rommFocusField != null) {
             onClearFocusField()
@@ -417,7 +442,7 @@ private fun RommLoginStep(
     }
 
     LaunchedEffect(codeComplete) {
-        if (codeComplete) {
+        if (codeComplete && !isDevice) {
             keyboard?.hide()
             focusManager.clearFocus()
             onCodeComplete()
@@ -446,35 +471,52 @@ private fun RommLoginStep(
         )
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-        Text(
-            text = "Create an API token in the RomM web UI, then click Pair Device to get a code.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(0.8f)
+        FocusableOutlinedButton(
+            text = if (isDevice) "Use a pairing code instead" else "Use device pairing instead",
+            isFocused = focusedIndex == 1,
+            enabled = !isConnecting,
+            onClick = onToggleAuthMethod
         )
-        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+        Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            com.nendo.argosy.ui.screens.settings.components.PairingCodeInput(
-                code = pairingCode,
-                onCodeChange = onPairingCodeChange,
-                isFocused = focusedIndex == 1,
-                focusRequester = pairingCodeFocusRequester
+        if (isDevice) {
+            Text(
+                text = "Scan a QR code with your phone to pair this device. Requires RomM 5.0 or newer.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
             )
-            if (pairingCode.isNotEmpty()) {
-                IconButton(
-                    onClick = onClearPairingCode,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear code",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        } else {
+            Text(
+                text = "Create an API token in the RomM web UI, then click Connect to enter the code.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                com.nendo.argosy.ui.screens.settings.components.PairingCodeInput(
+                    code = pairingCode,
+                    onCodeChange = onPairingCodeChange,
+                    isFocused = focusedIndex == 2,
+                    focusRequester = pairingCodeFocusRequester
+                )
+                if (pairingCode.isNotEmpty()) {
+                    IconButton(
+                        onClick = onClearPairingCode,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear code",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -501,14 +543,19 @@ private fun RommLoginStep(
             )
             Spacer(modifier = Modifier.width(Dimens.spacingMd))
             FocusableButton(
-                text = if (isConnecting) "Connecting..." else "Connect",
+                text = when {
+                    isConnecting && isDevice -> "Generating code..."
+                    isConnecting -> "Connecting..."
+                    isDevice -> "Pair Device"
+                    else -> "Connect"
+                },
                 isFocused = focusedIndex == connectIndex,
                 enabled = canConnect,
                 onClick = onConnect
             )
         }
 
-        if (hasScanButton) {
+        if (!isDevice && hasCamera) {
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
             FocusableOutlinedButton(
                 text = "Scan QR Code",
@@ -517,6 +564,71 @@ private fun RommLoginStep(
                 onClick = onScan
             )
         }
+    }
+}
+
+@Composable
+private fun DevicePairingStep(
+    userCode: String?,
+    verificationUrl: String?,
+    error: String?,
+    onCancel: () -> Unit
+) {
+    StepColumn {
+        StepHeader(title = "Scan to pair")
+        Spacer(modifier = Modifier.height(Dimens.spacingMd))
+
+        Text(
+            text = "Scan this code with your phone, then approve this device in RomM.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(0.8f)
+        )
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+
+        verificationUrl?.let { url ->
+            QrCodeWithOverlay(data = url, size = 240.dp)
+            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+        }
+
+        userCode?.let { code ->
+            Text(
+                text = code,
+                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace)
+            )
+        }
+
+        verificationUrl?.let { url ->
+            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+        }
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+
+        FocusableOutlinedButton(
+            text = "Cancel",
+            isFocused = true,
+            enabled = true,
+            onClick = onCancel
+        )
     }
 }
 
