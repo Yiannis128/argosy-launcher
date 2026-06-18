@@ -374,6 +374,7 @@ class LibretroActivity : ComponentActivity() {
             inputMapper = inputMapper,
             platformSlug = platformSlug,
             coreId = resolvedCoreId,
+            gameId = perGameMappingId,
             limitHotkeysToPlayer1 = limitHotkeysToPlayer1,
             scope = lifecycleScope
         )
@@ -1240,7 +1241,7 @@ class LibretroActivity : ComponentActivity() {
             onGetMapping = { controller, mappingPlatformId ->
                 val device = InputDevice.getDevice(controller.deviceId)
                 if (device != null) {
-                    repo.getOrCreateExtendedMappingForDevice(device, mappingPlatformId) to null
+                    repo.getOrCreateExtendedMappingForDevice(device, mappingPlatformId, perGameMappingId) to null
                 } else {
                     emptyMap<InputSource, Int>() to null
                 }
@@ -1248,7 +1249,7 @@ class LibretroActivity : ComponentActivity() {
             onSaveMapping = { controller, mapping, presetName, isAutoDetected, mappingPlatformId ->
                 val device = InputDevice.getDevice(controller.deviceId)
                 if (device != null) {
-                    repo.saveExtendedMapping(device, mapping, presetName, isAutoDetected, mappingPlatformId)
+                    repo.saveExtendedMapping(device, mapping, presetName, isAutoDetected, mappingPlatformId, perGameMappingId)
                     inputConfig.refreshInputMappings()
                 }
             },
@@ -1836,6 +1837,9 @@ class LibretroActivity : ComponentActivity() {
 
     private val isHwCore: Boolean
         get() = LibretroCoreRegistry.isHardwareRendered(resolvedCoreId)
+
+    private val perGameMappingId: Long?
+        get() = gameId.takeIf { perGameSettingsEnabled && it != -1L }
 
     private fun saveResumeStateAndTeardown() {
         hwCoreTornDownForBackground = true

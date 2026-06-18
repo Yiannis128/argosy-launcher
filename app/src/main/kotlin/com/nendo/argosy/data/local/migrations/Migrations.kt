@@ -1838,3 +1838,34 @@ object Migration_125_126 : Migration(125, 126) {
         db.execSQL("ALTER TABLE games ADD COLUMN perGameSettingsEnabled INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+object Migration_126_127 : Migration(126, 127) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS game_controller_mappings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                gameId INTEGER NOT NULL,
+                controllerId TEXT NOT NULL,
+                controllerName TEXT NOT NULL,
+                vendorId INTEGER NOT NULL,
+                productId INTEGER NOT NULL,
+                mappingJson TEXT NOT NULL,
+                presetName TEXT,
+                isAutoDetected INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                FOREIGN KEY (gameId) REFERENCES games(id) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_game_controller_mappings_gameId " +
+                "ON game_controller_mappings (gameId)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_game_controller_mappings_gameId_controllerId " +
+                "ON game_controller_mappings (gameId, controllerId)"
+        )
+    }
+}

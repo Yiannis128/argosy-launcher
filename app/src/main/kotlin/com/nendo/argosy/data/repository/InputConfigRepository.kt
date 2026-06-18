@@ -4,8 +4,10 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import com.nendo.argosy.data.local.dao.ControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerOrderDao
+import com.nendo.argosy.data.local.dao.GameControllerMappingDao
 import com.nendo.argosy.data.local.dao.HotkeyDao
 import com.nendo.argosy.data.local.entity.ControllerMappingEntity
+import com.nendo.argosy.data.local.entity.GameControllerMappingEntity
 import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.data.local.entity.CoreInputMode
 import com.nendo.argosy.data.local.entity.HotkeyAction
@@ -40,8 +42,23 @@ data class ControllerInfo(
 class InputConfigRepository @Inject constructor(
     private val controllerOrderDao: ControllerOrderDao,
     private val controllerMappingDao: ControllerMappingDao,
+    private val gameControllerMappingDao: GameControllerMappingDao,
     private val hotkeyDao: HotkeyDao
 ) {
+    private fun GameControllerMappingEntity.asControllerMapping(): ControllerMappingEntity =
+        ControllerMappingEntity(
+            id = id,
+            controllerId = controllerId,
+            controllerName = controllerName,
+            vendorId = vendorId,
+            productId = productId,
+            platformId = null,
+            mappingJson = mappingJson,
+            presetName = presetName,
+            isAutoDetected = isAutoDetected,
+            createdAt = createdAt,
+            updatedAt = updatedAt
+        )
     fun observeControllerOrder(): Flow<List<ControllerOrderEntity>> =
         controllerOrderDao.observeAll()
 
@@ -78,7 +95,10 @@ class InputConfigRepository @Inject constructor(
     fun observeControllerMappings(): Flow<List<ControllerMappingEntity>> =
         controllerMappingDao.observeAll()
 
-    private suspend fun findMapping(controllerId: String, platformId: String?): ControllerMappingEntity? {
+    private suspend fun findMapping(controllerId: String, platformId: String?, gameId: Long? = null): ControllerMappingEntity? {
+        if (gameId != null) {
+            gameControllerMappingDao.getByGameAndController(gameId, controllerId)?.let { return it.asControllerMapping() }
+        }
         if (platformId != null) {
             controllerMappingDao.getByControllerIdAndPlatform(controllerId, platformId)?.let { return it }
         }
@@ -101,8 +121,35 @@ class InputConfigRepository @Inject constructor(
         productId: Int,
         mappingJson: String,
         presetName: String?,
-        isAutoDetected: Boolean
+        isAutoDetected: Boolean,
+        gameId: Long? = null
     ) {
+        if (gameId != null) {
+            val existingGame = gameControllerMappingDao.getByGameAndController(gameId, controllerId)
+            if (existingGame != null) {
+                gameControllerMappingDao.updateMapping(
+                    gameId = gameId,
+                    controllerId = controllerId,
+                    mappingJson = mappingJson,
+                    presetName = presetName,
+                    isAutoDetected = isAutoDetected
+                )
+            } else {
+                gameControllerMappingDao.upsert(
+                    GameControllerMappingEntity(
+                        gameId = gameId,
+                        controllerId = controllerId,
+                        controllerName = controllerName,
+                        vendorId = vendorId,
+                        productId = productId,
+                        mappingJson = mappingJson,
+                        presetName = presetName,
+                        isAutoDetected = isAutoDetected
+                    )
+                )
+            }
+            return
+        }
         val existing = findExactMapping(controllerId, platformId)
         if (existing != null) {
             if (platformId != null) {
@@ -216,19 +263,19 @@ class InputConfigRepository @Inject constructor(
         controllerMappingDao.deleteAllAutoDetected()
     }
 
-    suspend fun getExtendedMappingForController(controllerId: String, platformId: String? = null): Map<InputSource, Int>? =
+    suspend fun getExtendedMappingForController(controllerId: String, platformId: String? = null, gameId: Long? = null): Map<InputSource, Int>? =
         withContext(Dispatchers.IO) {
-            val entity = findMapping(controllerId, platformId) ?: return@withContext null
+            val entity = findMapping(controllerId, platformId, gameId) ?: return@withContext null
             parseExtendedMappingJson(entity.mappingJson)
         }
 
-    suspend fun getExtendedMappingForDevice(device: InputDevice, platformId: String? = null): Map<InputSource, Int>? =
-        getExtendedMappingForController(getControllerId(device), platformId)
+    suspend fun getExtendedMappingForDevice(device: InputDevice, platformId: String? = null, gameId: Long? = null): Map<InputSource, Int>? =
+        getExtendedMappingForController(getControllerId(device), platformId, gameId)
 
-    suspend fun getOrCreateExtendedMappingForDevice(device: InputDevice, platformId: String? = null): Map<InputSource, Int> =
+    suspend fun getOrCreateExtendedMappingForDevice(device: InputDevice, platformId: String? = null, gameId: Long? = null): Map<InputSource, Int> =
         withContext(Dispatchers.IO) {
             val controllerId = getControllerId(device)
-            val existing = findMapping(controllerId, platformId)
+            val existing = findMapping(controllerId, platformId, gameId)
 
             if (existing != null) {
                 return@withContext parseExtendedMappingJson(existing.mappingJson)
@@ -256,7 +303,8 @@ class InputConfigRepository @Inject constructor(
         mapping: Map<InputSource, Int>,
         presetName: String?,
         isAutoDetected: Boolean,
-        platformId: String? = null
+        platformId: String? = null,
+        gameId: Long? = null
     ) = withContext(Dispatchers.IO) {
         val controllerId = getControllerId(device)
         val mappingJson = encodeExtendedMappingJson(mapping)
@@ -269,9 +317,10 @@ class InputConfigRepository @Inject constructor(
             productId = device.productId,
             mappingJson = mappingJson,
             presetName = presetName,
-            isAutoDetected = isAutoDetected
+            isAutoDetected = isAutoDetected,
+            gameId = gameId
         )
-        Logger.info(TAG, "Saved extended mapping for ${device.name} (platform: $platformId, preset: $presetName)")
+        Logger.info(TAG, "Saved extended mapping for ${device.name} (platform: $platformId, game: $gameId, preset: $presetName)")
     }
 
     fun groupMappingByRetroButton(mapping: Map<InputSource, Int>): Map<Int, List<InputSource>> {

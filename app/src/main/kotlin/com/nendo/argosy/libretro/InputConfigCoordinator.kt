@@ -20,6 +20,7 @@ class InputConfigCoordinator(
     private val inputMapper: ControllerInputMapper,
     private val platformSlug: String,
     private val coreId: String?,
+    private val gameId: Long?,
     private val limitHotkeysToPlayer1: Boolean,
     private val scope: CoroutineScope
 ) {
@@ -49,7 +50,8 @@ class InputConfigCoordinator(
             for (controller in inputConfigRepository.getConnectedControllers()) {
                 val mapping = inputConfigRepository.getOrCreateExtendedMappingForDevice(
                     InputDevice.getDevice(controller.deviceId)!!,
-                    mappingPlatformId
+                    mappingPlatformId,
+                    gameId
                 )
                 mappings[controller.controllerId] = mapping
             }
@@ -96,7 +98,7 @@ class InputConfigCoordinator(
         val mappings = mutableMapOf<String, Map<InputSource, Int>>()
         for (controller in inputConfigRepository.getConnectedControllers()) {
             val device = InputDevice.getDevice(controller.deviceId) ?: continue
-            val mapping = inputConfigRepository.getOrCreateExtendedMappingForDevice(device, mappingPlatformId)
+            val mapping = inputConfigRepository.getOrCreateExtendedMappingForDevice(device, mappingPlatformId, gameId)
             mappings[controller.controllerId] = mapping
         }
         inputMapper.setExtendedMappings(mappings)

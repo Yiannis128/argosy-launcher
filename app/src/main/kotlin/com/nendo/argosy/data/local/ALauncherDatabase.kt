@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.dao.CheatDao
 import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
 import com.nendo.argosy.data.local.dao.GameCoreOptionOverrideDao
+import com.nendo.argosy.data.local.dao.GameControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerOrderDao
 import com.nendo.argosy.data.local.dao.CoreVersionDao
@@ -50,6 +51,7 @@ import com.nendo.argosy.data.local.entity.CollectionGameEntity
 import com.nendo.argosy.data.local.entity.CachedLicenseEntity
 import com.nendo.argosy.data.local.entity.CoreOptionOverrideEntity
 import com.nendo.argosy.data.local.entity.GameCoreOptionOverrideEntity
+import com.nendo.argosy.data.local.entity.GameControllerMappingEntity
 import com.nendo.argosy.data.local.entity.ControllerMappingEntity
 import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.data.local.entity.CoreVersionEntity
@@ -117,6 +119,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         PendingSocialSyncEntity::class,
         CoreOptionOverrideEntity::class,
         GameCoreOptionOverrideEntity::class,
+        GameControllerMappingEntity::class,
         SteamAccountEntity::class,
         SteamLicenseEntity::class,
         SteamDownloadQueueEntity::class,
@@ -127,7 +130,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         PendingConflictEntity::class,
         com.nendo.argosy.data.local.entity.TouchLayoutOverrideEntity::class
     ],
-    version = 126,
+    version = 127,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -164,6 +167,7 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun socialGameCacheDao(): SocialGameCacheDao
     abstract fun coreOptionOverrideDao(): CoreOptionOverrideDao
     abstract fun gameCoreOptionOverrideDao(): GameCoreOptionOverrideDao
+    abstract fun gameControllerMappingDao(): GameControllerMappingDao
     abstract fun steamAccountDao(): SteamAccountDao
     abstract fun steamLicenseDao(): SteamLicenseDao
     abstract fun cachedLicenseDao(): CachedLicenseDao
