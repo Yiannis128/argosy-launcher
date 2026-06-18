@@ -499,6 +499,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             .sortedByDescending { it.platform.syncEnabled }
 
         val currentEmulatorState = vm.emulatorDelegate.state.value
+        val anchoredPlatformId = vm._uiState.value.emulators.platforms
+            .getOrNull(vm._uiState.value.platformDetail.platformIndex)?.platform?.id
         val archOverride = vm.libretroSettingsRepo.getArchitectureOverride().first()
         vm.emulatorDelegate.updateState(EmulatorState(
             platforms = filteredPlatformConfigs,
@@ -509,6 +511,15 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions
         ))
         vm.emulatorDelegate.updateCoreCounts()
+        anchoredPlatformId?.let { anchorId ->
+            val reanchored = filteredPlatformConfigs.indexOfFirst { it.platform.id == anchorId }
+            if (reanchored >= 0) {
+                vm._uiState.update { st ->
+                    st.copy(platformDetail = st.platformDetail.copy(platformIndex = reanchored))
+                }
+            }
+        }
+        routeLoadAvailablePlatformsForLibretro(vm)
 
         vm.serverDelegate.updateState(ServerState(
             connectionStatus = connectionStatus,
