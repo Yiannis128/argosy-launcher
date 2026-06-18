@@ -16,6 +16,13 @@ object CoreControlManifestRegistry {
         fun add(m: CoreControlManifest) = put(m.coreId, m)
 
         add(manifest("melonds", control(RetroButton.R2, "Swap screens")))
+        add(
+            manifest(
+                "melondsds",
+                control(RetroButton.R2, "Next screen layout"),
+                control(RetroButton.L3, "Close lid")
+            )
+        )
         add(manifest("handy", control(RetroButton.SELECT, "Rotate screen")))
         add(manifest("mednafen_lynx", control(RetroButton.SELECT, "Rotate screen")))
         add(manifest("mednafen_wswan", control(RetroButton.SELECT, "Rotate screen")))

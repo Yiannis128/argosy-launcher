@@ -1261,13 +1261,17 @@ object EmulatorRegistry {
 
     fun getCoresForPlatform(platformId: String): List<RetroArchCore> {
         val canonical = PlatformDefinitions.getCanonicalSlug(platformId)
-        return platformCores[canonical] ?: emptyList()
+        val curated = platformCores[canonical] ?: emptyList()
+        val curatedIds = curated.map { it.id }.toSet()
+        val builtIn = com.nendo.argosy.libretro.LibretroCoreRegistry
+            .getCoresForPlatform(canonical)
+            .filter { it.coreId !in curatedIds }
+            .map { RetroArchCore(it.coreId, it.displayName) }
+        return curated + builtIn
     }
 
-    fun getDefaultCore(platformId: String): RetroArchCore? {
-        val canonical = PlatformDefinitions.getCanonicalSlug(platformId)
-        return platformCores[canonical]?.firstOrNull()
-    }
+    fun getDefaultCore(platformId: String): RetroArchCore? =
+        getCoresForPlatform(platformId).firstOrNull()
 
     private val coreSaveDirByCoreId: Map<String, String> by lazy {
         platformCores.values
