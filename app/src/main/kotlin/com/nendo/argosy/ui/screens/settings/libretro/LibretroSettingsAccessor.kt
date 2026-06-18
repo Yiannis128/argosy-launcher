@@ -51,6 +51,7 @@ class GlobalLibretroSettingsAccessor(
         LibretroSettingDef.RewindBufferDuration -> state.rewindBufferDuration
         LibretroSettingDef.AutoSaveState -> state.autoSaveState.toString()
         LibretroSettingDef.AutoRestoreState -> state.autoRestoreState.toString()
+        LibretroSettingDef.HwCoreSaveStates -> state.hwCoreSaveStatesEnabled.toString()
     }
 
     override fun hasOverride(setting: LibretroSettingDef): Boolean = false
@@ -74,6 +75,7 @@ class GlobalLibretroSettingsAccessor(
             LibretroSettingDef.LowLatencyAudio -> state.lowLatencyAudio
             LibretroSettingDef.AutoSaveState -> state.autoSaveState
             LibretroSettingDef.AutoRestoreState -> state.autoRestoreState
+            LibretroSettingDef.HwCoreSaveStates -> state.hwCoreSaveStatesEnabled
             else -> return
         }
         onToggle(setting, !current)
@@ -144,6 +146,7 @@ class PlatformLibretroSettingsAccessor(
         LibretroSettingDef.RewindBufferDuration -> globalState.rewindBufferDuration
         LibretroSettingDef.AutoSaveState -> globalState.autoSaveState.toString()
         LibretroSettingDef.AutoRestoreState -> globalState.autoRestoreState.toString()
+        LibretroSettingDef.HwCoreSaveStates -> globalState.hwCoreSaveStatesEnabled.toString()
     }
 
     override fun hasOverride(setting: LibretroSettingDef): Boolean {
@@ -199,6 +202,7 @@ class PlatformLibretroSettingsAccessor(
             LibretroSettingDef.RewindBufferDuration -> ps.rewindBufferDuration?.let { "${it}s" }
             LibretroSettingDef.AutoSaveState -> null
             LibretroSettingDef.AutoRestoreState -> null
+            LibretroSettingDef.HwCoreSaveStates -> null
         }
     }
 

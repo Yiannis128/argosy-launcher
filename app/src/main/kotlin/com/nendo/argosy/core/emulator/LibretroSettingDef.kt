@@ -138,6 +138,14 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
+    data object HwCoreSaveStates : LibretroSettingDef(
+        key = "hwCoreSaveStates",
+        section = "saving",
+        title = "Hardware-Core Save States",
+        subtitle = "Experimental; cores like Dolphin may black-screen or fail to resume",
+        type = SettingType.Switch
+    )
+
     companion object {
         val ALL: List<LibretroSettingDef> = listOf(
             Shader,
@@ -156,7 +164,8 @@ sealed class LibretroSettingDef(
             SkipDuplicateFrames,
             LowLatencyAudio,
             AutoSaveState,
-            AutoRestoreState
+            AutoRestoreState,
+            HwCoreSaveStates
         )
 
         val SECTIONS: Map<String, String> = mapOf(

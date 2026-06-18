@@ -176,6 +176,13 @@ internal fun routeSetBuiltinAutoRestoreState(vm: SettingsViewModel, enabled: Boo
     }
 }
 
+internal fun routeSetBuiltinHwCoreSaveStates(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(hwCoreSaveStatesEnabled = enabled)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setBuiltinHwCoreSaveStates(enabled)
+    }
+}
+
 internal fun routeSetBuiltinSavePath(vm: SettingsViewModel, newPath: String) {
     val oldPath = vm._uiState.value.builtinVideo.savePath
     initiateBuiltinPathMigration(vm, BuiltinPathType.SAVE, oldPath, newPath)
@@ -650,7 +657,8 @@ internal fun routeUpdatePlatformLibretroSetting(vm: SettingsViewModel, setting: 
             LibretroSettingDef.RewindSpeed -> current.copy(rewindSpeed = value?.removeSuffix("x")?.toIntOrNull())
             LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value?.removeSuffix("s")?.toIntOrNull())
             LibretroSettingDef.AutoSaveState,
-            LibretroSettingDef.AutoRestoreState -> current
+            LibretroSettingDef.AutoRestoreState,
+            LibretroSettingDef.HwCoreSaveStates -> current
         }
 
         if (updated.hasAnyOverrides()) {

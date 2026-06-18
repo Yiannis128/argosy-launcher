@@ -152,6 +152,7 @@ class LibretroActivity : ComponentActivity() {
 
     private var coreLoadedSuccessfully = false
     @Volatile private var coreDestroyed = false
+    @Volatile private var hwCoreTornDownForBackground = false
     private var autoSaveStateCaptured = false
     private lateinit var retroView: GLRetroView
     private val portResolver = ControllerPortResolver()
@@ -202,6 +203,7 @@ class LibretroActivity : ComponentActivity() {
     private var launchMode = LaunchMode.RESUME
     private var statesSupported = true
     private var autoSaveEnabled = true
+    private var hwCoreSaveStatesEnabled = false
     private var menuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP
     private var autoRestorePromptVisible by mutableStateOf(false)
     private var autoRestorePromptFocusIndex by mutableStateOf(0)
@@ -341,6 +343,7 @@ class LibretroActivity : ComponentActivity() {
         }
 
         autoSaveEnabled = globalSettings.autoSaveState && !isGuestJoinedSession
+        hwCoreSaveStatesEnabled = globalSettings.hwCoreSaveStatesEnabled
         initializeInputHandlers()
         initializeVideoSettings(globalSettings, settings)
         detectBFICapability()
@@ -1443,6 +1446,11 @@ class LibretroActivity : ComponentActivity() {
             statesSupported = false
             return
         }
+        if (isHwCore && !hwCoreSaveStatesEnabled) {
+            statesSupported = false
+            Log.d(TAG, "State support disabled for hardware-rendered core=$resolvedCoreId")
+            return
+        }
         if (com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug) in PLATFORMS_WITHOUT_STATE_SUPPORT) {
             statesSupported = false
             Log.d(TAG, "State support disabled for platform=$platformSlug")
@@ -1491,6 +1499,16 @@ class LibretroActivity : ComponentActivity() {
 
     private fun attemptAutoRestore() {
         if (isGuestJoinedSession) return
+        val resumeFile = saveStateManager.getSlotFile(SaveStateManager.RESUME_SLOT)
+        if (resumeFile.exists()) {
+            if (!hardcoreMode && statesSupported &&
+                saveStateManager.performSlotLoad(retroView, SaveStateManager.RESUME_SLOT)
+            ) {
+                inGameMessage = "Resumed"
+            }
+            resumeFile.delete()
+            return
+        }
         if (launchMode != LaunchMode.RESUME || hardcoreMode || !statesSupported) return
         val autoFile = saveStateManager.getSlotFile(SaveStateManager.AUTO_SLOT)
         if (!autoFile.exists()) return
@@ -1807,9 +1825,34 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (hwCoreTornDownForBackground) {
+            recreate()
+            return
+        }
         autoSaveStateCaptured = false
         enterImmersiveMode()
         retroView.onResume()
+    }
+
+    private val isHwCore: Boolean
+        get() = LibretroCoreRegistry.isHardwareRendered(resolvedCoreId)
+
+    private fun saveResumeStateAndTeardown() {
+        hwCoreTornDownForBackground = true
+        if (!isGuestJoinedSession) {
+            saveStateManager.saveSram(retroView)
+        }
+        if (!hardcoreMode && statesSupported) {
+            try {
+                val stateData = retroView.serializeState()
+                saveStateManager.performSlotSave(SaveStateManager.RESUME_SLOT, stateData, null)
+            } catch (e: Exception) {
+                Log.w(TAG, "Resume-state save failed", e)
+            }
+        }
+        coreDestroyed = true
+        retroView.destroyNative()
+        retroView.onPause()
     }
 
     override fun onUserLeaveHint() {
@@ -1841,6 +1884,13 @@ class LibretroActivity : ComponentActivity() {
             return
         }
         if (coreLoadedSuccessfully) {
+            if (!isFinishing && !coreDestroyed && isHwCore && !isGuestJoinedSession &&
+                !(::netplay.isInitialized && netplay.inSession)
+            ) {
+                saveResumeStateAndTeardown()
+                super.onPause()
+                return
+            }
             performAutoSaveState()
             if (!isGuestJoinedSession && !coreDestroyed) {
                 saveStateManager.saveSram(retroView)

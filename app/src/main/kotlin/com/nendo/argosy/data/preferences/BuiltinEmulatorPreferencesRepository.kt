@@ -45,6 +45,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_AUTO_SAVE_STATE = booleanPreferencesKey("builtin_auto_save_state")
         val BUILTIN_AUTO_RESTORE_STATE = booleanPreferencesKey("builtin_auto_restore_state")
         val BUILTIN_AUTO_RESTORE_STATE_MODE = stringPreferencesKey("builtin_auto_restore_state_mode")
+        val BUILTIN_HW_CORE_SAVE_STATES = booleanPreferencesKey("builtin_hw_core_save_states")
         val BUILTIN_CUSTOM_SAVE_PATH = stringPreferencesKey("builtin_custom_save_path")
         val BUILTIN_CUSTOM_STATE_PATH = stringPreferencesKey("builtin_custom_state_path")
         val BUILTIN_MIGRATION_V1 = booleanPreferencesKey("builtin_migration_v2")
@@ -95,6 +96,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             autoRestoreState = prefs[Keys.BUILTIN_AUTO_RESTORE_STATE]
                 ?: (prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] != "off"),
             autoRestoreStateMode = prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] ?: "restore",
+            hwCoreSaveStatesEnabled = prefs[Keys.BUILTIN_HW_CORE_SAVE_STATES] ?: false,
             customSavePath = prefs[Keys.BUILTIN_CUSTOM_SAVE_PATH],
             customStatePath = prefs[Keys.BUILTIN_CUSTOM_STATE_PATH],
             architectureOverride = prefs[Keys.BUILTIN_ARCHITECTURE_OVERRIDE],
@@ -247,6 +249,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinAutoRestoreState(enabled: Boolean) {
         dataStore.edit { it[Keys.BUILTIN_AUTO_RESTORE_STATE] = enabled }
+    }
+
+    suspend fun setBuiltinHwCoreSaveStates(enabled: Boolean) {
+        dataStore.edit { it[Keys.BUILTIN_HW_CORE_SAVE_STATES] = enabled }
     }
 
     suspend fun setBuiltinCustomSavePath(path: String?) {

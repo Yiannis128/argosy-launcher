@@ -116,6 +116,9 @@ class LibretroSettingsRepository @Inject constructor(
     suspend fun setBuiltinAutoRestoreStateMode(mode: String) =
         builtinPrefs.setBuiltinAutoRestoreStateMode(mode)
 
+    suspend fun setBuiltinHwCoreSaveStates(enabled: Boolean) =
+        builtinPrefs.setBuiltinHwCoreSaveStates(enabled)
+
     suspend fun setBuiltinCustomSavePath(path: String?) =
         builtinPrefs.setBuiltinCustomSavePath(path)
 

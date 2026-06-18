@@ -512,6 +512,13 @@ object LibretroCoreRegistry {
 
     fun getCoreById(coreId: String): CoreInfo? = cores.find { it.coreId == coreId }
 
+    private val hardwareRenderedCores = setOf(
+        "dolphin", "flycast", "mupen64plus_next_gles3", "mupen64plus_next_gles2",
+        "parallel_n64", "ppsspp", "mednafen_psx_hw"
+    )
+
+    fun isHardwareRendered(coreId: String?): Boolean = coreId in hardwareRenderedCores
+
     fun getCoreByFileName(fileName: String): CoreInfo? = cores.find { it.fileName == fileName }
 
     fun getCoresForPlatform(platformSlug: String): List<CoreInfo> {

@@ -297,7 +297,7 @@ class SaveStateManager(
     }
 
     private fun deleteAllStates() {
-        for (slot in AUTO_SLOT..MAX_SLOT) {
+        for (slot in RESUME_SLOT..MAX_SLOT) {
             val stateFile = getSlotFile(slot)
             val screenshotFile = getSlotScreenshotFile(slot)
             if (stateFile.exists()) {
@@ -315,6 +315,7 @@ class SaveStateManager(
     private fun buildSlotFileName(slotNumber: Int): String {
         return when (slotNumber) {
             AUTO_SLOT -> "$romBaseName.state.auto"
+            RESUME_SLOT -> "$romBaseName.state.resume"
             0 -> "$romBaseName.state"
             else -> "$romBaseName.state$slotNumber"
         }
@@ -353,6 +354,7 @@ class SaveStateManager(
     companion object {
         private const val TAG = "SaveStateManager"
         const val AUTO_SLOT = -1
+        const val RESUME_SLOT = -2
         const val MAX_SLOT = 9
         private const val SCREENSHOT_MAX_WIDTH = 480
     }

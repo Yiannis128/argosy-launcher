@@ -649,6 +649,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     rewindBufferDuration = builtinSettings.rewindBufferDurationDisplay,
                     autoSaveState = builtinSettings.autoSaveState,
                     autoRestoreState = builtinSettings.autoRestoreState,
+                    hwCoreSaveStatesEnabled = builtinSettings.hwCoreSaveStatesEnabled,
                     savePath = builtinSettings.customSavePath
                         ?: AppPaths.libretroSavesDir(vm.context.filesDir).absolutePath,
                     statePath = builtinSettings.customStatePath

@@ -129,7 +129,8 @@ class VideoSettingsManager(
         LibretroSettingDef.RewindSpeed -> currentRewindSpeed
         LibretroSettingDef.RewindBufferDuration -> currentRewindBufferDuration
         LibretroSettingDef.AutoSaveState,
-        LibretroSettingDef.AutoRestoreState -> ""
+        LibretroSettingDef.AutoRestoreState,
+        LibretroSettingDef.HwCoreSaveStates -> ""
     }
 
     fun getGlobalVideoSettingValue(setting: LibretroSettingDef): String = when (setting) {
@@ -151,7 +152,8 @@ class VideoSettingsManager(
         LibretroSettingDef.RewindSpeed -> globalSettings.rewindSpeedDisplay
         LibretroSettingDef.RewindBufferDuration -> globalSettings.rewindBufferDurationDisplay
         LibretroSettingDef.AutoSaveState,
-        LibretroSettingDef.AutoRestoreState -> ""
+        LibretroSettingDef.AutoRestoreState,
+        LibretroSettingDef.HwCoreSaveStates -> ""
     }
 
     private fun getGlobalFrameForPlatform(): String? {
@@ -225,7 +227,8 @@ class VideoSettingsManager(
                 LibretroSettingDef.RewindSpeed -> current.copy(rewindSpeed = null)
                 LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = null)
                 LibretroSettingDef.AutoSaveState,
-                LibretroSettingDef.AutoRestoreState -> current
+                LibretroSettingDef.AutoRestoreState,
+                LibretroSettingDef.HwCoreSaveStates -> current
             }
             if (updated.hasAnyOverrides()) {
                 platformLibretroSettingsDao.upsert(updated)
@@ -372,7 +375,8 @@ class VideoSettingsManager(
             LibretroSettingDef.VSync -> {
             }
             LibretroSettingDef.AutoSaveState,
-            LibretroSettingDef.AutoRestoreState -> {
+            LibretroSettingDef.AutoRestoreState,
+            LibretroSettingDef.HwCoreSaveStates -> {
             }
         }
 
@@ -456,7 +460,8 @@ class VideoSettingsManager(
                 LibretroSettingDef.RewindSpeed -> current.copy(rewindSpeed = value.removeSuffix("x").toIntOrNull())
                 LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value.removeSuffix("s").toIntOrNull())
                 LibretroSettingDef.AutoSaveState,
-                LibretroSettingDef.AutoRestoreState -> current
+                LibretroSettingDef.AutoRestoreState,
+                LibretroSettingDef.HwCoreSaveStates -> current
             }
 
             if (updated.hasAnyOverrides()) {
