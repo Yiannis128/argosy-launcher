@@ -226,6 +226,13 @@ object LibretroCoreRegistry {
             requiresBios = listOf("bios7.bin", "bios9.bin", "firmware.bin"),
             isDefault = true
         ),
+        CoreInfo(
+            coreId = "melondsds",
+            fileName = "melondsds_libretro_android.so",
+            displayName = "melonDS DS",
+            platforms = setOf("nds", "ds"),
+            requiresBios = listOf("bios7.bin", "bios9.bin", "firmware.bin")
+        ),
 
         // Sony PSP
         CoreInfo(
