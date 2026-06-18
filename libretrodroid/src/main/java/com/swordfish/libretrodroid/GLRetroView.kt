@@ -369,7 +369,7 @@ class GLRetroView(
     fun destroyNative() {
         if (isDestroyed) return
         isDestroyed = true
-        runOnGLThread {
+        runOnGLThreadVoid {
             LibretroDroid.destroy()
         }
     }
@@ -532,7 +532,10 @@ class GLRetroView(
 
     // These functions are called from the GL thread.
     private fun initializeCore() = catchExceptions {
-        if (isGameLoaded) return@catchExceptions
+        if (isGameLoaded) {
+            LibretroDroid.onSurfaceCreated()
+            return@catchExceptions
+        }
         when {
             data.gameFilePath != null -> loadGameFromPath(data.gameFilePath!!)
             data.gameFileBytes != null -> loadGameFromBytes(data.gameFileBytes!!)
@@ -598,6 +601,26 @@ class GLRetroView(
             Log.w(TAG_LOG, "runOnGLThread: GL thread did not drain within ${GL_THREAD_OP_TIMEOUT_MS}ms")
         }
         return result!!
+    }
+
+    private fun runOnGLThreadVoid(block: () -> Unit) {
+        if (Thread.currentThread().name.startsWith("GLThread")) {
+            block()
+            return
+        }
+
+        val latch = CountDownLatch(1)
+        queueEvent {
+            try {
+                block()
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        if (!latch.awaitUninterruptibly(GL_THREAD_OP_TIMEOUT_MS)) {
+            Log.w(TAG_LOG, "runOnGLThreadVoid: GL thread did not drain within ${GL_THREAD_OP_TIMEOUT_MS}ms")
+        }
     }
 
     private fun buildShader(config: ShaderConfig): GLRetroShader {

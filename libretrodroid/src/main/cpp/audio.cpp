@@ -123,6 +123,13 @@ void Audio::stop() {
         stream->requestStop();
 }
 
+Audio::~Audio() {
+    if (stream != nullptr) {
+        stream->stop();
+        stream->close();
+    }
+}
+
 void Audio::write(const int16_t *data, size_t frames) {
     fifoBuffer->write(data, frames * 2);
 }
