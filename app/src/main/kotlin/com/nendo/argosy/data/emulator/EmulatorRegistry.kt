@@ -334,7 +334,7 @@ object EmulatorRegistry {
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8"
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -354,7 +354,7 @@ object EmulatorRegistry {
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8"
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -852,6 +852,19 @@ object EmulatorRegistry {
             )
         ),
 
+        EmulatorDef(
+            id = "aps3e",
+            packageName = "aenu.aps3e",
+            displayName = "aPS3e",
+            supportedPlatforms = setOf("ps3"),
+            launchAction = "aenu.intent.action.APS3E",
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "aenu.aps3e.EmulatorActivity",
+                intentExtras = mapOf("iso_uri" to ExtraValue.FileUri)
+            ),
+            downloadUrl = "https://play.google.com/store/apps/details?id=aenu.aps3e"
+        ),
+
         // Steam launchers
         EmulatorDef(
             id = "gamehub",
@@ -944,7 +957,8 @@ object EmulatorRegistry {
         "arcade" to listOf("flycast", "mame4droid", "fbalpha", "retroarch", "retroarch_64"),
         "neogeo" to listOf("fbalpha", "retroarch", "retroarch_64"),
         "dos" to listOf("magic_dosbox", "dosbox_turbo"),
-        "scummvm" to listOf("scummvm"),
+        "scummvm" to listOf("scummvm", "retroarch", "retroarch_64"),
+        "ps3" to listOf("aps3e"),
         "atari2600" to listOf("builtin", "retroarch", "retroarch_64"),
         "lynx" to listOf("retroarch", "retroarch_64"),
         "tg16" to listOf("builtin", "retroarch", "retroarch_64"),
@@ -1063,6 +1077,7 @@ object EmulatorRegistry {
     )
 
     private val platformCores: Map<String, List<RetroArchCore>> = mapOf(
+        "scummvm" to listOf(RetroArchCore("scummvm", "ScummVM")),
         "nes" to listOf(
             RetroArchCore("fceumm", "FCEUmm"),
             RetroArchCore("nestopia", "Nestopia"),
@@ -1498,7 +1513,7 @@ object EmulatorRegistry {
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
                 "arcade", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8"
+                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
