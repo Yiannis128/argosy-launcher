@@ -340,6 +340,16 @@ object Mame2003PlusManifest : CoreOptionManifest {
             )
         ),
         CoreOptionDef(
+            key = "mame2003-plus_cyclone_mode",
+            displayName = "Cyclone Mode",
+            values = listOf(
+                "default", "disabled", "Cyclone", "DrZ80",
+                "Cyclone+DrZ80", "DrZ80(snd)", "Cyclone+DrZ80(snd)"
+            ),
+            defaultValue = "default",
+            description = "Forces a 68000/Z80 recompiler mode for faster emulation; requires core restart"
+        ),
+        CoreOptionDef(
             key = "mame2003-plus_override_ad_stick",
             displayName = "Use Lightgun as an Analog Stick",
             values = listOf("disabled", "enabled"),

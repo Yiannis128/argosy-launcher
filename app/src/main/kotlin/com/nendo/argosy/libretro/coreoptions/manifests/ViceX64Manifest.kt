@@ -28,7 +28,7 @@ object ViceX64Manifest : CoreOptionManifest {
         CoreOptionDef(
             key = "vice_ram_expansion_unit",
             displayName = "RAM Expansion Unit",
-            values = listOf("none", "128kB", "256kB", "512kB", "1024kB", "2048kB", "4096kB", "16384kB"),
+            values = listOf("none", "128kB", "256kB", "512kB", "1024kB", "2048kB", "4096kB", "8192kB", "16384kB"),
             defaultValue = "none",
             description = "Attaches a RAM expansion unit with the selected capacity"
         ),
@@ -163,10 +163,122 @@ object ViceX64Manifest : CoreOptionManifest {
             description = "Selects which edges or aspect ratio to crop to"
         ),
         CoreOptionDef(
+            key = "vice_manual_crop_top",
+            displayName = "Manual Crop Top",
+            values = listOf("0", "5", "10", "15", "20", "25", "30", "40", "50", "60"),
+            defaultValue = "0",
+            description = "Pixels to crop from the top edge when using manual crop"
+        ),
+        CoreOptionDef(
+            key = "vice_manual_crop_bottom",
+            displayName = "Manual Crop Bottom",
+            values = listOf("0", "5", "10", "15", "20", "25", "30", "40", "50", "60"),
+            defaultValue = "0",
+            description = "Pixels to crop from the bottom edge when using manual crop"
+        ),
+        CoreOptionDef(
+            key = "vice_manual_crop_left",
+            displayName = "Manual Crop Left",
+            values = listOf("0", "5", "10", "15", "20", "25", "30", "40", "50", "60"),
+            defaultValue = "0",
+            description = "Pixels to crop from the left edge when using manual crop"
+        ),
+        CoreOptionDef(
+            key = "vice_manual_crop_right",
+            displayName = "Manual Crop Right",
+            values = listOf("0", "5", "10", "15", "20", "25", "30", "40", "50", "60"),
+            defaultValue = "0",
+            description = "Pixels to crop from the right edge when using manual crop"
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_filter_oddline_offset",
+            displayName = "VIC-II Filter Oddline Offset",
+            values = listOf("20", "100", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"),
+            defaultValue = "1000",
+            description = "PAL emulation filter oddline offset",
+            valueLabels = mapOf(
+                "20" to "1%", "100" to "5%", "200" to "10%", "400" to "20%",
+                "600" to "30%", "800" to "40%", "1000" to "50%", "1200" to "60%",
+                "1400" to "70%", "1600" to "80%", "1800" to "90%", "2000" to "100%"
+            )
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_filter_oddline_phase",
+            displayName = "VIC-II Filter Oddline Phase",
+            values = listOf("20", "100", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"),
+            defaultValue = "1000",
+            description = "PAL emulation filter oddline phase, internal palette only",
+            valueLabels = mapOf(
+                "20" to "1%", "100" to "5%", "200" to "10%", "400" to "20%",
+                "600" to "30%", "800" to "40%", "1000" to "50%", "1200" to "60%",
+                "1400" to "70%", "1600" to "80%", "1800" to "90%", "2000" to "100%"
+            )
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_color_gamma",
+            displayName = "VIC-II Color Gamma",
+            values = listOf("1000", "1400", "1800", "2000", "2200", "2400", "2600", "2800", "3000", "3400", "4000"),
+            defaultValue = "2800",
+            description = "Gamma for the internal palette",
+            valueLabels = mapOf(
+                "1000" to "1.00", "1400" to "1.40", "1800" to "1.80", "2000" to "2.00",
+                "2200" to "2.20", "2400" to "2.40", "2600" to "2.60", "2800" to "2.80",
+                "3000" to "3.00", "3400" to "3.40", "4000" to "4.00"
+            )
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_color_brightness",
+            displayName = "VIC-II Color Brightness",
+            values = listOf("20", "100", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"),
+            defaultValue = "1000",
+            description = "Brightness for the internal palette",
+            valueLabels = mapOf(
+                "20" to "1%", "100" to "5%", "200" to "10%", "400" to "20%",
+                "600" to "30%", "800" to "40%", "1000" to "50%", "1200" to "60%",
+                "1400" to "70%", "1600" to "80%", "1800" to "90%", "2000" to "100%"
+            )
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_color_contrast",
+            displayName = "VIC-II Color Contrast",
+            values = listOf("20", "100", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"),
+            defaultValue = "1000",
+            description = "Contrast for the internal palette",
+            valueLabels = mapOf(
+                "20" to "1%", "100" to "5%", "200" to "10%", "400" to "20%",
+                "600" to "30%", "800" to "40%", "1000" to "50%", "1200" to "60%",
+                "1400" to "70%", "1600" to "80%", "1800" to "90%", "2000" to "100%"
+            )
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_color_saturation",
+            displayName = "VIC-II Color Saturation",
+            values = listOf("20", "100", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"),
+            defaultValue = "1000",
+            description = "Saturation for the internal palette",
+            valueLabels = mapOf(
+                "20" to "1%", "100" to "5%", "200" to "10%", "400" to "20%",
+                "600" to "30%", "800" to "40%", "1000" to "50%", "1200" to "60%",
+                "1400" to "70%", "1600" to "80%", "1800" to "90%", "2000" to "100%"
+            )
+        ),
+        CoreOptionDef(
+            key = "vice_vicii_color_tint",
+            displayName = "VIC-II Color Tint",
+            values = listOf("20", "100", "200", "400", "600", "800", "1000", "1200", "1400", "1600", "1800", "2000"),
+            defaultValue = "1000",
+            description = "Tint for the internal palette",
+            valueLabels = mapOf(
+                "20" to "1%", "100" to "5%", "200" to "10%", "400" to "20%",
+                "600" to "30%", "800" to "40%", "1000" to "50%", "1200" to "60%",
+                "1400" to "70%", "1600" to "80%", "1800" to "90%", "2000" to "100%"
+            )
+        ),
+        CoreOptionDef(
             key = "vice_gfx_colors",
             displayName = "Color Depth",
             values = listOf("16bit", "24bit"),
-            defaultValue = "24bit",
+            defaultValue = "16bit",
             valueLabels = mapOf("16bit" to "16-bit", "24bit" to "24-bit")
         ),
         CoreOptionDef(
@@ -266,6 +378,18 @@ object ViceX64Manifest : CoreOptionManifest {
             description = "Plays floppy drive mechanical sounds at the selected volume"
         ),
         CoreOptionDef(
+            key = "vice_datasette_sound",
+            displayName = "Datasette Sound",
+            values = listOf(
+                "disabled", "5%", "10%", "15%", "20%", "25%", "30%", "35%",
+                "40%", "45%", "50%", "55%", "60%", "65%", "70%", "75%",
+                "80%", "85%", "90%", "95%", "100%", "-1"
+            ),
+            defaultValue = "disabled",
+            description = "Plays datasette tape sounds at the selected volume",
+            valueLabels = mapOf("-1" to "100% + Mute")
+        ),
+        CoreOptionDef(
             key = "vice_audio_leak_emulation",
             displayName = "Audio Leak Emulation",
             values = listOf("disabled", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
@@ -306,7 +430,7 @@ object ViceX64Manifest : CoreOptionManifest {
             key = "vice_resid_sampling",
             displayName = "ReSID Sampling",
             values = listOf("fast", "interpolation", "fast resampling", "resampling"),
-            defaultValue = "resampling",
+            defaultValue = "fast",
             description = "Selects the ReSID resampling method for audio quality vs performance",
             valueLabels = mapOf(
                 "fast" to "Fast", "interpolation" to "Interpolation",
@@ -503,7 +627,7 @@ object ViceX64Manifest : CoreOptionManifest {
         CoreOptionDef(
             key = "vice_userport_joytype",
             displayName = "Userport Joystick Adapter",
-            values = listOf("disabled", "CGA", "HIT", "Kingsoft", "Starbyte", "Hummer", "OEM", "PET"),
+            values = listOf("disabled", "CGA", "HIT", "Kingsoft", "Starbyte", "Synergy", "Hummer", "OEM", "PET"),
             defaultValue = "disabled",
             description = "Selects the userport joystick adapter type for additional players"
         ),
@@ -514,6 +638,25 @@ object ViceX64Manifest : CoreOptionManifest {
             defaultValue = "2",
             description = "Selects which controller port the primary joystick is plugged into",
             valueLabels = mapOf("1" to "Port 1", "2" to "Port 2")
+        ),
+        CoreOptionDef(
+            key = "vice_joyport_type",
+            displayName = "Joystick Port Type",
+            values = listOf(
+                "1", "2", "2R", "3", "4", "5", "6", "7", "8", "9",
+                "10", "11", "12", "13", "16", "14", "15"
+            ),
+            defaultValue = "1",
+            description = "Selects the device plugged into the joystick port",
+            valueLabels = mapOf(
+                "1" to "Joystick", "2" to "Paddles (Split)", "2R" to "Paddles (Raw)",
+                "3" to "Mouse (1351)", "4" to "Mouse (NEOS)", "5" to "Mouse (Amiga)",
+                "6" to "Trackball (Atari CX-22)", "7" to "Mouse (Atari ST)",
+                "8" to "Mouse (SmartMouse)", "9" to "Mouse (Micromys)", "10" to "Koalapad",
+                "11" to "Light Pen (Up trigger)", "12" to "Light Pen (Left trigger)",
+                "13" to "Light Pen (Datel)", "16" to "Light Pen (Inkwell)",
+                "14" to "Light Gun (Magnum Light Phaser)", "15" to "Light Gun (Stack Light Rifle)"
+            )
         ),
         CoreOptionDef(
             key = "vice_retropad_options",

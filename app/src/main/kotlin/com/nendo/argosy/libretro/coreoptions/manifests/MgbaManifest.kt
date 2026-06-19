@@ -31,6 +31,17 @@ object MgbaManifest : CoreOptionManifest {
             description = "Skips the boot logo animation when starting a game"
         ),
         CoreOptionDef(
+            key = "mgba_gb_colors_preset",
+            displayName = "Hardware Preset Game Boy Palettes",
+            values = listOf("0", "1", "2", "3"),
+            defaultValue = "0",
+            description = "Uses preset palettes for Game Boy games that have them on Game Boy Color or Super Game Boy",
+            valueLabels = mapOf(
+                "0" to "Default Game Boy preset", "1" to "Game Boy Color presets only",
+                "2" to "Super Game Boy presets only", "3" to "Any available presets"
+            )
+        ),
+        CoreOptionDef(
             key = "mgba_sgb_borders",
             displayName = "Use Super Game Boy Borders",
             values = listOf("ON", "OFF"),

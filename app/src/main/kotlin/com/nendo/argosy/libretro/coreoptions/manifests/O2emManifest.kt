@@ -9,18 +9,22 @@ object O2emManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "o2em_bios",
             displayName = "Emulated Hardware",
-            values = listOf(
-                "o2rom.bin", "Videopac G7000 (European)",
-                "Videopac+ G7400 (European)", "Videopac+ G7400 (French)"
-            ),
+            values = listOf("o2rom.bin", "c52.bin", "g7400.bin", "jopac.bin"),
             defaultValue = "o2rom.bin",
-            description = "Selects the console hardware variant and BIOS to emulate"
+            description = "Selects the console hardware variant and BIOS to emulate",
+            valueLabels = mapOf(
+                "o2rom.bin" to "Odyssey 2 (NTSC)",
+                "c52.bin" to "Videopac G7000 (European)",
+                "g7400.bin" to "Videopac+ G7400 (European)",
+                "jopac.bin" to "Videopac+ G7400 (French)"
+            )
         ),
         CoreOptionDef(
             key = "o2em_region",
             displayName = "Console Region",
-            values = listOf("Auto", "NTSC", "PAL"),
-            defaultValue = "Auto"
+            values = listOf("auto", "NTSC", "PAL"),
+            defaultValue = "auto",
+            valueLabels = mapOf("auto" to "Auto")
         ),
         CoreOptionDef(
             key = "o2em_swap_gamepads",
@@ -30,11 +34,12 @@ object O2emManifest : CoreOptionManifest {
             description = "Swaps controller port 1 and port 2 inputs"
         ),
         CoreOptionDef(
-            key = "o2em_vkb_transparency",
+            key = "o2em_vkbd_transparency",
             displayName = "Virtual Keyboard Transparency",
-            values = listOf("0%", "25%", "50%", "75%"),
-            defaultValue = "0%",
-            description = "Sets how transparent the on-screen virtual keyboard overlay appears"
+            values = listOf("0", "25", "50", "75"),
+            defaultValue = "0",
+            description = "Sets how transparent the on-screen virtual keyboard overlay appears",
+            valueLabels = mapOf("0" to "0%", "25" to "25%", "50" to "50%", "75" to "75%")
         ),
         CoreOptionDef(
             key = "o2em_crop_overscan",
@@ -46,33 +51,45 @@ object O2emManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "o2em_mix_frames",
             displayName = "Interframe Blending",
-            values = listOf(
-                "Simple", "Ghosting (65%)", "Ghosting (75%)",
-                "Ghosting (85%)", "Ghosting (95%)"
-            ),
-            defaultValue = "Simple",
-            description = "Blends consecutive frames to simulate CRT persistence or reduce flicker"
+            values = listOf("disabled", "mix", "ghost_65", "ghost_75", "ghost_85", "ghost_95"),
+            defaultValue = "disabled",
+            description = "Blends consecutive frames to simulate CRT persistence or reduce flicker",
+            valueLabels = mapOf(
+                "mix" to "Simple",
+                "ghost_65" to "Ghosting (65%)",
+                "ghost_75" to "Ghosting (75%)",
+                "ghost_85" to "Ghosting (85%)",
+                "ghost_95" to "Ghosting (95%)"
+            )
         ),
         CoreOptionDef(
             key = "o2em_audio_volume",
             displayName = "Audio Volume",
             values = listOf(
-                "0%", "5%", "10%", "15%", "20%", "25%", "30%", "35%", "40%",
-                "45%", "50%", "55%", "60%", "65%", "70%", "75%", "80%", "85%",
-                "90%", "95%", "100%"
+                "0", "10", "20", "30", "40", "50",
+                "60", "70", "80", "90", "100"
             ),
-            defaultValue = "50%"
+            defaultValue = "50",
+            valueLabels = mapOf(
+                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%", "100" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "o2em_voice_volume",
             displayName = "Voice Volume",
             values = listOf(
-                "0%", "5%", "10%", "15%", "20%", "25%", "30%", "35%", "40%",
-                "45%", "50%", "55%", "60%", "65%", "70%", "75%", "80%", "85%",
-                "90%", "95%", "100%"
+                "0", "10", "20", "30", "40", "50", "60",
+                "70", "80", "90", "100"
             ),
-            defaultValue = "70%",
-            description = "Sets the volume level for The Voice speech synthesis module"
+            defaultValue = "70",
+            description = "Sets the volume level for The Voice speech synthesis module",
+            valueLabels = mapOf(
+                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%", "100" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "o2em_low_pass_filter",
@@ -85,12 +102,14 @@ object O2emManifest : CoreOptionManifest {
             key = "o2em_low_pass_range",
             displayName = "Audio Filter Level",
             values = listOf(
-                "0%", "5%", "10%", "15%", "20%", "25%", "30%", "35%", "40%",
-                "45%", "50%", "55%", "60%", "65%", "70%", "75%", "80%", "85%",
-                "90%", "95%", "100%"
+                "5", "20", "40", "60", "80", "95"
             ),
-            defaultValue = "60%",
-            description = "Sets the cutoff strength of the low-pass audio filter"
+            defaultValue = "60",
+            description = "Sets the cutoff strength of the low-pass audio filter",
+            valueLabels = mapOf(
+                "5" to "5%", "20" to "20%", "40" to "40%",
+                "60" to "60%", "80" to "80%", "95" to "95%"
+            )
         ),
     )
 }

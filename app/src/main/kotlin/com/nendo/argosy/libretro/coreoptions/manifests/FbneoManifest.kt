@@ -70,10 +70,8 @@ object FbneoManifest : CoreOptionManifest {
             key = "fbneo-analog-speed",
             displayName = "Analog Speed",
             values = listOf(
-                "0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%",
-                "100%", "110%", "120%", "130%", "140%", "150%", "160%", "170%", "180%",
-                "190%", "200%", "210%", "220%", "230%", "240%", "250%", "260%", "270%",
-                "280%", "290%", "300%"
+                "25%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%",
+                "125%", "150%", "175%", "200%", "225%", "250%", "300%", "350%", "400%"
             ),
             defaultValue = "100%",
             description = "Adjusts the movement speed of analog stick input"
@@ -169,11 +167,11 @@ object FbneoManifest : CoreOptionManifest {
             key = "fbneo-cpu-speed-adjust",
             displayName = "CPU Clock",
             values = listOf(
-                "80%", "85%", "90%", "95%", "100%",
-                "105%", "110%", "115%", "120%"
+                "25%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%",
+                "125%", "150%", "175%", "200%", "225%", "250%", "300%", "350%", "400%"
             ),
             defaultValue = "100%",
-            description = "Adjusts the emulated CPU clock speed as a percentage of stock"
+            description = "Overclock or underclock the emulated CPU; raise to fix native slowdowns, lower to help performance on weak devices"
         ),
         CoreOptionDef(
             key = "fbneo-allow-patched-romsets",

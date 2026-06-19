@@ -7,233 +7,169 @@ object MednafenPceManifest : CoreOptionManifest {
     override val coreId = "mednafen_pce"
     override val options = listOf(
         CoreOptionDef(
-            key = "pce_fast_palette",
+            key = "pce_palette",
             displayName = "Palette",
             values = listOf("RGB", "Composite"),
             defaultValue = "RGB",
             description = "Selects between clean RGB output or composite video color simulation"
         ),
         CoreOptionDef(
-            key = "pce_fast_frameskip",
-            displayName = "Frameskip",
-            values = listOf("disabled", "auto", "manual"),
+            key = "pce_aspect_ratio",
+            displayName = "Aspect Ratio",
+            values = listOf("auto", "6:5", "4:3", "uncorrected"),
+            defaultValue = "auto",
+            valueLabels = mapOf("auto" to "Auto", "uncorrected" to "Uncorrected")
+        ),
+        CoreOptionDef(
+            key = "pce_scaling",
+            displayName = "Resolution Scaling",
+            values = listOf("auto", "lores", "hires"),
+            defaultValue = "auto",
+            description = "High Resolution stays at maximum width; Low Resolution can crush pixels",
+            valueLabels = mapOf("auto" to "Auto", "lores" to "Low Resolution", "hires" to "High Resolution")
+        ),
+        CoreOptionDef(
+            key = "pce_hires_blend",
+            displayName = "High Resolution Blending Strength",
+            values = listOf("disabled", "1", "2", "3", "4", "5", "6", "7", "8"),
             defaultValue = "disabled",
-            description = "Skips rendering some frames to improve performance"
+            description = "Blends pixels together in High Resolution mode; higher values blur more"
         ),
         CoreOptionDef(
-            key = "pce_fast_frameskip_threshold",
-            displayName = "Frameskip Threshold (%)",
-            values = listOf(
-                "15", "18", "21", "24", "27", "30", "33",
-                "36", "39", "42", "45", "48", "51", "54", "57", "60"
-            ),
-            defaultValue = "33",
-            description = "Sets the audio buffer occupancy below which frames will be skipped",
-            valueLabels = mapOf(
-                "15" to "15%", "18" to "18%", "21" to "21%", "24" to "24%",
-                "27" to "27%", "30" to "30%", "33" to "33%", "36" to "36%",
-                "39" to "39%", "42" to "42%", "45" to "45%", "48" to "48%",
-                "51" to "51%", "54" to "54%", "57" to "57%", "60" to "60%"
-            )
+            key = "pce_h_overscan",
+            displayName = "Show Horizontal Overscan",
+            values = listOf("auto", "disabled", "enabled"),
+            defaultValue = "auto",
+            description = "Auto tries to adapt to games, cropping empty areas",
+            valueLabels = mapOf("auto" to "Auto")
         ),
         CoreOptionDef(
-            key = "pce_fast_hoverscan",
-            displayName = "Horizontal Overscan (352 Width Mode Only)",
-            values = listOf(
-                "300", "302", "304", "306", "308", "310", "312", "314", "316", "318",
-                "320", "322", "324", "326", "328", "330", "332", "334", "336", "338",
-                "340", "342", "344", "346", "348", "350", "352"
-            ),
-            defaultValue = "352",
-            description = "Sets the horizontal display width in 352-pixel mode"
-        ),
-        CoreOptionDef(
-            key = "pce_fast_initial_scanline",
+            key = "pce_initial_scanline",
             displayName = "Initial Scanline",
-            values = listOf(
-                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-                "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-                "21", "22", "23", "24", "25", "26", "27", "28", "29", "30",
-                "31", "32", "33", "34", "35", "36", "37", "38", "39", "40"
-            ),
+            values = (0..40).map { it.toString() },
             defaultValue = "3",
             description = "Sets the first visible scanline to crop the top of the display"
         ),
         CoreOptionDef(
-            key = "pce_fast_last_scanline",
+            key = "pce_last_scanline",
             displayName = "Last Scanline",
-            values = listOf(
-                "208", "209", "210", "211", "212", "213", "214", "215", "216", "217",
-                "218", "219", "220", "221", "222", "223", "224", "225", "226", "227",
-                "228", "229", "230", "231", "232", "233", "234", "235", "236", "237",
-                "238", "239", "240", "241", "242"
-            ),
+            values = (208..242).map { it.toString() },
             defaultValue = "242",
             description = "Sets the last visible scanline to crop the bottom of the display"
         ),
         CoreOptionDef(
-            key = "pce_fast_sound_channel_0_volume",
-            displayName = "Sound Channel 0 Volume %",
-            values = listOf(
-                "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"
-            ),
-            defaultValue = "100",
-            valueLabels = mapOf(
-                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
-                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
-                "80" to "80%", "90" to "90%", "100" to "100%"
-            )
+            key = "pce_psgrevision",
+            displayName = "PSG Audio Chip (Restart Required)",
+            values = listOf("HuC6280", "HuC6280A", "auto"),
+            defaultValue = "HuC6280A",
+            description = "HuC6280 represents the original PC Engine, HuC6280A the SuperGrafx and CoreGrafx I",
+            valueLabels = mapOf("auto" to "Auto")
         ),
         CoreOptionDef(
-            key = "pce_fast_sound_channel_1_volume",
-            displayName = "Sound Channel 1 Volume %",
-            values = listOf(
-                "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"
-            ),
-            defaultValue = "100",
-            valueLabels = mapOf(
-                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
-                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
-                "80" to "80%", "90" to "90%", "100" to "100%"
-            )
+            key = "pce_resamp_quality",
+            displayName = "Owl Resampler Quality",
+            values = listOf("0", "1", "2", "3", "4", "5", "6"),
+            defaultValue = "0",
+            description = "Higher values give better signal quality at increased computation cost"
         ),
         CoreOptionDef(
-            key = "pce_fast_sound_channel_2_volume",
-            displayName = "Sound Channel 2 Volume %",
-            values = listOf(
-                "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"
-            ),
-            defaultValue = "100",
-            valueLabels = mapOf(
-                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
-                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
-                "80" to "80%", "90" to "90%", "100" to "100%"
-            )
-        ),
-        CoreOptionDef(
-            key = "pce_fast_sound_channel_3_volume",
-            displayName = "Sound Channel 3 Volume %",
-            values = listOf(
-                "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"
-            ),
-            defaultValue = "100",
-            valueLabels = mapOf(
-                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
-                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
-                "80" to "80%", "90" to "90%", "100" to "100%"
-            )
-        ),
-        CoreOptionDef(
-            key = "pce_fast_sound_channel_4_volume",
-            displayName = "Sound Channel 4 Volume %",
-            values = listOf(
-                "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"
-            ),
-            defaultValue = "100",
-            valueLabels = mapOf(
-                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
-                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
-                "80" to "80%", "90" to "90%", "100" to "100%"
-            )
-        ),
-        CoreOptionDef(
-            key = "pce_fast_sound_channel_5_volume",
-            displayName = "Sound Channel 5 Volume %",
-            values = listOf(
-                "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"
-            ),
-            defaultValue = "100",
-            valueLabels = mapOf(
-                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
-                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
-                "80" to "80%", "90" to "90%", "100" to "100%"
-            )
-        ),
-        CoreOptionDef(
-            key = "pce_fast_mouse_sensitivity",
+            key = "pce_mouse_sensitivity",
             displayName = "Mouse Sensitivity",
             values = listOf(
-                "0.25", "0.50", "0.75", "1.00", "1.25", "1.50", "1.75", "2.00",
+                "0.125", "0.250", "0.375", "0.500", "0.625", "0.750", "0.875",
+                "1.000", "1.125", "1.25", "1.50", "1.75", "2.00",
                 "2.25", "2.50", "2.75", "3.00", "3.25", "3.50", "3.75", "4.00",
                 "4.25", "4.50", "4.75", "5.00"
             ),
             defaultValue = "1.25"
         ),
         CoreOptionDef(
-            key = "pce_fast_disable_softreset",
+            key = "pce_up_down_allowed",
+            displayName = "Allow Opposing Directions",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "disabled",
+            description = "Allows pressing left+right or up+down at the same time"
+        ),
+        CoreOptionDef(
+            key = "pce_disable_softreset",
             displayName = "Disable Soft Reset",
             values = listOf("disabled", "enabled"),
             defaultValue = "disabled",
             description = "Prevents the Run+Select button combo from triggering a soft reset"
         ),
         CoreOptionDef(
-            key = "pce_fast_default_joypad_type_p1",
+            key = "pce_multitap",
+            displayName = "Multitap 5-port Controller",
+            values = listOf("enabled", "disabled"),
+            defaultValue = "enabled",
+            description = "Enables up to 5-player multitap emulation"
+        ),
+        CoreOptionDef(
+            key = "pce_default_joypad_type_p1",
             displayName = "P1 Default Joypad Type",
             values = listOf("2 Buttons", "6 Buttons"),
             defaultValue = "2 Buttons",
             description = "Sets whether Player 1 uses a 2-button or 6-button controller"
         ),
         CoreOptionDef(
-            key = "pce_fast_default_joypad_type_p2",
+            key = "pce_default_joypad_type_p2",
             displayName = "P2 Default Joypad Type",
             values = listOf("2 Buttons", "6 Buttons"),
             defaultValue = "2 Buttons",
             description = "Sets whether Player 2 uses a 2-button or 6-button controller"
         ),
         CoreOptionDef(
-            key = "pce_fast_default_joypad_type_p3",
+            key = "pce_default_joypad_type_p3",
             displayName = "P3 Default Joypad Type",
             values = listOf("2 Buttons", "6 Buttons"),
             defaultValue = "2 Buttons",
             description = "Sets whether Player 3 uses a 2-button or 6-button controller"
         ),
         CoreOptionDef(
-            key = "pce_fast_default_joypad_type_p4",
+            key = "pce_default_joypad_type_p4",
             displayName = "P4 Default Joypad Type",
             values = listOf("2 Buttons", "6 Buttons"),
             defaultValue = "2 Buttons",
             description = "Sets whether Player 4 uses a 2-button or 6-button controller"
         ),
         CoreOptionDef(
-            key = "pce_fast_default_joypad_type_p5",
+            key = "pce_default_joypad_type_p5",
             displayName = "P5 Default Joypad Type",
             values = listOf("2 Buttons", "6 Buttons"),
             defaultValue = "2 Buttons",
             description = "Sets whether Player 5 uses a 2-button or 6-button controller"
         ),
         CoreOptionDef(
-            key = "pce_fast_turbo_toggling",
-            displayName = "Turbo ON/OFF Toggle",
-            values = listOf("disabled", "enabled"),
+            key = "pce_Turbo_Toggling",
+            displayName = "Turbo Hotkey Mode",
+            values = listOf("disabled", "toggle", "always"),
             defaultValue = "disabled",
-            description = "Allows turbo buttons to be toggled on and off with a button press"
+            description = "Sets how turbo hotkey buttons behave",
+            valueLabels = mapOf("toggle" to "Toggle", "always" to "Dedicated")
         ),
         CoreOptionDef(
-            key = "pce_fast_turbo_toggle_hotkey",
+            key = "pce_turbo_toggle_hotkey",
             displayName = "Alternate Turbo Hotkey",
             values = listOf("disabled", "enabled"),
             defaultValue = "disabled",
             description = "Enables an alternate hotkey combination for turbo toggling"
         ),
         CoreOptionDef(
-            key = "pce_fast_turbo_delay",
-            displayName = "Turbo Delay",
-            values = listOf(
-                "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-                "11", "12", "13", "14", "15"
-            ),
-            defaultValue = "3",
-            description = "Sets the number of frames between each turbo button press"
+            key = "pce_Turbo_Delay",
+            displayName = "Turbo Speed",
+            values = listOf("Fast", "Medium", "Slow"),
+            defaultValue = "Fast",
+            description = "Sets how fast button presses are repeated"
         ),
         CoreOptionDef(
-            key = "pce_fast_cdimagecache",
+            key = "pce_cdimagecache",
             displayName = "CD Image Cache",
             values = listOf("disabled", "enabled"),
             defaultValue = "disabled",
             description = "Loads the entire CD image into memory for faster access"
         ),
         CoreOptionDef(
-            key = "pce_fast_cdbios",
+            key = "pce_cdbios",
             displayName = "CD BIOS",
             values = listOf(
                 "Games Express", "System Card 1", "System Card 2",
@@ -243,7 +179,14 @@ object MednafenPceManifest : CoreOptionManifest {
             description = "Selects which CD System Card BIOS to use for CD-ROM games"
         ),
         CoreOptionDef(
-            key = "pce_fast_cdspeed",
+            key = "pce_arcadecard",
+            displayName = "Arcade Card (Restart Required)",
+            values = listOf("enabled", "disabled"),
+            defaultValue = "enabled",
+            description = "Allows enhanced modes of ACD-enhanced Super CD-ROM games"
+        ),
+        CoreOptionDef(
+            key = "pce_cdspeed",
             displayName = "CD Speed",
             values = listOf("1", "2", "4", "8"),
             defaultValue = "1",
@@ -251,7 +194,14 @@ object MednafenPceManifest : CoreOptionManifest {
             valueLabels = mapOf("1" to "1x (native)", "2" to "2x", "4" to "4x", "8" to "8x")
         ),
         CoreOptionDef(
-            key = "pce_fast_adpcmvolume",
+            key = "pce_adpcmextraprec",
+            displayName = "(CD) ADPCM Precision",
+            values = listOf("10-bit", "12-bit"),
+            defaultValue = "10-bit",
+            description = "Full 12-bit precision can reduce whining noise during ADPCM playback"
+        ),
+        CoreOptionDef(
+            key = "pce_adpcmvolume",
             displayName = "(CD) ADPCM Volume %",
             values = listOf(
                 "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100",
@@ -268,7 +218,7 @@ object MednafenPceManifest : CoreOptionManifest {
             )
         ),
         CoreOptionDef(
-            key = "pce_fast_cddavolume",
+            key = "pce_cddavolume",
             displayName = "(CD) CDDA Volume %",
             values = listOf(
                 "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100",
@@ -285,7 +235,7 @@ object MednafenPceManifest : CoreOptionManifest {
             )
         ),
         CoreOptionDef(
-            key = "pce_fast_cdpsgvolume",
+            key = "pce_cdpsgvolume",
             displayName = "(CD) CD PSG Volume %",
             values = listOf(
                 "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100",
@@ -302,14 +252,14 @@ object MednafenPceManifest : CoreOptionManifest {
             )
         ),
         CoreOptionDef(
-            key = "pce_fast_nospritelimit",
+            key = "pce_nospritelimit",
             displayName = "No Sprite Limit",
             values = listOf("disabled", "enabled"),
             defaultValue = "disabled",
             description = "Removes the per-scanline sprite limit to eliminate flickering"
         ),
         CoreOptionDef(
-            key = "pce_fast_ocmultiplier",
+            key = "pce_ocmultiplier",
             displayName = "CPU Overclock Multiplier",
             values = listOf(
                 "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",

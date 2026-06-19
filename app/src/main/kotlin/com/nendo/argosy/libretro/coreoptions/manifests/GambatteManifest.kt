@@ -491,7 +491,7 @@ object GambatteManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "gambatte_turbo_period",
             displayName = "Turbo Button Period",
-            values = (4..120).map { it.toString() },
+            values = listOf("4", "8", "12", "18", "24", "32", "48", "64", "80", "100", "120"),
             defaultValue = "4",
             description = "Set the number of frames between turbo button toggles"
         ),

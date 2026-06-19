@@ -15,15 +15,20 @@ object Snes9xManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "snes9x_aspect",
             displayName = "Preferred Aspect Ratio",
-            values = listOf("4:3", "uncorrected", "auto", "ntsc", "pal"),
-            defaultValue = "4:3"
+            values = listOf("4:3", "4:3 scaled", "uncorrected", "auto", "ntsc", "pal"),
+            defaultValue = "4:3",
+            valueLabels = mapOf("4:3 scaled" to "4:3 (Preserved)")
         ),
         CoreOptionDef(
             key = "snes9x_overscan",
             displayName = "Crop Overscan",
-            values = listOf("enabled", "disabled", "auto"),
+            values = listOf("enabled", "12_pixels", "16_pixels", "auto", "disabled"),
             defaultValue = "enabled",
-            description = "Removes the empty border lines around the edges of the screen"
+            description = "Removes the empty border lines around the edges of the screen",
+            valueLabels = mapOf(
+                "enabled" to "~8 Pixels", "12_pixels" to "12 Pixels",
+                "16_pixels" to "16 Pixels", "auto" to "Auto (~8 Pixels)"
+            )
         ),
         CoreOptionDef(
             key = "snes9x_up_down_allowed",
@@ -33,7 +38,7 @@ object Snes9xManifest : CoreOptionManifest {
             description = "Allows pressing left+right or up+down simultaneously"
         ),
         CoreOptionDef(
-            key = "snes9x_overclock",
+            key = "snes9x_overclock_superfx",
             displayName = "SuperFX Frequency",
             values = listOf(
                 "50%", "60%", "70%", "80%", "90%", "100%",
@@ -137,52 +142,67 @@ object Snes9xManifest : CoreOptionManifest {
             description = "Enables the SNES 512-pixel hi-res mode used by some games"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_1",
-            displayName = "Enable Sound Channel 1",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_1",
+            displayName = "Volume % for Sound Channel 1",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_2",
-            displayName = "Enable Sound Channel 2",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_2",
+            displayName = "Volume % for Sound Channel 2",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_3",
-            displayName = "Enable Sound Channel 3",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_3",
+            displayName = "Volume % for Sound Channel 3",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_4",
-            displayName = "Enable Sound Channel 4",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_4",
+            displayName = "Volume % for Sound Channel 4",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_5",
-            displayName = "Enable Sound Channel 5",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_5",
+            displayName = "Volume % for Sound Channel 5",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_6",
-            displayName = "Enable Sound Channel 6",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_6",
+            displayName = "Volume % for Sound Channel 6",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_7",
-            displayName = "Enable Sound Channel 7",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_7",
+            displayName = "Volume % for Sound Channel 7",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
         ),
         CoreOptionDef(
-            key = "snes9x_sndchan_8",
-            displayName = "Enable Sound Channel 8",
-            values = listOf("enabled", "disabled"),
-            defaultValue = "enabled"
+            key = "snes9x_sndchan_volume_8",
+            displayName = "Volume % for Sound Channel 8",
+            values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
+            defaultValue = "100"
+        ),
+        CoreOptionDef(
+            key = "snes9x_lightgun_mode",
+            displayName = "Light Gun Mode",
+            values = listOf("Lightgun", "Touchscreen"),
+            defaultValue = "Lightgun",
+            description = "Selects mouse-controlled light gun or touchscreen input",
+            valueLabels = mapOf("Lightgun" to "Light Gun")
+        ),
+        CoreOptionDef(
+            key = "snes9x_superscope_reverse_buttons",
+            displayName = "Super Scope Reverse Trigger Buttons",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "disabled",
+            description = "Swaps the Super Scope fire and cursor buttons"
         ),
         CoreOptionDef(
             key = "snes9x_superscope_crosshair",

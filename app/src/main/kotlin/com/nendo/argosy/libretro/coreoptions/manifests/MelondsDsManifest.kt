@@ -132,7 +132,7 @@ object MelondsDsManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "melonds_hybrid_small_screen",
             displayName = "Hybrid Small Screen",
-            values = listOf("both", "one"),
+            values = listOf("one", "both"),
             defaultValue = "both",
             description = "Which screen appears as the small inset in hybrid layouts",
             valueLabels = mapOf("both" to "Show Both Screens", "one" to "Show Opposite Screen")
@@ -148,8 +148,8 @@ object MelondsDsManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "melonds_touch_mode",
             displayName = "Touch Mode",
-            values = listOf("touch", "joystick", "auto"),
-            defaultValue = "touch",
+            values = listOf("joystick", "touch", "auto"),
+            defaultValue = "auto",
             description = "How the DS touchscreen is driven (Pointer = direct taps)",
             valueLabels = mapOf("touch" to "Pointer", "joystick" to "Joystick", "auto" to "Auto")
         ),
@@ -165,9 +165,20 @@ object MelondsDsManifest : CoreOptionManifest {
             )
         ),
         CoreOptionDef(
+            key = "melonds_cursor_timeout",
+            displayName = "Cursor Timeout",
+            values = listOf("1", "2", "3", "5", "10", "15", "20", "30", "60"),
+            defaultValue = "3",
+            description = "Seconds the cursor stays visible after touching when Cursor Mode is Until Timeout",
+            valueLabels = mapOf(
+                "1" to "1s", "2" to "2s", "3" to "3s", "5" to "5s", "10" to "10s",
+                "15" to "15s", "20" to "20s", "30" to "30s", "60" to "60s"
+            )
+        ),
+        CoreOptionDef(
             key = "melonds_mic_input",
             displayName = "Microphone Input Mode",
-            values = listOf("microphone", "silence", "blow", "noise"),
+            values = listOf("silence", "blow", "noise", "microphone"),
             defaultValue = "microphone",
             description = "Sound source fed to the emulated microphone",
             valueLabels = mapOf(

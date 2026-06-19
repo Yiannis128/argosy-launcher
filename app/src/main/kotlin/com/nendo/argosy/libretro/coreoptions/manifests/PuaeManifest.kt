@@ -134,9 +134,9 @@ object PuaeManifest : CoreOptionManifest {
             displayName = "CPU Speed",
             values = listOf(
                 "-900.0", "-800.0", "-700.0", "-600.0", "-500.0", "-400.0",
-                "-300.0", "-200.0", "-100.0", "0.0", "100.0", "200.0", "300.0",
-                "400.0", "500.0", "600.0", "700.0", "800.0", "900.0", "1000.0",
-                "2000.0", "3000.0", "4000.0", "5000.0", "10000.0"
+                "-300.0", "-200.0", "-100.0", "0.0", "1000.0", "2000.0",
+                "3000.0", "4000.0", "5000.0", "6000.0", "7000.0", "8000.0",
+                "9000.0", "10000.0"
             ),
             defaultValue = "0.0",
             description = "Adjusts the emulated CPU speed as a cycle offset percentage"
@@ -245,6 +245,13 @@ object PuaeManifest : CoreOptionManifest {
             description = "Controls the WHDLoad configuration and splash screen display"
         ),
         CoreOptionDef(
+            key = "puae_use_whdload_buttonwait",
+            displayName = "WHDLoad ButtonWait",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "enabled",
+            description = "Waits for a button press on internal loading sections when the slave supports it"
+        ),
+        CoreOptionDef(
             key = "puae_use_whdload_nowritecache",
             displayName = "WHDLoad NoWriteCache",
             values = listOf("disabled", "enabled"),
@@ -319,6 +326,13 @@ object PuaeManifest : CoreOptionManifest {
             description = "Selects which edges or aspect ratio to crop to"
         ),
         CoreOptionDef(
+            key = "puae_crop_delay",
+            displayName = "Automatic Crop Delay",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "enabled",
+            description = "Delays automatic geometry changes instead of applying them instantly"
+        ),
+        CoreOptionDef(
             key = "puae_vertical_pos",
             displayName = "Vertical Position",
             values = listOf("auto", "0"),
@@ -362,10 +376,22 @@ object PuaeManifest : CoreOptionManifest {
             description = "Skips rendering frames to improve performance"
         ),
         CoreOptionDef(
+            key = "puae_gfx_gamma",
+            displayName = "Color Gamma",
+            values = listOf("-500", "-400", "-300", "-200", "-100", "0", "100", "200", "300", "400", "500"),
+            defaultValue = "0",
+            description = "Adjusts the display color gamma",
+            valueLabels = mapOf(
+                "-500" to "+0.5", "-400" to "+0.4", "-300" to "+0.3", "-200" to "+0.2",
+                "-100" to "+0.1", "0" to "Off", "100" to "-0.1", "200" to "-0.2",
+                "300" to "-0.3", "400" to "-0.4", "500" to "-0.5"
+            )
+        ),
+        CoreOptionDef(
             key = "puae_gfx_colors",
             displayName = "Color Depth",
             values = listOf("16bit", "24bit"),
-            defaultValue = "24bit",
+            defaultValue = "16bit",
             valueLabels = mapOf("16bit" to "16-bit", "24bit" to "24-bit")
         ),
         CoreOptionDef(

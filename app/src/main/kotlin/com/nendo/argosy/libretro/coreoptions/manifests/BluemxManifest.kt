@@ -20,6 +20,13 @@ object BluemxManifest : CoreOptionManifest {
             description = "Selects which hardware platform to emulate"
         ),
         CoreOptionDef(
+            key = "bluemsx_auto_rewind_cas",
+            displayName = "Cassette Auto Rewind",
+            values = listOf("ON", "OFF"),
+            defaultValue = "ON",
+            description = "Automatically rewinds the cassette tape when loaded"
+        ),
+        CoreOptionDef(
             key = "bluemsx_overscan",
             displayName = "Crop Overscan",
             values = listOf("disabled", "enabled", "MSX2"),
@@ -55,12 +62,28 @@ object BluemxManifest : CoreOptionManifest {
                 "ascii8", "ascii8sram", "ascii16", "ascii16sram", "ascii16nf",
                 "konami4", "konami4nf", "konami5", "konamisynth", "korean80",
                 "korean90", "korean126", "MegaFlashRomScc", "MegaFlashRomSccPlus",
-                "msxdos2", "scc", "sccexpanded", "sccmirrored", "sccplus",
-                "snatcher", "sdsnatcher", "SegaBasic", "SG1000", "SG1000Castle",
-                "SG1000RamA", "SG1000RamB", "SC3000"
+                "SegaBasic", "SG1000", "SG1000Castle", "SG1000RamA", "SG1000RamB",
+                "SC3000", "SC3000MultiCart", "SC3000MegaCart"
             ),
             defaultValue = "Auto",
             description = "Overrides the memory mapper type used by the cartridge"
+        ),
+        CoreOptionDef(
+            key = "bluemsx_additional_cart",
+            displayName = "Additional Sound Cartridge (Restart)",
+            values = listOf(
+                "disabled", "scc", "sccexpanded", "sccmirrored", "sccplus",
+                "snatcher", "sdsnatcher"
+            ),
+            defaultValue = "disabled",
+            description = "Inserts an additional MSX sound cartridge into the first free slot"
+        ),
+        CoreOptionDef(
+            key = "bluemsx_sound_io_enable",
+            displayName = "I/O Sound Enable",
+            values = listOf("enabled", "disabled"),
+            defaultValue = "disabled",
+            description = "Enables floppy disk access sound output"
         ),
     )
 }

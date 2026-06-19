@@ -43,7 +43,7 @@ object VbamManifest : CoreOptionManifest {
             key = "vbam_palettes",
             displayName = "(GB) Color Palette",
             values = listOf(
-                "standard", "blue sea", "dark knight", "green forest",
+                "black and white", "blue sea", "dark knight", "green forest",
                 "hot desert", "pink dreams", "wierd colors", "original gameboy",
                 "gba sp"
             ),

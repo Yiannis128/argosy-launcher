@@ -10,10 +10,10 @@ object DolphinManifest : CoreOptionManifest {
         CoreOptionDef(
             key = "dolphin_cpu_core",
             displayName = "CPU Core",
-            values = listOf("0", "1", "4", "5"),
-            defaultValue = "1",
+            values = listOf("0", "4", "5"),
+            defaultValue = "4",
             description = "Selects the CPU emulation method",
-            valueLabels = mapOf("0" to "Interpreter", "1" to "JIT", "4" to "JITIL", "5" to "Cached Interpreter")
+            valueLabels = mapOf("0" to "Interpreter", "4" to "JITARM64 (Recommended)", "5" to "Cached Interpreter")
         ),
         CoreOptionDef(
             key = "dolphin_cpu_clock_rate",
@@ -74,6 +74,13 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("disabled", "enabled"),
             defaultValue = "disabled",
             description = "Enables Dolphin's built-in cheat code system"
+        ),
+        CoreOptionDef(
+            key = "dolphin_cheats_import",
+            displayName = "Auto-Import Cheats",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "enabled",
+            description = "Imports Dolphin ini cheats into RetroArch on core restart"
         ),
         CoreOptionDef(
             key = "dolphin_skip_gc_bios",
@@ -175,9 +182,26 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("255", "0", "5", "10", "11", "12", "14", "13", "6"),
             defaultValue = "255",
             description = "Selects the serial port 1 device",
-            valueLabels = mapOf("255" to "None", "0" to "Dummy", "5" to "BBA (Network)",
-                "10" to "TAP (Network)", "11" to "BBA+HLE", "12" to "BBA+Builtin",
-                "14" to "Modem", "13" to "USB Gecko", "6" to "AM Baseboard")
+            valueLabels = mapOf("255" to "None", "0" to "Dummy", "5" to "Ethernet",
+                "10" to "Ethernet XLink", "11" to "Ethernet TapServer", "12" to "Ethernet Built-In",
+                "14" to "Ethernet IPC", "13" to "Modem TapServer", "6" to "Baseboard")
+        ),
+        CoreOptionDef(
+            key = "dolphin_enable_gamecube_mic",
+            displayName = "GameCube Microphone",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "disabled",
+            description = "Emulates the official GameCube microphone accessory"
+        ),
+        CoreOptionDef(
+            key = "dolphin_hotkey_activate_microphone",
+            displayName = "Microphone Button",
+            values = listOf(
+                "Disabled", "L3", "R3", "L1", "R1",
+                "L2", "R2", "A", "B", "X", "Y", "Start", "Select"
+            ),
+            defaultValue = "Disabled",
+            description = "Button held or pressed to activate microphone input"
         ),
         // Wii System
         CoreOptionDef(
@@ -236,6 +260,27 @@ object DolphinManifest : CoreOptionManifest {
             defaultValue = "disabled",
             description = "Passes Bluetooth directly to the emulator for real Wiimote support"
         ),
+        CoreOptionDef(
+            key = "dolphin_wiispeak_enable",
+            displayName = "Wii Speak",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "disabled",
+            description = "Emulates the Wii Speak microphone (requires restart)"
+        ),
+        CoreOptionDef(
+            key = "dolphin_wiispeak_muted",
+            displayName = "Wii Speak Muted",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "enabled",
+            description = "Mutes or unmutes the Wii Speak microphone"
+        ),
+        CoreOptionDef(
+            key = "dolphin_wii_logi_microphone_enable",
+            displayName = "Logitech USB Microphone",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "disabled",
+            description = "Emulates the Logitech USB microphone (requires restart)"
+        ),
         // Graphics - Settings
         CoreOptionDef(
             key = "dolphin_renderer",
@@ -250,6 +295,15 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("disabled", "enabled"),
             defaultValue = "disabled",
             description = "Forces games to render in widescreen by adjusting the projection"
+        ),
+        CoreOptionDef(
+            key = "dolphin_aspect_ratio",
+            displayName = "Aspect Ratio",
+            values = listOf("0", "1", "2", "3", "4", "5", "6"),
+            defaultValue = "3",
+            description = "Controls how the game image is scaled to the display",
+            valueLabels = mapOf("0" to "Auto", "1" to "Force Wide", "2" to "Force Standard",
+                "3" to "Stretch", "4" to "Custom", "5" to "Custom Stretch", "6" to "Raw")
         ),
         CoreOptionDef(
             key = "dolphin_crop_overscan",
@@ -272,7 +326,7 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("0", "3", "1", "2"),
             defaultValue = "0",
             description = "Controls when shaders are compiled",
-            valueLabels = mapOf("0" to "Synchronous", "1" to "Sync (First Use)", "2" to "Async", "3" to "Async (Skip Draw)")
+            valueLabels = mapOf("0" to "Synchronous", "3" to "Async (Skip Rendering)", "1" to "Sync (UberShaders)", "2" to "Async (UberShaders)")
         ),
         CoreOptionDef(
             key = "dolphin_wait_for_shaders",
@@ -286,8 +340,8 @@ object DolphinManifest : CoreOptionManifest {
             displayName = "Anti-Aliasing",
             values = listOf("0", "1", "2", "3", "4", "5", "6"),
             defaultValue = "0",
-            description = "Sets the anti-aliasing sample count for smoother edges",
-            valueLabels = mapOf("0" to "Off", "1" to "2x", "2" to "4x", "3" to "8x", "4" to "16x", "5" to "32x", "6" to "64x")
+            description = "Sets the anti-aliasing mode for smoother edges",
+            valueLabels = mapOf("0" to "None", "1" to "2x MSAA", "2" to "4x MSAA", "3" to "8x MSAA", "4" to "2x SSAA", "5" to "4x SSAA", "6" to "8x SSAA")
         ),
         CoreOptionDef(
             key = "dolphin_texture_cache_accuracy",
@@ -295,7 +349,7 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("128", "512", "0"),
             defaultValue = "128",
             description = "Controls how often textures are rechecked",
-            valueLabels = mapOf("0" to "Safe", "128" to "Fast", "512" to "Fastest")
+            valueLabels = mapOf("0" to "Safe", "128" to "Fast", "512" to "Middle")
         ),
         CoreOptionDef(
             key = "dolphin_gpu_texture_decoding",
@@ -315,7 +369,7 @@ object DolphinManifest : CoreOptionManifest {
             key = "dolphin_fast_depth_calculation",
             displayName = "Fast Depth Calculation",
             values = listOf("disabled", "enabled"),
-            defaultValue = "disabled",
+            defaultValue = "enabled",
             description = "Uses a faster but less accurate depth buffer calculation"
         ),
         CoreOptionDef(
@@ -362,8 +416,8 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("0", "1", "2", "3", "4", "5", "6"),
             defaultValue = "0",
             description = "Selects the output downsampling filter for smoother final image",
-            valueLabels = mapOf("0" to "Default", "1" to "Bilinear", "2" to "Bicubic: B-Spline",
-                "3" to "Bicubic: Mitchell-Netravali", "4" to "Bicubic: Catmull-Rom",
+            valueLabels = mapOf("0" to "Default", "1" to "Bilinear", "2" to "B-Spline",
+                "3" to "Mitchell-Netravali", "4" to "Catmull-Rom",
                 "5" to "Sharp Bilinear", "6" to "Area Sampling")
         ),
         CoreOptionDef(
@@ -462,7 +516,7 @@ object DolphinManifest : CoreOptionManifest {
             key = "dolphin_immediate_xfb",
             displayName = "Immediate XFB",
             values = listOf("disabled", "enabled"),
-            defaultValue = "enabled",
+            defaultValue = "disabled",
             description = "Presents XFB copies immediately for more accurate timing"
         ),
         CoreOptionDef(
@@ -531,7 +585,7 @@ object DolphinManifest : CoreOptionManifest {
             values = listOf("0", "1", "2"),
             defaultValue = "1",
             description = "Sets the IR pointer emulation mode",
-            valueLabels = mapOf("0" to "Direct", "1" to "Analog", "2" to "Mixed")
+            valueLabels = mapOf("0" to "Stick (Relative)", "1" to "Stick (Absolute)", "2" to "Mouse")
         ),
         CoreOptionDef(
             key = "dolphin_ir_offset",

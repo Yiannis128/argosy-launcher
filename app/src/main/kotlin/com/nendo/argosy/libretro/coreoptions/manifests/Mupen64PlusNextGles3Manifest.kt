@@ -256,22 +256,8 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             key = "mupen64plus-next-EnableFragmentDepthWrite",
             displayName = "GPU shader depth write",
             values = listOf("False", "True"),
-            defaultValue = "True",
-            description = "Enables fragment depth writes in GPU shaders for correct rendering"
-        ),
-        CoreOptionDef(
-            key = "mupen64plus-next-EnableN64DepthCompare",
-            displayName = "N64 Depth Compare",
-            values = listOf("False", "True", "Compatible"),
             defaultValue = "False",
-            description = "Uses N64-accurate depth buffer comparison for correct overlapping"
-        ),
-        CoreOptionDef(
-            key = "mupen64plus-next-EnableShadersStorage",
-            displayName = "Cache GPU Shaders",
-            values = listOf("False", "True"),
-            defaultValue = "True",
-            description = "Caches compiled shaders to disk to reduce stuttering"
+            description = "Enables fragment depth writes in GPU shaders for correct rendering"
         ),
         CoreOptionDef(
             key = "mupen64plus-next-EnableTextureCache",
@@ -333,8 +319,7 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             displayName = "Max texture cache size",
             values = listOf("1500", "4000", "8000"),
             defaultValue = "8000",
-            description = "Sets the maximum texture cache size",
-            valueLabels = mapOf("1500" to "1500 MB", "4000" to "4000 MB", "8000" to "8000 MB")
+            description = "Sets the maximum texture cache size in elements"
         ),
         CoreOptionDef(
             key = "mupen64plus-next-txFilterMode",

@@ -53,9 +53,16 @@ object MednafenVbManifest : CoreOptionManifest {
             description = "Maps the right analog stick to the Virtual Boy's right D-pad"
         ),
         CoreOptionDef(
+            key = "vb_opposite_directions",
+            displayName = "Allow Opposite Directions",
+            values = listOf("disabled", "enabled"),
+            defaultValue = "disabled",
+            description = "Allows pressing up and down or left and right at the same time"
+        ),
+        CoreOptionDef(
             key = "vb_cpu_emulation",
             displayName = "CPU Emulation (Restart)",
-            values = listOf("fast", "accurate"),
+            values = listOf("accurate", "fast"),
             defaultValue = "fast",
             description = "Trades accuracy for speed when set to fast"
         ),

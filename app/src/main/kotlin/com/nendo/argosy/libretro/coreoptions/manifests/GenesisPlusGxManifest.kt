@@ -297,11 +297,18 @@ object GenesisPlusGxManifest : CoreOptionManifest {
             key = "genesis_plus_gx_overclock",
             displayName = "CPU Speed",
             values = listOf(
-                "100%", "125%", "150%", "175%", "200%", "225%", "250%", "275%",
-                "300%", "325%", "350%", "375%", "400%", "425%", "450%", "475%", "500%"
+                "100", "125", "150", "175", "200", "225", "250", "275",
+                "300", "325", "350", "375", "400", "425", "450", "475", "500"
             ),
-            defaultValue = "100%",
-            description = "Overclocks the emulated CPU to reduce slowdown in demanding games"
+            defaultValue = "100",
+            description = "Overclocks the emulated CPU to reduce slowdown in demanding games",
+            valueLabels = mapOf(
+                "100" to "100%", "125" to "125%", "150" to "150%", "175" to "175%",
+                "200" to "200%", "225" to "225%", "250" to "250%", "275" to "275%",
+                "300" to "300%", "325" to "325%", "350" to "350%", "375" to "375%",
+                "400" to "400%", "425" to "425%", "450" to "450%", "475" to "475%",
+                "500" to "500%"
+            )
         ),
         CoreOptionDef(
             key = "genesis_plus_gx_force_dtack",
