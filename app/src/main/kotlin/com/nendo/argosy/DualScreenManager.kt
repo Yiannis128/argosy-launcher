@@ -1,8 +1,10 @@
 package com.nendo.argosy
 
 import android.hardware.display.DisplayManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import com.nendo.argosy.data.download.DownloadManager
@@ -116,6 +118,34 @@ class DualScreenManager(
         _isDualScreenDevice.value = value
     }
 
+    fun applyDualScreenEnabled(enabled: Boolean, isToggle: Boolean) {
+        setSecondaryHomeComponentEnabled(enabled)
+        if (!isToggle) return
+        if (enabled) ensureCompanionLaunched() else teardownCompanion()
+    }
+
+    private fun setSecondaryHomeComponentEnabled(enabled: Boolean) {
+        val state = if (enabled) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        val component = ComponentName(appContext, SecondaryHomeActivity::class.java)
+        if (appContext.packageManager.getComponentEnabledSetting(component) == state) return
+        appContext.packageManager.setComponentEnabledSetting(
+            component, state, PackageManager.DONT_KILL_APP
+        )
+    }
+
+    fun teardownCompanion() {
+        companionLaunchJob?.cancel()
+        companionLaunchJob = null
+        companionWatchdogJob?.cancel()
+        _isCompanionActive.value = false
+        CompanionGuardService.stop(appContext)
+        companionHost?.finishCompanion()
+    }
+
     /**
      * Dedups raw Android input events seen across all dispatch paths (primary activity,
      * companion activity, libretro activity, and forwarded keys). The first path to
@@ -160,6 +190,7 @@ class DualScreenManager(
         fun onSaveDataReceived(json: String, activeChannel: String?, activeTimestamp: Long?, syncing: Boolean = false)
         fun onSavesSyncDone()
         fun onDownloadCompleted(gameId: Long)
+        fun finishCompanion()
     }
 
     var companionHost: CompanionHost? = null

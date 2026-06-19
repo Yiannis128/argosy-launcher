@@ -71,6 +71,10 @@ class MainActivityPreferencesObserver(
                     displayAffinityHelper.dualScreenEnabled = prefs.dualScreenEnabled
                     sessionStateStore.setDualScreenEnabled(prefs.dualScreenEnabled)
                     onDualScreenChanged(displayAffinityHelper.hasSecondaryDisplay)
+                    dualScreenManager.applyDualScreenEnabled(
+                        prefs.dualScreenEnabled,
+                        isToggle = previousDualScreenEnabled != null
+                    )
                 }
                 previousDualScreenEnabled = prefs.dualScreenEnabled
 

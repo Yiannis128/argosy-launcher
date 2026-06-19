@@ -289,6 +289,10 @@ class SecondaryHomeActivity :
         if (::broadcasts.isInitialized) broadcasts.broadcastCompanionPaused()
     }
 
+    override fun finishCompanion() {
+        runOnUiThread { finish() }
+    }
+
     override fun onDestroy() {
         if (::dsm.isInitialized) dsm.companionHost = null
         displayListener?.let {
