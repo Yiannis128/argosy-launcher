@@ -296,8 +296,13 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             } else {
                 rawSelectedEmulatorDef
             }
+            val adHocConfig = defaultConfig?.takeIf { cfg ->
+                val pkg = cfg.packageName
+                selectedEmulatorDef == null && pkg != null &&
+                    !EmulatorRegistry.isKnownPackage(pkg) && vm.installedAppResolver.isAppInstalled(pkg)
+            }
             val autoResolvedEmulator = vm.emulatorDetector.getPreferredEmulator(platform.slug, prefs.builtinLibretroEnabled)?.def
-            val effectiveEmulatorDef = selectedEmulatorDef ?: autoResolvedEmulator
+            val effectiveEmulatorDef = selectedEmulatorDef ?: if (adHocConfig != null) null else autoResolvedEmulator
             val isRetroArch = effectiveEmulatorDef?.launchConfig is com.nendo.argosy.data.emulator.LaunchConfig.RetroArch
             val hasCoreSelection = effectiveEmulatorDef?.launchConfig?.isCoreSelectable == true
             val availableCores = if (hasCoreSelection) {
@@ -355,8 +360,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 availableCores = availableCores,
                 effectiveEmulatorIsRetroArch = isRetroArch,
                 effectiveEmulatorId = emulatorId,
-                effectiveEmulatorPackage = effectiveEmulatorDef?.packageName,
-                effectiveEmulatorName = effectiveEmulatorDef?.displayName,
+                effectiveEmulatorPackage = effectiveEmulatorDef?.packageName ?: adHocConfig?.packageName,
+                effectiveEmulatorName = effectiveEmulatorDef?.displayName ?: adHocConfig?.displayName,
                 effectiveSavePath = effectiveSavePath,
                 isUserSavePathOverride = isUserSavePathOverride,
                 showSavePath = showSavePath,

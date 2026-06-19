@@ -112,7 +112,8 @@ internal fun routeConfirmEmulatorPickerSelection(vm: SettingsViewModel) {
     vm.emulatorDelegate.confirmEmulatorPickerSelection(
         vm.viewModelScope,
         onSetEmulator = { platformId, platformSlug, emulator -> vm.setPlatformEmulator(platformId, platformSlug, emulator) },
-        onLoadSettings = { vm.loadSettings() }
+        onLoadSettings = { vm.loadSettings() },
+        onOpenAppPicker = { platformId -> vm.openAppPickerModal(platformId) }
     )
 }
 
@@ -121,7 +122,8 @@ internal fun routeHandleEmulatorPickerItemTap(vm: SettingsViewModel, index: Int)
         index,
         vm.viewModelScope,
         onSetEmulator = { platformId, platformSlug, emulator -> vm.setPlatformEmulator(platformId, platformSlug, emulator) },
-        onLoadSettings = { vm.loadSettings() }
+        onLoadSettings = { vm.loadSettings() },
+        onOpenAppPicker = { platformId -> vm.openAppPickerModal(platformId) }
     )
 }
 

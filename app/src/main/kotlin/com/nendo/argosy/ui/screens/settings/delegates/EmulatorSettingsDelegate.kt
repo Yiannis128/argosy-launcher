@@ -149,7 +149,7 @@ class EmulatorSettingsDelegate @Inject constructor(
         _state.update { state ->
             val info = state.emulatorPickerInfo ?: return@update state
             val hasInstalled = info.installedEmulators.isNotEmpty()
-            val totalItems = (if (hasInstalled) 1 else 0) + info.installedEmulators.size + info.downloadableEmulators.size
+            val totalItems = (if (hasInstalled) 1 else 0) + info.installedEmulators.size + info.downloadableEmulators.size + 1
             val maxIndex = (totalItems - 1).coerceAtLeast(0)
             val newIndex = (state.emulatorPickerFocusIndex + delta).coerceIn(0, maxIndex)
             state.copy(emulatorPickerFocusIndex = newIndex)
@@ -160,12 +160,13 @@ class EmulatorSettingsDelegate @Inject constructor(
         index: Int,
         scope: CoroutineScope,
         onSetEmulator: suspend (Long, String, InstalledEmulator?) -> Unit,
-        onLoadSettings: suspend () -> Unit
+        onLoadSettings: suspend () -> Unit,
+        onOpenAppPicker: (Long) -> Unit
     ) {
         val state = _state.value
         if (state.emulatorPickerSelectedIndex == index) {
             _state.update { it.copy(emulatorPickerFocusIndex = index) }
-            confirmEmulatorPickerSelection(scope, onSetEmulator, onLoadSettings)
+            confirmEmulatorPickerSelection(scope, onSetEmulator, onLoadSettings, onOpenAppPicker)
         } else {
             _state.update {
                 it.copy(
@@ -180,7 +181,8 @@ class EmulatorSettingsDelegate @Inject constructor(
     fun confirmEmulatorPickerSelection(
         scope: CoroutineScope,
         onSetEmulator: suspend (Long, String, InstalledEmulator?) -> Unit,
-        onLoadSettings: suspend () -> Unit
+        onLoadSettings: suspend () -> Unit,
+        onOpenAppPicker: (Long) -> Unit
     ) {
         scope.launch {
             val state = _state.value
@@ -189,10 +191,16 @@ class EmulatorSettingsDelegate @Inject constructor(
             val installedCount = info.installedEmulators.size
             val hasInstalled = installedCount > 0
             val downloadBaseIndex = if (hasInstalled) 1 + installedCount else 0
+            val otherAppIndex = downloadBaseIndex + info.downloadableEmulators.size
 
             if (info.downloadState !is EmulatorDownloadState.Idle) return@launch
 
             when {
+                focusIndex == otherAppIndex -> {
+                    val platformId = info.platformId
+                    dismissEmulatorPicker()
+                    onOpenAppPicker(platformId)
+                }
                 hasInstalled && focusIndex == 0 -> {
                     onSetEmulator(info.platformId, info.platformSlug, null)
                     dismissEmulatorPicker()

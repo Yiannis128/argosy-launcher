@@ -71,6 +71,8 @@ private sealed class PickerItem(
         key = "downloadable_${emulator.displayName}"
     )
 
+    class OtherAppItem(val itemIndex: Int) : PickerItem(key = "otherApp")
+
     companion object {
         fun buildItems(info: EmulatorPickerInfo): List<PickerItem> {
             val items = mutableListOf<PickerItem>()
@@ -83,6 +85,7 @@ private sealed class PickerItem(
             info.downloadableEmulators.forEachIndexed { index, emulator ->
                 items.add(DownloadableItem(emulator, downloadBaseIndex + index))
             }
+            items.add(OtherAppItem(downloadBaseIndex + info.downloadableEmulators.size))
             return items
         }
     }
@@ -257,6 +260,18 @@ fun EmulatorPickerPopup(
                                 downloadState = downloadState,
                                 isDisabled = isDisabled,
                                 onClick = { if (!isDisabled) onItemTap(item.itemIndex) }
+                            )
+                        }
+
+                        is PickerItem.OtherAppItem -> {
+                            EmulatorPickerItem(
+                                name = "Other app...",
+                                subtitle = "Launch with any installed app",
+                                isFocused = isFocused(item),
+                                isTouchSelected = selectedIndex == item.itemIndex,
+                                isCurrentEmulator = false,
+                                isDownload = false,
+                                onClick = { onItemTap(item.itemIndex) }
                             )
                         }
                     }
