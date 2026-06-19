@@ -14,6 +14,7 @@ import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.local.entity.CollectionGameEntity
+import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
 import com.nendo.argosy.data.emulator.DiscOption
@@ -143,6 +144,11 @@ class DualGameDetailViewModel(
 
     private val _corePickerFocusIndex = MutableStateFlow(0)
     val corePickerFocusIndex: StateFlow<Int> = _corePickerFocusIndex.asStateFlow()
+
+    private val _variantPickerList = MutableStateFlow<List<GameFileEntity>>(emptyList())
+
+    private val _variantPickerFocusIndex = MutableStateFlow(0)
+    val variantPickerFocusIndex: StateFlow<Int> = _variantPickerFocusIndex.asStateFlow()
 
     private val _collectionPickerFocusIndex = MutableStateFlow(0)
     val collectionPickerFocusIndex: StateFlow<Int> = _collectionPickerFocusIndex.asStateFlow()
@@ -345,6 +351,14 @@ class DualGameDetailViewModel(
                 platformCores.find { it.id == selectedCoreId }?.displayName
             } else null
 
+            val downloadedVariants = gameRepository.getVariantsForGame(game.id)
+                .filter { it.localPath != null }
+            val hasMultipleVariants = downloadedVariants.size > 1
+            val selectedVariantName = if (hasMultipleVariants) {
+                (downloadedVariants.find { it.id == game.activeVariantFileId }
+                    ?: downloadedVariants.firstOrNull())?.fileName
+            } else null
+
             val activeChannel = game.activeSaveChannel
             val activeSaveTimestamp = game.activeSaveTimestamp
 
@@ -383,6 +397,8 @@ class DualGameDetailViewModel(
                 hasMultipleCores = hasMultipleCores,
                 selectedCoreName = selectedCoreName,
                 selectedCoreId = selectedCoreId,
+                hasMultipleVariants = hasMultipleVariants,
+                selectedVariantName = selectedVariantName,
                 activeChannel = activeChannel,
                 activeSaveTimestamp = activeSaveTimestamp,
                 isMultiDisc = game.isMultiDisc,
@@ -929,6 +945,35 @@ class DualGameDetailViewModel(
         val total = _corePickerList.value.size + 1
         val max = (total - 1).coerceAtLeast(0)
         _corePickerFocusIndex.update { (it + delta).coerceIn(0, max) }
+    }
+
+    suspend fun getDownloadedVariants(): List<GameFileEntity> =
+        gameRepository.getVariantsForGame(_uiState.value.gameId)
+            .filter { it.localPath != null }
+
+    fun openVariantPicker(variants: List<GameFileEntity>) {
+        _variantPickerList.value = variants
+        _variantPickerFocusIndex.value = 0
+        _activeModal.value = ActiveModal.VARIANT_PICKER
+    }
+
+    fun confirmVariantByIndex(index: Int) {
+        val variants = _variantPickerList.value
+        val selectedVariant = variants.getOrNull(index) ?: return
+        val state = _uiState.value
+        viewModelScope.launch {
+            gameRepository.setActiveVariant(state.gameId, selectedVariant.id)
+            _uiState.update {
+                it.copy(selectedVariantName = selectedVariant.fileName)
+            }
+        }
+        _activeModal.value = ActiveModal.NONE
+    }
+
+    fun moveVariantPickerFocus(delta: Int) {
+        val total = _variantPickerList.value.size
+        val max = (total - 1).coerceAtLeast(0)
+        _variantPickerFocusIndex.update { (it + delta).coerceIn(0, max) }
     }
 
     fun openCollectionModal() {

@@ -19,6 +19,7 @@ class DualGameDetailInputHandler(
     private val onBroadcastDirectAction: (String, Long, String?) -> Unit,
     private val onBroadcastEmulatorModalOpen: (List<com.nendo.argosy.data.emulator.InstalledEmulator>, String?) -> Unit,
     private val onBroadcastCoreModalOpen: (List<com.nendo.argosy.data.emulator.RetroArchCore>, String?) -> Unit,
+    private val onBroadcastVariantModalOpen: (List<String>, String?) -> Unit,
     private val onBroadcastCollectionModalOpen: (DualGameDetailViewModel) -> Unit,
     private val onBroadcastSteamInstallModalOpen: (DualGameDetailViewModel) -> Unit,
     private val onBroadcastSaveNamePrompt: (String, Long?) -> Unit,
@@ -216,6 +217,35 @@ class DualGameDetailInputHandler(
                         val idx = vm.corePickerFocusIndex.value
                         vm.confirmCoreByIndex(idx)
                         onBroadcastModalConfirm(ActiveModal.CORE, idx, null)
+                    }
+                    GamepadEvent.Back -> {
+                        vm.dismissPicker()
+                        onBroadcastModalClose()
+                    }
+                    else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            ActiveModal.VARIANT_PICKER -> {
+                when (event) {
+                    GamepadEvent.Up -> {
+                        vm.moveVariantPickerFocus(-1)
+                        onBroadcastInlineUpdate(
+                            "variant_focus",
+                            vm.variantPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Down -> {
+                        vm.moveVariantPickerFocus(1)
+                        onBroadcastInlineUpdate(
+                            "variant_focus",
+                            vm.variantPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Confirm -> {
+                        val idx = vm.variantPickerFocusIndex.value
+                        vm.confirmVariantByIndex(idx)
+                        onBroadcastModalConfirm(ActiveModal.VARIANT_PICKER, idx, null)
                     }
                     GamepadEvent.Back -> {
                         vm.dismissPicker()
@@ -477,6 +507,16 @@ class DualGameDetailInputHandler(
                         .getCoresForPlatform(vm.uiState.value.platformSlug)
                     vm.openCorePicker(cores)
                     onBroadcastCoreModalOpen(cores, vm.uiState.value.selectedCoreName)
+                }
+            }
+            GameDetailOption.SELECT_VARIANT -> {
+                lifecycleLaunch {
+                    val variants = vm.getDownloadedVariants()
+                    vm.openVariantPicker(variants)
+                    onBroadcastVariantModalOpen(
+                        variants.map { it.fileName },
+                        vm.uiState.value.selectedVariantName
+                    )
                 }
             }
             GameDetailOption.SELECT_DISC -> {

@@ -15,6 +15,7 @@ import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.dao.SearchCandidate
 import com.nendo.argosy.data.local.dao.getByIdsChunked
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -490,6 +491,14 @@ class GameRepository @Inject constructor(
 
     suspend fun getDownloadDirForPlatform(platformSlug: String): File = withContext(Dispatchers.IO) {
         getDownloadDir(platformSlug)
+    }
+
+    suspend fun getVariantsForGame(gameId: Long): List<GameFileEntity> = withContext(Dispatchers.IO) {
+        gameFileDao.getVariantsForGame(gameId)
+    }
+
+    suspend fun setActiveVariant(gameId: Long, fileId: Long) = withContext(Dispatchers.IO) {
+        gameDao.updateActiveVariantFileId(gameId, fileId)
     }
 
     suspend fun updateLocalPath(gameId: Long, newPath: String) = withContext(Dispatchers.IO) {

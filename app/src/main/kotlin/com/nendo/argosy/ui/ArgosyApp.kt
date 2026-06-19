@@ -566,6 +566,7 @@ fun ArgosyApp(
                     ActiveModal.STATUS -> activity?.moveDualModalStatus(-1)
                     ActiveModal.EMULATOR -> activity?.moveDualEmulatorFocus(-1)
                     ActiveModal.CORE -> activity?.moveDualCoreFocus(-1)
+                    ActiveModal.VARIANT_PICKER -> activity?.moveDualVariantFocus(-1)
                     ActiveModal.COLLECTION -> activity?.moveDualCollectionFocus(-1)
                     ActiveModal.STEAM_INSTALL -> activity?.moveDualSteamInstallFocus(-1)
                     else -> {}
@@ -579,6 +580,7 @@ fun ArgosyApp(
                     ActiveModal.STATUS -> activity?.moveDualModalStatus(1)
                     ActiveModal.EMULATOR -> activity?.moveDualEmulatorFocus(1)
                     ActiveModal.CORE -> activity?.moveDualCoreFocus(1)
+                    ActiveModal.VARIANT_PICKER -> activity?.moveDualVariantFocus(1)
                     ActiveModal.COLLECTION -> activity?.moveDualCollectionFocus(1)
                     ActiveModal.STEAM_INSTALL -> activity?.moveDualSteamInstallFocus(1)
                     else -> {}
@@ -593,6 +595,7 @@ fun ArgosyApp(
                     ActiveModal.STATUS -> activity?.confirmDualModal()
                     ActiveModal.EMULATOR -> activity?.confirmDualEmulatorSelection()
                     ActiveModal.CORE -> activity?.confirmDualCoreSelection()
+                    ActiveModal.VARIANT_PICKER -> activity?.confirmDualVariantSelection()
                     ActiveModal.COLLECTION -> activity?.toggleDualCollectionAtFocus()
                     ActiveModal.STEAM_INSTALL -> activity?.confirmDualSteamInstallSelection()
                     ActiveModal.SAVE_NAME -> activity?.confirmDualSaveName()
@@ -1037,6 +1040,12 @@ fun ArgosyApp(
                                     a.confirmDualCoreSelection()
                                 }
                             },
+                            onModalVariantSelect = { index ->
+                                activity?.let { a ->
+                                    a.setDualVariantFocus(index)
+                                    a.confirmDualVariantSelection()
+                                }
+                            },
                             onModalCollectionToggle = { collectionId ->
                                 activity?.let { a ->
                                     val idx = detailState.collectionItems
@@ -1300,6 +1309,12 @@ fun ArgosyApp(
                                 onBroadcastCoreModalOpen = { cores, currentName ->
                                     dualScreenManager.openCoreModal(
                                         cores.map { it.displayName },
+                                        currentName
+                                    )
+                                },
+                                onBroadcastVariantModalOpen = { variantNames, currentName ->
+                                    dualScreenManager.openVariantModal(
+                                        variantNames,
                                         currentName
                                     )
                                 },
@@ -1573,6 +1588,16 @@ fun ArgosyApp(
                                             dualScreenManager.openCoreModal(
                                                 cores.map { it.displayName },
                                                 vm.uiState.value.selectedCoreName
+                                            )
+                                        }
+                                    }
+                                    GameDetailOption.SELECT_VARIANT -> {
+                                        scope.launch {
+                                            val variants = vm.getDownloadedVariants()
+                                            vm.openVariantPicker(variants)
+                                            dualScreenManager.openVariantModal(
+                                                variants.map { it.fileName },
+                                                vm.uiState.value.selectedVariantName
                                             )
                                         }
                                     }

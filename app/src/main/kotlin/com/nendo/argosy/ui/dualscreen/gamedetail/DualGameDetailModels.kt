@@ -30,6 +30,7 @@ enum class GameDetailOption {
     TOGGLE_FAVORITE,
     CHANGE_EMULATOR,
     CHANGE_CORE,
+    SELECT_VARIANT,
     SELECT_DISC,
     UPDATES_DLC,
     ADD_TO_COLLECTION,
@@ -81,6 +82,8 @@ data class DualGameDetailUiState(
     val hasMultipleCores: Boolean = false,
     val selectedCoreName: String? = null,
     val selectedCoreId: String? = null,
+    val hasMultipleVariants: Boolean = false,
+    val selectedVariantName: String? = null,
     val downloadProgress: Float? = null,
     val downloadState: String? = null,
     val isDeleting: Boolean = false,
@@ -98,6 +101,7 @@ fun DualGameDetailUiState.visibleOptions(): List<GameDetailOption> {
         add(GameDetailOption.TOGGLE_FAVORITE)
         if (isEmulated) add(GameDetailOption.CHANGE_EMULATOR)
         if (hasMultipleCores && isEmulated) add(GameDetailOption.CHANGE_CORE)
+        if (hasMultipleVariants && isEmulated) add(GameDetailOption.SELECT_VARIANT)
         if (isMultiDisc && isEmulated) add(GameDetailOption.SELECT_DISC)
         if (isDownloaded && !isDeleting) add(GameDetailOption.UPDATES_DLC)
         add(GameDetailOption.ADD_TO_COLLECTION)
@@ -138,6 +142,9 @@ data class DualGameDetailUpperState(
     val coreNames: List<String> = emptyList(),
     val coreFocusIndex: Int = 0,
     val coreCurrentName: String? = null,
+    val variantNames: List<String> = emptyList(),
+    val variantFocusIndex: Int = 0,
+    val variantCurrentName: String? = null,
     val collectionItems: List<DualCollectionItem> = emptyList(),
     val collectionFocusIndex: Int = 0,
     val showCreateDialog: Boolean = false,

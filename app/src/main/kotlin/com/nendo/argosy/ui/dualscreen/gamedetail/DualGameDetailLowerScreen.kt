@@ -167,6 +167,7 @@ fun DualGameDetailLowerScreen(
                         status = state.status,
                         emulatorName = state.emulatorName,
                         coreName = state.selectedCoreName,
+                        variantName = state.selectedVariantName,
                         activeChannel = state.activeChannel,
                         activeSaveTimestamp = state.activeSaveTimestamp,
                         saveSyncStatusName = state.saveSyncStatusName,
@@ -754,6 +755,7 @@ private fun OptionsTabContent(
     status: String?,
     emulatorName: String?,
     coreName: String?,
+    variantName: String?,
     activeChannel: String?,
     activeSaveTimestamp: Long?,
     saveSyncStatusName: String?,
@@ -763,6 +765,7 @@ private fun OptionsTabContent(
 ) {
     val emulatorText = emulatorName ?: "Platform Default"
     val coreText = coreName ?: "Default"
+    val variantText = variantName ?: "Default"
     val completionStatus = CompletionStatus.fromApiValue(status)
 
     val dlState = downloadState
@@ -888,6 +891,9 @@ private fun OptionsTabContent(
         GameDetailOption.CHANGE_CORE -> OptionEntry(
             option, Icons.Filled.Settings, "Change Core", coreText
         )
+        GameDetailOption.SELECT_VARIANT -> OptionEntry(
+            option, Icons.Filled.Settings, "Select Variant", variantText
+        )
         GameDetailOption.SELECT_DISC -> OptionEntry(
             option, Icons.Filled.Album, "Select Disc"
         )
@@ -919,6 +925,7 @@ private fun OptionsTabContent(
     val managementGroup = setOf(
         GameDetailOption.CHANGE_EMULATOR,
         GameDetailOption.CHANGE_CORE,
+        GameDetailOption.SELECT_VARIANT,
         GameDetailOption.SELECT_DISC,
         GameDetailOption.UPDATES_DLC,
         GameDetailOption.ADD_TO_COLLECTION,

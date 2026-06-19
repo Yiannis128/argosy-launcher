@@ -65,6 +65,13 @@ class SecondaryHomeBroadcastHelper(
         dsm.openCoreModal(cores.map { it.displayName }, currentName)
     }
 
+    fun broadcastVariantModalOpen(
+        variantNames: List<String>,
+        currentName: String?
+    ) {
+        dsm.openVariantModal(variantNames, currentName)
+    }
+
     fun broadcastCollectionModalOpen(vm: DualGameDetailViewModel) {
         val items = vm.collectionItems.value
         dsm.openCollectionModal(

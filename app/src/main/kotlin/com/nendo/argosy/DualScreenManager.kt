@@ -796,6 +796,10 @@ class DualScreenManager(
                 confirmDualCoreSelection()
                 return
             }
+            ActiveModal.VARIANT_PICKER -> {
+                confirmDualVariantSelection()
+                return
+            }
             ActiveModal.COLLECTION -> {
                 toggleDualCollectionAtFocus()
                 return
@@ -879,6 +883,15 @@ class DualScreenManager(
                     s?.copy(
                         modalType = ActiveModal.NONE,
                         coreCurrentName = if (intValue == 0) null else s.coreNames.getOrNull(intValue - 1)
+                    )
+                }
+            }
+            "variant_focus" -> _dualGameDetailState.update { s -> s?.copy(variantFocusIndex = intValue) }
+            "variant_confirm" -> {
+                _dualGameDetailState.update { s ->
+                    s?.copy(
+                        modalType = ActiveModal.NONE,
+                        variantCurrentName = s.variantNames.getOrNull(intValue)
                     )
                 }
             }
@@ -1054,6 +1067,10 @@ class DualScreenManager(
                 confirmDualCoreSelection()
                 return
             }
+            ActiveModal.VARIANT_PICKER -> {
+                confirmDualVariantSelection()
+                return
+            }
             ActiveModal.COLLECTION -> {
                 toggleDualCollectionAtFocus()
                 return
@@ -1181,6 +1198,50 @@ class DualScreenManager(
     fun setDualCoreFocus(index: Int) {
         _dualGameDetailState.update { state ->
             state?.copy(coreFocusIndex = index)
+        }
+    }
+
+    fun openVariantModal(names: List<String>, current: String?) {
+        _dualGameDetailState.update { state ->
+            state?.copy(
+                modalType = ActiveModal.VARIANT_PICKER,
+                variantNames = names,
+                variantFocusIndex = 0,
+                variantCurrentName = current
+            )
+        }
+        refocusMain()
+    }
+
+    fun moveDualVariantFocus(delta: Int) {
+        _dualGameDetailState.update { state ->
+            val max = ((state?.variantNames?.size ?: 0) - 1).coerceAtLeast(0)
+            state?.copy(
+                variantFocusIndex = (state.variantFocusIndex + delta)
+                    .coerceIn(0, max)
+            )
+        }
+    }
+
+    fun confirmDualVariantSelection() {
+        val state = _dualGameDetailState.value ?: return
+        val index = state.variantFocusIndex
+        companionHost?.onModalResult(
+            dismissed = false, type = ActiveModal.VARIANT_PICKER.name,
+            value = 0, statusSelected = null, selectedIndex = index,
+            collectionToggleId = -1, collectionCreateName = null
+        )
+        _dualGameDetailState.update {
+            it?.copy(
+                modalType = ActiveModal.NONE,
+                variantCurrentName = state.variantNames.getOrNull(index)
+            )
+        }
+    }
+
+    fun setDualVariantFocus(index: Int) {
+        _dualGameDetailState.update { state ->
+            state?.copy(variantFocusIndex = index)
         }
     }
 

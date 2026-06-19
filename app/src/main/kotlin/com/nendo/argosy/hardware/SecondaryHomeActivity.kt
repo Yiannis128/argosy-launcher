@@ -510,6 +510,11 @@ class SecondaryHomeActivity :
                 else vm.dismissPicker()
                 refocusSelf()
             }
+            ActiveModal.VARIANT_PICKER.name -> {
+                if (selectedIndex >= 0) vm.confirmVariantByIndex(selectedIndex)
+                else vm.dismissPicker()
+                refocusSelf()
+            }
             ActiveModal.STEAM_INSTALL.name -> {
                 vm.dismissSteamInstallModal()
                 vm.loadGame(vm.uiState.value.gameId)

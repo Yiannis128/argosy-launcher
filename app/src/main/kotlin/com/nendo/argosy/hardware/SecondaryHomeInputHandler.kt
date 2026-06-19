@@ -369,6 +369,15 @@ class SecondaryHomeInputHandler(
                     )
                 }
             }
+            GameDetailOption.SELECT_VARIANT -> {
+                lifecycleLaunch {
+                    val variants = vm.getDownloadedVariants()
+                    vm.openVariantPicker(variants)
+                    broadcasts.broadcastVariantModalOpen(
+                        variants.map { it.fileName }, vm.uiState.value.selectedVariantName
+                    )
+                }
+            }
             GameDetailOption.ADD_TO_COLLECTION -> {
                 vm.openCollectionModal()
                 lifecycleLaunch {
@@ -840,6 +849,37 @@ class SecondaryHomeInputHandler(
                     GamepadEvent.Confirm -> {
                         val idx = vm.corePickerFocusIndex.value
                         vm.confirmCoreByIndex(idx)
+                        broadcasts.broadcastModalConfirmResult(
+                            modal, idx, null
+                        )
+                    }
+                    GamepadEvent.Back -> {
+                        vm.dismissPicker()
+                        broadcasts.broadcastModalClose()
+                    }
+                    else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            ActiveModal.VARIANT_PICKER -> {
+                when (event) {
+                    GamepadEvent.Up -> {
+                        vm.moveVariantPickerFocus(-1)
+                        broadcasts.broadcastInlineUpdate(
+                            "variant_focus",
+                            vm.variantPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Down -> {
+                        vm.moveVariantPickerFocus(1)
+                        broadcasts.broadcastInlineUpdate(
+                            "variant_focus",
+                            vm.variantPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Confirm -> {
+                        val idx = vm.variantPickerFocusIndex.value
+                        vm.confirmVariantByIndex(idx)
                         broadcasts.broadcastModalConfirmResult(
                             modal, idx, null
                         )

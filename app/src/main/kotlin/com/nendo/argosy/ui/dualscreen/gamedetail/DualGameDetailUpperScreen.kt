@@ -77,6 +77,7 @@ fun DualGameDetailUpperScreen(
     onModalStatusSelect: (String) -> Unit = {},
     onModalEmulatorSelect: (Int) -> Unit = {},
     onModalCoreSelect: (Int) -> Unit = {},
+    onModalVariantSelect: (Int) -> Unit = {},
     onModalCollectionToggle: (Long) -> Unit = {},
     onModalCollectionShowCreate: () -> Unit = {},
     onModalCollectionCreate: (String) -> Unit = {},
@@ -151,6 +152,13 @@ fun DualGameDetailUpperScreen(
                 currentCoreName = state.coreCurrentName,
                 focusIndex = state.coreFocusIndex,
                 onSelect = onModalCoreSelect,
+                onDismiss = onModalDismiss
+            )
+            ActiveModal.VARIANT_PICKER -> DualVariantPickerContent(
+                variantNames = state.variantNames,
+                currentVariantName = state.variantCurrentName,
+                focusIndex = state.variantFocusIndex,
+                onSelect = onModalVariantSelect,
                 onDismiss = onModalDismiss
             )
             ActiveModal.COLLECTION -> {
@@ -745,6 +753,57 @@ private fun DualCorePickerContent(
                         isSelected = isSelected,
                         isCurrent = isCurrent,
                         onClick = { onSelect(itemIndex) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DualVariantPickerContent(
+    variantNames: List<String>,
+    currentVariantName: String?,
+    focusIndex: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .touchOnly { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .touchOnly { }
+                .padding(24.dp)
+        ) {
+            Text(
+                text = "SELECT VARIANT",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                itemsIndexed(variantNames, key = { _, n -> n }) { index, name ->
+                    val isSelected = focusIndex == index
+                    val isCurrent = name == currentVariantName
+                    EmulatorPickerItem(
+                        name = name,
+                        version = null,
+                        isSelected = isSelected,
+                        isCurrent = isCurrent,
+                        onClick = { onSelect(index) }
                     )
                 }
             }

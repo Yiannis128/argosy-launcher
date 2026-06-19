@@ -71,6 +71,19 @@ class ShowcaseViewModel(
         }
     }
 
+    fun onModalVariantSelect(index: Int) {
+        val state = detailState.value ?: return
+        detailState.update {
+            it?.copy(
+                modalType = ActiveModal.NONE,
+                variantCurrentName = state.variantNames.getOrNull(index)
+            )
+        }
+        if (isControlActive()) {
+            broadcasts.broadcastInlineUpdate("variant_confirm", index)
+        }
+    }
+
     fun onModalSteamInstallSelect(index: Int) {
         detailState.update { it?.copy(modalType = ActiveModal.NONE) }
         if (isControlActive()) {
@@ -162,6 +175,15 @@ class ShowcaseViewModel(
         }
     }
 
+    fun moveVariantFocus(delta: Int) {
+        detailState.update { state ->
+            val max = ((state?.variantNames?.size ?: 0) - 1).coerceAtLeast(0)
+            state?.copy(
+                variantFocusIndex = (state.variantFocusIndex + delta).coerceIn(0, max)
+            )
+        }
+    }
+
     fun moveDiscPickerFocus(delta: Int) {
         detailState.update { state ->
             val max = (state?.discPickerOptions?.size?.minus(1))?.coerceAtLeast(0) ?: 0
@@ -213,6 +235,7 @@ class ShowcaseViewModel(
                     ActiveModal.STATUS -> moveModalStatus(-1)
                     ActiveModal.EMULATOR -> moveEmulatorFocus(-1)
                     ActiveModal.CORE -> moveCoreFocus(-1)
+                    ActiveModal.VARIANT_PICKER -> moveVariantFocus(-1)
                     ActiveModal.COLLECTION -> moveCollectionFocus(-1)
                     ActiveModal.DISC_PICKER -> moveDiscPickerFocus(-1)
                     ActiveModal.STEAM_INSTALL -> moveSteamInstallFocus(-1)
@@ -225,6 +248,7 @@ class ShowcaseViewModel(
                     ActiveModal.STATUS -> moveModalStatus(1)
                     ActiveModal.EMULATOR -> moveEmulatorFocus(1)
                     ActiveModal.CORE -> moveCoreFocus(1)
+                    ActiveModal.VARIANT_PICKER -> moveVariantFocus(1)
                     ActiveModal.COLLECTION -> moveCollectionFocus(1)
                     ActiveModal.DISC_PICKER -> moveDiscPickerFocus(1)
                     ActiveModal.STEAM_INSTALL -> moveSteamInstallFocus(1)
@@ -242,6 +266,8 @@ class ShowcaseViewModel(
                         onModalEmulatorSelect(state.emulatorFocusIndex)
                     ActiveModal.CORE ->
                         onModalCoreSelect(state.coreFocusIndex)
+                    ActiveModal.VARIANT_PICKER ->
+                        onModalVariantSelect(state.variantFocusIndex)
                     ActiveModal.COLLECTION -> {
                         val idx = state.collectionFocusIndex
                         if (idx < state.collectionItems.size) {
