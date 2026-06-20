@@ -108,9 +108,10 @@ class GameLauncher @Inject constructor(
         forResume: Boolean = false,
         selectedDiscPath: String? = null,
         variantFileId: Long? = null,
+        skipVariantPrompt: Boolean = false,
         prefetchedGame: GameEntity? = null
     ): LaunchResult {
-        Logger.debug(TAG, "launch() called: gameId=$gameId, discId=$discId, forResume=$forResume, variantFileId=$variantFileId")
+        Logger.debug(TAG, "launch() called: gameId=$gameId, discId=$discId, forResume=$forResume, variantFileId=$variantFileId, skipVariantPrompt=$skipVariantPrompt")
 
         val game = prefetchedGame ?: gameDao.getById(gameId)
             ?: return LaunchResult.Error("Game not found").also {
@@ -127,12 +128,17 @@ class GameLauncher @Inject constructor(
             return launchAndroidApp(game)
         }
 
-        // Variant selection: if no variant specified and variants exist, prompt the user.
-        if (variantFileId == null) {
+        if (variantFileId == null && !skipVariantPrompt) {
             val options = variantResolver.getVariantOptions(game)
             if (options != null) {
                 return LaunchResult.SelectVariant(gameId, options)
             }
+        }
+
+        if (variantFileId == null && skipVariantPrompt &&
+            (game.activeVariantFileId != null || game.lastPlayedFileId != null)) {
+            gameDao.updateActiveVariantFileId(game.id, null)
+            gameDao.updateLastPlayedFileId(game.id, null)
         }
 
         // A specific variant was selected — launch its file instead of the primary.

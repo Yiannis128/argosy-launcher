@@ -370,6 +370,7 @@ class GameDetailViewModel @Inject constructor(
                     scope = viewModelScope,
                     gameId = currentGameId,
                     variantFileId = selection.variantFileId,
+                    skipVariantPrompt = true,
                     callbacks = makeLaunchCallbacks()
                 )
             }

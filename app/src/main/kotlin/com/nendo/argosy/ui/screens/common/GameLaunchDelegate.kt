@@ -669,6 +669,7 @@ class GameLaunchDelegate @Inject constructor(
         discId: Long? = null,
         selectedDiscPath: String? = null,
         variantFileId: Long? = null,
+        skipVariantPrompt: Boolean = false,
         launchMode: LaunchMode? = null,
         callbacks: LaunchResultCallbacks
     ) {
@@ -683,7 +684,8 @@ class GameLaunchDelegate @Inject constructor(
                     gameId = gameId,
                     discId = discId,
                     selectedDiscPath = selectedDiscPath,
-                    variantFileId = variantFileId
+                    variantFileId = variantFileId,
+                    skipVariantPrompt = skipVariantPrompt
                 )
                 dispatchSimpleResult(result, launchMode, callbacks)
             } finally {
