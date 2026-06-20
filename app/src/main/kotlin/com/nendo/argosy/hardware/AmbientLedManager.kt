@@ -197,7 +197,7 @@ class AmbientLedManager @Inject constructor(
         val startLeft = _state.value.hoverLeftColor ?: return
         val startRight = _state.value.hoverRightColor ?: startLeft
         hoverTransitionJob?.cancel()
-        hoverTransitionJob = launchTransition { progress ->
+        hoverTransitionJob = launchTransition(HOVER_FRAME_MS) { progress ->
             val endLeft = targetHoverLeft ?: return@launchTransition
             val endRight = targetHoverRight ?: endLeft
             _state.value = _state.value.copy(
@@ -265,7 +265,7 @@ class AmbientLedManager @Inject constructor(
         }
     }
 
-    private fun launchTransition(onProgress: (Float) -> Unit): Job = scope.launch {
+    private fun launchTransition(frameMs: Long = FRAME_MS, onProgress: (Float) -> Unit): Job = scope.launch {
         val startTime = System.currentTimeMillis()
         val duration = transitionMs
         while (isActive) {
@@ -273,7 +273,7 @@ class AmbientLedManager @Inject constructor(
             val progress = if (duration <= 0) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
             onProgress(progress)
             if (progress >= 1f) break
-            delay(FRAME_MS)
+            delay(frameMs)
         }
     }
 
@@ -507,6 +507,7 @@ class AmbientLedManager @Inject constructor(
     companion object {
         private const val TAG = "AmbientLedManager"
         private const val FRAME_MS = 16L
+        private const val HOVER_FRAME_MS = 83L
         private const val MIN_WRITE_INTERVAL_MS = 33L
         private const val COLOR_EPSILON = 0.012f
         private const val BRIGHTNESS_EPSILON = 0.01f
