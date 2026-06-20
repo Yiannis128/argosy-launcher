@@ -239,11 +239,16 @@ internal fun routeObservePlatformLibretroSettings(vm: SettingsViewModel) {
 
 internal fun routeLoadAvailablePlatformsForLibretro(vm: SettingsViewModel) {
     vm.viewModelScope.launch {
-        val platforms = vm.platformRepository.getAllPlatformsOrdered()
-            .filter { it.syncEnabled && LibretroCoreRegistry.isPlatformSupported(it.slug) }
-            .map { PlatformContext(it.id, it.name, it.slug) }
-        vm._uiState.update {
-            it.copy(builtinVideo = it.builtinVideo.copy(availablePlatforms = platforms))
+        try {
+            val platforms = vm.platformRepository.getAllPlatformsOrdered()
+                .filter { it.syncEnabled && LibretroCoreRegistry.isPlatformSupported(it.slug) }
+                .distinctBy { it.slug }
+                .map { PlatformContext(it.id, it.name, it.slug) }
+            vm._uiState.update {
+                it.copy(builtinVideo = it.builtinVideo.copy(availablePlatforms = platforms))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("BuiltinSettings", "Failed to load available platforms", e)
         }
     }
 }

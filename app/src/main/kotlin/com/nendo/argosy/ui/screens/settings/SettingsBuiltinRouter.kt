@@ -17,7 +17,7 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.util.AppPaths
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -746,15 +746,27 @@ private fun routeParseFastForwardValue(value: String?): Int? {
 
 internal fun routeLoadCoreManagementState(vm: SettingsViewModel, preserveFocus: Boolean = false) {
     vm.viewModelScope.launch {
+        try {
+            loadCoreManagementStateInternal(vm, preserveFocus)
+        } catch (e: Exception) {
+            android.util.Log.e("CoreManagement", "Failed to load core management state", e)
+            vm._uiState.update { it.copy(coreManagement = CoreManagementState()) }
+            vm.notificationManager.showError("Couldn't load cores. Please try again.")
+        }
+    }
+}
+
+private suspend fun loadCoreManagementStateInternal(vm: SettingsViewModel, preserveFocus: Boolean) {
         val currentState = vm._uiState.value.coreManagement
         val isOnline = com.nendo.argosy.util.NetworkUtils.isOnline(vm.context)
         val syncEnabledPlatforms = vm.platformRepository.getSyncEnabledPlatforms()
-        val coreSelections = vm.libretroSettingsRepo.getBuiltinCoreSelections().first()
+        val coreSelections = vm.libretroSettingsRepo.getBuiltinCoreSelections().firstOrNull() ?: emptyMap()
         val installedCoreIds = vm.getInstalledCoreIds()
         val updatableCoreIds = vm.coreManager.getCoreIdsWithUpdatesAvailable()
 
         val platformRows = syncEnabledPlatforms
             .filter { LibretroCoreRegistry.isPlatformSupported(it.slug) }
+            .distinctBy { it.slug }
             .map { platform ->
                 val availableCores = LibretroCoreRegistry.getCoresForPlatform(platform.slug)
                 val selectedCoreId = coreSelections[platform.slug]
@@ -776,6 +788,7 @@ internal fun routeLoadCoreManagementState(vm: SettingsViewModel, preserveFocus: 
                     }
                 )
             }
+            .filter { it.cores.isNotEmpty() }
 
         val focusedPlatformIndex = if (preserveFocus) {
             currentState.focusedPlatformIndex.coerceIn(0, (platformRows.size - 1).coerceAtLeast(0))
@@ -799,11 +812,11 @@ internal fun routeLoadCoreManagementState(vm: SettingsViewModel, preserveFocus: 
                 )
             )
         }
-    }
 }
 
 internal fun routeMoveCoreManagementPlatformFocus(vm: SettingsViewModel, delta: Int): Boolean {
     val state = vm._uiState.value.coreManagement
+    if (state.platforms.isEmpty()) return false
     val newIndex = (state.focusedPlatformIndex + delta).coerceIn(0, state.platforms.size - 1)
     if (newIndex == state.focusedPlatformIndex) {
         vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
@@ -824,6 +837,7 @@ internal fun routeMoveCoreManagementPlatformFocus(vm: SettingsViewModel, delta: 
 internal fun routeMoveCoreManagementCoreFocus(vm: SettingsViewModel, delta: Int): Boolean {
     val state = vm._uiState.value.coreManagement
     val platform = state.focusedPlatform ?: return false
+    if (platform.cores.isEmpty()) return false
     val newIndex = (state.focusedCoreIndex + delta).coerceIn(0, platform.cores.size - 1)
     if (newIndex == state.focusedCoreIndex) {
         vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
