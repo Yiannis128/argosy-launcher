@@ -188,7 +188,7 @@ class ServerSettingsDelegate @Inject constructor(
                             rommConnecting = false,
                             rommDevicePairing = true,
                             rommDeviceUserCode = data.userCode,
-                            rommDeviceVerificationUrl = data.verificationUrlComplete,
+                            rommDeviceVerificationUrl = data.verificationPathComplete,
                             rommConfigError = null
                         )
                     }

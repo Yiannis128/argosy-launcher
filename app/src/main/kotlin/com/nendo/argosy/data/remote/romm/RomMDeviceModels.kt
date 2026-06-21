@@ -60,8 +60,8 @@ data class RomMDeviceAuthInitRequest(
 data class RomMDeviceAuthInitResponse(
     @Json(name = "device_code") val deviceCode: String,
     @Json(name = "user_code") val userCode: String,
-    @Json(name = "verification_url") val verificationUrl: String,
-    @Json(name = "verification_url_complete") val verificationUrlComplete: String,
+    @Json(name = "verification_path") val verificationPath: String,
+    @Json(name = "verification_path_complete") val verificationPathComplete: String,
     @Json(name = "expires_in") val expiresIn: Int,
     @Json(name = "interval") val interval: Int
 )

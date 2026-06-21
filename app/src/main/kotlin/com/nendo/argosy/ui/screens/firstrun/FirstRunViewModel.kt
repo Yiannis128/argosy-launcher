@@ -621,7 +621,7 @@ class FirstRunViewModel @Inject constructor(
                             isConnecting = false,
                             rommDevicePairing = true,
                             rommDeviceUserCode = data.userCode,
-                            rommDeviceVerificationUrl = data.verificationUrlComplete,
+                            rommDeviceVerificationUrl = data.verificationPathComplete,
                             connectionError = null
                         )
                     }

@@ -268,8 +268,8 @@ class RomMConnectionManager @Inject constructor(
                     Logger.info(TAG, "beginDeviceAuth: init ok at $normalizedUrl, userCode=${body.userCode}")
                     return RomMResult.Success(
                         body.copy(
-                            verificationUrl = absolutizeUrl(body.verificationUrl, normalizedUrl),
-                            verificationUrlComplete = absolutizeUrl(body.verificationUrlComplete, normalizedUrl)
+                            verificationPath = absolutizeUrl(body.verificationPath, normalizedUrl),
+                            verificationPathComplete = absolutizeUrl(body.verificationPathComplete, normalizedUrl)
                         )
                     )
                 } else {
