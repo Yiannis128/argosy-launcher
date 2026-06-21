@@ -838,7 +838,8 @@ object EmulatorRegistry {
             launchConfig = LaunchConfig.Custom(
                 activityClass = "aenu.ax360e.EmulatorActivity",
                 intentExtras = mapOf("game_uri" to ExtraValue.FileUri)
-            )
+            ),
+            downloadUrl = "https://play.google.com/store/apps/details?id=aenu.ax360e"
         ),
         EmulatorDef(
             id = "ax360e_free",
@@ -849,7 +850,8 @@ object EmulatorRegistry {
             launchConfig = LaunchConfig.Custom(
                 activityClass = "aenu.ax360e.EmulatorActivity",
                 intentExtras = mapOf("game_uri" to ExtraValue.FileUri)
-            )
+            ),
+            downloadUrl = "https://play.google.com/store/apps/details?id=aenu.ax360e.free"
         ),
 
         EmulatorDef(
