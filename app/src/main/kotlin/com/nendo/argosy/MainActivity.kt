@@ -196,6 +196,7 @@ class MainActivity : ComponentActivity() {
     private var hasResumedBefore = false
     private var hadFocusBefore = false
     private var focusLostTime = 0L
+    private var yieldedFocusToGame = false
 
     // --- Lifecycle ---
 
@@ -502,6 +503,10 @@ class MainActivity : ComponentActivity() {
             }
             hadFocusBefore = true
             focusLostTime = 0L
+            if (yieldedFocusToGame) {
+                yieldedFocusToGame = false
+                reassertCompanionForwarding()
+            }
             onDimmerActivity?.invoke()
             hideSystemUI()
             window.decorView.requestFocus()
@@ -513,6 +518,12 @@ class MainActivity : ComponentActivity() {
             }
         } else {
             focusLostTime = System.currentTimeMillis()
+            if (::dualScreenManager.isInitialized &&
+                displayAffinityHelper.hasSecondaryDisplay &&
+                !dualScreenManager.isRolesSwapped.value
+            ) {
+                yieldedFocusToGame = true
+            }
             if (::dualScreenManager.isInitialized) {
                 dualScreenManager.onFocusLostToEmulator()
             }
@@ -528,6 +539,20 @@ class MainActivity : ComponentActivity() {
     }
 
     // --- Private Helpers ---
+
+    /** Recovers companion input forwarding after a game session: any of the dispatchKeyEvent gates (isCompanionActive, isOverlayFocused) can latch stale while focus was yielded. */
+    private fun reassertCompanionForwarding() {
+        if (!::dualScreenManager.isInitialized) return
+        if (!displayAffinityHelper.hasSecondaryDisplay) return
+        if (dualScreenManager.isRolesSwapped.value) return
+        if (dualScreenManager.swappedIsGameActive.value) return
+        isOverlayFocused = false
+        if (dualScreenManager.isCompanionActive.value) {
+            dualScreenManager.companionHost?.refocusSelf()
+        } else {
+            dualScreenManager.ensureCompanionLaunched()
+        }
+    }
 
     /**
      * Best-effort housekeeping when we come back to the launcher: if a persisted
