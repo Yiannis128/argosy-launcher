@@ -313,6 +313,12 @@ interface GameDao {
     @Query("DELETE FROM games WHERE platformId = :platformId")
     suspend fun deleteByPlatform(platformId: Long)
 
+    @Query("SELECT * FROM games WHERE source IN (:sources) AND localPath IS NOT NULL")
+    suspend fun getDownloadedBySources(sources: List<GameSource>): List<GameEntity>
+
+    @Query("DELETE FROM games WHERE source IN (:sources)")
+    suspend fun deleteBySources(sources: List<GameSource>)
+
     @Query("SELECT COUNT(*) FROM games WHERE platformId = :platformId AND isHidden = 0")
     suspend fun countByPlatform(platformId: Long): Int
 

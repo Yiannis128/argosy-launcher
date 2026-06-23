@@ -80,6 +80,9 @@ interface PlatformDao {
     @Query("DELETE FROM platforms WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM platforms WHERE id NOT IN (SELECT DISTINCT platformId FROM games)")
+    suspend fun deleteEmptyPlatforms()
+
     @Query("SELECT * FROM platforms")
     suspend fun getAllPlatforms(): List<PlatformEntity>
 

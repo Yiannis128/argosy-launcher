@@ -35,6 +35,9 @@ interface DownloadQueueDao {
     @Query("DELETE FROM download_queue WHERE gameId = :gameId")
     suspend fun deleteByGameId(gameId: Long)
 
+    @Query("DELETE FROM download_queue WHERE gameId IN (SELECT id FROM games WHERE source IN (:sourceNames))")
+    suspend fun deleteByGameSources(sourceNames: List<String>)
+
     @Query("DELETE FROM download_queue WHERE id = :id")
     suspend fun deleteById(id: Long)
 

@@ -63,6 +63,7 @@ class RomMConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val saveSyncRepository: dagger.Lazy<com.nendo.argosy.data.repository.SaveSyncRepository>,
+    private val databaseAdminRepository: dagger.Lazy<com.nendo.argosy.data.repository.DatabaseAdminRepository>,
     private val biosRepository: BiosRepository
 ) {
     private var api: RomMApi? = null
@@ -109,6 +110,19 @@ class RomMConnectionManager @Inject constructor(
             val result = connect(prefs.rommBaseUrl, prefs.rommToken)
             Logger.info(TAG, "initialize: connect result=$result, state=${_connectionState.value}")
         }
+    }
+
+    private fun normalizeServerKey(url: String): String =
+        url.trim().lowercase().removePrefix("https://").removePrefix("http://").trimEnd('/')
+
+    private suspend fun persistRommCredentials(newBaseUrl: String, token: String, username: String?) {
+        val storedKey = userPreferencesRepository.preferences.first().rommBaseUrl?.let { normalizeServerKey(it) }
+        val newKey = normalizeServerKey(newBaseUrl)
+        if (!storedKey.isNullOrBlank() && storedKey != newKey) {
+            Logger.info(TAG, "persistRommCredentials: server changed ($storedKey -> $newKey), purging RomM library")
+            databaseAdminRepository.get().purgeRomMLibrary()
+        }
+        userPreferencesRepository.setRomMCredentials(newBaseUrl, token, username)
     }
 
     suspend fun connect(url: String, token: String? = null): RomMResult<String> {
@@ -168,7 +182,7 @@ class RomMConnectionManager @Inject constructor(
                 saveSyncRepository.get().setApi(api)
                 biosRepository.setApi(api)
 
-                userPreferencesRepository.setRomMCredentials(baseUrl, token, username)
+                persistRommCredentials(baseUrl, token, username)
 
                 if (isVersionAtLeast(MIN_DEVICE_API_VERSION)) {
                     registerDeviceIfNeeded()
@@ -194,7 +208,7 @@ class RomMConnectionManager @Inject constructor(
                 userResponse.body()?.username
             } else null
 
-            userPreferencesRepository.setRomMCredentials(baseUrl, token, username)
+            persistRommCredentials(baseUrl, token, username)
 
             if (isVersionAtLeast(MIN_DEVICE_API_VERSION)) {
                 registerDeviceIfNeeded()
@@ -335,7 +349,7 @@ class RomMConnectionManager @Inject constructor(
         } catch (_: Exception) {
             null
         }
-        userPreferencesRepository.setRomMCredentials(base, body.accessToken, username)
+        persistRommCredentials(base, body.accessToken, username)
         userPreferencesRepository.setRommDeviceId(body.deviceId, BuildConfig.VERSION_NAME)
         cachedDeviceId = body.deviceId
         saveSyncRepository.get().setDeviceId(body.deviceId)

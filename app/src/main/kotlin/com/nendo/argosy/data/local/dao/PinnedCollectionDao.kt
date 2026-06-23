@@ -38,6 +38,9 @@ interface PinnedCollectionDao {
     @Query("DELETE FROM pinned_collections WHERE collectionId = :collectionId")
     suspend fun deleteByCollectionId(collectionId: Long)
 
+    @Query("DELETE FROM pinned_collections WHERE collectionId IS NOT NULL AND collectionId NOT IN (SELECT id FROM collections)")
+    suspend fun deleteOrphaned()
+
     @Query("DELETE FROM pinned_collections WHERE virtualType = :type AND virtualName = :name")
     suspend fun deleteVirtual(type: String, name: String)
 

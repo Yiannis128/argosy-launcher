@@ -46,4 +46,7 @@ interface PendingConflictDao {
 
     @Query("DELETE FROM pending_conflicts WHERE gameId = :gameId")
     suspend fun deleteByGameId(gameId: Long)
+
+    @Query("DELETE FROM pending_conflicts WHERE gameId IN (SELECT id FROM games WHERE source IN (:sourceNames))")
+    suspend fun deleteByGameSources(sourceNames: List<String>)
 }

@@ -81,6 +81,9 @@ interface SaveCacheDao {
     @Query("DELETE FROM save_cache WHERE gameId = :gameId")
     suspend fun deleteByGame(gameId: Long)
 
+    @Query("DELETE FROM save_cache WHERE gameId IN (SELECT id FROM games WHERE source IN (:sourceNames))")
+    suspend fun deleteByGameSources(sourceNames: List<String>)
+
     @Query("""
         DELETE FROM save_cache
         WHERE id IN (
