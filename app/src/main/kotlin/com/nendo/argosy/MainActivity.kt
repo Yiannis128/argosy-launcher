@@ -424,6 +424,20 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
+        if (!dualScreenManager.isRolesSwapped.value &&
+            isOnHomeScreen &&
+            !isOverlayFocused &&
+            !dualScreenManager.isCompanionActive.value &&
+            !dualScreenManager.swappedIsGameActive.value &&
+            displayAffinityHelper.hasSecondaryDisplay
+        ) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                Log.d(TAG, "dispatchKeyEvent: companion link stale, relinking key=${event.keyCode}")
+                reassertCompanionForwarding()
+            }
+            return true
+        }
+
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
             Log.d(TAG, "dispatchKeyEvent: LOCAL handling key=${event.keyCode}")
         }
@@ -477,6 +491,17 @@ class MainActivity : ComponentActivity() {
                         sessionStateStore.getSwapStartSelect()
                     )
                 }
+                return true
+            }
+
+            if (!dualScreenManager.isRolesSwapped.value &&
+                isOnHomeScreen &&
+                !isOverlayFocused &&
+                !dualScreenManager.isCompanionActive.value &&
+                !dualScreenManager.swappedIsGameActive.value &&
+                displayAffinityHelper.hasSecondaryDisplay
+            ) {
+                reassertCompanionForwarding()
                 return true
             }
 
@@ -540,7 +565,7 @@ class MainActivity : ComponentActivity() {
 
     // --- Private Helpers ---
 
-    /** Recovers companion input forwarding after a game session: any of the dispatchKeyEvent gates (isCompanionActive, isOverlayFocused) can latch stale while focus was yielded. */
+    /** Relinks companion input forwarding when input arrives on home but the link is stale (companion marked inactive or overlay focus latched) after a game, sleep/wake, or a foreground app yielding the secondary display. */
     private fun reassertCompanionForwarding() {
         if (!::dualScreenManager.isInitialized) return
         if (!displayAffinityHelper.hasSecondaryDisplay) return
