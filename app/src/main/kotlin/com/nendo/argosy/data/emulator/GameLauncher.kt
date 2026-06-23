@@ -20,6 +20,7 @@ import com.nendo.argosy.data.repository.BiosRepository
 import com.nendo.argosy.libretro.LibretroActivity
 import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.libretro.coreoptions.CoreOptionResolver
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import com.nendo.argosy.data.local.entity.GameDiscEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.util.LogSanitizer
 import com.nendo.argosy.util.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -69,6 +71,7 @@ sealed class LaunchResult {
 class GameLauncher @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
+    private val platformDao: PlatformDao,
     private val gameDiscDao: GameDiscDao,
     private val emulatorConfigDao: EmulatorConfigDao,
     private val emulatorLaunchArgsDao: EmulatorLaunchArgsDao,
@@ -171,6 +174,8 @@ class GameLauncher @Inject constructor(
                 Logger.warn(TAG, "launch() failed: ROM file missing; cleared localPath for ${romFile.name}, fullPath=$romPath")
             }
         }
+
+        romFile = resolveBaseRomFile(game, romFile)
 
         val emulator = resolveEmulator(game)
             ?: return LaunchResult.NoEmulator(game.platformSlug).also {
@@ -1626,6 +1631,43 @@ class GameLauncher @Inject constructor(
         }
     }
 
+    /** Switch-family titles ship base + update + DLC together in a per-game folder; the update is unbootable alone, so launch the largest base-named file in that folder. Never applied to the shared platform root, where a malformed library mixes unrelated titles. */
+    private suspend fun resolveBaseRomFile(game: GameEntity, romFile: File): File {
+        if (game.platformSlug !in VariantCategory.VARIANT_EXCLUDED_PLATFORMS) return romFile
+        val parent = romFile.parentFile ?: return romFile
+        if (isPlatformRoot(parent, game.platformSlug)) return romFile
+        val baseStem = baseRomStem(romFile.name)
+        val base = (parent.listFiles()?.filter { it.isFile } ?: return romFile)
+            .filter { baseRomStem(it.name) == baseStem }
+            .filterNot { UPDATE_DLC_SUFFIX.containsMatchIn(it.nameWithoutExtension) }
+            .maxByOrNull { it.length() }
+            ?: return romFile
+        if (base.absolutePath != romFile.absolutePath) {
+            Logger.info(TAG, "resolveBaseRomFile: redirecting ${romFile.name} -> ${base.name} for ${game.title}")
+        }
+        return base
+    }
+
+    private suspend fun isPlatformRoot(dir: File, platformSlug: String): Boolean {
+        val target = runCatching { dir.canonicalFile }.getOrDefault(dir.absoluteFile)
+        val root = platformDownloadDir(platformSlug)
+        return runCatching { root.canonicalFile }.getOrDefault(root.absoluteFile) == target
+    }
+
+    private suspend fun platformDownloadDir(platformSlug: String): File {
+        platformDao.getBySlug(platformSlug)?.customRomPath?.let { return File(it) }
+        val custom = userPreferencesRepository.userPreferences.first().romStoragePath
+        return if (custom != null) File(custom, platformSlug)
+        else File(File(context.getExternalFilesDir(null), "downloads"), platformSlug)
+    }
+
+    private fun baseRomStem(fileName: String): String =
+        fileName.substringBeforeLast('.')
+            .replace(UPDATE_DLC_SUFFIX, "")
+            .replace(Regex("[ _-]+"), " ")
+            .lowercase()
+            .trim()
+
     private suspend fun validateAndResolveLaunchFile(game: GameEntity, romFile: File): File {
         if (romFile.extension.lowercase() != "m3u") return romFile
 
@@ -1821,6 +1863,7 @@ class GameLauncher @Inject constructor(
         val EXTCONTENT_SOURCE_NAMES = setOf(
             "update", "updates", "dlc", "dlcs"
         )
+        val UPDATE_DLC_SUFFIX = Regex("(?i)[ _-]+(update|dlc)([ _-]?\\d+)?$")
     }
 
     private suspend fun migrateToExtcontent(game: GameEntity) {
