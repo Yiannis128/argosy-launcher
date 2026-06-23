@@ -53,12 +53,12 @@ class LaunchViewModel @Inject constructor(
         get() = savedStateHandle["emulatorLaunchTime"] ?: 0L
         set(value) { savedStateHandle["emulatorLaunchTime"] = value }
 
-    private var wasBackgroundedSinceLaunch: Boolean
-        get() = savedStateHandle["wasBackgroundedSinceLaunch"] ?: false
-        set(value) { savedStateHandle["wasBackgroundedSinceLaunch"] = value }
+    private var launchActivityStarted: Boolean
+        get() = savedStateHandle["launchActivityStarted"] ?: false
+        set(value) { savedStateHandle["launchActivityStarted"] = value }
 
-    fun markBackgrounded() {
-        if (hasLaunchedEmulator) wasBackgroundedSinceLaunch = true
+    fun markLaunchActivityStarted() {
+        if (hasLaunchedEmulator) launchActivityStarted = true
     }
 
     private val _launchOptions = MutableStateFlow<Bundle?>(null)
@@ -107,7 +107,7 @@ class LaunchViewModel @Inject constructor(
 
     fun handleSessionEnd(onComplete: () -> Unit, force: Boolean = false) {
         if (!hasLaunchedEmulator) return
-        if (!force && !wasBackgroundedSinceLaunch) return
+        if (!force && !launchActivityStarted) return
         gameLaunchDelegate.endSessionInBackground()
         _isSessionEnded.value = true
         onComplete()

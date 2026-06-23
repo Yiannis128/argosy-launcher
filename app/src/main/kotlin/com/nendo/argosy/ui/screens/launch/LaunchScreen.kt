@@ -71,6 +71,7 @@ fun LaunchScreen(
                         context.startActivity(intent)
                     }
                 }
+                viewModel.markLaunchActivityStarted()
                 viewModel.clearLaunchIntent()
             } catch (e: Exception) {
                 android.util.Log.e("LaunchScreen", "Failed to start activity", e)
@@ -89,7 +90,6 @@ fun LaunchScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> viewModel.markBackgrounded()
                 Lifecycle.Event.ON_RESUME -> viewModel.handleSessionEnd(onComplete = {})
                 else -> {}
             }
