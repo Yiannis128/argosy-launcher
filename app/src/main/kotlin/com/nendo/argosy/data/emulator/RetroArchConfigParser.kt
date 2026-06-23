@@ -334,7 +334,7 @@ class RetroArchConfigParser @Inject constructor(
     companion object {
         private val KNOWN_CORE_NAMES = setOf(
             "mGBA", "Gambatte", "Snes9x", "bsnes", "Genesis Plus GX", "PPSSPP",
-            "Mupen64Plus", "DeSmuME", "melonDS", "Beetle PSX", "PCSX ReARMed",
+            "Mupen64Plus-Next", "DeSmuME", "melonDS", "Beetle PSX", "PCSX-ReARMed",
             "FinalBurn Neo", "MAME", "Stella", "FCEUmm", "Nestopia", "VBA-M",
             "Flycast", "Dolphin", "Citra", "PPSSPP", "Mednafen"
         )

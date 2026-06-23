@@ -395,16 +395,22 @@ class RetroArchConfigParserTest {
     }
 
     @Test
-    fun `getRetroArchSaveDirName falls back to core id when no override is registered`() {
+    fun `getRetroArchSaveDirName falls back to core id when library_name differs by no more than case`() {
         assertEquals("mesen", EmulatorRegistry.getRetroArchSaveDirName("mesen"))
         assertEquals("snes9x", EmulatorRegistry.getRetroArchSaveDirName("snes9x"))
-        assertEquals("pcsx_rearmed", EmulatorRegistry.getRetroArchSaveDirName("pcsx_rearmed"))
+        assertEquals("gambatte", EmulatorRegistry.getRetroArchSaveDirName("gambatte"))
     }
 
     @Test
-    fun `getRetroArchSaveDirName overrides cores whose library_name differs from id by more than case`() {
+    fun `getRetroArchSaveDirName maps cores whose libretro corename differs from id by more than case`() {
+        assertEquals("Genesis Plus GX", EmulatorRegistry.getRetroArchSaveDirName("genesis_plus_gx"))
+        assertEquals("PCSX-ReARMed", EmulatorRegistry.getRetroArchSaveDirName("pcsx_rearmed"))
+        assertEquals("Beetle PSX HW", EmulatorRegistry.getRetroArchSaveDirName("mednafen_psx_hw"))
+        assertEquals("ParaLLEl N64", EmulatorRegistry.getRetroArchSaveDirName("parallel_n64"))
         assertEquals("Mupen64Plus-Next", EmulatorRegistry.getRetroArchSaveDirName("mupen64plus_next_gles3"))
         assertEquals("Mupen64Plus-Next", EmulatorRegistry.getRetroArchSaveDirName("mupen64plus_next_gles2"))
+        assertEquals("DOSBox-pure", EmulatorRegistry.getRetroArchSaveDirName("dosbox_pure"))
+        assertEquals("MAME 2010 (0.139)", EmulatorRegistry.getRetroArchSaveDirName("mame2010"))
         assertEquals("VICE x64", EmulatorRegistry.getRetroArchSaveDirName("vice_x64"))
         assertEquals("VICE x64sc", EmulatorRegistry.getRetroArchSaveDirName("vice_x64sc"))
         assertEquals("melonDS DS", EmulatorRegistry.getRetroArchSaveDirName("melondsds"))

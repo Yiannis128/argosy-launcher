@@ -290,8 +290,7 @@ sealed class ExtraValue {
 
 data class RetroArchCore(
     val id: String,
-    val displayName: String,
-    val saveDirName: String? = null
+    val displayName: String
 )
 
 data class ExtensionOption(
@@ -1094,8 +1093,8 @@ object EmulatorRegistry {
             RetroArchCore("mesen-s", "Mesen-S")
         ),
         "n64" to listOf(
-            RetroArchCore("mupen64plus_next_gles3", "Mupen64Plus-Next (GLES3)", saveDirName = "Mupen64Plus-Next"),
-            RetroArchCore("mupen64plus_next_gles2", "Mupen64Plus-Next (GLES2)", saveDirName = "Mupen64Plus-Next"),
+            RetroArchCore("mupen64plus_next_gles3", "Mupen64Plus-Next (GLES3)"),
+            RetroArchCore("mupen64plus_next_gles2", "Mupen64Plus-Next (GLES2)"),
             RetroArchCore("parallel_n64", "ParaLLEl N64")
         ),
         "gb" to listOf(
@@ -1119,7 +1118,7 @@ object EmulatorRegistry {
             RetroArchCore("gpsp", "gpSP")
         ),
         "nds" to listOf(
-            RetroArchCore("melondsds", "melonDS DS", saveDirName = "melonDS DS"),
+            RetroArchCore("melondsds", "melonDS DS"),
             RetroArchCore("melonds", "melonDS"),
             RetroArchCore("desmume", "DeSmuME"),
             RetroArchCore("desmume2015", "DeSmuME 2015"),
@@ -1247,8 +1246,8 @@ object EmulatorRegistry {
             RetroArchCore("pokemini", "PokeMini")
         ),
         "c64" to listOf(
-            RetroArchCore("vice_x64", "VICE x64", saveDirName = "VICE x64"),
-            RetroArchCore("vice_x64sc", "VICE x64 (Accurate)", saveDirName = "VICE x64sc")
+            RetroArchCore("vice_x64", "VICE x64"),
+            RetroArchCore("vice_x64sc", "VICE x64 (Accurate)")
         ),
         "vic20" to listOf(
             RetroArchCore("vice_xvic", "VICE VIC-20")
@@ -1290,20 +1289,55 @@ object EmulatorRegistry {
     fun getDefaultCore(platformId: String): RetroArchCore? =
         getCoresForPlatform(platformId).firstOrNull()
 
-    private val coreSaveDirByCoreId: Map<String, String> by lazy {
-        platformCores.values
-            .flatten()
-            .mapNotNull { core -> core.saveDirName?.let { core.id to it } }
-            .toMap()
-    }
+    private val retroArchSaveDirByCore: Map<String, String> = mapOf(
+        "snes9x2010" to "Snes9x 2010",
+        "bsnes2014_accuracy" to "bsnes 2014 Accuracy",
+        "mupen64plus_next" to "Mupen64Plus-Next",
+        "mupen64plus_next_gles3" to "Mupen64Plus-Next",
+        "mupen64plus_next_gles2" to "Mupen64Plus-Next",
+        "parallel_n64" to "ParaLLEl N64",
+        "tgbdual" to "TGB Dual",
+        "vba_next" to "VBA Next",
+        "vbam" to "VBA-M",
+        "desmume2015" to "DeSmuME 2015",
+        "melondsds" to "melonDS DS",
+        "genesis_plus_gx" to "Genesis Plus GX",
+        "pcsx_rearmed" to "PCSX-ReARMed",
+        "mednafen_psx" to "Beetle PSX",
+        "mednafen_psx_hw" to "Beetle PSX HW",
+        "mednafen_saturn" to "Beetle Saturn",
+        "mednafen_pce" to "Beetle PCE",
+        "mednafen_pce_fast" to "Beetle PCE Fast",
+        "mednafen_pcfx" to "Beetle PC-FX",
+        "mednafen_lynx" to "Beetle Lynx",
+        "mednafen_ngp" to "Beetle NeoPop",
+        "mednafen_supergrafx" to "Beetle SuperGrafx",
+        "mednafen_wswan" to "Beetle WonderSwan",
+        "stella2014" to "Stella 2014",
+        "dosbox_pure" to "DOSBox-pure",
+        "dosbox_core" to "DOSBox-core",
+        "dosbox_svn" to "DOSBox-SVN",
+        "fbneo" to "FinalBurn Neo",
+        "fbalpha2012" to "FB Alpha 2012",
+        "fbalpha2012_neogeo" to "FB Alpha 2012 Neo Geo",
+        "mame2003_plus" to "MAME 2003-Plus",
+        "mame2010" to "MAME 2010 (0.139)",
+        "cap32" to "Caprice32",
+        "vice_x64" to "VICE x64",
+        "vice_x64sc" to "VICE x64sc",
+        "vice_xvic" to "VICE xvic",
+        "virtualjaguar" to "Virtual Jaguar",
+        "np2kai" to "Neko Project II Kai",
+        "fake08" to "FAKE-08"
+    )
 
     /**
-     * Returns the on-disk save folder name RetroArch uses for the given core id. Defaults to the
-     * core id since Android external storage is case-insensitive, and override only when the
-     * libretro `library_name` differs by more than case (spaces, dashes, decoration, etc.).
+     * On-disk save/state folder name RetroArch uses for a core when sort-into-folders is on: the
+     * libretro `corename`, which is decoupled from the core id used for config/server identity.
+     * Falls back to the id for cores whose folder differs by no more than case (case-insensitive FS).
      */
     fun getRetroArchSaveDirName(coreId: String): String =
-        coreSaveDirByCoreId[coreId] ?: coreId
+        retroArchSaveDirByCore[coreId] ?: coreId
 
     private val libretroHostEmulators = setOf("builtin", "retroarch", "retroarch_64")
 
