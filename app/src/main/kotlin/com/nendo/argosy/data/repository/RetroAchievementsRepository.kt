@@ -56,7 +56,8 @@ class RetroAchievementsRepository @Inject constructor(
     private val achievementDao: com.nendo.argosy.data.local.dao.AchievementDao,
     private val gameDao: com.nendo.argosy.data.local.dao.GameDao,
     private val prefsRepository: UserPreferencesRepository,
-    private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec
+    private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec,
+    private val retroArchConfigParser: com.nendo.argosy.data.emulator.RetroArchConfigParser
 ) {
     @Volatile private var cachedApi: RAApi? = null
     @Volatile private var cachedBaseUrl: String? = null
@@ -115,6 +116,14 @@ class RetroAchievementsRepository @Inject constructor(
         val username = prefs.raUsername ?: return null
         val token = prefs.raToken ?: return null
         return RACredentials(username, token)
+    }
+
+    /** Writes the stored RA login into RetroArch's config. Returns configs updated, or -1 if not signed in. */
+    suspend fun pushCredentialsToRetroArch(): Int {
+        val creds = getCredentials() ?: return -1
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            retroArchConfigParser.writeCheevosCredentials(creds.username, creds.token)
+        }
     }
 
     // RA Connect tokens are long-lived but not eternal. RA can rotate them

@@ -1059,6 +1059,28 @@ class SettingsViewModel @Inject constructor(
 
     fun loginToRA() = routeLoginToRA(this)
     fun logoutFromRA() = routeLogoutFromRA(this)
+    fun pushRACredentialsToRetroArch() = raDelegate.pushToRetroArch(viewModelScope) { count ->
+        when {
+            count > 0 -> notificationManager.show(
+                title = "Pushed to RetroArch",
+                subtitle = "Updated $count RetroArch config(s)",
+                type = com.nendo.argosy.core.notification.NotificationType.SUCCESS,
+                duration = com.nendo.argosy.core.notification.NotificationDuration.MEDIUM
+            )
+            count == 0 -> notificationManager.show(
+                title = "RetroArch not found",
+                subtitle = "No retroarch.cfg found to update",
+                type = com.nendo.argosy.core.notification.NotificationType.ERROR,
+                duration = com.nendo.argosy.core.notification.NotificationDuration.MEDIUM
+            )
+            else -> notificationManager.show(
+                title = "Not signed in",
+                subtitle = "Log into RetroAchievements first",
+                type = com.nendo.argosy.core.notification.NotificationType.ERROR,
+                duration = com.nendo.argosy.core.notification.NotificationDuration.MEDIUM
+            )
+        }
+    }
     fun setRAProxyEnabled(enabled: Boolean) = routeSetRAProxyEnabled(this, enabled)
     fun setRAProxyAddress(address: String) = raDelegate.setProxyAddress(viewModelScope, address)
 

@@ -146,4 +146,8 @@ class RASettingsDelegate @Inject constructor(
             onFocusReset()
         }
     }
+
+    fun pushToRetroArch(scope: CoroutineScope, onResult: (Int) -> Unit) {
+        scope.launch { onResult(raRepository.pushCredentialsToRetroArch()) }
+    }
 }

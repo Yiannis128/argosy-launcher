@@ -153,10 +153,15 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                     3 -> vm.hideRALoginForm()
                 }
             } else {
-                when (state.focusedIndex) {
-                    0 -> if (ra.isLoggedIn) vm.logoutFromRA() else vm.showRALoginForm()
-                    RA_PROXY_TOGGLE_INDEX -> vm.setRAProxyEnabled(!ra.proxyEnabled)
-                    RA_PROXY_FIELD_INDEX -> vm.raDelegate.setFocusField(RA_PROXY_FIELD_INDEX)
+                val pushIndex = if (ra.isLoggedIn) {
+                    if (ra.proxyEnabled) RA_PROXY_FIELD_INDEX + 1 else RA_PROXY_TOGGLE_INDEX + 1
+                } else -1
+                when {
+                    state.focusedIndex == 0 ->
+                        if (ra.isLoggedIn) vm.logoutFromRA() else vm.showRALoginForm()
+                    state.focusedIndex == pushIndex -> vm.pushRACredentialsToRetroArch()
+                    state.focusedIndex == RA_PROXY_TOGGLE_INDEX -> vm.setRAProxyEnabled(!ra.proxyEnabled)
+                    state.focusedIndex == RA_PROXY_FIELD_INDEX -> vm.raDelegate.setFocusField(RA_PROXY_FIELD_INDEX)
                 }
             }
             InputResult.HANDLED
@@ -740,6 +745,8 @@ private fun computeMaxFocusIndex(
     SettingsSection.STEAM_SETTINGS -> steamMaxFocusIndex(state.steam)
     SettingsSection.RETRO_ACHIEVEMENTS -> when {
         state.retroAchievements.showLoginForm -> 3
+        state.retroAchievements.isLoggedIn ->
+            if (state.retroAchievements.proxyEnabled) RA_PROXY_FIELD_INDEX + 1 else RA_PROXY_TOGGLE_INDEX + 1
         state.retroAchievements.proxyEnabled -> RA_PROXY_FIELD_INDEX
         else -> RA_PROXY_TOGGLE_INDEX
     }

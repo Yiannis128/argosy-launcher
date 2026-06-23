@@ -57,6 +57,36 @@ class RetroArchConfigParser @Inject constructor(
         return configPaths.firstOrNull { fileAccessLayer.exists(it) }
     }
 
+    /** Writes RetroAchievements credentials into every existing retroarch.cfg, preserving all other keys. Returns the number of config files updated. */
+    fun writeCheevosCredentials(username: String, token: String): Int {
+        val updates = linkedMapOf(
+            "cheevos_enable" to "true",
+            "cheevos_username" to username,
+            "cheevos_token" to token
+        )
+        return configPaths.distinct().count { path ->
+            fileAccessLayer.exists(path) && applyConfigUpdates(path, updates)
+        }
+    }
+
+    private fun applyConfigUpdates(path: String, updates: Map<String, String>): Boolean {
+        val lines = fileAccessLayer.getInputStream(path)?.use { it.bufferedReader().readLines() }
+            ?: return false
+        val seen = mutableSetOf<String>()
+        val rewritten = lines.map { line ->
+            val key = line.substringBefore("=").trim()
+            val value = updates[key]
+            if (value != null) {
+                seen.add(key)
+                "$key = \"$value\""
+            } else {
+                line
+            }
+        }.toMutableList()
+        updates.forEach { (key, value) -> if (key !in seen) rewritten.add("$key = \"$value\"") }
+        return fileAccessLayer.writeBytes(path, (rewritten.joinToString("\n") + "\n").toByteArray())
+    }
+
     fun parse(packageName: String): RetroArchSaveConfig? {
         val path = findConfigPath(packageName)
         if (path == null) {
