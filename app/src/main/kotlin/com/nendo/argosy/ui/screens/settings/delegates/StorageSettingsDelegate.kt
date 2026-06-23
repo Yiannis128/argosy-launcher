@@ -684,7 +684,7 @@ class StorageSettingsDelegate @Inject constructor(
     fun confirmPurgeAll(scope: CoroutineScope) {
         _state.update { it.copy(showPurgeAllConfirm = false, isPurgingAll = true) }
         scope.launch {
-            databaseAdminRepository.purgeAll()
+            databaseAdminRepository.purgeAllLibrary()
             _state.update { it.copy(isPurgingAll = false, platformConfigs = emptyList()) }
             refreshCollectionStats(scope)
         }

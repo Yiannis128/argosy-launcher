@@ -45,6 +45,9 @@ interface CollectionDao {
     @Query("DELETE FROM collections WHERE rommId IS NOT NULL")
     suspend fun deleteRomMSynced()
 
+    @Query("DELETE FROM collections")
+    suspend fun deleteAllCollections()
+
     @Query("""
         SELECT g.* FROM games g
         INNER JOIN collection_games cg ON g.id = cg.gameId

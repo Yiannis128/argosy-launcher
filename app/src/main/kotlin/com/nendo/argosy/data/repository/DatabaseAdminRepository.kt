@@ -18,17 +18,18 @@ class DatabaseAdminRepository @Inject constructor(
     private val database: ALauncherDatabase,
     private val imageCacheManager: ImageCacheManager
 ) {
-    suspend fun purgeAll() = withContext(Dispatchers.IO) {
-        database.clearAllTables()
-        imageCacheManager.clearCache()
-    }
+    /** Wipes RomM-sourced library content so a server switch starts clean; preserves other sources, input config, cores, settings. */
+    suspend fun purgeRomMLibrary() =
+        purgeLibrary(listOf(GameSource.ROMM_REMOTE, GameSource.ROMM_SYNCED), includeLocalCollections = false)
 
-    /**
-     * Wipes all RomM-sourced library content (games, platforms, collections, saves/states sync rows)
-     * so a server switch starts clean. Preserves Steam/Android/local games, input config, cores, and settings.
-     */
-    suspend fun purgeRomMLibrary() = withContext(Dispatchers.IO) {
-        val sources = listOf(GameSource.ROMM_REMOTE, GameSource.ROMM_SYNCED)
+    /** Resets the entire game library across all sources; preserves input config, installed cores, theme, and settings. */
+    suspend fun purgeAllLibrary() =
+        purgeLibrary(GameSource.entries, includeLocalCollections = true)
+
+    private suspend fun purgeLibrary(
+        sources: List<GameSource>,
+        includeLocalCollections: Boolean
+    ) = withContext(Dispatchers.IO) {
         val sourceNames = sources.map { it.name }
 
         for (game in database.gameDao().getDownloadedBySources(sources)) {
@@ -39,7 +40,7 @@ class DatabaseAdminRepository @Inject constructor(
                     if (file.isDirectory) file.deleteRecursively() else file.delete()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "purgeRomMLibrary: failed to delete $path: ${e.message}")
+                Log.e(TAG, "purgeLibrary: failed to delete $path: ${e.message}")
             }
         }
 
@@ -52,7 +53,11 @@ class DatabaseAdminRepository @Inject constructor(
             database.pendingSyncQueueDao().deleteByGameSources(sourceNames)
             database.playSessionDao().deleteByGameSources(sourceNames)
             database.downloadQueueDao().deleteByGameSources(sourceNames)
-            database.collectionDao().deleteRomMSynced()
+            if (includeLocalCollections) {
+                database.collectionDao().deleteAllCollections()
+            } else {
+                database.collectionDao().deleteRomMSynced()
+            }
             database.gameDao().deleteBySources(sources)
             database.platformDao().deleteEmptyPlatforms()
             database.pinnedCollectionDao().deleteOrphaned()
