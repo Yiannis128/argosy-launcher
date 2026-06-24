@@ -80,7 +80,30 @@ indicators (already implemented in `primitives/Focus.kt` as `FocusIndicators`, m
 
 - Anatomy: title + optional sub-text + trailing control slot.
 - Inline affordances are ALWAYS visible, on every row, not only the focused one - a menu must
-  self-document at a glance. Focus adds accent/lift on top.
+  self-document at a glance. Focus adds the fill on top (no lift - see States).
+
+### List scrolling
+
+- Centered cursor: in a scrollable menu list the focused item stays vertically CENTERED and the
+  list scrolls beneath a fixed cursor, so the eye never tracks the highlight down the screen.
+  Standard for every overflowing menu list.
+- Engages only when content exceeds the viewport. A list that fits stays static (no scroll); focus
+  just moves between rows.
+- End clamping includes NON-FOCUSABLE content. The scroll range is bounded by the content edges -
+  including leading/trailing non-focusable sections (headers, descriptions, disabled rows) - not by
+  the focusable items. Focusing the first or last FOCUSABLE entry shifts the list to bring those
+  end sections FULLY into view (the cursor can never land on them to reveal them by centering).
+- Consequence: the cursor is centered in the interior and rides toward the boundary at the head/
+  tail (it cannot stay centered with nothing left to scroll) while the end content stays fully
+  visible. Centered-interior + clamp-at-ends are one behavior.
+- Section headers obey the SAME rule, not a separate one - a header is non-focusable content that
+  belongs to its section. Focusing the FIRST focusable row of a section guarantees its header is
+  fully in view above; focusing the LAST row before a trailing non-focusable block reveals that
+  block. The list-end behavior is just this rule at the outermost sections.
+- Section-navigation chrome is aspect-ratio adaptive. WIDE screens put sections in a LEFT RAIL
+  (active highlighted) - the rail is the orientation, so no sticky header. On 4:3 / 1:1 devices
+  there is no room for the rail, so sections are inline AND the active section header STICKS to the
+  top edge while scrolling within it. The centered-cursor + reveal model is identical in both.
 
 ## Control modes
 
