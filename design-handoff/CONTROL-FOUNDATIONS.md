@@ -23,6 +23,12 @@ decision record and the annotation text for that page. Token VALUES live in `tok
   and per-game art, never in chrome.
 - Accents carry per-mode variants (cyan `#00ACC1` dark / `#007C91` light, etc.) so contrast
   holds both ways; the art-tint bloom is lighter-touch in light mode to avoid washout.
+- Accent COLORATION is theme-biased: DARK mode biases toward white (lighter/whiter-tinted accent
+  lifts off near-black); LIGHT mode biases toward the raw saturated color (a whitened accent washes
+  out on near-white). Same token, biased per mode - applies to fills, outline rims, and focus
+  washes, not just the base swatch. The existing variants already lean this way; formalize it.
+- No outline-only buttons. Action buttons are always filled (accent = primary, neutral = secondary);
+  a hollow outline with no fill is not a button style we use.
 - `accentPrimary` (default cyan `#00ACC1`) + `accentSecondary` (user-pick, default
   complementary). Both user-themeable; defaults are just defaults.
 - The existing scheme primary/secondary/tertiary (cyan / teal / green) is already an analogous
@@ -37,8 +43,11 @@ decision record and the annotation text for that page. Token VALUES live in `tok
 Sharp surfaces, soft controls - the inverse of Material's over-rounded panels.
 
 - `radiusPanel` ~6dp: modals, drawers, sheets, side rails, panels (today `GlassPanel` uses 16dp - too round).
-- `radiusControl` ~12dp: buttons, rows, chips.
-- `radiusPill` 999: toggles, capsule CTAs.
+- `radiusControl` ~10-12dp: action buttons (rounded-rect), list rows.
+- `radiusPill` 999: capsule TOKENS only - chips, tags, filter/segment pills, toggles, the enum
+  inline. NOT action buttons.
+
+Shape encodes role: rounded-RECT = a command you trigger; full PILL = a value/state you pick.
 
 ## States
 
@@ -153,11 +162,22 @@ footer is not a crutch.
 
 Two families already exist as primitives (`PillButton`, `RowButton`); formalize their roles.
 
-- **Pill** (`PillButton`, `radiusPill`) - the action CTA, two tiers:
-  - `primary` - accent-filled, 12dp accent-tinted shadow, focus = halo. Accent defaults to theme
-    focus accent but takes an override (e.g. Continue Playing in the game's art tint).
-  - `secondary` - translucent raised surface + hairline border, focus = fill.
+- **Action button** (rounded-rect, `radiusControl`) - the command affordance (Play, Save, Delete,
+  Continue). NOT a full pill - rect = command. Two tiers:
+  - `primary` (WRAPPED fill - accent fill inside a brighter accent outline rim). States by opacity,
+    focus IS the cursor:
+    - neutral: 80% fill / 90% outline
+    - focused: 100% fill / 100% outline (the whole button crisps up as one move - no halo, no movement)
+    - disabled: 60% fill + 30% desaturation (dim the label too)
+    Accent defaults to theme focus accent but takes an override (e.g. Continue Playing in the game's
+    art tint). One ACCENT primary per context; coloration is theme-biased per mode (see Color usage).
+  - `secondary` - the SAME wrapped fill in a NEUTRAL color (surface/raised fill + rim), not accent.
+    Filled, never outline-only. Focus solidifies identically. Color is the only primary/secondary
+    difference, so the accent button is unmistakably THE primary; several neutral secondaries are
+    fine, one accent primary per context.
   - Padding 22h / 14v; `pressScale` press feedback (touch + gamepad).
+  - `PillButton` primitive swaps its shape `radiusPill` -> `radiusControl` (then mis-named; rename
+    is a later cleanup). Full pills are reserved for capsule tokens, never commands.
 - **Row** (`RowButton`, `radiusMd` 8dp, full-width) - the list affordance. Plain = list row
   (focus fill); accented = nav/drill row (focus stripe + fill). This IS the menu-item base -
   control modes plug into its trailing slot.
