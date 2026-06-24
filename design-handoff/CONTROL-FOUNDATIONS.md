@@ -207,6 +207,29 @@ near-black. Replace with an Argosy modal that splits the two signals Material co
   channel.
 - Built on `ModalScaffold` + `radiusPanel` (sharp), our buttons, no modal-owned footer.
 
+## Input plumbing - focus footguns
+
+Navigation focus is owned by ONE authority: the custom `InputHandler` / `InputDispatcher` driving a
+selection index. Compose's native focus system must NOT navigate. When a second authority goes live
+you get the dual-focus ghost - a hidden native cursor that travels to a boundary before the real
+(custom) focus moves. These re-arm native focus and cause it; avoid each:
+
+- `Modifier.clickable()` - use `clickableNoFocus`. Plain clickable enables native focus.
+- `.focusable()` anywhere except a real text input.
+- `.onPreviewKeyEvent` on a focusable element, and especially `return false` at a boundary - that
+  return is exactly what tells Compose to run a native focus search (the travel-to-the-end ghost).
+  Route the boundary through the custom handler and consume (`return true`).
+- `MainActivity.dispatchKeyEvent` falling through to `super` for a navigation key - nav keys must be
+  consumed so the native focus system never sees them.
+- Material components that own focus (`Button`, `Switch`, `AlertDialog`) - they draw and traverse
+  native focus. Use the Argosy primitives instead.
+
+Known offenders to migrate, not copy: the root `.focusable()` sink + resume-`requestFocus` hack in
+`ArgosyApp`, `ControllerColumn` / `ControllerRow` (`.focusable()` + `onPreviewKeyEvent`), the 8
+Material `AlertDialog`s. If native focus is kept for a11y/IME, it must be a hidden slave mirrored to
+the custom index - never self-navigating. The durable fix is a primitive that owns this wiring so
+menus declare items instead of re-authoring input; until then, this list is the manual guard.
+
 ## Open items
 
 - Token reconciliation: dark ramp canonical = Home's rendered near-black family; sync Penpot
