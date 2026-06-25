@@ -382,6 +382,17 @@ object EmulatorRegistry {
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.m64.fx.plus.emulate"
         ),
+        EmulatorDef(
+            id = "picpic",
+            packageName = "com.sa_moo_rai.picpic",
+            displayName = "PicPic",
+            supportedPlatforms = setOf("pico8"),
+            launchAction = Intent.ACTION_VIEW,
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "com.sa_moo_rai.picpic.MainActivity"
+            ),
+            downloadUrl = "https://play.google.com/store/apps/details?id=com.sa_moo_rai.picpic"
+        ),
 
         EmulatorDef(
             id = "dolphin",
@@ -986,7 +997,7 @@ object EmulatorRegistry {
         "c64" to listOf("retroarch", "retroarch_64"),
         "vic20" to listOf("retroarch", "retroarch_64"),
         "pc9800" to listOf("retroarch", "retroarch_64"),
-        "pico8" to listOf("builtin", "retroarch", "retroarch_64")
+        "pico8" to listOf("builtin", "picpic", "retroarch", "retroarch_64")
     )
 
     fun getPreferredCore(platformId: String): String? {
