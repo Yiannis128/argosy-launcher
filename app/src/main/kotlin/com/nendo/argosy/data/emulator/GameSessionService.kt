@@ -33,11 +33,9 @@ import com.nendo.argosy.MainActivity
 import com.nendo.argosy.R
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.SessionStateStore
-import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.util.Logger
-import com.nendo.argosy.util.PermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,9 +51,6 @@ class GameSessionService : Service() {
 
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var gameDao: GameDao
-    @Inject lateinit var permissionHelper: PermissionHelper
-    @Inject lateinit var playSessionTracker: PlaySessionTracker
-    @Inject lateinit var preferencesRepository: UserPreferencesRepository
 
     private val serviceScope = SafeCoroutineScope(Dispatchers.IO, "GameSessionService")
     private val handler = Handler(Looper.getMainLooper())
@@ -69,7 +64,6 @@ class GameSessionService : Service() {
 
     private var currentGameId: Long = -1
     private var currentEmulatorId: String? = null
-    private var currentEmulatorPackage: String? = null
     private var currentSavePath: String? = null
     private var currentChannelName: String? = null
     private var currentIsHardcore: Boolean = false
@@ -79,8 +73,6 @@ class GameSessionService : Service() {
     private var isWaitingForDirectory = false
     private var lastMidGameCacheId: Long = -1
     private val midGameCacheMutex = Mutex()
-    private var wasEmulatorInForeground = true
-    private var emulatorDisplayId: Int = android.view.Display.DEFAULT_DISPLAY
     private var lastOverlayShownAt: Long = 0L
 
     private var helmIcon: ImageView? = null
@@ -121,35 +113,20 @@ class GameSessionService : Service() {
                 val gameTitle = intent?.getStringExtra(EXTRA_GAME_TITLE) ?: "Game"
                 val gameId = intent?.getLongExtra(EXTRA_GAME_ID, -1) ?: -1
                 val emulatorId = intent?.getStringExtra(EXTRA_EMULATOR_ID)
-                val emulatorPackage = intent?.getStringExtra(EXTRA_EMULATOR_PACKAGE)
                 val savePath = intent?.getStringExtra(EXTRA_SAVE_PATH)
                 val channelName = intent?.getStringExtra(EXTRA_CHANNEL_NAME)
                 val isHardcore = intent?.getBooleanExtra(EXTRA_IS_HARDCORE, false) ?: false
                 val startTime = intent?.getLongExtra(EXTRA_SESSION_START_TIME, 0) ?: 0
-                val displayId = intent?.getIntExtra(EXTRA_EMULATOR_DISPLAY_ID, android.view.Display.DEFAULT_DISPLAY)
-                    ?: android.view.Display.DEFAULT_DISPLAY
 
                 currentGameTitle = gameTitle
                 currentGameId = gameId
                 currentEmulatorId = emulatorId
-                // Built-in libretro runs in-process (LibretroActivity inside Argosy), so the
-                // foreground monitor must compare against this app's real package name. The
-                // synthetic argosy.builtin.libretro id never matches currentForegroundPackage,
-                // which would mis-flag every built-in session as backgrounded after the poll
-                // delay and trip the fail-to-menu timer mid-game.
-                currentEmulatorPackage = if (emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) {
-                    packageName
-                } else {
-                    emulatorPackage
-                }
                 currentSavePath = savePath
                 currentChannelName = channelName
                 currentIsHardcore = isHardcore
                 sessionStartTime = if (startTime > 0) startTime else System.currentTimeMillis()
                 lastMidGameCacheId = -1
                 lastOverlayShownAt = 0L
-                wasEmulatorInForeground = true
-                emulatorDisplayId = displayId
 
                 cleanupPresenceKeepalive()
                 startForegroundWithNotification(gameTitle, NotificationState.PLAYING)
@@ -162,8 +139,6 @@ class GameSessionService : Service() {
                     removeOverlay()
                     startWatching(watchPath)
                 }
-
-                startEmulatorMonitor()
             }
         }
         return START_REDELIVER_INTENT
@@ -173,7 +148,6 @@ class GameSessionService : Service() {
 
     override fun onDestroy() {
         Logger.debug(TAG, "Service destroyed")
-        stopEmulatorMonitor()
         cleanupPresenceKeepalive()
         stopWatching()
         removeOverlay()
@@ -213,71 +187,6 @@ class GameSessionService : Service() {
         wakeLock = null
     }
 
-    // region Emulator foreground monitor
-
-    private val emulatorMonitorRunnable = Runnable { checkEmulatorForeground() }
-
-    private fun startEmulatorMonitor() {
-        val pkg = currentEmulatorPackage
-        if (pkg == null || !permissionHelper.hasUsageStatsPermission(this)) {
-            Logger.debug(TAG, "Emulator monitor skipped: pkg=$pkg, hasPermission=${pkg != null}")
-            return
-        }
-        Logger.debug(TAG, "Emulator monitor started for $pkg (first check in ${EMULATOR_MONITOR_INITIAL_DELAY_MS}ms)")
-        handler.postDelayed(emulatorMonitorRunnable, EMULATOR_MONITOR_INITIAL_DELAY_MS)
-    }
-
-    private fun stopEmulatorMonitor() {
-        handler.removeCallbacks(emulatorMonitorRunnable)
-    }
-
-    private fun checkEmulatorForeground() {
-        val pkg = currentEmulatorPackage ?: return
-
-        val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-        if (!powerManager.isInteractive) {
-            handler.postDelayed(emulatorMonitorRunnable, EMULATOR_POLL_INTERVAL_MS)
-            return
-        }
-
-        val currentFg = permissionHelper.currentForegroundPackage(this)
-        var inForeground = when {
-            currentFg == null -> wasEmulatorInForeground
-            currentFg == pkg -> true
-            SYSTEM_FOREGROUND_PACKAGES.any { currentFg.startsWith(it) } -> wasEmulatorInForeground
-            else -> false
-        }
-
-        if (inForeground && emulatorDisplayId != android.view.Display.DEFAULT_DISPLAY) {
-            if (!isProcessRunning(pkg)) {
-                Logger.debug(TAG, "Emulator $pkg process not running (secondary display fallback)")
-                inForeground = false
-            }
-        }
-
-        if (inForeground && !wasEmulatorInForeground) {
-            Logger.debug(TAG, "Emulator $pkg returned to foreground (currentFg=$currentFg)")
-            playSessionTracker.onEmulatorForegrounded()
-        } else if (!inForeground && wasEmulatorInForeground) {
-            Logger.debug(TAG, "Emulator $pkg left foreground (currentFg=$currentFg)")
-            playSessionTracker.onEmulatorBackgrounded()
-        }
-        wasEmulatorInForeground = inForeground
-
-        handler.postDelayed(emulatorMonitorRunnable, EMULATOR_POLL_INTERVAL_MS)
-    }
-
-    private fun isProcessRunning(packageName: String): Boolean {
-        val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        @Suppress("DEPRECATION")
-        val processes = am.runningAppProcesses ?: return false
-        return processes.any { it.processName == packageName }
-    }
-
-    // endregion
-
-    // region Presence keepalive (post-game, keeps WiFi lock until screen off)
-
     private var screenOffReceiver: BroadcastReceiver? = null
 
     private fun cleanupPresenceKeepalive() {
@@ -286,8 +195,6 @@ class GameSessionService : Service() {
         }
         screenOffReceiver = null
     }
-
-    // endregion
 
     private fun startWatching(watchPath: String) {
         val watchDir = File(watchPath)
@@ -687,12 +594,10 @@ class GameSessionService : Service() {
         private const val EXTRA_GAME_TITLE = "game_title"
         private const val EXTRA_GAME_ID = "game_id"
         private const val EXTRA_EMULATOR_ID = "emulator_id"
-        private const val EXTRA_EMULATOR_PACKAGE = "emulator_package"
         private const val EXTRA_SAVE_PATH = "save_path"
         private const val EXTRA_CHANNEL_NAME = "channel_name"
         private const val EXTRA_IS_HARDCORE = "is_hardcore"
         private const val EXTRA_SESSION_START_TIME = "session_start_time"
-        private const val EXTRA_EMULATOR_DISPLAY_ID = "emulator_display_id"
         private const val WAKELOCK_TAG = "argosy:game_session_wakelock"
         private const val WIFILOCK_TAG = "argosy:game_session_wifilock"
         private const val MAX_WAKELOCK_DURATION_MS = 4 * 60 * 60 * 1000L // 4 hours max
@@ -701,17 +606,6 @@ class GameSessionService : Service() {
         private const val POLL_INTERVAL_MS = 2000L
         private const val STARTUP_COOLDOWN_MS = 20000L
         private const val CACHE_DEBOUNCE_MS = 250L
-        private const val EMULATOR_MONITOR_INITIAL_DELAY_MS = 5_000L
-        private const val EMULATOR_POLL_INTERVAL_MS = 5_000L
-
-        private val SYSTEM_FOREGROUND_PACKAGES = setOf(
-            "com.android.systemui",
-            "com.android.inputmethod",
-            "com.google.android.inputmethod",
-            "com.samsung.android.inputmethod",
-            "com.android.permissioncontroller",
-            "android",
-        )
         private val IGNORED_DIRECTORY_PATTERNS = setOf(
             "cache",
             "shader",
@@ -728,25 +622,21 @@ class GameSessionService : Service() {
             savePath: String?,
             gameId: Long,
             emulatorId: String?,
-            emulatorPackage: String?,
             gameTitle: String,
             channelName: String?,
             isHardcore: Boolean,
-            sessionStartTime: Long,
-            emulatorDisplayId: Int = android.view.Display.DEFAULT_DISPLAY
+            sessionStartTime: Long
         ) {
-            Logger.debug(TAG, "Starting service for: $gameTitle (gameId=$gameId, sessionStart=$sessionStartTime, displayId=$emulatorDisplayId)")
+            Logger.debug(TAG, "Starting service for: $gameTitle (gameId=$gameId, sessionStart=$sessionStartTime)")
             val intent = Intent(context, GameSessionService::class.java).apply {
                 putExtra(EXTRA_WATCH_PATH, watchPath)
                 putExtra(EXTRA_SAVE_PATH, savePath)
                 putExtra(EXTRA_GAME_ID, gameId)
                 putExtra(EXTRA_EMULATOR_ID, emulatorId)
-                putExtra(EXTRA_EMULATOR_PACKAGE, emulatorPackage)
                 putExtra(EXTRA_GAME_TITLE, gameTitle)
                 putExtra(EXTRA_CHANNEL_NAME, channelName)
                 putExtra(EXTRA_IS_HARDCORE, isHardcore)
                 putExtra(EXTRA_SESSION_START_TIME, sessionStartTime)
-                putExtra(EXTRA_EMULATOR_DISPLAY_ID, emulatorDisplayId)
             }
             context.startForegroundService(intent)
         }

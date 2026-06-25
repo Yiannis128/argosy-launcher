@@ -9,9 +9,6 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ProcessLifecycleOwner
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
@@ -35,11 +32,9 @@ import com.nendo.argosy.core.event.GameUpdateBus
 import com.nendo.argosy.util.PermissionHelper
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -113,8 +108,6 @@ class PlaySessionTracker @Inject constructor(
     private val scope = SafeCoroutineScope(Dispatchers.IO, "PlaySessionTracker")
     private val sessionStateStore by lazy { SessionStateStore(application) }
     private val endingSession = AtomicBoolean(false)
-    private var backgroundTimeoutJob: Job? = null
-    private var emulatorBackgroundJob: Job? = null
 
     private fun broadcastSessionChanged(gameId: Long?, channelName: String?, isHardcore: Boolean) {
         // Write to SharedPreferences for companion process to read on startup
@@ -142,7 +135,10 @@ class PlaySessionTracker @Inject constructor(
         .map { it != null }
         .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
 
-    private val _conflictEvents = MutableSharedFlow<SaveConflictEvent>()
+    private val _conflictEvents = MutableSharedFlow<SaveConflictEvent>(
+        extraBufferCapacity = 8,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val conflictEvents: SharedFlow<SaveConflictEvent> = _conflictEvents.asSharedFlow()
 
     private var wasInBackground = false
@@ -167,29 +163,6 @@ class PlaySessionTracker @Inject constructor(
     init {
         registerLifecycleCallbacks()
         registerScreenReceiver()
-        registerProcessLifecycleObserver()
-    }
-
-    private fun registerProcessLifecycleObserver() {
-        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStop(owner: LifecycleOwner) {
-                val session = _activeSession.value ?: return
-                Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | App going to background with active session")
-                backgroundTimeoutJob?.cancel()
-                backgroundTimeoutJob = scope.launch {
-                    delay(30 * 60 * 1000L)
-                    if (_activeSession.value?.gameId == session.gameId) {
-                        Logger.warn(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Emergency end after 30-minute background timeout")
-                        endSession()
-                    }
-                }
-            }
-
-            override fun onStart(owner: LifecycleOwner) {
-                backgroundTimeoutJob?.cancel()
-                backgroundTimeoutJob = null
-            }
-        })
     }
 
     suspend fun checkOrphanedSession() {
@@ -472,28 +445,7 @@ class PlaySessionTracker @Inject constructor(
         }
     }
 
-    fun onEmulatorForegrounded() {
-        if (_activeSession.value == null) return
-        emulatorBackgroundJob?.cancel()
-        emulatorBackgroundJob = null
-        Logger.debug(TAG, "Emulator FOREGROUNDED (cancelled pending session end)")
-    }
-
-    fun onEmulatorBackgrounded() {
-        val session = _activeSession.value ?: return
-        Logger.debug(TAG, "Emulator BACKGROUNDED -- scheduling session end in 30s")
-        emulatorBackgroundJob?.cancel()
-        emulatorBackgroundJob = scope.launch {
-            delay(30_000L)
-            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Ending session via onEmulatorBackgrounded (bypasses GameLaunchDelegate conflict UI)")
-            Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | isOnOlderSave=${session.isOnOlderSave}, channel=${session.channelName}, emulator=${session.emulatorPackage}")
-            endSession()
-        }
-    }
-
     fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false, isNetplayGuest: Boolean = false) {
-        emulatorBackgroundJob?.cancel()
-        emulatorBackgroundJob = null
         endingSession.set(false)
         lastScreenOnTime = Instant.now()
         isScreenOn = true
@@ -612,34 +564,21 @@ class PlaySessionTracker @Inject constructor(
 
         val channelName = if (isHardcore) null else game.activeSaveChannel
 
-        val emulatorDisplayId = if (sessionStateStore.isRolesSwapped()) {
-            android.view.Display.DEFAULT_DISPLAY + 1
-        } else {
-            android.view.Display.DEFAULT_DISPLAY
-        }
-
-        Logger.debug(TAG, "[GameSession] Starting service for gameId=$gameId | watchPath=$watchPath | savePath=$savePath | displayId=$emulatorDisplayId")
+        Logger.debug(TAG, "[GameSession] Starting service for gameId=$gameId | watchPath=$watchPath | savePath=$savePath")
         GameSessionService.start(
             context = application,
             watchPath = watchPath,
             savePath = savePath,
             gameId = gameId,
             emulatorId = emulatorId,
-            emulatorPackage = emulatorPackage,
             gameTitle = game.title,
             channelName = channelName,
             isHardcore = isHardcore,
-            sessionStartTime = sessionStartTime,
-            emulatorDisplayId = emulatorDisplayId
+            sessionStartTime = sessionStartTime
         )
     }
 
     suspend fun endSession(stopService: Boolean = true, skipSaveSync: Boolean = false): SessionEndResult {
-        val pendingJob = emulatorBackgroundJob
-        emulatorBackgroundJob = null
-        if (pendingJob != null && pendingJob != coroutineContext[Job]) {
-            pendingJob.cancel()
-        }
         if (!endingSession.compareAndSet(false, true)) {
             Logger.debug(TAG, "[SaveSync] SESSION | endSession already in progress, skipping")
             return SessionEndResult.Skipped
@@ -891,7 +830,7 @@ class PlaySessionTracker @Inject constructor(
         when (result) {
             is SyncSaveOnSessionEndUseCase.Result.Conflict -> {
                 Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Sync result: CONFLICT | local=${result.localTimestamp}, server=${result.serverTimestamp}")
-                _conflictEvents.emit(
+                _conflictEvents.tryEmit(
                     SaveConflictEvent(
                         gameId = result.gameId,
                         emulatorId = result.emulatorId,
