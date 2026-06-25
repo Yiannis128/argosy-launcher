@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,6 +42,7 @@ sealed class InGameMenuAction {
     data object Resume : InGameMenuAction()
     data object QuickSave : InGameMenuAction()
     data object QuickLoad : InGameMenuAction()
+    data object QuickLoadHistory : InGameMenuAction()
     data object ManageStates : InGameMenuAction()
     data object Settings : InGameMenuAction()
     data object Cheats : InGameMenuAction()
@@ -88,7 +93,10 @@ fun InGameMenu(
     netplayRole: NetplayMenuRole? = null,
     netplaySessionIsReserved: Boolean = false,
     netplayQuality: NetplayQualityInfo? = null,
-    touchControlsVisible: Boolean = false
+    touchControlsVisible: Boolean = false,
+    hasQuickSave: Boolean = false,
+    quickHistoryFocused: Boolean = false,
+    onQuickHistoryFocusChange: (Boolean) -> Unit = {}
 ): InputHandler {
     val menuItems = remember(
         cheatsAvailable,
@@ -98,12 +106,17 @@ fun InGameMenu(
         isInNetplaySession,
         netplayRole,
         netplaySessionIsReserved,
-        touchControlsVisible
+        touchControlsVisible,
+        hasQuickSave
     ) {
         buildList {
             add("Resume" to InGameMenuAction.Resume)
-            val showManageStates = !isHardcoreMode && statesSupported && !isInNetplaySession
-            if (showManageStates) {
+            val showStates = !isHardcoreMode && statesSupported && !isInNetplaySession
+            if (showStates) {
+                add("Quick Save" to InGameMenuAction.QuickSave)
+                if (hasQuickSave) {
+                    add("Quick Load" to InGameMenuAction.QuickLoad)
+                }
                 add("Manage States" to InGameMenuAction.ManageStates)
             }
             if (!isInNetplaySession && cheatsAvailable) {
@@ -143,23 +156,44 @@ fun InGameMenu(
     val currentFocusedIndex = rememberUpdatedState(focusedIndex)
     val currentOnFocusChange = rememberUpdatedState(onFocusChange)
     val currentOnAction = rememberUpdatedState(onAction)
+    val currentHasQuickSave = rememberUpdatedState(hasQuickSave)
+    val currentQuickHistoryFocused = rememberUpdatedState(quickHistoryFocused)
+    val currentOnQuickHistoryFocusChange = rememberUpdatedState(onQuickHistoryFocusChange)
 
     val inputHandler = remember(menuItems) {
         object : InputHandler {
             override fun onUp(): InputResult {
+                if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                 val idx = currentFocusedIndex.value
                 val newIndex = (idx - 1).coerceAtLeast(0)
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
+                if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                 val idx = currentFocusedIndex.value
                 val newIndex = (idx + 1).coerceAtMost(menuItems.lastIndex)
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
+            override fun onLeft(): InputResult {
+                if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
+                return InputResult.HANDLED
+            }
+            override fun onRight(): InputResult {
+                val action = menuItems.getOrNull(currentFocusedIndex.value)?.second
+                if (action == InGameMenuAction.QuickLoad && currentHasQuickSave.value && !currentQuickHistoryFocused.value) {
+                    currentOnQuickHistoryFocusChange.value(true)
+                }
+                return InputResult.HANDLED
+            }
             override fun onConfirm(): InputResult {
-                menuItems.getOrNull(currentFocusedIndex.value)?.let { currentOnAction.value(it.second) }
+                val action = menuItems.getOrNull(currentFocusedIndex.value)?.second
+                if (action == InGameMenuAction.QuickLoad && currentQuickHistoryFocused.value) {
+                    currentOnAction.value(InGameMenuAction.QuickLoadHistory)
+                } else {
+                    action?.let { currentOnAction.value(it) }
+                }
                 return InputResult.HANDLED
             }
             override fun onBack(): InputResult {
@@ -248,12 +282,22 @@ fun InGameMenu(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(menuItems) { index, (label, action) ->
-                        MenuButton(
-                            text = label,
-                            isFocused = index == focusedIndex,
-                            onClick = { onAction(action) }
-                        )
+                    itemsIndexed(menuItems, key = { _, item -> item.second.toString() }) { index, (label, action) ->
+                        if (action == InGameMenuAction.QuickLoad && hasQuickSave) {
+                            QuickLoadRow(
+                                text = label,
+                                isFocused = index == focusedIndex && !quickHistoryFocused,
+                                historyFocused = index == focusedIndex && quickHistoryFocused,
+                                onClick = { onAction(action) },
+                                onHistoryClick = { onAction(InGameMenuAction.QuickLoadHistory) }
+                            )
+                        } else {
+                            MenuButton(
+                                text = label,
+                                isFocused = index == focusedIndex,
+                                onClick = { onAction(action) }
+                            )
+                        }
                     }
                 }
             }
@@ -297,6 +341,53 @@ private fun NetplayQualityRow(info: NetplayQualityInfo) {
                 style = MaterialTheme.typography.labelSmall,
                 color = qualityColor,
                 fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickLoadRow(
+    text: String,
+    isFocused: Boolean,
+    historyFocused: Boolean,
+    onClick: () -> Unit,
+    onHistoryClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            MenuButton(
+                text = text,
+                isFocused = isFocused,
+                onClick = onClick
+            )
+        }
+        val iconBackground = if (historyFocused) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        }
+        val iconTint = if (historyFocused) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(iconBackground)
+                .clickableNoFocus(onClick = onHistoryClick)
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.History,
+                contentDescription = "Quick save history",
+                tint = iconTint
             )
         }
     }

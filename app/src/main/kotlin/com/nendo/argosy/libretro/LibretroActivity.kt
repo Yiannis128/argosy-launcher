@@ -85,6 +85,7 @@ import com.nendo.argosy.libretro.ui.NetplayQualityWarningPrompt
 import com.nendo.argosy.libretro.ui.NetplayBorderHud
 import com.nendo.argosy.libretro.ui.NetplayReconnectingOverlay
 import com.nendo.argosy.libretro.ui.InGameStateManager
+import com.nendo.argosy.libretro.ui.QuickLoadTimeline
 import com.nendo.argosy.libretro.ui.StateManagerViewMode
 import com.nendo.argosy.libretro.ui.InGameControlsAction
 import com.nendo.argosy.libretro.ui.InGameControlsState
@@ -214,6 +215,12 @@ class LibretroActivity : ComponentActivity() {
     private var stateManagerShowDelete by mutableStateOf(false)
     private var stateManagerDeleteTarget by mutableStateOf(-1)
     private var stateManagerSlots by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
+    private var stateManagerShowLoadConfirm by mutableStateOf(false)
+    private var stateManagerLoadTarget by mutableStateOf(Int.MIN_VALUE)
+    private var menuQuickHistoryFocused by mutableStateOf(false)
+    private var quickTimelineVisible by mutableStateOf(false)
+    private var quickTimelineEntries by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
+    private var quickTimelineFocusIndex by mutableStateOf(0)
     private var pendingSaveScreenshot: Bitmap? = null
 
     private lateinit var netplay: LibretroNetplayCoordinator
@@ -237,7 +244,7 @@ class LibretroActivity : ComponentActivity() {
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
-        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible ||
+        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || quickTimelineVisible ||
             isClosing || netplay.isAnyDialogVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -762,7 +769,10 @@ class LibretroActivity : ComponentActivity() {
                         netplayRole = netplay.role,
                         netplaySessionIsReserved = netplay.sessionIsReserved,
                         netplayQuality = quality,
-                        touchControlsVisible = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState
+                        touchControlsVisible = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState,
+                        hasQuickSave = saveStateManager.hasQuickSave,
+                        quickHistoryFocused = menuQuickHistoryFocused,
+                        onQuickHistoryFocusChange = { menuQuickHistoryFocused = it }
                     )
                 }
                 if (netplay.modePickerVisible) {
@@ -901,7 +911,6 @@ class LibretroActivity : ComponentActivity() {
                             }
                         },
                         onSave = ::handleStateManagerSave,
-                        onLoad = ::handleStateManagerLoad,
                         onDeleteRequest = { slot ->
                             stateManagerDeleteTarget = slot
                             stateManagerShowDelete = true
@@ -919,7 +928,40 @@ class LibretroActivity : ComponentActivity() {
                             stateManagerDeleteTarget = -1
                         },
                         onDismiss = ::dismissStateManager,
-                        loadAllowed = !netplay.inSession
+                        loadAllowed = !netplay.inSession,
+                        showLoadConfirmation = stateManagerShowLoadConfirm,
+                        onLoadRequest = { slot ->
+                            stateManagerLoadTarget = slot
+                            stateManagerShowLoadConfirm = true
+                        },
+                        onLoadConfirm = {
+                            stateManagerShowLoadConfirm = false
+                            handleStateManagerLoad(stateManagerLoadTarget)
+                        },
+                        onLoadCancel = { stateManagerShowLoadConfirm = false }
+                    )
+                }
+                if (quickTimelineVisible) {
+                    activeMenuHandler = QuickLoadTimeline(
+                        entries = quickTimelineEntries,
+                        focusedIndex = quickTimelineFocusIndex,
+                        onFocusChange = { quickTimelineFocusIndex = it },
+                        onLoad = { slot ->
+                            inGameMessage = if (saveStateManager.performSlotLoad(retroView, slot)) {
+                                "State loaded"
+                            } else {
+                                "Failed to load state"
+                            }
+                            quickTimelineVisible = false
+                            if (!netplay.inSession) {
+                                retroView.suppressAutoResume = false
+                                retroView.resumeEmulation()
+                            }
+                        },
+                        onDismiss = {
+                            quickTimelineVisible = false
+                            menuVisible = true
+                        }
                     )
                 }
                 if (!isAnyMenuOpen) {
@@ -1367,6 +1409,13 @@ class LibretroActivity : ComponentActivity() {
                 }
                 hideMenu()
             }
+            InGameMenuAction.QuickLoadHistory -> {
+                menuVisible = false
+                menuQuickHistoryFocused = false
+                quickTimelineEntries = saveStateManager.getQuickRingInfoList()
+                quickTimelineFocusIndex = 0
+                quickTimelineVisible = true
+            }
             InGameMenuAction.ManageStates -> {
                 menuVisible = false
                 stateManagerSlots = saveStateManager.getSlotInfoList()
@@ -1481,6 +1530,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleStateManagerSave(slotNumber: Int) {
+        if (slotNumber >= SaveStateManager.QUICK_SLOT_BASE) return
         val stateData = try { retroView.serializeState() } catch (_: Exception) { null }
         if (stateData != null) {
             val saved = saveStateManager.performSlotSave(slotNumber, stateData, pendingSaveScreenshot)
@@ -1504,6 +1554,7 @@ class LibretroActivity : ComponentActivity() {
     private fun dismissStateManager() {
         stateManagerVisible = false
         stateManagerShowDelete = false
+        stateManagerShowLoadConfirm = false
         stateManagerDeleteTarget = -1
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = null
@@ -1721,11 +1772,13 @@ class LibretroActivity : ComponentActivity() {
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = try { retroView.captureRawFrame() } catch (_: Exception) { null }
         menuFocusIndex = 0
+        menuQuickHistoryFocused = false
         menuVisible = true
     }
 
     private fun hideMenu() {
         menuVisible = false
+        menuQuickHistoryFocused = false
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = null
         if (!netplay.inSession) {

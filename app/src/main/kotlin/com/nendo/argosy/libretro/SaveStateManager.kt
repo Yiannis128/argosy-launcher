@@ -47,7 +47,7 @@ class SaveStateManager(
         lastSramHash = existingSram?.let { hashBytes(it) }
         migrateExistingFlatFiles()
         channelDir.mkdirs()
-        hasQuickSave = getSlotFile(AUTO_SLOT).exists()
+        hasQuickSave = quickRingEntries().isNotEmpty()
     }
 
     fun getSlotFile(slotNumber: Int): File {
@@ -210,12 +210,41 @@ class SaveStateManager(
         }
     }
 
+    private fun quickRingEntries(): List<Pair<Int, File>> {
+        return (0 until QUICK_RING_SIZE).mapNotNull { i ->
+            val file = getSlotFile(QUICK_SLOT_BASE + i)
+            if (file.exists()) (QUICK_SLOT_BASE + i) to file else null
+        }
+    }
+
+    fun getQuickRingInfoList(): List<SlotInfo> {
+        return quickRingEntries()
+            .sortedByDescending { it.second.lastModified() }
+            .map { (slotNumber, file) ->
+                val screenshotFile = getSlotScreenshotFile(slotNumber)
+                SlotInfo(
+                    slotNumber = slotNumber,
+                    file = file,
+                    timestamp = file.lastModified(),
+                    size = file.length(),
+                    screenshotFile = screenshotFile.takeIf { it.exists() }
+                )
+            }
+    }
+
     fun performQuickSave(stateData: ByteArray, screenshot: Bitmap? = null): Boolean {
-        return performSlotSave(AUTO_SLOT, stateData, screenshot)
+        val emptyIndex = (0 until QUICK_RING_SIZE).firstOrNull {
+            !getSlotFile(QUICK_SLOT_BASE + it).exists()
+        }
+        val targetIndex = emptyIndex
+            ?: (0 until QUICK_RING_SIZE).minByOrNull { getSlotFile(QUICK_SLOT_BASE + it).lastModified() }
+            ?: 0
+        return performSlotSave(QUICK_SLOT_BASE + targetIndex, stateData, screenshot)
     }
 
     fun performQuickLoad(retroView: GLRetroView): Boolean {
-        return performSlotLoad(retroView, AUTO_SLOT)
+        val newest = quickRingEntries().maxByOrNull { it.second.lastModified() }?.first ?: return false
+        return performSlotLoad(retroView, newest)
     }
 
     fun performSlotSave(slotNumber: Int, stateData: ByteArray, screenshot: Bitmap? = null): Boolean {
@@ -226,7 +255,7 @@ class SaveStateManager(
 
             writeScreenshot(slotNumber, screenshot)
 
-            if (slotNumber == AUTO_SLOT) {
+            if (slotNumber in QUICK_SLOT_BASE until QUICK_SLOT_BASE + QUICK_RING_SIZE) {
                 hasQuickSave = true
             }
             Log.d(TAG, "Saved state to slot $slotNumber (${stateData.size} bytes)")
@@ -261,8 +290,8 @@ class SaveStateManager(
             val screenshotFile = getSlotScreenshotFile(slotNumber)
             val deleted = stateFile.delete()
             screenshotFile.delete()
-            if (slotNumber == AUTO_SLOT) {
-                hasQuickSave = false
+            if (slotNumber in QUICK_SLOT_BASE until QUICK_SLOT_BASE + QUICK_RING_SIZE) {
+                hasQuickSave = quickRingEntries().isNotEmpty()
             }
             Log.d(TAG, "Deleted slot $slotNumber: $deleted")
             deleted
@@ -316,6 +345,7 @@ class SaveStateManager(
         return when (slotNumber) {
             AUTO_SLOT -> "$romBaseName.state.auto"
             RESUME_SLOT -> "$romBaseName.state.resume"
+            in QUICK_SLOT_BASE until QUICK_SLOT_BASE + QUICK_RING_SIZE -> "$romBaseName.state.q${slotNumber - QUICK_SLOT_BASE}"
             0 -> "$romBaseName.state"
             else -> "$romBaseName.state$slotNumber"
         }
@@ -356,6 +386,8 @@ class SaveStateManager(
         const val AUTO_SLOT = -1
         const val RESUME_SLOT = -2
         const val MAX_SLOT = 9
+        const val QUICK_SLOT_BASE = 100
+        const val QUICK_RING_SIZE = 10
         private const val SCREENSHOT_MAX_WIDTH = 480
     }
 }
