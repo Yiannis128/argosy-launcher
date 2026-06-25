@@ -581,7 +581,7 @@ private fun routeSetBuiltinFastForwardSpeed(vm: SettingsViewModel, speed: Int) {
 }
 
 internal fun routeCycleBuiltinAudioVolume(vm: SettingsViewModel, direction: Int) {
-    val options = listOf(0, 25, 50, 75, 100, 125, 150, 175, 200)
+    val options = listOf(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200)
     val currentDisplay = vm._uiState.value.builtinVideo.audioVolume
     val current = currentDisplay.removeSuffix("%").toIntOrNull() ?: 100
     val currentIndex = options.indexOf(current).coerceAtLeast(0)
