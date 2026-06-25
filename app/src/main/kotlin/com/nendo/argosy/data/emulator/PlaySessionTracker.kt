@@ -103,7 +103,8 @@ class PlaySessionTracker @Inject constructor(
     private val notificationManager: NotificationManager,
     private val fileAccessLayer: FileAccessLayer,
     private val socialRepository: dagger.Lazy<SocialRepository>,
-    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate
+    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate,
+    private val reconcileAchievementsOnSessionEndUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.achievement.ReconcileAchievementsOnSessionEndUseCase>
 ) {
     companion object {
         private const val TAG = "PlaySessionTracker"
@@ -230,6 +231,7 @@ class PlaySessionTracker @Inject constructor(
                 )
                 Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Play session entity created | duration=${sessionDuration.seconds}s, activePlayMs=$activePlayMs, standbyMs=$standbyMs")
                 socialRepository.get().syncPlaySessions()
+                reconcileAchievementsInBackground(orphaned.gameId)
 
                 recordPlayTime(
                     ActiveSession(
@@ -379,6 +381,7 @@ class PlaySessionTracker @Inject constructor(
             )
             Logger.info(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Play session entity created | activePlayMs=$activePlayMs")
             socialRepository.get().syncPlaySessions()
+            reconcileAchievementsInBackground(orphaned.gameId)
         } catch (e: Exception) {
             Logger.error(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Failed to create play session entity", e)
         }
@@ -688,6 +691,7 @@ class PlaySessionTracker @Inject constructor(
             } catch (e: Exception) {
                 Logger.error(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Failed to create play session entity", e)
             }
+            reconcileAchievementsInBackground(session.gameId)
 
             if (isScreenOn) {
                 marathonSegmentDuration = marathonSegmentDuration.plus(
@@ -1002,6 +1006,16 @@ class PlaySessionTracker @Inject constructor(
 
     fun endSessionInBackground(skipSaveSync: Boolean = false) {
         scope.launch { endSession(skipSaveSync = skipSaveSync) }
+    }
+
+    private fun reconcileAchievementsInBackground(gameId: Long) {
+        scope.launch {
+            try {
+                reconcileAchievementsOnSessionEndUseCase.get()(gameId)
+            } catch (e: Exception) {
+                Logger.warn(TAG, "[Achievements] Session-end reconcile failed for gameId=$gameId", e)
+            }
+        }
     }
 
     /** Cache the current session's save to local Room with needsRemoteSync=true, synchronously. Called from the in-game Quit handler so the save is persisted before libretro core teardown begins -- teardown can be slow enough on some cores (PSP shader cache, etc.) to trigger an OS-imposed process kill, taking endSession's coroutine with it. The upload itself is handled later by the sync coordinator draining the dirty cache row. */

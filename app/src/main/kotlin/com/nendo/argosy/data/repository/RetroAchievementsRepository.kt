@@ -567,7 +567,7 @@ class RetroAchievementsRepository @Inject constructor(
      * The synthetic `101000001` "unsupported emulator" warning unlock that
      * RA attaches to every unlock query is filtered out.
      */
-    suspend fun fetchUnlocksFresh(gameRaId: Long): GameUnlocks? {
+    suspend fun fetchUnlocksFresh(gameRaId: Long, forceRefresh: Boolean = false): GameUnlocks? {
         val credentials = getCredentials()
         if (credentials == null) {
             Logger.debug(TAG, "fetchUnlocksFresh: skipped (not logged in) game=$gameRaId")
@@ -579,7 +579,7 @@ class RetroAchievementsRepository @Inject constructor(
             val now = System.currentTimeMillis()
             unlocksCache[gameRaId]?.let { (fetchedAt, cached) ->
                 val ageSec = (now - fetchedAt) / 1000
-                if (now - fetchedAt < UNLOCKS_COOLDOWN_MS) {
+                if (!forceRefresh && now - fetchedAt < UNLOCKS_COOLDOWN_MS) {
                     Logger.debug(
                         TAG,
                         "fetchUnlocksFresh: cooldown hit game=$gameRaId age=${ageSec}s " +

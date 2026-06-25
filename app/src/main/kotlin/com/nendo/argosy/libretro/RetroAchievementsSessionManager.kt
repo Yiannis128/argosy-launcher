@@ -197,6 +197,7 @@ class RetroAchievementsSessionManager(
                 forHardcoreMode = hardcoreMode
             )
 
+            var earnedHardcore = hardcoreMode
             val awardConfirmed = when (result) {
                 is RAAwardResult.Success -> {
                     Log.i(TAG, "Achievement $achievementId awarded to RA successfully")
@@ -213,12 +214,29 @@ class RetroAchievementsSessionManager(
                 }
                 is RAAwardResult.Error -> {
                     Log.e(TAG, "Failed to award achievement to RA: ${result.message}")
-                    false
+                    if (hardcoreMode) {
+                        earnedHardcore = false
+                        Log.d(TAG, "Hardcore award failed; hardcore cannot be queued (needs live heartbeat), falling back to casual for $achievementId")
+                        when (val casual = raRepository.awardAchievement(gameId, achievementId, forHardcoreMode = false)) {
+                            is RAAwardResult.Success -> true
+                            is RAAwardResult.Queued -> {
+                                com.nendo.argosy.data.sync.AchievementSubmissionWorker.schedule(context)
+                                false
+                            }
+                            is RAAwardResult.Error -> {
+                                Log.e(TAG, "Casual fallback also failed for $achievementId: ${casual.message}")
+                                false
+                            }
+                            is RAAwardResult.AlreadyAwarded -> false
+                        }
+                    } else {
+                        false
+                    }
                 }
             }
 
             val now = System.currentTimeMillis()
-            if (hardcoreMode) {
+            if (earnedHardcore) {
                 achievementDao.markUnlockedHardcore(gameId, achievementId, now)
                 Log.d(TAG, "Marked achievement $achievementId as hardcore unlocked in local DB")
             } else {
