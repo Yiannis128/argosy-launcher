@@ -15,6 +15,7 @@ import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.entity.PlaySessionEntity
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.Logger
+import com.nendo.argosy.data.preferences.PersistedSession
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
@@ -165,177 +166,23 @@ class PlaySessionTracker @Inject constructor(
         registerScreenReceiver()
     }
 
-    suspend fun checkOrphanedSession() {
-        if (!endingSession.compareAndSet(false, true)) {
-            Logger.debug(TAG, "[SaveSync] ORPHAN | Skipping orphan check, endSession is handling recovery")
-            saveRecoveryGate.markComplete()
-            return
-        }
-        try {
-        val orphaned = preferencesRepository.getPersistedSession() ?: return
-        Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Detected orphaned session from ${orphaned.startTime}")
-
-        val endTime = Instant.now()
-        val sessionDuration = Duration.between(orphaned.startTime, endTime)
-        if (sessionDuration.seconds >= MIN_PLAY_SECONDS_FOR_COMPLETION) {
-            try {
-                val orphanedGame = gameDao.getById(orphaned.gameId)
-                val prefs = preferencesRepository.userPreferences.first()
-                val deviceId = Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
-                val totalMs = sessionDuration.toMillis()
-                val (activePlayMs, standbyMs) = resolveActivePlayTime(orphaned.emulatorPackage, orphaned.startTime, endTime, totalMs)
-
-                playSessionDao.insert(
-                    PlaySessionEntity(
-                        userId = prefs.socialUserId,
-                        gameId = orphaned.gameId,
-                        igdbId = orphanedGame?.igdbId,
-                        gameTitle = orphanedGame?.title ?: "Unknown",
-                        platformSlug = orphanedGame?.platformSlug ?: "unknown",
-                        startTime = orphaned.startTime,
-                        endTime = endTime,
-                        continued = false,
-                        deviceId = deviceId,
-                        deviceManufacturer = Build.MANUFACTURER,
-                        deviceModel = Build.MODEL,
-                        activePlayMs = activePlayMs,
-                        standbyMs = standbyMs
-                    )
-                )
-                Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Play session entity created | duration=${sessionDuration.seconds}s, activePlayMs=$activePlayMs, standbyMs=$standbyMs")
-                socialRepository.get().syncPlaySessions()
-                reconcileAchievementsInBackground(orphaned.gameId)
-
-                recordPlayTime(
-                    ActiveSession(
-                        gameId = orphaned.gameId,
-                        startTime = orphaned.startTime,
-                        emulatorPackage = orphaned.emulatorPackage,
-                        coreName = orphaned.coreName,
-                        isHardcore = orphaned.isHardcore
-                    ),
-                    Duration.ofMillis(activePlayMs)
-                )
-            } catch (e: Exception) {
-                Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create play session entity", e)
-            }
-        } else {
-            Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Too short for play session (${sessionDuration.seconds}s)")
-        }
-
-        try {
-            val game = gameDao.getById(orphaned.gameId)
-            if (game == null) {
-                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Game not found, clearing session")
-                clearSessionAndBroadcast()
-                return
-            }
-
-            val emulatorId = emulatorResolver.resolveEmulatorId(orphaned.emulatorPackage)
-            if (emulatorId == null) {
-                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Cannot resolve emulator ID | package=${orphaned.emulatorPackage}")
-                clearSessionAndBroadcast()
-                return
-            }
-
-            val savePath = saveSyncRepository.get().discoverSavePath(
-                emulatorId = emulatorId,
-                gameTitle = game.title,
-                platformSlug = game.platformSlug,
-                romPath = game.localPath,
-                cachedSaveId = game.saveId ?: game.titleId,
-                coreName = orphaned.coreName,
-                emulatorPackage = orphaned.emulatorPackage,
-                gameId = orphaned.gameId
-            )
-
-            if (savePath != null) {
-                val activeChannel = if (orphaned.isHardcore) null else orphaned.channelName
-                val cacheResult = saveCacheManager.get().cacheCurrentSave(
-                    gameId = orphaned.gameId,
-                    emulatorId = emulatorId,
-                    savePath = savePath,
-                    channelName = activeChannel,
-                    isLocked = false,
-                    isHardcore = orphaned.isHardcore,
-                    skipDuplicateCheck = false
-                )
-                when (cacheResult) {
-                    is SaveCacheManager.CacheResult.Created -> {
-                        gameDao.updateActiveSaveTimestamp(orphaned.gameId, cacheResult.timestamp)
-                        gameDao.updateActiveSaveApplied(orphaned.gameId, false)
-                        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery backup created | path=$savePath")
-                    }
-                    is SaveCacheManager.CacheResult.Duplicate -> {
-                        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Save unchanged (already backed up)")
-                    }
-                    is SaveCacheManager.CacheResult.Failed -> {
-                        Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create recovery backup")
-                    }
-                }
-
-                // Sync to RomM after caching
-                if (cacheResult !is SaveCacheManager.CacheResult.Duplicate) {
-                    val syncResult = syncSaveOnSessionEndUseCase.get()(orphaned)
-                    when (syncResult) {
-                        is SyncSaveOnSessionEndUseCase.Result.Uploaded -> {
-                            Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Synced to RomM")
-                            notificationManager.show(
-                                title = "Save Uploaded",
-                                subtitle = game.title,
-                                type = NotificationType.SUCCESS,
-                                imagePath = game.coverPath,
-                                duration = NotificationDuration.MEDIUM,
-                                key = "sync-${orphaned.gameId}",
-                                immediate = true
-                            )
-                        }
-                        is SyncSaveOnSessionEndUseCase.Result.Queued -> {
-                            Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Queued for sync")
-                        }
-                        is SyncSaveOnSessionEndUseCase.Result.Error -> {
-                            Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Sync failed: ${syncResult.message}")
-                        }
-                        else -> {}
-                    }
-                }
-            } else {
-                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | No save path found for recovery")
-            }
-        } catch (e: Exception) {
-            Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery failed", e)
-        } finally {
-            clearSessionAndBroadcast()
-        }
-        } finally {
-            endingSession.set(false)
-            saveRecoveryGate.markComplete()
-        }
-    }
-
-    private suspend fun recoverOrphanedPlaySession(stopService: Boolean): Boolean {
-        val orphaned = preferencesRepository.getPersistedSession() ?: return false
-        val endTime = Instant.now()
-        val sessionDuration = Duration.between(orphaned.startTime, endTime)
-
-        if (sessionDuration.seconds < MIN_PLAY_SECONDS_FOR_COMPLETION) {
-            Logger.debug(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Too short (${sessionDuration.seconds}s), skipping")
-            clearSessionAndBroadcast()
-            if (stopService) GameSessionService.stop(application)
+    private suspend fun insertPlaySessionIfAbsent(entity: PlaySessionEntity): Boolean {
+        if (playSessionDao.existsByGameAndStart(entity.gameId, entity.startTime)) {
+            Logger.debug(TAG, "[SaveSync] SESSION gameId=${entity.gameId} | Play session already recorded for startTime=${entity.startTime}, skipping duplicate")
             return false
         }
+        playSessionDao.insert(entity)
+        return true
+    }
 
-        val totalMs = sessionDuration.toMillis()
+    private suspend fun recordOrphanedPlaySession(orphaned: PersistedSession, endTime: Instant): Boolean {
+        val totalMs = Duration.between(orphaned.startTime, endTime).toMillis()
         val (activePlayMs, standbyMs) = resolveActivePlayTime(orphaned.emulatorPackage, orphaned.startTime, endTime, totalMs)
-
-        Logger.info(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Recovering orphaned session | startTime=${orphaned.startTime}, duration=${sessionDuration.seconds}s, activePlayMs=$activePlayMs, standbyMs=$standbyMs")
-
-        try {
+        return try {
             val game = gameDao.getById(orphaned.gameId)
             val prefs = preferencesRepository.userPreferences.first()
             val deviceId = Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
-
-            playSessionDao.insert(
+            val inserted = insertPlaySessionIfAbsent(
                 PlaySessionEntity(
                     userId = prefs.socialUserId,
                     gameId = orphaned.gameId,
@@ -352,31 +199,146 @@ class PlaySessionTracker @Inject constructor(
                     standbyMs = standbyMs
                 )
             )
-            Logger.info(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Play session entity created | activePlayMs=$activePlayMs")
-            socialRepository.get().syncPlaySessions()
-            reconcileAchievementsInBackground(orphaned.gameId)
+            if (inserted) {
+                Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Play session entity created | activePlayMs=$activePlayMs, standbyMs=$standbyMs")
+                socialRepository.get().syncPlaySessions()
+                reconcileAchievementsInBackground(orphaned.gameId)
+                recordPlayTime(
+                    ActiveSession(
+                        gameId = orphaned.gameId,
+                        startTime = orphaned.startTime,
+                        emulatorPackage = orphaned.emulatorPackage,
+                        coreName = orphaned.coreName,
+                        isHardcore = orphaned.isHardcore
+                    ),
+                    Duration.ofMillis(activePlayMs)
+                )
+            }
+            inserted
         } catch (e: Exception) {
-            Logger.error(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Failed to create play session entity", e)
+            Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create play session entity", e)
+            false
         }
+    }
 
+    private suspend fun recoverOrphanedSave(orphaned: PersistedSession) {
         try {
-            recordPlayTime(
-                ActiveSession(
-                    gameId = orphaned.gameId,
-                    startTime = orphaned.startTime,
-                    emulatorPackage = orphaned.emulatorPackage,
-                    coreName = orphaned.coreName,
-                    isHardcore = orphaned.isHardcore
-                ),
-                Duration.ofMillis(activePlayMs)
+            val game = gameDao.getById(orphaned.gameId)
+            if (game == null) {
+                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Game not found, skipping save recovery")
+                return
+            }
+
+            val emulatorId = emulatorResolver.resolveEmulatorId(orphaned.emulatorPackage)
+            if (emulatorId == null) {
+                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Cannot resolve emulator ID | package=${orphaned.emulatorPackage}")
+                return
+            }
+
+            val savePath = saveSyncRepository.get().discoverSavePath(
+                emulatorId = emulatorId,
+                gameTitle = game.title,
+                platformSlug = game.platformSlug,
+                romPath = game.localPath,
+                cachedSaveId = game.saveId ?: game.titleId,
+                coreName = orphaned.coreName,
+                emulatorPackage = orphaned.emulatorPackage,
+                gameId = orphaned.gameId
             )
+
+            if (savePath == null) {
+                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | No save path found for recovery")
+                return
+            }
+
+            val activeChannel = if (orphaned.isHardcore) null else orphaned.channelName
+            val cacheResult = saveCacheManager.get().cacheCurrentSave(
+                gameId = orphaned.gameId,
+                emulatorId = emulatorId,
+                savePath = savePath,
+                channelName = activeChannel,
+                isLocked = false,
+                isHardcore = orphaned.isHardcore,
+                skipDuplicateCheck = false
+            )
+            when (cacheResult) {
+                is SaveCacheManager.CacheResult.Created -> {
+                    gameDao.updateActiveSaveTimestamp(orphaned.gameId, cacheResult.timestamp)
+                    gameDao.updateActiveSaveApplied(orphaned.gameId, false)
+                    Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery backup created | path=$savePath")
+                }
+                is SaveCacheManager.CacheResult.Duplicate ->
+                    Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Save unchanged (already backed up)")
+                is SaveCacheManager.CacheResult.Failed ->
+                    Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create recovery backup")
+            }
+
+            if (cacheResult !is SaveCacheManager.CacheResult.Duplicate) {
+                when (val syncResult = syncSaveOnSessionEndUseCase.get()(orphaned)) {
+                    is SyncSaveOnSessionEndUseCase.Result.Uploaded -> {
+                        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Synced to RomM")
+                        notificationManager.show(
+                            title = "Save Uploaded",
+                            subtitle = game.title,
+                            type = NotificationType.SUCCESS,
+                            imagePath = game.coverPath,
+                            duration = NotificationDuration.MEDIUM,
+                            key = "sync-${orphaned.gameId}",
+                            immediate = true
+                        )
+                    }
+                    is SyncSaveOnSessionEndUseCase.Result.Queued ->
+                        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Queued for sync")
+                    is SyncSaveOnSessionEndUseCase.Result.Error ->
+                        Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Sync failed: ${syncResult.message}")
+                    else -> {}
+                }
+            }
         } catch (e: Exception) {
-            Logger.error(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Failed to record play time", e)
+            Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery failed", e)
+        }
+    }
+
+    suspend fun checkOrphanedSession() {
+        if (!endingSession.compareAndSet(false, true)) {
+            Logger.debug(TAG, "[SaveSync] ORPHAN | Skipping orphan check, endSession is handling recovery")
+            saveRecoveryGate.markComplete()
+            return
+        }
+        try {
+            val orphaned = preferencesRepository.getPersistedSession() ?: return
+            Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Detected orphaned session from ${orphaned.startTime}")
+
+            val endTime = Instant.now()
+            val sessionDuration = Duration.between(orphaned.startTime, endTime)
+            if (sessionDuration.seconds >= MIN_PLAY_SECONDS_FOR_COMPLETION) {
+                recordOrphanedPlaySession(orphaned, endTime)
+            } else {
+                Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Too short for play session (${sessionDuration.seconds}s)")
+            }
+            recoverOrphanedSave(orphaned)
+            clearSessionAndBroadcast()
+        } finally {
+            endingSession.set(false)
+            saveRecoveryGate.markComplete()
+        }
+    }
+
+    private suspend fun recoverOrphanedPlaySession(stopService: Boolean): Boolean {
+        val orphaned = preferencesRepository.getPersistedSession() ?: return false
+        val endTime = Instant.now()
+        val longEnough = Duration.between(orphaned.startTime, endTime).seconds >= MIN_PLAY_SECONDS_FOR_COMPLETION
+
+        if (longEnough) {
+            recordOrphanedPlaySession(orphaned, endTime)
+        } else {
+            Logger.debug(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Too short for play session (${Duration.between(orphaned.startTime, endTime).seconds}s)")
         }
 
+        recoverOrphanedSave(orphaned)
         clearSessionAndBroadcast()
         if (stopService) GameSessionService.stop(application)
-        return true
+        return longEnough
     }
 
     private fun resolveActivePlayTime(
@@ -446,7 +408,6 @@ class PlaySessionTracker @Inject constructor(
     }
 
     fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false, isNetplayGuest: Boolean = false) {
-        endingSession.set(false)
         lastScreenOnTime = Instant.now()
         isScreenOn = true
         lastScreenOffTime = null
@@ -608,7 +569,7 @@ class PlaySessionTracker @Inject constructor(
                 val game = gameDao.getById(session.gameId)
                 val prefs = preferencesRepository.userPreferences.first()
                 val deviceId = Settings.Secure.getString(application.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
-                playSessionDao.insert(
+                val inserted = insertPlaySessionIfAbsent(
                     PlaySessionEntity(
                         userId = prefs.socialUserId,
                         gameId = session.gameId,
@@ -625,8 +586,10 @@ class PlaySessionTracker @Inject constructor(
                         standbyMs = standbyMs
                     )
                 )
-                Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Play session entity created | activePlayMs=$activePlayMs, standbyMs=$standbyMs")
-                socialRepository.get().syncPlaySessions()
+                if (inserted) {
+                    Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Play session entity created | activePlayMs=$activePlayMs, standbyMs=$standbyMs")
+                    socialRepository.get().syncPlaySessions()
+                }
             } catch (e: Exception) {
                 Logger.error(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Failed to create play session entity", e)
             }

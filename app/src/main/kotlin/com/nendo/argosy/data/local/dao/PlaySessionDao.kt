@@ -12,6 +12,9 @@ interface PlaySessionDao {
     @Insert
     suspend fun insert(session: PlaySessionEntity): Long
 
+    @Query("SELECT EXISTS(SELECT 1 FROM play_sessions WHERE gameId = :gameId AND startTime = :startTime)")
+    suspend fun existsByGameAndStart(gameId: Long, startTime: Instant): Boolean
+
     @Query("SELECT * FROM play_sessions WHERE gameId = :gameId ORDER BY startTime DESC")
     fun observeByGame(gameId: Long): Flow<List<PlaySessionEntity>>
 
