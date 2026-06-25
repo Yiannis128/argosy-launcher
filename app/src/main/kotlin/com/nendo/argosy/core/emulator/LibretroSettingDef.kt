@@ -116,6 +116,14 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
+    data object AudioVolume : LibretroSettingDef(
+        key = "audioVolume",
+        section = "performance",
+        title = "Volume",
+        subtitle = "Emulator output level (100% is unmodified)",
+        type = SettingType.Cycle(listOf("0%", "25%", "50%", "75%", "100%", "125%", "150%", "175%", "200%"))
+    )
+
     data object VSync : LibretroSettingDef(
         key = "vsync",
         section = "display",
@@ -163,6 +171,7 @@ sealed class LibretroSettingDef(
             RewindBufferDuration,
             SkipDuplicateFrames,
             LowLatencyAudio,
+            AudioVolume,
             AutoSaveState,
             AutoRestoreState,
             HwCoreSaveStates

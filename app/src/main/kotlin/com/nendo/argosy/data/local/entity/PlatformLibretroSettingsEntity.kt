@@ -34,6 +34,7 @@ data class PlatformLibretroSettingsEntity(
     val rewindEnabled: Boolean? = null,
     val skipDuplicateFrames: Boolean? = null,
     val lowLatencyAudio: Boolean? = null,
+    val audioVolume: Int? = null,
     val analogAsDpad: Boolean? = null,
     val dpadAsAnalog: Boolean? = null,
     val rumbleEnabled: Boolean? = null,
@@ -59,6 +60,7 @@ data class PlatformLibretroSettingsEntity(
         rewindEnabled != null ||
         skipDuplicateFrames != null ||
         lowLatencyAudio != null ||
+        audioVolume != null ||
         rewindSpeed != null ||
         rewindBufferDuration != null ||
         vsync != null

@@ -161,6 +161,7 @@ public:
 
     void setAudioEnabled(bool enabled);
     void setPitchPreservationEnabled(bool enabled);
+    void setAudioVolume(float volume);
 
     void setShaderConfig(ShaderManager::Config shaderConfig);
     void setFilterMode(int mode);
@@ -197,6 +198,7 @@ private:
     unsigned int frameSpeed = 1;
     bool audioEnabled = true;
     bool pitchPreservationEnabled = false;
+    float audioVolume = 1.0f;
     bool preferLowLatencyAudio = false;
     bool forceSoftwareTiming = false;
     bool rumbleEnabled = false;

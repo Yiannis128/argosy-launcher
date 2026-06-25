@@ -57,6 +57,10 @@ class GLRetroView(
         LibretroDroid.setPitchPreservationEnabled(value)
     }
 
+    var audioVolume: Float by Delegates.observable(1f) { _, _, value ->
+        LibretroDroid.setAudioVolume(value)
+    }
+
     var frameSpeed: Int by Delegates.observable(1) { _, _, value ->
         LibretroDroid.setFrameSpeed(value)
     }

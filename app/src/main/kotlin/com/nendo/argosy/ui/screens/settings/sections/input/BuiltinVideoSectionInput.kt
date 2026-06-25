@@ -119,6 +119,7 @@ internal class BuiltinVideoSectionInput(
             InputResult.handled(SoundType.TOGGLE)
         }
         LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(1); InputResult.HANDLED }
+        LibretroSettingDef.AudioVolume -> { viewModel.cycleBuiltinAudioVolume(1); InputResult.HANDLED }
         LibretroSettingDef.RewindSpeed -> { viewModel.cycleBuiltinRewindSpeed(1); InputResult.HANDLED }
         LibretroSettingDef.RewindBufferDuration -> { viewModel.cycleBuiltinRewindBufferDuration(1); InputResult.HANDLED }
         LibretroSettingDef.BlackFrameInsertion -> {
@@ -247,6 +248,7 @@ internal class BuiltinVideoSectionInput(
         LibretroSettingDef.Rotation -> { viewModel.cycleBuiltinRotation(direction); InputResult.HANDLED }
         LibretroSettingDef.OverscanCrop -> { viewModel.cycleBuiltinOverscanCrop(direction); InputResult.HANDLED }
         LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(direction); InputResult.HANDLED }
+        LibretroSettingDef.AudioVolume -> { viewModel.cycleBuiltinAudioVolume(direction); InputResult.HANDLED }
         else -> InputResult.UNHANDLED
     }
 

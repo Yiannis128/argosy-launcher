@@ -393,6 +393,7 @@ data class BuiltinEmulatorSettings(
     val aspectRatio: String = "Core Provided",
     val skipDuplicateFrames: Boolean = false,
     val lowLatencyAudio: Boolean = true,
+    val audioVolume: Int = 100,
     val forceSoftwareTiming: Boolean = false,
     val rumbleEnabled: Boolean = true,
     val blackFrameInsertion: Boolean = false,
@@ -454,6 +455,12 @@ data class BuiltinEmulatorSettings(
 
     val isIntegerScaling: Boolean
         get() = aspectRatio == "Integer"
+
+    val audioVolumeGain: Float
+        get() = audioVolume / 100f
+
+    val audioVolumeDisplay: String
+        get() = "${audioVolume}%"
 
     val fastForwardSpeedDisplay: String
         get() = "${fastForwardSpeed}x"

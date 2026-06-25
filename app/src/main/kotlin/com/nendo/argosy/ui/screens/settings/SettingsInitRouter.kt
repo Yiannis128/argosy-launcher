@@ -653,6 +653,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     rotation = builtinSettings.rotationDisplay,
                     overscanCrop = builtinSettings.overscanCropDisplay,
                     lowLatencyAudio = builtinSettings.lowLatencyAudio,
+                    audioVolume = builtinSettings.audioVolumeDisplay,
                     vsync = !builtinSettings.forceSoftwareTiming,
                     rewindEnabled = builtinSettings.rewindEnabled,
                     rewindSpeed = builtinSettings.rewindSpeedDisplay,

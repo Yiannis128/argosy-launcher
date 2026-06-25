@@ -25,6 +25,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_ASPECT_RATIO = stringPreferencesKey("builtin_aspect_ratio")
         val BUILTIN_SKIP_DUPLICATE_FRAMES = booleanPreferencesKey("builtin_skip_duplicate_frames")
         val BUILTIN_LOW_LATENCY_AUDIO = booleanPreferencesKey("builtin_low_latency_audio")
+        val BUILTIN_AUDIO_VOLUME = intPreferencesKey("builtin_audio_volume")
         val BUILTIN_FORCE_SOFTWARE_TIMING = booleanPreferencesKey("builtin_force_software_timing")
         val BUILTIN_RUMBLE_ENABLED = booleanPreferencesKey("builtin_rumble_enabled")
         val BUILTIN_BLACK_FRAME_INSERTION = booleanPreferencesKey("builtin_black_frame_insertion")
@@ -83,6 +84,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             limitHotkeysToPlayer1 = prefs[Keys.BUILTIN_LIMIT_HOTKEYS_TO_PLAYER1] ?: true,
             analogAsDpad = prefs[Keys.BUILTIN_ANALOG_AS_DPAD] ?: false,
             dpadAsAnalog = prefs[Keys.BUILTIN_DPAD_AS_ANALOG] ?: false,
+            audioVolume = prefs[Keys.BUILTIN_AUDIO_VOLUME] ?: 100,
             fastForwardEnabled = prefs[Keys.BUILTIN_FAST_FORWARD_ENABLED] ?: true,
             fastForwardSpeed = prefs[Keys.BUILTIN_FAST_FORWARD_SPEED] ?: 4,
             fastForwardMode = FastForwardMode.fromString(prefs[Keys.BUILTIN_FAST_FORWARD_MODE]),
@@ -207,6 +209,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinFastForwardSpeed(speed: Int) {
         dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_SPEED] = speed.coerceIn(2, 8) }
+    }
+
+    suspend fun setBuiltinAudioVolume(volume: Int) {
+        dataStore.edit { it[Keys.BUILTIN_AUDIO_VOLUME] = volume.coerceIn(0, 200) }
     }
 
     suspend fun setBuiltinFastForwardMode(mode: FastForwardMode) {

@@ -550,6 +550,7 @@ class SettingsViewModel @Inject constructor(
     fun cycleBuiltinFilter(direction: Int) = routeCycleBuiltinFilter(this, direction)
     fun cycleBuiltinAspectRatio(direction: Int) = routeCycleBuiltinAspectRatio(this, direction)
     fun cycleBuiltinFastForwardSpeed(direction: Int) = routeCycleBuiltinFastForwardSpeed(this, direction)
+    fun cycleBuiltinAudioVolume(direction: Int) = routeCycleBuiltinAudioVolume(this, direction)
     fun cycleBuiltinRotation(direction: Int) = routeCycleBuiltinRotation(this, direction)
     fun cycleBuiltinOverscanCrop(direction: Int) = routeCycleBuiltinOverscanCrop(this, direction)
     fun cycleBuiltinRewindSpeed(direction: Int) = routeCycleBuiltinRewindSpeed(this, direction)

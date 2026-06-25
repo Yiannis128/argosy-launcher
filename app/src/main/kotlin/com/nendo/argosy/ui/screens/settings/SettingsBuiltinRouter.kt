@@ -580,6 +580,19 @@ private fun routeSetBuiltinFastForwardSpeed(vm: SettingsViewModel, speed: Int) {
     }
 }
 
+internal fun routeCycleBuiltinAudioVolume(vm: SettingsViewModel, direction: Int) {
+    val options = listOf(0, 25, 50, 75, 100, 125, 150, 175, 200)
+    val currentDisplay = vm._uiState.value.builtinVideo.audioVolume
+    val current = currentDisplay.removeSuffix("%").toIntOrNull() ?: 100
+    val currentIndex = options.indexOf(current).coerceAtLeast(0)
+    val nextIndex = (currentIndex + direction + options.size) % options.size
+    val next = options[nextIndex]
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(audioVolume = "${next}%")) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setBuiltinAudioVolume(next)
+    }
+}
+
 internal fun routeCycleBuiltinRewindSpeed(vm: SettingsViewModel, direction: Int) {
     val options = listOf(1, 2, 4)
     val currentDisplay = vm._uiState.value.builtinVideo.rewindSpeed
@@ -653,6 +666,7 @@ internal fun routeUpdatePlatformLibretroSetting(vm: SettingsViewModel, setting: 
             LibretroSettingDef.RewindEnabled -> current.copy(rewindEnabled = value?.toBooleanStrictOrNull())
             LibretroSettingDef.SkipDuplicateFrames -> current.copy(skipDuplicateFrames = value?.toBooleanStrictOrNull())
             LibretroSettingDef.LowLatencyAudio -> current.copy(lowLatencyAudio = value?.toBooleanStrictOrNull())
+            LibretroSettingDef.AudioVolume -> current.copy(audioVolume = value?.removeSuffix("%")?.toIntOrNull())
             LibretroSettingDef.VSync -> current.copy(vsync = value?.toBooleanStrictOrNull())
             LibretroSettingDef.RewindSpeed -> current.copy(rewindSpeed = value?.removeSuffix("x")?.toIntOrNull())
             LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value?.removeSuffix("s")?.toIntOrNull())
@@ -677,7 +691,7 @@ internal fun routeResetAllPlatformLibretroSettings(vm: SettingsViewModel) {
             shader = null, filter = null, aspectRatio = null, rotation = null,
             overscanCrop = null, frame = null, blackFrameInsertion = null, fastForwardEnabled = null, fastForwardSpeed = null,
             rewindEnabled = null, rewindSpeed = null, rewindBufferDuration = null,
-            skipDuplicateFrames = null, lowLatencyAudio = null, vsync = null
+            skipDuplicateFrames = null, lowLatencyAudio = null, audioVolume = null, vsync = null
         )
         if (updated.hasAnyOverrides()) {
             vm.libretroSettingsRepo.upsert(updated)

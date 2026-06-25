@@ -57,6 +57,7 @@ public:
     void write(const int16_t *data, size_t frames);
     void setPlaybackSpeed(const double newPlaybackSpeed);
     void setPitchPreservation(bool enabled);
+    void setOutputVolume(float volume);
     void resetBufferState();
     void updateTiming(int32_t newSampleRate, double newRefreshRate);
 
@@ -91,6 +92,8 @@ private:
     double errorIntegral = 0.0;
 
     double playbackSpeed = 1.0;
+
+    float outputVolume = 1.0f;
 
     std::unique_ptr<AudioLatencySettings> audioLatencySettings;
 

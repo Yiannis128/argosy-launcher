@@ -614,7 +614,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun configureRetroView(settings: com.nendo.argosy.data.preferences.BuiltinEmulatorSettings) {
-        audioController.applyInitialAudioConfig(settings.fastForwardPreservePitch)
+        audioController.applyInitialAudioConfig(settings.fastForwardPreservePitch, settings.audioVolumeGain)
         retroView.filterMode = settings.filterMode
         retroView.blackFrameInsertion = settings.blackFrameInsertion
         retroView.portResolver = portResolver

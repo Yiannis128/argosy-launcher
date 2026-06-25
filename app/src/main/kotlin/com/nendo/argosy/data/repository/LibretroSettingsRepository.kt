@@ -86,6 +86,9 @@ class LibretroSettingsRepository @Inject constructor(
     suspend fun setBuiltinFastForwardSpeed(speed: Int) =
         builtinPrefs.setBuiltinFastForwardSpeed(speed)
 
+    suspend fun setBuiltinAudioVolume(volume: Int) =
+        builtinPrefs.setBuiltinAudioVolume(volume)
+
     suspend fun setBuiltinFastForwardMode(mode: FastForwardMode) =
         builtinPrefs.setBuiltinFastForwardMode(mode)
 
