@@ -264,6 +264,7 @@ class SecondaryHomeActivity :
         dualHomeViewModel.stopDrawerForwarding()
         launchedExternalApp = false
         val store = dsm.sessionStateStore
+        store.setForeignAppOnSecondary(false)
         isGameActive = store.hasActiveSession()
         isHardcore = store.isHardcore()
         currentChannelName = store.getChannelName()
@@ -784,8 +785,12 @@ class SecondaryHomeActivity :
             if (launchIntent != null) {
                 launchedExternalApp = true
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                if (options != null) startActivity(launchIntent, options)
-                else startActivity(launchIntent)
+                if (options != null) {
+                    startActivity(launchIntent, options)
+                } else {
+                    if (::dsm.isInitialized) dsm.sessionStateStore.setForeignAppOnSecondary(true)
+                    startActivity(launchIntent)
+                }
             }
         } catch (_: Exception) {
             launchedExternalApp = false

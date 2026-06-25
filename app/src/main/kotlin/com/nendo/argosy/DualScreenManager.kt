@@ -1925,6 +1925,7 @@ class DualScreenManager(
         if (!displayAffinityHelper.hasSecondaryDisplay) return
         if (_isCompanionActive.value) return
         if (!allowDuringSession && sessionStateStore.hasActiveSession()) return
+        if (sessionStateStore.isForeignAppOnSecondary()) return
 
         CompanionGuardService.start(appContext)
         companionLaunchJob?.cancel()

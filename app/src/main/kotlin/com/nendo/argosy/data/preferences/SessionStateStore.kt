@@ -80,6 +80,13 @@ class SessionStateStore(context: Context) {
 
     fun isArgosyForeground(): Boolean = prefs.getBoolean(KEY_ARGOSY_FOREGROUND, false)
 
+    fun setForeignAppOnSecondary(active: Boolean) {
+        prefs.edit().putBoolean(KEY_FOREIGN_APP_ON_SECONDARY, active).commit()
+    }
+
+    fun isForeignAppOnSecondary(): Boolean =
+        prefs.getBoolean(KEY_FOREIGN_APP_ON_SECONDARY, false)
+
     fun setPrimaryColor(color: Int?) {
         if (color != null) {
             prefs.edit().putInt(KEY_PRIMARY_COLOR, color).apply()
@@ -225,6 +232,7 @@ class SessionStateStore(context: Context) {
         private const val KEY_SAVE_DIRTY = "save_dirty"
         private const val KEY_HOME_APPS = "home_apps"
         private const val KEY_ARGOSY_FOREGROUND = "argosy_foreground"
+        private const val KEY_FOREIGN_APP_ON_SECONDARY = "foreign_app_on_secondary"
         private const val KEY_PRIMARY_COLOR = "primary_color"
         private const val KEY_SWAP_AB = "swap_ab"
         private const val KEY_SWAP_XY = "swap_xy"
