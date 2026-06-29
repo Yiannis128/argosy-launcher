@@ -230,6 +230,25 @@ Material `AlertDialog`s. If native focus is kept for a11y/IME, it must be a hidd
 the custom index - never self-navigating. The durable fix is a primitive that owns this wiring so
 menus declare items instead of re-authoring input; until then, this list is the manual guard.
 
+## V2 build decisions (Penpot `V2 / Controls` page)
+
+Concrete treatments settled while building the control specimen sheet (default + focused columns).
+
+- Icon provider: Phosphor. `caret-left-fill`/`caret-right-fill` = filled d-pad triangles (enum/value
+  cues); `caret-right`/`caret-down` (regular) = outline chevrons (nav/expandable); `check-bold` =
+  checkmark. Frame-normalize for uniform size (see penpot skill); glyph-center marks inside boxes.
+- Dark-mode accent value: `#40C6D6` (white-biased cyan, softer than raw `#00ACC1`); focused
+  text/icons use the brighter `#7FE0EC`. This is the dark side of the Color-usage bias rule.
+- Toggle is BOXY, not an M3 switch: rounded-square track (h24, r7) + a narrow vertical rounded-rect
+  knob (12x20, r5), not a circle. ON = knob right.
+- Track slider shares the boxy language: squared track (r2) + a boxy flush thumb (8x8 rounded-square
+  at the fill end) - still the track-height-knob rule (flush, no lollipop).
+- Color preset / swatches: selected indicator = a white ring around the active swatch (both states).
+- Row focus treatment: accent fill wash (~0.15) + accent border + title/value/icons tinted accent.
+  EXCEPTIONS: destructive focus is RED (red wash/border/text), not accent; an action button
+  solidifies its wrapped fill to 100% on focus. Action at rest = wrapped 82% fill + accent outline,
+  squarer (`radiusControl` ~6).
+
 ## Open items
 
 - Token reconciliation: dark ramp canonical = Home's rendered near-black family; sync Penpot
