@@ -182,18 +182,8 @@ class RomMCollectionSyncService @Inject constructor(
                 return RomMResult.Success(Unit)
             }
 
-            Logger.info(TAG, "refreshFavoritesIfNeeded: remote is newer, applying changes")
-            val remoteRommIds = collection.romIds
-
-            if (remoteRommIds.isNotEmpty()) {
-                gameDao.setFavoritesByRommIds(remoteRommIds)
-                gameDao.clearFavoritesNotInRommIds(remoteRommIds)
-            } else {
-                gameDao.clearFavoritesNotInRommIds(emptyList())
-            }
-
-            userPreferencesRepository.setLastFavoritesSyncTime(remoteUpdatedAt)
-            RomMResult.Success(Unit)
+            Logger.info(TAG, "refreshFavoritesIfNeeded: remote is newer, merging")
+            syncFavorites()
         } catch (e: Exception) {
             Logger.info(TAG, "refreshFavoritesIfNeeded: failed: ${e.message}")
             RomMResult.Error(e.message ?: "Failed to refresh favorites")
