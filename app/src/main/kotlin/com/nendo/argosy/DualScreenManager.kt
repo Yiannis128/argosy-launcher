@@ -891,7 +891,7 @@ class DualScreenManager(
                 _dualGameDetailState.update { s ->
                     s?.copy(
                         modalType = ActiveModal.NONE,
-                        variantCurrentName = s.variantNames.getOrNull(intValue)
+                        variantCurrentName = if (intValue == 0) null else s.variantNames.getOrNull(intValue - 1)
                     )
                 }
             }
@@ -1215,7 +1215,7 @@ class DualScreenManager(
 
     fun moveDualVariantFocus(delta: Int) {
         _dualGameDetailState.update { state ->
-            val max = ((state?.variantNames?.size ?: 0) - 1).coerceAtLeast(0)
+            val max = state?.variantNames?.size ?: 0
             state?.copy(
                 variantFocusIndex = (state.variantFocusIndex + delta)
                     .coerceIn(0, max)
@@ -1234,7 +1234,7 @@ class DualScreenManager(
         _dualGameDetailState.update {
             it?.copy(
                 modalType = ActiveModal.NONE,
-                variantCurrentName = state.variantNames.getOrNull(index)
+                variantCurrentName = if (index == 0) null else state.variantNames.getOrNull(index - 1)
             )
         }
     }

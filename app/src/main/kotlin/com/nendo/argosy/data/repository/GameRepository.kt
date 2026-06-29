@@ -547,7 +547,7 @@ class GameRepository @Inject constructor(
         gameFileDao.getVariantsForGame(gameId)
     }
 
-    suspend fun setActiveVariant(gameId: Long, fileId: Long) = withContext(Dispatchers.IO) {
+    suspend fun setActiveVariant(gameId: Long, fileId: Long?) = withContext(Dispatchers.IO) {
         gameDao.updateActiveVariantFileId(gameId, fileId)
     }
 

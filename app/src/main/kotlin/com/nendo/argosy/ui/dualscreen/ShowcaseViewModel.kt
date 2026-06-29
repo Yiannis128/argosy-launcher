@@ -76,7 +76,7 @@ class ShowcaseViewModel(
         detailState.update {
             it?.copy(
                 modalType = ActiveModal.NONE,
-                variantCurrentName = state.variantNames.getOrNull(index)
+                variantCurrentName = if (index == 0) null else state.variantNames.getOrNull(index - 1)
             )
         }
         if (isControlActive()) {
@@ -177,7 +177,7 @@ class ShowcaseViewModel(
 
     fun moveVariantFocus(delta: Int) {
         detailState.update { state ->
-            val max = ((state?.variantNames?.size ?: 0) - 1).coerceAtLeast(0)
+            val max = state?.variantNames?.size ?: 0
             state?.copy(
                 variantFocusIndex = (state.variantFocusIndex + delta).coerceIn(0, max)
             )

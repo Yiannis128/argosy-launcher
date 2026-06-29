@@ -802,15 +802,25 @@ private fun DualVariantPickerContent(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(vertical = 4.dp)
             ) {
+                item {
+                    EmulatorPickerItem(
+                        name = "Default (Original)",
+                        version = null,
+                        isSelected = focusIndex == 0,
+                        isCurrent = currentVariantName == null,
+                        onClick = { onSelect(0) }
+                    )
+                }
                 itemsIndexed(variantNames, key = { _, n -> n }) { index, name ->
-                    val isSelected = focusIndex == index
+                    val itemIndex = index + 1
+                    val isSelected = focusIndex == itemIndex
                     val isCurrent = name == currentVariantName
                     EmulatorPickerItem(
                         name = name,
                         version = null,
                         isSelected = isSelected,
                         isCurrent = isCurrent,
-                        onClick = { onSelect(index) }
+                        onClick = { onSelect(itemIndex) }
                     )
                 }
             }

@@ -354,9 +354,8 @@ class DualGameDetailViewModel(
             val downloadedVariants = gameRepository.getVariantsForGame(game.id)
                 .filter { it.localPath != null }
             val hasMultipleVariants = downloadedVariants.size > 1
-            val selectedVariantName = if (hasMultipleVariants) {
-                (downloadedVariants.find { it.id == game.activeVariantFileId }
-                    ?: downloadedVariants.firstOrNull())?.fileName
+            val selectedVariantName = if (hasMultipleVariants && game.activeVariantFileId != null) {
+                downloadedVariants.find { it.id == game.activeVariantFileId }?.fileName
             } else null
 
             val activeChannel = game.activeSaveChannel
@@ -959,19 +958,19 @@ class DualGameDetailViewModel(
 
     fun confirmVariantByIndex(index: Int) {
         val variants = _variantPickerList.value
-        val selectedVariant = variants.getOrNull(index) ?: return
+        val selectedVariant = if (index == 0) null else variants.getOrNull(index - 1)
         val state = _uiState.value
         viewModelScope.launch {
-            gameRepository.setActiveVariant(state.gameId, selectedVariant.id)
+            gameRepository.setActiveVariant(state.gameId, selectedVariant?.id)
             _uiState.update {
-                it.copy(selectedVariantName = selectedVariant.fileName)
+                it.copy(selectedVariantName = selectedVariant?.fileName)
             }
         }
         _activeModal.value = ActiveModal.NONE
     }
 
     fun moveVariantPickerFocus(delta: Int) {
-        val total = _variantPickerList.value.size
+        val total = _variantPickerList.value.size + 1
         val max = (total - 1).coerceAtLeast(0)
         _variantPickerFocusIndex.update { (it + delta).coerceIn(0, max) }
     }
