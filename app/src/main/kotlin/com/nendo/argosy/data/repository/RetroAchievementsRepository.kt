@@ -118,6 +118,11 @@ class RetroAchievementsRepository @Inject constructor(
         return RACredentials(username, token)
     }
 
+    suspend fun hasWritableRetroArchConfig(): Boolean =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            retroArchConfigParser.hasWritableConfig()
+        }
+
     /** Writes the stored RA login into RetroArch's config. Returns configs updated, or -1 if not signed in. */
     suspend fun pushCredentialsToRetroArch(): Int {
         val creds = getCredentials() ?: return -1

@@ -31,12 +31,14 @@ class RASettingsDelegate @Inject constructor(
         scope.launch {
             val credentials = raRepository.getCredentials()
             val prefs = prefsRepository.userPreferences.first()
+            val canPush = raRepository.hasWritableRetroArchConfig()
             _state.update {
                 it.copy(
                     isLoggedIn = credentials != null,
                     username = credentials?.username,
                     proxyEnabled = prefs.raProxyEnabled,
-                    proxyAddress = prefs.raProxyAddress
+                    proxyAddress = prefs.raProxyAddress,
+                    canPushToRetroArch = canPush
                 )
             }
         }

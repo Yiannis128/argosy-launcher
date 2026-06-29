@@ -838,7 +838,8 @@ data class RASettingsState(
     val focusField: Int? = null,
     val pendingAchievementsCount: Int = 0,
     val proxyEnabled: Boolean = false,
-    val proxyAddress: String = ""
+    val proxyAddress: String = "",
+    val canPushToRetroArch: Boolean = false
 )
 
 data class BiosFirmwareItem(

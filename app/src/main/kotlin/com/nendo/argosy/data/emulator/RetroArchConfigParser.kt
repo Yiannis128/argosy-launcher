@@ -57,6 +57,9 @@ class RetroArchConfigParser @Inject constructor(
         return configPaths.firstOrNull { fileAccessLayer.exists(it) }
     }
 
+    fun hasWritableConfig(): Boolean =
+        configPaths.distinct().any { fileAccessLayer.exists(it) && fileAccessLayer.canWrite(it) }
+
     /** Writes RetroAchievements credentials into every existing retroarch.cfg, preserving all other keys. Returns the number of config files updated. */
     fun writeCheevosCredentials(username: String, token: String): Int {
         val updates = linkedMapOf(

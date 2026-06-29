@@ -153,7 +153,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                     3 -> vm.hideRALoginForm()
                 }
             } else {
-                val pushIndex = if (ra.isLoggedIn) {
+                val pushIndex = if (ra.isLoggedIn && ra.canPushToRetroArch) {
                     if (ra.proxyEnabled) RA_PROXY_FIELD_INDEX + 1 else RA_PROXY_TOGGLE_INDEX + 1
                 } else -1
                 when {
@@ -745,8 +745,10 @@ private fun computeMaxFocusIndex(
     SettingsSection.STEAM_SETTINGS -> steamMaxFocusIndex(state.steam)
     SettingsSection.RETRO_ACHIEVEMENTS -> when {
         state.retroAchievements.showLoginForm -> 3
-        state.retroAchievements.isLoggedIn ->
-            if (state.retroAchievements.proxyEnabled) RA_PROXY_FIELD_INDEX + 1 else RA_PROXY_TOGGLE_INDEX + 1
+        state.retroAchievements.isLoggedIn -> {
+            val lastBeforePush = if (state.retroAchievements.proxyEnabled) RA_PROXY_FIELD_INDEX else RA_PROXY_TOGGLE_INDEX
+            if (state.retroAchievements.canPushToRetroArch) lastBeforePush + 1 else lastBeforePush
+        }
         state.retroAchievements.proxyEnabled -> RA_PROXY_FIELD_INDEX
         else -> RA_PROXY_TOGGLE_INDEX
     }
