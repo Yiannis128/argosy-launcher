@@ -133,7 +133,6 @@ import com.nendo.argosy.ui.input.LocalModifiedInputHandler
 import com.nendo.argosy.domain.model.SyncProgress
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import com.nendo.argosy.ui.ArgosyViewModel
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -147,12 +146,10 @@ fun HomeScreen(
     isDefaultView: Boolean,
     onGameSelect: (Long) -> Unit,
     onNavigateToLibrary: (platformId: Long?, sourceFilter: String?) -> Unit = { _, _ -> },
-    onNavigateToLaunch: (gameId: Long, channelName: String?) -> Unit,
     onNavigateToDefault: () -> Unit,
     onDrawerToggle: () -> Unit,
     onChangelogAction: (RequiredAction) -> Unit = {},
-    viewModel: HomeViewModel = hiltViewModel(),
-    argosyViewModel: ArgosyViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -216,12 +213,9 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is HomeEvent.NavigateToLaunch -> {
-                    onNavigateToLaunch(event.gameId, event.channelName)
-                }
                 is HomeEvent.LaunchIntent -> {
                     try {
-                        context.startActivity(event.intent)
+                        context.startActivity(event.intent, event.options)
                     } catch (_: Exception) { }
                 }
                 is HomeEvent.NavigateToLibrary -> {
@@ -259,29 +253,13 @@ fun HomeScreen(
         }
     }
 
-    val isTransitioningToGame by argosyViewModel.isTransitioningToGame.collectAsState()
-    val returningFromGame by argosyViewModel.returningFromGame.collectAsState()
-
     val modalBlur by animateDpAsState(
         targetValue = if (uiState.showGameMenu || uiState.syncOverlayState != null || uiState.changelogEntry != null || uiState.discPickerState != null || uiState.memcardPickerState != null) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
         label = "modalBlur"
     )
 
-    val gameTransitionBlur by animateDpAsState(
-        targetValue = if (isTransitioningToGame || returningFromGame) Motion.blurRadiusModal else 0.dp,
-        animationSpec = Motion.focusSpringDp,
-        label = "gameTransitionBlur"
-    )
-
-    LaunchedEffect(returningFromGame) {
-        if (returningFromGame) {
-            delay(350)
-            argosyViewModel.clearReturningFlag()
-        }
-    }
-
-    val combinedBlur = maxOf(modalBlur, gameTransitionBlur)
+    val combinedBlur = modalBlur
 
     val changelogInputHandler = remember(viewModel) {
         ChangelogInputHandler(
@@ -795,6 +773,7 @@ fun HomeScreen(
             if (focusedGame != null) {
                 GameSelectOverlay(
                     game = focusedGame,
+                    isPlatformRow = uiState.currentRow is HomeRow.Platform,
                     focusIndex = uiState.gameMenuFocusIndex,
                     onDismiss = { viewModel.toggleGameMenu() },
                     onPrimaryAction = {
@@ -816,6 +795,10 @@ fun HomeScreen(
                         viewModel.showAddToCollectionModal(focusedGame.id)
                     },
                     onRefresh = { viewModel.refreshGameData(focusedGame.id) },
+                    onResyncPlatform = {
+                        viewModel.toggleGameMenu()
+                        viewModel.syncPlatform(focusedGame.platformId, focusedGame.platformDisplayName)
+                    },
                     onDelete = {
                         viewModel.toggleGameMenu()
                         viewModel.deleteLocalFile(focusedGame.id)
@@ -1526,6 +1509,7 @@ private fun EmptyState(
 @Composable
 private fun GameSelectOverlay(
     game: HomeGameUi,
+    isPlatformRow: Boolean,
     focusIndex: Int,
     onDismiss: () -> Unit,
     onPrimaryAction: () -> Unit,
@@ -1533,6 +1517,7 @@ private fun GameSelectOverlay(
     onDetails: () -> Unit,
     onAddToCollection: () -> Unit,
     onRefresh: () -> Unit,
+    onResyncPlatform: () -> Unit,
     onDelete: () -> Unit,
     onRemoveFromHome: () -> Unit,
     onHide: () -> Unit
@@ -1562,6 +1547,9 @@ private fun GameSelectOverlay(
         add(MenuEntry(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to Collection", onClick = onAddToCollection))
         if (game.isRommGame || game.isAndroidApp) {
             add(MenuEntry(Icons.Default.Refresh, "Refresh Data", onClick = onRefresh))
+        }
+        if (isPlatformRow && game.platformId > 0) {
+            add(MenuEntry(Icons.Default.Refresh, "Resync Platform", onClick = onResyncPlatform))
         }
     }
     val dangerousOptions = buildList {

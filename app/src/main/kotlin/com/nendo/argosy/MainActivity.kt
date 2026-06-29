@@ -429,6 +429,7 @@ class MainActivity : ComponentActivity() {
             !isOverlayFocused &&
             !dualScreenManager.isCompanionActive.value &&
             !dualScreenManager.swappedIsGameActive.value &&
+            !sessionStateStore.isForeignAppOnSecondary() &&
             displayAffinityHelper.hasSecondaryDisplay
         ) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -499,6 +500,7 @@ class MainActivity : ComponentActivity() {
                 !isOverlayFocused &&
                 !dualScreenManager.isCompanionActive.value &&
                 !dualScreenManager.swappedIsGameActive.value &&
+                !sessionStateStore.isForeignAppOnSecondary() &&
                 displayAffinityHelper.hasSecondaryDisplay
             ) {
                 reassertCompanionForwarding()

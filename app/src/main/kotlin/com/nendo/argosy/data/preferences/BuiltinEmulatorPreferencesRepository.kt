@@ -23,8 +23,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_FILTER = stringPreferencesKey("builtin_filter")
         val BUILTIN_LIBRETRO_ENABLED = booleanPreferencesKey("builtin_libretro_enabled")
         val BUILTIN_ASPECT_RATIO = stringPreferencesKey("builtin_aspect_ratio")
+        val BUILTIN_PORTRAIT_POSITION = stringPreferencesKey("builtin_portrait_position")
         val BUILTIN_SKIP_DUPLICATE_FRAMES = booleanPreferencesKey("builtin_skip_duplicate_frames")
         val BUILTIN_LOW_LATENCY_AUDIO = booleanPreferencesKey("builtin_low_latency_audio")
+        val BUILTIN_AUDIO_VOLUME = intPreferencesKey("builtin_audio_volume")
         val BUILTIN_FORCE_SOFTWARE_TIMING = booleanPreferencesKey("builtin_force_software_timing")
         val BUILTIN_RUMBLE_ENABLED = booleanPreferencesKey("builtin_rumble_enabled")
         val BUILTIN_BLACK_FRAME_INSERTION = booleanPreferencesKey("builtin_black_frame_insertion")
@@ -74,6 +76,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             shaderChainJson = prefs[Keys.BUILTIN_SHADER_CHAIN] ?: "",
             filter = prefs[Keys.BUILTIN_FILTER] ?: "Auto",
             aspectRatio = prefs[Keys.BUILTIN_ASPECT_RATIO] ?: "Core Provided",
+            portraitPosition = prefs[Keys.BUILTIN_PORTRAIT_POSITION] ?: "Auto",
             skipDuplicateFrames = prefs[Keys.BUILTIN_SKIP_DUPLICATE_FRAMES] ?: false,
             lowLatencyAudio = prefs[Keys.BUILTIN_LOW_LATENCY_AUDIO] ?: true,
             forceSoftwareTiming = prefs[Keys.BUILTIN_FORCE_SOFTWARE_TIMING] ?: false,
@@ -83,6 +86,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             limitHotkeysToPlayer1 = prefs[Keys.BUILTIN_LIMIT_HOTKEYS_TO_PLAYER1] ?: true,
             analogAsDpad = prefs[Keys.BUILTIN_ANALOG_AS_DPAD] ?: false,
             dpadAsAnalog = prefs[Keys.BUILTIN_DPAD_AS_ANALOG] ?: false,
+            audioVolume = prefs[Keys.BUILTIN_AUDIO_VOLUME] ?: 100,
             fastForwardEnabled = prefs[Keys.BUILTIN_FAST_FORWARD_ENABLED] ?: true,
             fastForwardSpeed = prefs[Keys.BUILTIN_FAST_FORWARD_SPEED] ?: 4,
             fastForwardMode = FastForwardMode.fromString(prefs[Keys.BUILTIN_FAST_FORWARD_MODE]),
@@ -130,6 +134,16 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         prefs[Keys.BUILTIN_MIGRATION_V1] ?: false
     }
 
+    suspend fun removeBuiltinCoreSelectionsByCore(coreId: String) {
+        dataStore.edit { prefs ->
+            val current = prefs[Keys.BUILTIN_CORE_SELECTIONS] ?: return@edit
+            prefs[Keys.BUILTIN_CORE_SELECTIONS] = current.split(",")
+                .filter { it.isNotBlank() && it.contains(":") }
+                .filterNot { it.substringAfter(":") == coreId }
+                .joinToString(",")
+        }
+    }
+
     suspend fun setBuiltinShader(shader: String) {
         dataStore.edit { it[Keys.BUILTIN_SHADER] = shader }
     }
@@ -148,6 +162,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinAspectRatio(aspectRatio: String) {
         dataStore.edit { it[Keys.BUILTIN_ASPECT_RATIO] = aspectRatio }
+    }
+
+    suspend fun setBuiltinPortraitPosition(value: String) {
+        dataStore.edit { it[Keys.BUILTIN_PORTRAIT_POSITION] = value }
     }
 
     suspend fun setBuiltinSkipDuplicateFrames(enabled: Boolean) {
@@ -207,6 +225,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinFastForwardSpeed(speed: Int) {
         dataStore.edit { it[Keys.BUILTIN_FAST_FORWARD_SPEED] = speed.coerceIn(2, 8) }
+    }
+
+    suspend fun setBuiltinAudioVolume(volume: Int) {
+        dataStore.edit { it[Keys.BUILTIN_AUDIO_VOLUME] = volume.coerceIn(0, 200) }
     }
 
     suspend fun setBuiltinFastForwardMode(mode: FastForwardMode) {

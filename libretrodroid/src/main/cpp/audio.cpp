@@ -145,6 +145,10 @@ void Audio::setPitchPreservation(bool enabled) {
     pitchPreservationEnabled = enabled;
 }
 
+void Audio::setOutputVolume(float volume) {
+    outputVolume = volume;
+}
+
 void Audio::resetBufferState() {
     errorIntegral = 0.0;
     framesToSubmit = 0.0;
@@ -235,6 +239,16 @@ oboe::DataCallbackResult Audio::onAudioReady(oboe::AudioStream *oboeStream, void
     }
 
     resampler.resample(temporaryAudioBuffer.get(), currentFramesToSubmit, outputArray, numFrames);
+
+    if (outputVolume != 1.0f) {
+        const int32_t totalSamples = numFrames * 2;
+        for (int32_t i = 0; i < totalSamples; ++i) {
+            float s = outputArray[i] * outputVolume;
+            if (s > 32767.0f) s = 32767.0f;
+            else if (s < -32768.0f) s = -32768.0f;
+            outputArray[i] = (int16_t) std::lrintf(s);
+        }
+    }
 
     latencyTuner->tune();
 

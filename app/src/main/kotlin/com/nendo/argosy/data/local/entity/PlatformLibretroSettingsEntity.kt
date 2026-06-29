@@ -25,6 +25,7 @@ data class PlatformLibretroSettingsEntity(
     val shaderChain: String? = null,
     val filter: String? = null,
     val aspectRatio: String? = null,
+    val portraitPosition: String? = null,
     val rotation: Int? = null,
     val overscanCrop: Int? = null,
     val blackFrameInsertion: Boolean? = null,
@@ -34,6 +35,7 @@ data class PlatformLibretroSettingsEntity(
     val rewindEnabled: Boolean? = null,
     val skipDuplicateFrames: Boolean? = null,
     val lowLatencyAudio: Boolean? = null,
+    val audioVolume: Int? = null,
     val analogAsDpad: Boolean? = null,
     val dpadAsAnalog: Boolean? = null,
     val rumbleEnabled: Boolean? = null,
@@ -50,6 +52,7 @@ data class PlatformLibretroSettingsEntity(
         shaderChain != null ||
         filter != null ||
         aspectRatio != null ||
+        portraitPosition != null ||
         rotation != null ||
         overscanCrop != null ||
         blackFrameInsertion != null ||
@@ -59,6 +62,7 @@ data class PlatformLibretroSettingsEntity(
         rewindEnabled != null ||
         skipDuplicateFrames != null ||
         lowLatencyAudio != null ||
+        audioVolume != null ||
         rewindSpeed != null ||
         rewindBufferDuration != null ||
         vsync != null

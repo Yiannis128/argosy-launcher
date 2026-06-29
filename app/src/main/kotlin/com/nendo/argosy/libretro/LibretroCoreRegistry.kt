@@ -164,14 +164,7 @@ object LibretroCoreRegistry {
             requiresBios = listOf("scph5501.bin")
         ),
 
-        // Sony PlayStation 2 (built-in is a fallback; standalone NetherSX2 / PSX2 are preferred)
-        CoreInfo(
-            coreId = "play",
-            fileName = "play_libretro_android.so",
-            displayName = "Play!",
-            platforms = setOf("ps2"),
-            estimatedSizeBytes = 2_000_000L
-        ),
+        // Sony PlayStation 2 has no working built-in core on Android; routed to standalone NetherSX2 / PSX2.
 
         // Sega Saturn
         CoreInfo(

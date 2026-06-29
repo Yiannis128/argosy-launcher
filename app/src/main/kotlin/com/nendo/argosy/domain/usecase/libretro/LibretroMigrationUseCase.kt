@@ -104,6 +104,17 @@ class LibretroMigrationUseCase @Inject constructor(
             platformsSetToBuiltin = platformsSetToBuiltin
         )
     }
+
+    suspend fun cleanupRemovedCores() {
+        for (coreId in REMOVED_CORE_IDS) {
+            emulatorConfigDao.clearCoreName(coreId)
+            preferencesRepository.removeBuiltinCoreSelectionsByCore(coreId)
+        }
+    }
+
+    private companion object {
+        val REMOVED_CORE_IDS = setOf("play")
+    }
 }
 
 sealed class MigrationResult {

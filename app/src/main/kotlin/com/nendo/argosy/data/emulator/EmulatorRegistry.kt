@@ -382,6 +382,17 @@ object EmulatorRegistry {
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.m64.fx.plus.emulate"
         ),
+        EmulatorDef(
+            id = "picpic",
+            packageName = "com.sa_moo_rai.picpic",
+            displayName = "PicPic",
+            supportedPlatforms = setOf("pico8"),
+            launchAction = Intent.ACTION_VIEW,
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "com.sa_moo_rai.picpic.MainActivity"
+            ),
+            downloadUrl = "https://play.google.com/store/apps/details?id=com.sa_moo_rai.picpic"
+        ),
 
         EmulatorDef(
             id = "dolphin",
@@ -705,6 +716,17 @@ object EmulatorRegistry {
             downloadUrl = "https://play.google.com/store/apps/details?id=org.ppsspp.ppssppgold"
         ),
         EmulatorDef(
+            id = "ppsspp_legacy",
+            packageName = "org.ppsspp.ppsspplegacy",
+            displayName = "PPSSPP Legacy",
+            supportedPlatforms = setOf("psp"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "org.ppsspp.ppsspp.PpssppActivity",
+            ),
+            defaultLaunchMethod = LaunchMethod.SHELL,
+            downloadUrl = "https://www.ppsspp.org/docs/reference/legacy-edition/"
+        ),
+        EmulatorDef(
             id = "vita3k",
             packageName = "org.vita3k.emulator",
             displayName = "Vita3K",
@@ -933,7 +955,7 @@ object EmulatorRegistry {
     fun getRecommendedEmulators(): Map<String, List<String>> = mapOf(
         "psx" to listOf("builtin", "duckstation", "retroarch", "retroarch_64"),
         "ps2" to listOf("nethersx2", "armsx2", "psx2", "pcsx2"),
-        "psp" to listOf("builtin", "ppsspp_gold", "ppsspp", "retroarch", "retroarch_64"),
+        "psp" to listOf("builtin", "ppsspp", "ppsspp_gold", "ppsspp_legacy", "retroarch", "retroarch_64"),
         "vita" to listOf("vita3k-zx", "vita3k"),
         "n64" to listOf("builtin", "mupen64plus_fz", "retroarch", "retroarch_64"),
         "nds" to listOf("builtin", "drastic", "melonds", "melondualds", "retroarch", "retroarch_64"),
@@ -975,7 +997,7 @@ object EmulatorRegistry {
         "c64" to listOf("retroarch", "retroarch_64"),
         "vic20" to listOf("retroarch", "retroarch_64"),
         "pc9800" to listOf("retroarch", "retroarch_64"),
-        "pico8" to listOf("builtin", "retroarch", "retroarch_64")
+        "pico8" to listOf("builtin", "picpic", "retroarch", "retroarch_64")
     )
 
     fun getPreferredCore(platformId: String): String? {

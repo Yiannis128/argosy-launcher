@@ -325,6 +325,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBuiltinFilter(filter: String) = builtinPrefs.setBuiltinFilter(filter)
     suspend fun setBuiltinLibretroEnabled(enabled: Boolean) = builtinPrefs.setBuiltinLibretroEnabled(enabled)
     suspend fun setBuiltinAspectRatio(aspectRatio: String) = builtinPrefs.setBuiltinAspectRatio(aspectRatio)
+    suspend fun setBuiltinPortraitPosition(value: String) = builtinPrefs.setBuiltinPortraitPosition(value)
     suspend fun setBuiltinSkipDuplicateFrames(enabled: Boolean) = builtinPrefs.setBuiltinSkipDuplicateFrames(enabled)
     suspend fun setBuiltinLowLatencyAudio(enabled: Boolean) = builtinPrefs.setBuiltinLowLatencyAudio(enabled)
     suspend fun setBuiltinForceSoftwareTiming(enabled: Boolean) = builtinPrefs.setBuiltinForceSoftwareTiming(enabled)
@@ -366,6 +367,7 @@ class UserPreferencesRepository @Inject constructor(
     fun getArchitectureOverride(): Flow<String?> = builtinPrefs.getArchitectureOverride()
     fun getBuiltinEmulatorSettings(): Flow<BuiltinEmulatorSettings> = builtinPrefs.getBuiltinEmulatorSettings()
     fun getBuiltinCoreSelections(): Flow<Map<String, String>> = builtinPrefs.getBuiltinCoreSelections()
+    suspend fun removeBuiltinCoreSelectionsByCore(coreId: String) = builtinPrefs.removeBuiltinCoreSelectionsByCore(coreId)
     fun isBuiltinMigrationComplete(): Flow<Boolean> = builtinPrefs.isBuiltinMigrationComplete()
 
     // --- Session delegates ---
@@ -391,8 +393,10 @@ data class BuiltinEmulatorSettings(
     val shaderChainJson: String = "",
     val filter: String = "Auto",
     val aspectRatio: String = "Core Provided",
+    val portraitPosition: String = "Auto",
     val skipDuplicateFrames: Boolean = false,
     val lowLatencyAudio: Boolean = true,
+    val audioVolume: Int = 100,
     val forceSoftwareTiming: Boolean = false,
     val rumbleEnabled: Boolean = true,
     val blackFrameInsertion: Boolean = false,
@@ -454,6 +458,12 @@ data class BuiltinEmulatorSettings(
 
     val isIntegerScaling: Boolean
         get() = aspectRatio == "Integer"
+
+    val audioVolumeGain: Float
+        get() = audioVolume / 100f
+
+    val audioVolumeDisplay: String
+        get() = "${audioVolume}%"
 
     val fastForwardSpeedDisplay: String
         get() = "${fastForwardSpeed}x"

@@ -341,6 +341,10 @@ class GameLauncher @Inject constructor(
                     Logger.debug(TAG, "Generated m3u: ${m3uResult.m3uFile.name}")
                     m3uResult.m3uFile
                 }
+                is M3uResult.SingleDisc -> {
+                    Logger.debug(TAG, "Single runnable disc - launching ${m3uResult.discFile.name} directly")
+                    m3uResult.discFile
+                }
                 is M3uResult.NotApplicable -> {
                     Logger.debug(TAG, "M3u not applicable: ${m3uResult.reason}, falling back to disc 1")
                     File(discs.minByOrNull { it.discNumber }!!.localPath!!)
@@ -1631,21 +1635,29 @@ class GameLauncher @Inject constructor(
         }
     }
 
-    /** Switch-family titles ship base + update + DLC together in a per-game folder; the update is unbootable alone, so launch the largest base-named file in that folder. Never applied to the shared platform root, where a malformed library mixes unrelated titles. */
+    /** Switch-family titles ship base + update + DLC together in a per-game folder; an update or DLC file is unbootable alone, so redirect to the base rom and persist it. Climbs out of an update/dlc subfolder to the game folder. Never applied to the shared platform root, where a malformed library mixes unrelated titles. */
     private suspend fun resolveBaseRomFile(game: GameEntity, romFile: File): File {
         if (game.platformSlug !in VariantCategory.VARIANT_EXCLUDED_PLATFORMS) return romFile
         val parent = romFile.parentFile ?: return romFile
-        if (isPlatformRoot(parent, game.platformSlug)) return romFile
-        val baseStem = baseRomStem(romFile.name)
-        val base = (parent.listFiles()?.filter { it.isFile } ?: return romFile)
-            .filter { baseRomStem(it.name) == baseStem }
-            .filterNot { UPDATE_DLC_SUFFIX.containsMatchIn(it.nameWithoutExtension) }
+        val gameFolder = if (parent.name.lowercase() in EXTCONTENT_SOURCE_NAMES) {
+            parent.parentFile ?: return romFile
+        } else {
+            parent
+        }
+        if (isPlatformRoot(gameFolder, game.platformSlug)) return romFile
+        val base = (gameFolder.listFiles()?.filter { it.isFile } ?: return romFile)
+            .filterNot { isUpdateOrDlc(it.name) }
             .maxByOrNull { it.length() }
             ?: return romFile
-        if (base.absolutePath != romFile.absolutePath) {
-            Logger.info(TAG, "resolveBaseRomFile: redirecting ${romFile.name} -> ${base.name} for ${game.title}")
-        }
+        if (base.absolutePath == romFile.absolutePath) return romFile
+        Logger.info(TAG, "resolveBaseRomFile: redirecting ${romFile.name} -> ${base.name} for ${game.title}")
+        gameDao.updateLocalPath(game.id, base.absolutePath, game.source)
         return base
+    }
+
+    private fun isUpdateOrDlc(fileName: String): Boolean {
+        val stem = fileName.substringBeforeLast('.')
+        return UPDATE_DLC_TAG.containsMatchIn(stem) || UPDATE_DLC_SUFFIX.containsMatchIn(stem)
     }
 
     private suspend fun isPlatformRoot(dir: File, platformSlug: String): Boolean {
@@ -1661,12 +1673,6 @@ class GameLauncher @Inject constructor(
         else File(File(context.getExternalFilesDir(null), "downloads"), platformSlug)
     }
 
-    private fun baseRomStem(fileName: String): String =
-        fileName.substringBeforeLast('.')
-            .replace(UPDATE_DLC_SUFFIX, "")
-            .replace(Regex("[ _-]+"), " ")
-            .lowercase()
-            .trim()
 
     private suspend fun validateAndResolveLaunchFile(game: GameEntity, romFile: File): File {
         if (romFile.extension.lowercase() != "m3u") return romFile
@@ -1865,6 +1871,7 @@ class GameLauncher @Inject constructor(
             "update", "updates", "dlc", "dlcs"
         )
         val UPDATE_DLC_SUFFIX = Regex("(?i)[ _-]+(update|dlc)([ _-]?\\d+)?$")
+        val UPDATE_DLC_TAG = Regex("(?i)\\[(upd|update|dlc)]")
     }
 
     private suspend fun migrateToExtcontent(game: GameEntity) {

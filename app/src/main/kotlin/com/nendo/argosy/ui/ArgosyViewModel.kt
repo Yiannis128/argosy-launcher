@@ -333,10 +333,12 @@ class ArgosyViewModel @Inject constructor(
 
                 _startupStatus.value = "Checking emulators..."
                 runBuiltinEmulatorMigration()
+                libretroMigrationUseCase.cleanupRemovedCores()
                 emulatorUpdateManager.checkIfNeeded()
 
                 gameRepository.repairFolderRomPointers()
                 gameRepository.repairVariantFilePointers()
+                gameRepository.repairUnnecessaryM3uPointers()
 
                 runWeeklyIntegrityCheckIfDue()
 
@@ -1396,32 +1398,16 @@ class ArgosyViewModel @Inject constructor(
         val discId: Long? = null
     )
 
-    private val _isTransitioningToGame = MutableStateFlow(false)
-    val isTransitioningToGame: StateFlow<Boolean> = _isTransitioningToGame.asStateFlow()
-
-    private val _returningFromGame = MutableStateFlow(false)
-    val returningFromGame: StateFlow<Boolean> = _returningFromGame.asStateFlow()
-
     private val _pendingLaunch = MutableStateFlow<PendingLaunch?>(null)
     val pendingLaunch: StateFlow<PendingLaunch?> = _pendingLaunch.asStateFlow()
 
     fun initiateGameLaunch(gameId: Long, channelName: String? = null, discId: Long? = null) {
-        _isTransitioningToGame.value = true
         _pendingLaunch.value = PendingLaunch(gameId, channelName, discId)
     }
 
     fun consumePendingLaunch(): PendingLaunch? {
         val launch = _pendingLaunch.value
         _pendingLaunch.value = null
-        _isTransitioningToGame.value = false
         return launch
-    }
-
-    fun setReturningFromGame() {
-        _returningFromGame.value = true
-    }
-
-    fun clearReturningFlag() {
-        _returningFromGame.value = false
     }
 }

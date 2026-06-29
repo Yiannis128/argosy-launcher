@@ -85,6 +85,7 @@ import com.nendo.argosy.libretro.ui.NetplayQualityWarningPrompt
 import com.nendo.argosy.libretro.ui.NetplayBorderHud
 import com.nendo.argosy.libretro.ui.NetplayReconnectingOverlay
 import com.nendo.argosy.libretro.ui.InGameStateManager
+import com.nendo.argosy.libretro.ui.QuickLoadTimeline
 import com.nendo.argosy.libretro.ui.StateManagerViewMode
 import com.nendo.argosy.libretro.ui.InGameControlsAction
 import com.nendo.argosy.libretro.ui.InGameControlsState
@@ -214,6 +215,12 @@ class LibretroActivity : ComponentActivity() {
     private var stateManagerShowDelete by mutableStateOf(false)
     private var stateManagerDeleteTarget by mutableStateOf(-1)
     private var stateManagerSlots by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
+    private var stateManagerShowLoadConfirm by mutableStateOf(false)
+    private var stateManagerLoadTarget by mutableStateOf(Int.MIN_VALUE)
+    private var menuQuickHistoryFocused by mutableStateOf(false)
+    private var quickTimelineVisible by mutableStateOf(false)
+    private var quickTimelineEntries by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
+    private var quickTimelineFocusIndex by mutableStateOf(0)
     private var pendingSaveScreenshot: Bitmap? = null
 
     private lateinit var netplay: LibretroNetplayCoordinator
@@ -226,6 +233,7 @@ class LibretroActivity : ComponentActivity() {
     private var currentOrientationState by mutableStateOf(android.content.res.Configuration.ORIENTATION_LANDSCAPE)
     private var currentRotationState by mutableStateOf(0)
     private var touchSettingsState by mutableStateOf(com.nendo.argosy.data.preferences.BuiltinEmulatorSettings())
+    private var portraitPositionState by mutableStateOf("Auto")
     private var coreOptionOverrides by mutableStateOf<Map<String, String>>(emptyMap())
     private var gameCoreOptionOverrides by mutableStateOf<Map<String, String>>(emptyMap())
     private var perGameSettingsEnabled by mutableStateOf(false)
@@ -237,7 +245,7 @@ class LibretroActivity : ComponentActivity() {
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
-        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible ||
+        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || quickTimelineVisible ||
             isClosing || netplay.isAnyDialogVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -527,6 +535,11 @@ class LibretroActivity : ComponentActivity() {
                 setupRewind(settings)
             }
         }
+        portraitPositionState = settings.portraitPosition
+        videoSettings.onPortraitPositionChanged = { value ->
+            portraitPositionState = value
+            splitColumn?.let { applyPortraitSplit(it) }
+        }
     }
 
     private fun detectBFICapability() {
@@ -614,7 +627,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun configureRetroView(settings: com.nendo.argosy.data.preferences.BuiltinEmulatorSettings) {
-        audioController.applyInitialAudioConfig(settings.fastForwardPreservePitch)
+        audioController.applyInitialAudioConfig(settings.fastForwardPreservePitch, settings.audioVolumeGain)
         retroView.filterMode = settings.filterMode
         retroView.blackFrameInsertion = settings.blackFrameInsertion
         retroView.portResolver = portResolver
@@ -654,6 +667,14 @@ class LibretroActivity : ComponentActivity() {
     private fun buildContentView() {
         val splitColumn = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
+            addView(
+                android.widget.Space(this@LibretroActivity),
+                android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    0f
+                )
+            )
             addView(
                 retroView,
                 android.widget.LinearLayout.LayoutParams(
@@ -700,14 +721,26 @@ class LibretroActivity : ComponentActivity() {
     private fun applyPortraitSplit(column: android.widget.LinearLayout) {
         val portrait = currentOrientationState == android.content.res.Configuration.ORIENTATION_PORTRAIT
         val overlayWouldShow = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState
-        val splitWanted = portrait && overlayWouldShow
-        val retroParams = retroView.layoutParams as android.widget.LinearLayout.LayoutParams
-        val spacer = column.getChildAt(1)
-        val spacerParams = spacer.layoutParams as android.widget.LinearLayout.LayoutParams
-        retroParams.weight = 1f
-        spacerParams.weight = if (splitWanted) 1f else 0f
-        retroView.layoutParams = retroParams
-        spacer.layoutParams = spacerParams
+        val position = when {
+            !portrait -> "Center"
+            portraitPositionState == "Top" -> "Top"
+            portraitPositionState == "Center" -> "Center"
+            portraitPositionState == "Bottom" -> "Bottom"
+            else -> if (overlayWouldShow) "Top" else "Center"
+        }
+        val (topWeight, bottomWeight) = when (position) {
+            "Top" -> 0f to 1f
+            "Bottom" -> 1f to 0f
+            else -> 0f to 0f
+        }
+        val spacerTop = column.getChildAt(0)
+        val spacerBottom = column.getChildAt(2)
+        (spacerTop.layoutParams as android.widget.LinearLayout.LayoutParams).weight = topWeight
+        (retroView.layoutParams as android.widget.LinearLayout.LayoutParams).weight = 1f
+        (spacerBottom.layoutParams as android.widget.LinearLayout.LayoutParams).weight = bottomWeight
+        spacerTop.layoutParams = spacerTop.layoutParams
+        retroView.layoutParams = retroView.layoutParams
+        spacerBottom.layoutParams = spacerBottom.layoutParams
         column.requestLayout()
     }
 
@@ -762,7 +795,10 @@ class LibretroActivity : ComponentActivity() {
                         netplayRole = netplay.role,
                         netplaySessionIsReserved = netplay.sessionIsReserved,
                         netplayQuality = quality,
-                        touchControlsVisible = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState
+                        touchControlsVisible = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState,
+                        hasQuickSave = saveStateManager.hasQuickSave,
+                        quickHistoryFocused = menuQuickHistoryFocused,
+                        onQuickHistoryFocusChange = { menuQuickHistoryFocused = it }
                     )
                 }
                 if (netplay.modePickerVisible) {
@@ -901,7 +937,6 @@ class LibretroActivity : ComponentActivity() {
                             }
                         },
                         onSave = ::handleStateManagerSave,
-                        onLoad = ::handleStateManagerLoad,
                         onDeleteRequest = { slot ->
                             stateManagerDeleteTarget = slot
                             stateManagerShowDelete = true
@@ -919,7 +954,40 @@ class LibretroActivity : ComponentActivity() {
                             stateManagerDeleteTarget = -1
                         },
                         onDismiss = ::dismissStateManager,
-                        loadAllowed = !netplay.inSession
+                        loadAllowed = !netplay.inSession,
+                        showLoadConfirmation = stateManagerShowLoadConfirm,
+                        onLoadRequest = { slot ->
+                            stateManagerLoadTarget = slot
+                            stateManagerShowLoadConfirm = true
+                        },
+                        onLoadConfirm = {
+                            stateManagerShowLoadConfirm = false
+                            handleStateManagerLoad(stateManagerLoadTarget)
+                        },
+                        onLoadCancel = { stateManagerShowLoadConfirm = false }
+                    )
+                }
+                if (quickTimelineVisible) {
+                    activeMenuHandler = QuickLoadTimeline(
+                        entries = quickTimelineEntries,
+                        focusedIndex = quickTimelineFocusIndex,
+                        onFocusChange = { quickTimelineFocusIndex = it },
+                        onLoad = { slot ->
+                            inGameMessage = if (saveStateManager.performSlotLoad(retroView, slot)) {
+                                "State loaded"
+                            } else {
+                                "Failed to load state"
+                            }
+                            quickTimelineVisible = false
+                            if (!netplay.inSession) {
+                                retroView.suppressAutoResume = false
+                                retroView.resumeEmulation()
+                            }
+                        },
+                        onDismiss = {
+                            quickTimelineVisible = false
+                            menuVisible = true
+                        }
                     )
                 }
                 if (!isAnyMenuOpen) {
@@ -1367,6 +1435,13 @@ class LibretroActivity : ComponentActivity() {
                 }
                 hideMenu()
             }
+            InGameMenuAction.QuickLoadHistory -> {
+                menuVisible = false
+                menuQuickHistoryFocused = false
+                quickTimelineEntries = saveStateManager.getQuickRingInfoList()
+                quickTimelineFocusIndex = 0
+                quickTimelineVisible = true
+            }
             InGameMenuAction.ManageStates -> {
                 menuVisible = false
                 stateManagerSlots = saveStateManager.getSlotInfoList()
@@ -1385,6 +1460,10 @@ class LibretroActivity : ComponentActivity() {
             }
             InGameMenuAction.CustomizeTouchControls -> {
                 enterTouchEditMode()
+            }
+            InGameMenuAction.Reset -> {
+                retroView.reset()
+                hideMenu()
             }
             InGameMenuAction.Quit -> {
                 menuVisible = false
@@ -1481,6 +1560,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleStateManagerSave(slotNumber: Int) {
+        if (slotNumber >= SaveStateManager.QUICK_SLOT_BASE) return
         val stateData = try { retroView.serializeState() } catch (_: Exception) { null }
         if (stateData != null) {
             val saved = saveStateManager.performSlotSave(slotNumber, stateData, pendingSaveScreenshot)
@@ -1504,6 +1584,7 @@ class LibretroActivity : ComponentActivity() {
     private fun dismissStateManager() {
         stateManagerVisible = false
         stateManagerShowDelete = false
+        stateManagerShowLoadConfirm = false
         stateManagerDeleteTarget = -1
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = null
@@ -1721,11 +1802,13 @@ class LibretroActivity : ComponentActivity() {
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = try { retroView.captureRawFrame() } catch (_: Exception) { null }
         menuFocusIndex = 0
+        menuQuickHistoryFocused = false
         menuVisible = true
     }
 
     private fun hideMenu() {
         menuVisible = false
+        menuQuickHistoryFocused = false
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = null
         if (!netplay.inSession) {

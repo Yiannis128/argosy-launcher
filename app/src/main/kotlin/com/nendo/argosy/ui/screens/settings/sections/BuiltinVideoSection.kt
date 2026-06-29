@@ -56,9 +56,11 @@ fun BuiltinVideoSection(
                             }
                         }
                         LibretroSettingDef.AspectRatio -> viewModel.cycleBuiltinAspectRatio(direction)
+                        LibretroSettingDef.PortraitPosition -> viewModel.cycleBuiltinPortraitPosition(direction)
                         LibretroSettingDef.Rotation -> viewModel.cycleBuiltinRotation(direction)
                         LibretroSettingDef.OverscanCrop -> viewModel.cycleBuiltinOverscanCrop(direction)
                         LibretroSettingDef.FastForwardSpeed -> viewModel.cycleBuiltinFastForwardSpeed(direction)
+                        LibretroSettingDef.AudioVolume -> viewModel.cycleBuiltinAudioVolume(direction)
                         else -> {}
                     }
                 },

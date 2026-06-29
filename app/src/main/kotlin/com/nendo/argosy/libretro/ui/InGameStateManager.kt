@@ -66,12 +66,15 @@ fun InGameStateManager(
     onFocusChange: (Int) -> Unit,
     onViewModeToggle: () -> Unit,
     onSave: (Int) -> Unit,
-    onLoad: (Int) -> Unit,
+    onLoadRequest: (Int) -> Unit,
     onDeleteRequest: (Int) -> Unit,
     onDeleteConfirm: () -> Unit,
     onDeleteCancel: () -> Unit,
     onDismiss: () -> Unit,
-    loadAllowed: Boolean = true
+    loadAllowed: Boolean = true,
+    showLoadConfirmation: Boolean = false,
+    onLoadConfirm: () -> Unit = {},
+    onLoadCancel: () -> Unit = {}
 ): InputHandler {
     val currentFocusedIndex = rememberUpdatedState(focusedIndex)
     val currentSlots = rememberUpdatedState(slots)
@@ -79,18 +82,21 @@ fun InGameStateManager(
     val currentOnFocusChange = rememberUpdatedState(onFocusChange)
     val currentOnViewModeToggle = rememberUpdatedState(onViewModeToggle)
     val currentOnSave = rememberUpdatedState(onSave)
-    val currentOnLoad = rememberUpdatedState(onLoad)
+    val currentOnLoadRequest = rememberUpdatedState(onLoadRequest)
     val currentOnDeleteRequest = rememberUpdatedState(onDeleteRequest)
     val currentOnDeleteConfirm = rememberUpdatedState(onDeleteConfirm)
     val currentOnDeleteCancel = rememberUpdatedState(onDeleteCancel)
     val currentOnDismiss = rememberUpdatedState(onDismiss)
     val currentViewMode = rememberUpdatedState(viewMode)
     val currentLoadAllowed = rememberUpdatedState(loadAllowed)
+    val currentShowLoadConfirm = rememberUpdatedState(showLoadConfirmation)
+    val currentOnLoadConfirm = rememberUpdatedState(onLoadConfirm)
+    val currentOnLoadCancel = rememberUpdatedState(onLoadCancel)
 
     val inputHandler = remember {
         object : InputHandler {
             override fun onUp(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val mode = currentViewMode.value
                 if (mode == StateManagerViewMode.SPLIT) {
                     val idx = currentFocusedIndex.value
@@ -103,7 +109,7 @@ fun InGameStateManager(
             }
 
             override fun onDown(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val mode = currentViewMode.value
                 if (mode == StateManagerViewMode.SPLIT) {
                     val idx = currentFocusedIndex.value
@@ -115,7 +121,7 @@ fun InGameStateManager(
             }
 
             override fun onLeft(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val idx = currentFocusedIndex.value
                 val newIndex = (idx - 1).coerceAtLeast(0)
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
@@ -123,7 +129,7 @@ fun InGameStateManager(
             }
 
             override fun onRight(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val idx = currentFocusedIndex.value
                 val lastIndex = currentSlots.value.lastIndex
                 val newIndex = (idx + 1).coerceAtMost(lastIndex)
@@ -136,22 +142,26 @@ fun InGameStateManager(
                     currentOnDeleteConfirm.value()
                     return InputResult.HANDLED
                 }
+                if (currentShowLoadConfirm.value) {
+                    currentOnLoadConfirm.value()
+                    return InputResult.HANDLED
+                }
                 val slot = currentSlots.value.getOrNull(currentFocusedIndex.value) ?: return InputResult.HANDLED
                 if (slot.file != null && currentLoadAllowed.value) {
-                    currentOnLoad.value(slot.slotNumber)
+                    currentOnLoadRequest.value(slot.slotNumber)
                 }
                 return InputResult.HANDLED
             }
 
             override fun onContextMenu(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val slot = currentSlots.value.getOrNull(currentFocusedIndex.value) ?: return InputResult.HANDLED
                 currentOnSave.value(slot.slotNumber)
                 return InputResult.HANDLED
             }
 
             override fun onSecondaryAction(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val slot = currentSlots.value.getOrNull(currentFocusedIndex.value) ?: return InputResult.HANDLED
                 if (slot.file != null) {
                     currentOnDeleteRequest.value(slot.slotNumber)
@@ -160,7 +170,7 @@ fun InGameStateManager(
             }
 
             override fun onSelect(): InputResult {
-                if (currentShowDelete.value) return InputResult.HANDLED
+                if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 currentOnViewModeToggle.value()
                 return InputResult.HANDLED
             }
@@ -168,6 +178,10 @@ fun InGameStateManager(
             override fun onBack(): InputResult {
                 if (currentShowDelete.value) {
                     currentOnDeleteCancel.value()
+                    return InputResult.HANDLED
+                }
+                if (currentShowLoadConfirm.value) {
+                    currentOnLoadCancel.value()
                     return InputResult.HANDLED
                 }
                 currentOnDismiss.value()
@@ -228,15 +242,14 @@ fun InGameStateManager(
                         focusedIndex = focusedIndex,
                         onFocusChange = onFocusChange,
                         onSave = onSave,
-                        onLoad = onLoad,
+                        onLoadRequest = onLoadRequest,
                         loadAllowed = loadAllowed
                     )
                     StateManagerViewMode.CAROUSEL -> CarouselLayout(
                         slots = slots,
                         focusedIndex = focusedIndex,
                         onFocusChange = onFocusChange,
-                        onSave = onSave,
-                        onLoad = onLoad
+                        onSave = onSave
                     )
                 }
             }
@@ -247,7 +260,7 @@ fun InGameStateManager(
                 hints = footerHints,
                 onHintClick = { button ->
                     when (button) {
-                        InputButton.A -> if (isOccupied && loadAllowed) focusedSlot?.let { onLoad(it.slotNumber) }
+                        InputButton.A -> if (isOccupied && loadAllowed) focusedSlot?.let { onLoadRequest(it.slotNumber) }
                         InputButton.X -> focusedSlot?.let { onSave(it.slotNumber) }
                         InputButton.Y -> if (isOccupied) focusedSlot?.let { onDeleteRequest(it.slotNumber) }
                         InputButton.SELECT -> onViewModeToggle()
@@ -277,6 +290,54 @@ fun InGameStateManager(
                 )
             }
         }
+
+        if (showLoadConfirmation) {
+            NestedModal(
+                title = "Load this state?",
+                onDismiss = onLoadCancel,
+                footerHints = listOf(
+                    InputButton.A to "Load",
+                    InputButton.B to "Cancel"
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val screenshotFile = focusedSlot?.screenshotFile
+                    if (screenshotFile != null && screenshotFile.exists()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(screenshotFile)
+                                .memoryCacheKey("${screenshotFile.absolutePath}_${focusedSlot?.timestamp}")
+                                .diskCachePolicy(CachePolicy.DISABLED)
+                                .build(),
+                            contentDescription = "State preview",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                    if (focusedSlot?.timestamp != null) {
+                        Text(
+                            text = formatSaveTimestamp(focusedSlot.timestamp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "Current progress will be replaced.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
     }
 
     return inputHandler
@@ -288,7 +349,7 @@ private fun SplitLayout(
     focusedIndex: Int,
     onFocusChange: (Int) -> Unit,
     onSave: (Int) -> Unit,
-    onLoad: (Int) -> Unit,
+    onLoadRequest: (Int) -> Unit,
     loadAllowed: Boolean = true
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
@@ -383,7 +444,7 @@ private fun SplitLayout(
                     onClick = { onFocusChange(index) },
                     onDoubleAction = {
                         if (slot.file != null) {
-                            if (loadAllowed) onLoad(slot.slotNumber)
+                            if (loadAllowed) onLoadRequest(slot.slotNumber)
                         } else onSave(slot.slotNumber)
                     }
                 )
@@ -397,8 +458,7 @@ private fun CarouselLayout(
     slots: List<SaveStateManager.SlotInfo>,
     focusedIndex: Int,
     onFocusChange: (Int) -> Unit,
-    onSave: (Int) -> Unit,
-    onLoad: (Int) -> Unit
+    onSave: (Int) -> Unit
 ) {
     val focusedSlot = slots.getOrNull(focusedIndex)
 

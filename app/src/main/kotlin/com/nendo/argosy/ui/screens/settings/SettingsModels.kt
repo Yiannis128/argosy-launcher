@@ -389,6 +389,7 @@ data class BuiltinVideoState(
     val shaderChainJson: String = "",
     val filter: String = "Auto",
     val aspectRatio: String = "Core Provided",
+    val portraitPosition: String = "Auto",
     val skipDuplicateFrames: Boolean = false,
     val blackFrameInsertion: Boolean = false,
     val displayRefreshRate: Float = 60f,
@@ -398,6 +399,7 @@ data class BuiltinVideoState(
     val overscanCrop: String = "Off",
     val framesEnabled: Boolean = false,
     val lowLatencyAudio: Boolean = true,
+    val audioVolume: String = "100%",
     val vsync: Boolean = true,
     val rewindEnabled: Boolean = true,
     val rewindSpeed: String = "1x",
@@ -836,7 +838,8 @@ data class RASettingsState(
     val focusField: Int? = null,
     val pendingAchievementsCount: Int = 0,
     val proxyEnabled: Boolean = false,
-    val proxyAddress: String = ""
+    val proxyAddress: String = "",
+    val canPushToRetroArch: Boolean = false
 )
 
 data class BiosFirmwareItem(

@@ -183,19 +183,21 @@ private fun RALoggedInContent(
 
         raProxyItems(raState, focusedIndex, viewModel)
 
-        item {
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
-            SectionHeader("RETROARCH")
-        }
-        item {
-            val pushIndex = if (raState.proxyEnabled) RA_PROXY_FIELD_INDEX + 1 else RA_PROXY_TOGGLE_INDEX + 1
-            ActionPreference(
-                icon = Icons.Default.Sync,
-                title = "Push to RetroArch",
-                subtitle = "Write this login into RetroArch's config",
-                isFocused = focusedIndex == pushIndex,
-                onClick = { viewModel.pushRACredentialsToRetroArch() }
-            )
+        if (raState.canPushToRetroArch) {
+            item {
+                Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                SectionHeader("RETROARCH")
+            }
+            item {
+                val pushIndex = if (raState.proxyEnabled) RA_PROXY_FIELD_INDEX + 1 else RA_PROXY_TOGGLE_INDEX + 1
+                ActionPreference(
+                    icon = Icons.Default.Sync,
+                    title = "Push to RetroArch",
+                    subtitle = "Write this login into RetroArch's config",
+                    isFocused = focusedIndex == pushIndex,
+                    onClick = { viewModel.pushRACredentialsToRetroArch() }
+                )
+            }
         }
     }
 }

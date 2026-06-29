@@ -39,10 +39,11 @@ class LibretroAudioController(
         audioFocusRequest = null
     }
 
-    fun applyInitialAudioConfig(pitchPreservationEnabled: Boolean) {
+    fun applyInitialAudioConfig(pitchPreservationEnabled: Boolean, audioVolume: Float) {
         val rv = getRetroView()
         rv.audioEnabled = true
         rv.pitchPreservationEnabled = pitchPreservationEnabled
+        rv.audioVolume = audioVolume
     }
 
     fun setPitchPreservationEnabled(enabled: Boolean) {

@@ -49,8 +49,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val savedStateHandle: SavedStateHandle,
     private val gameRepository: GameRepository,
+    private val displayAffinityHelper: com.nendo.argosy.util.DisplayAffinityHelper,
     private val preferencesRepository: UserPreferencesRepository,
     private val notificationManager: NotificationManager,
     private val gameNavigationContext: GameNavigationContext,
@@ -78,6 +80,8 @@ class HomeViewModel @Inject constructor(
 
     private val _events = MutableSharedFlow<HomeEvent>()
     val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
+
+    private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
 
     private var achievementPrefetchJob: Job? = null
     private val achievementPrefetchDebounceMs = 300L
@@ -531,9 +535,19 @@ class HomeViewModel @Inject constructor(
     override fun launchGame(gameId: Long, channelName: String?) {
         videoPreviewDelegate.deactivateVideoPreview()
         saveCurrentState()
-        viewModelScope.launch {
-            _events.emit(HomeEvent.NavigateToLaunch(gameId, channelName))
-        }
+        gameLaunchDelegate.launchGame(
+            scope = viewModelScope,
+            gameId = gameId,
+            channelName = channelName,
+            onLaunch = { intent ->
+                viewModelScope.launch {
+                    val options = displayAffinityHelper.getActivityOptions(
+                        forEmulator = true, rolesSwapped = sessionStateStore.isRolesSwapped()
+                    )
+                    _events.emit(HomeEvent.LaunchIntent(intent, options))
+                }
+            }
+        )
     }
 
     override fun toggleFavorite(gameId: Long) {
@@ -580,14 +594,17 @@ class HomeViewModel @Inject constructor(
     override fun toggleGameMenu() = gameMenuDelegate.toggleGameMenu()
 
     override fun moveGameMenuFocus(delta: Int) {
-        gameMenuDelegate.moveGameMenuFocus(delta, _uiState.value.focusedGame)
+        val state = _uiState.value
+        val isPlatformRow = state.currentRow is HomeRow.Platform
+        gameMenuDelegate.moveGameMenuFocus(delta, state.focusedGame, isPlatformRow)
     }
 
     override fun confirmGameMenuSelection(onGameSelect: (Long) -> Unit) {
         val state = _uiState.value
         val game = state.focusedGame ?: return
+        val isPlatformRow = state.currentRow is HomeRow.Platform
 
-        when (val action = gameMenuDelegate.resolveMenuAction(state.gameMenuFocusIndex, game)) {
+        when (val action = gameMenuDelegate.resolveMenuAction(state.gameMenuFocusIndex, game, isPlatformRow)) {
             is GameMenuAction.Play -> {
                 toggleGameMenu()
                 when {
@@ -612,6 +629,10 @@ class HomeViewModel @Inject constructor(
                 if (action.isAndroidApp) refreshAndroidGameData(action.gameId)
                 else refreshGameData(action.gameId)
             }
+            is GameMenuAction.ResyncPlatform -> {
+                toggleGameMenu()
+                syncPlatform(action.platformId, action.platformName)
+            }
             is GameMenuAction.Delete -> {
                 toggleGameMenu()
                 deleteLocalFile(action.gameId)
@@ -624,6 +645,12 @@ class HomeViewModel @Inject constructor(
                 toggleGameMenu()
                 hideGame(action.gameId)
             }
+        }
+    }
+
+    fun syncPlatform(platformId: Long, platformName: String) {
+        syncDelegate.resyncPlatform(viewModelScope, platformId, platformName) {
+            refreshCurrentRowInternal()
         }
     }
 

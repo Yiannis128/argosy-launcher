@@ -1894,3 +1894,15 @@ object Migration_128_129 : Migration(128, 129) {
         }
     }
 }
+
+object Migration_129_130 : Migration(129, 130) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN audioVolume INTEGER DEFAULT NULL")
+    }
+}
+
+object Migration_130_131 : Migration(130, 131) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN portraitPosition TEXT DEFAULT NULL")
+    }
+}

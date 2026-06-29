@@ -112,6 +112,7 @@ internal class BuiltinVideoSectionInput(
             InputResult.HANDLED
         }
         LibretroSettingDef.AspectRatio -> { viewModel.cycleBuiltinAspectRatio(1); InputResult.HANDLED }
+        LibretroSettingDef.PortraitPosition -> { viewModel.cycleBuiltinPortraitPosition(1); InputResult.HANDLED }
         LibretroSettingDef.Rotation -> { viewModel.cycleBuiltinRotation(1); InputResult.HANDLED }
         LibretroSettingDef.OverscanCrop -> { viewModel.cycleBuiltinOverscanCrop(1); InputResult.HANDLED }
         LibretroSettingDef.FastForwardEnabled -> {
@@ -119,6 +120,7 @@ internal class BuiltinVideoSectionInput(
             InputResult.handled(SoundType.TOGGLE)
         }
         LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(1); InputResult.HANDLED }
+        LibretroSettingDef.AudioVolume -> { viewModel.cycleBuiltinAudioVolume(1); InputResult.HANDLED }
         LibretroSettingDef.RewindSpeed -> { viewModel.cycleBuiltinRewindSpeed(1); InputResult.HANDLED }
         LibretroSettingDef.RewindBufferDuration -> { viewModel.cycleBuiltinRewindBufferDuration(1); InputResult.HANDLED }
         LibretroSettingDef.BlackFrameInsertion -> {
@@ -244,9 +246,11 @@ internal class BuiltinVideoSectionInput(
             InputResult.HANDLED
         }
         LibretroSettingDef.AspectRatio -> { viewModel.cycleBuiltinAspectRatio(direction); InputResult.HANDLED }
+        LibretroSettingDef.PortraitPosition -> { viewModel.cycleBuiltinPortraitPosition(direction); InputResult.HANDLED }
         LibretroSettingDef.Rotation -> { viewModel.cycleBuiltinRotation(direction); InputResult.HANDLED }
         LibretroSettingDef.OverscanCrop -> { viewModel.cycleBuiltinOverscanCrop(direction); InputResult.HANDLED }
         LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(direction); InputResult.HANDLED }
+        LibretroSettingDef.AudioVolume -> { viewModel.cycleBuiltinAudioVolume(direction); InputResult.HANDLED }
         else -> InputResult.UNHANDLED
     }
 

@@ -37,6 +37,7 @@ class GlobalLibretroSettingsAccessor(
         LibretroSettingDef.Shader -> state.shader
         LibretroSettingDef.Filter -> state.filter
         LibretroSettingDef.AspectRatio -> state.aspectRatio
+        LibretroSettingDef.PortraitPosition -> state.portraitPosition
         LibretroSettingDef.Rotation -> state.rotation
         LibretroSettingDef.OverscanCrop -> state.overscanCrop
         LibretroSettingDef.Frame -> state.framesEnabled.toString()
@@ -46,6 +47,7 @@ class GlobalLibretroSettingsAccessor(
         LibretroSettingDef.RewindEnabled -> state.rewindEnabled.toString()
         LibretroSettingDef.SkipDuplicateFrames -> state.skipDuplicateFrames.toString()
         LibretroSettingDef.LowLatencyAudio -> state.lowLatencyAudio.toString()
+        LibretroSettingDef.AudioVolume -> state.audioVolume
         LibretroSettingDef.VSync -> state.vsync.toString()
         LibretroSettingDef.RewindSpeed -> state.rewindSpeed
         LibretroSettingDef.RewindBufferDuration -> state.rewindBufferDuration
@@ -132,6 +134,7 @@ class PlatformLibretroSettingsAccessor(
         LibretroSettingDef.Shader -> globalState.shader
         LibretroSettingDef.Filter -> globalState.filter
         LibretroSettingDef.AspectRatio -> globalState.aspectRatio
+        LibretroSettingDef.PortraitPosition -> globalState.portraitPosition
         LibretroSettingDef.Rotation -> globalState.rotation
         LibretroSettingDef.OverscanCrop -> globalState.overscanCrop
         LibretroSettingDef.Frame -> "Auto"
@@ -141,6 +144,7 @@ class PlatformLibretroSettingsAccessor(
         LibretroSettingDef.RewindEnabled -> globalState.rewindEnabled.toString()
         LibretroSettingDef.SkipDuplicateFrames -> globalState.skipDuplicateFrames.toString()
         LibretroSettingDef.LowLatencyAudio -> globalState.lowLatencyAudio.toString()
+        LibretroSettingDef.AudioVolume -> globalState.audioVolume
         LibretroSettingDef.VSync -> globalState.vsync.toString()
         LibretroSettingDef.RewindSpeed -> globalState.rewindSpeed
         LibretroSettingDef.RewindBufferDuration -> globalState.rewindBufferDuration
@@ -188,6 +192,7 @@ class PlatformLibretroSettingsAccessor(
             LibretroSettingDef.Shader -> ps.shader
             LibretroSettingDef.Filter -> ps.filter
             LibretroSettingDef.AspectRatio -> ps.aspectRatio
+            LibretroSettingDef.PortraitPosition -> ps.portraitPosition
             LibretroSettingDef.Rotation -> ps.rotation?.toRotationString()
             LibretroSettingDef.OverscanCrop -> ps.overscanCrop?.toOverscanString()
             LibretroSettingDef.Frame -> ps.frame
@@ -197,6 +202,7 @@ class PlatformLibretroSettingsAccessor(
             LibretroSettingDef.RewindEnabled -> ps.rewindEnabled?.toString()
             LibretroSettingDef.SkipDuplicateFrames -> ps.skipDuplicateFrames?.toString()
             LibretroSettingDef.LowLatencyAudio -> ps.lowLatencyAudio?.toString()
+            LibretroSettingDef.AudioVolume -> ps.audioVolume?.let { "${it}%" }
             LibretroSettingDef.VSync -> ps.vsync?.toString()
             LibretroSettingDef.RewindSpeed -> ps.rewindSpeed?.let { "${it}x" }
             LibretroSettingDef.RewindBufferDuration -> ps.rewindBufferDuration?.let { "${it}s" }

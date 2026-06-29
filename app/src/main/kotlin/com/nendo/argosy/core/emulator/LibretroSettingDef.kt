@@ -33,6 +33,14 @@ sealed class LibretroSettingDef(
         type = SettingType.Cycle(listOf("Core Provided", "4:3", "3:2", "16:9", "Integer", "Stretch"))
     )
 
+    data object PortraitPosition : LibretroSettingDef(
+        key = "portraitPosition",
+        section = "display",
+        title = "Portrait Screen Position",
+        subtitle = "Where the game sits when the screen is vertical",
+        type = SettingType.Cycle(listOf("Auto", "Top", "Center", "Bottom"))
+    )
+
     data object Rotation : LibretroSettingDef(
         key = "rotation",
         section = "display",
@@ -116,6 +124,14 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
+    data object AudioVolume : LibretroSettingDef(
+        key = "audioVolume",
+        section = "performance",
+        title = "Volume",
+        subtitle = "Emulator output level (100% is unmodified)",
+        type = SettingType.Cycle(listOf("0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%", "110%", "120%", "130%", "140%", "150%", "160%", "170%", "180%", "190%", "200%"))
+    )
+
     data object VSync : LibretroSettingDef(
         key = "vsync",
         section = "display",
@@ -152,6 +168,7 @@ sealed class LibretroSettingDef(
             Filter,
             Frame,
             AspectRatio,
+            PortraitPosition,
             Rotation,
             OverscanCrop,
             BlackFrameInsertion,
@@ -163,6 +180,7 @@ sealed class LibretroSettingDef(
             RewindBufferDuration,
             SkipDuplicateFrames,
             LowLatencyAudio,
+            AudioVolume,
             AutoSaveState,
             AutoRestoreState,
             HwCoreSaveStates
