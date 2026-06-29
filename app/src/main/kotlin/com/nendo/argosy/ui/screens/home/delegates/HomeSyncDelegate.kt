@@ -117,10 +117,8 @@ class HomeSyncDelegate @Inject constructor(
         platformName: String,
         onComplete: suspend () -> Unit
     ) {
-        scope.launch {
-            if (!platformSyncQueue.enqueuePlatform(platformId, platformName)) return@launch
-            platformSyncQueue.busyPlatformIds.first { platformId !in it }
-            onComplete()
+        platformSyncQueue.enqueuePlatform(platformId, platformName) {
+            scope.launch { onComplete() }
         }
     }
 }
