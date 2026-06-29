@@ -134,6 +134,16 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         prefs[Keys.BUILTIN_MIGRATION_V1] ?: false
     }
 
+    suspend fun removeBuiltinCoreSelectionsByCore(coreId: String) {
+        dataStore.edit { prefs ->
+            val current = prefs[Keys.BUILTIN_CORE_SELECTIONS] ?: return@edit
+            prefs[Keys.BUILTIN_CORE_SELECTIONS] = current.split(",")
+                .filter { it.isNotBlank() && it.contains(":") }
+                .filterNot { it.substringAfter(":") == coreId }
+                .joinToString(",")
+        }
+    }
+
     suspend fun setBuiltinShader(shader: String) {
         dataStore.edit { it[Keys.BUILTIN_SHADER] = shader }
     }

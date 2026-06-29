@@ -333,6 +333,7 @@ class ArgosyViewModel @Inject constructor(
 
                 _startupStatus.value = "Checking emulators..."
                 runBuiltinEmulatorMigration()
+                libretroMigrationUseCase.cleanupRemovedCores()
                 emulatorUpdateManager.checkIfNeeded()
 
                 gameRepository.repairFolderRomPointers()
