@@ -289,12 +289,12 @@ private fun DownloadItem(
         download.statusMessage != null && download.state == DownloadState.EXTRACTING -> Triple(
             Icons.Filled.FolderZip,
             download.statusMessage,
-            LocalLauncherTheme.current.semanticColors.info
+            LocalLauncherTheme.current.semanticColors.progress
         )
         isExtracting -> Triple(
             Icons.Filled.FolderZip,
             "Extracting...",
-            LocalLauncherTheme.current.semanticColors.info
+            LocalLauncherTheme.current.semanticColors.progress
         )
         isActiveDownload -> {
             val byteText = "${formatBytes(download.bytesDownloaded)} / ${formatBytes(download.totalBytes)}"

@@ -139,7 +139,10 @@ data class SemanticColors(
     val onWarningContainer: Color,
     val info: Color,
     val infoContainer: Color,
-    val onInfoContainer: Color
+    val onInfoContainer: Color,
+    val progress: Color,
+    val progressContainer: Color,
+    val onProgressContainer: Color
 )
 
 data class LauncherThemeConfig(
@@ -159,7 +162,10 @@ private val DarkSemanticColors = SemanticColors(
     onWarningContainer = ALauncherColors.Orange,
     info = ALauncherColors.Indigo,
     infoContainer = toContainerDark(ALauncherColors.Indigo),
-    onInfoContainer = ALauncherColors.Indigo
+    onInfoContainer = ALauncherColors.Indigo,
+    progress = ALauncherColors.Mint,
+    progressContainer = toContainerDark(ALauncherColors.Mint),
+    onProgressContainer = ALauncherColors.Mint
 )
 
 private val LightSemanticColors = SemanticColors(
@@ -171,7 +177,10 @@ private val LightSemanticColors = SemanticColors(
     onWarningContainer = darken(ALauncherColors.OrangeDark),
     info = ALauncherColors.IndigoDark,
     infoContainer = toContainerLight(ALauncherColors.IndigoDark),
-    onInfoContainer = darken(ALauncherColors.IndigoDark)
+    onInfoContainer = darken(ALauncherColors.IndigoDark),
+    progress = ALauncherColors.MintDark,
+    progressContainer = toContainerLight(ALauncherColors.MintDark),
+    onProgressContainer = darken(ALauncherColors.MintDark)
 )
 
 val LocalLauncherTheme = staticCompositionLocalOf {

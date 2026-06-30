@@ -45,11 +45,13 @@ object ColorTokens {
             val success = Color(0xFF66BB6A)
             val warning = Color(0xFFFF7043)
             val info = Color(0xFF5C6BC0)
+            val progress = Color(0xFF3FD9A8)
         }
         object Light {
             val success = Color(0xFF388E3C)
             val warning = Color(0xFFC63F17)
             val info = Color(0xFF26418F)
+            val progress = Color(0xFF189C76)
         }
     }
 
