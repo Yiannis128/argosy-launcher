@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.download
 
 import android.util.Log
+import com.nendo.argosy.data.emulator.M3uManager
 import com.nendo.argosy.data.platform.PlatformDefinitions
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.zip.ZipFile
@@ -560,6 +561,10 @@ object ZipExtractor {
         Log.d(TAG, "Launchable disc files: ${launchableDiscFiles.size}")
 
         val m3uFile = when {
+            !M3uManager.supportsM3u(platformSlug) -> {
+                Log.d(TAG, "Platform does not use m3u - skipping")
+                null
+            }
             launchableDiscFiles.size <= 1 -> {
                 Log.d(TAG, "Single disc game - skipping m3u, will use disc file directly")
                 null
