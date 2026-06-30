@@ -156,7 +156,14 @@ footer is not a crutch.
   Collapse reverses. (Compose: fixed-width + top-aligned `FooterHintItem`, bar animates offset.)
 - Reserved for what is NOT attached to a focused control: screen-global verbs (filter, search,
   compose), shoulder paging between sections, genuinely non-obvious bound buttons.
-- Back / A / B / d-pad are universal and never hinted.
+- Back / A / B / d-pad are low-priority: alone they never justify a bar. The bar appears only to
+  surface something non-obvious; if A / B / d-pad are the only candidates, no bar shows.
+- Positional layout (matches `FooterHint.kt`): two groups split by a spacer. LEFT = d-pad, then
+  bumpers (LB/RB). RIGHT = triggers/menu (LT/RT/Start/Select), then face buttons ordered Y, X, B, A.
+- Horizontal real estate is the budget. When a narrow screen or a crowded hint set forces a trim,
+  shed the obvious guides FIRST (d-pad, then A/B) - never drop a non-obvious hint (X/Y, trigger,
+  shoulder page, global verb) to keep an obvious one. NOTE: `FooterHint.kt` `hidePriority` currently
+  inverts this (holds A/B longest, sheds d-pad/bumpers/triggers first) - reconcile in the migration.
 
 ## Buttons
 
