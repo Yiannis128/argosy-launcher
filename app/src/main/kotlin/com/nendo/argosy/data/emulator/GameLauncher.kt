@@ -966,7 +966,7 @@ class GameLauncher @Inject constructor(
             return null
         }
 
-        val coreFileName = "${coreName}_libretro_android.so"
+        val coreFileName = "$dataDir/cores/${coreName}_libretro_android.so"
         Logger.debug(TAG, "RetroArch core: $coreFileName for platform: ${game.platformSlug}")
 
         // Grant RetroArch a content URI for the ROM. On Android 11+ scoped
