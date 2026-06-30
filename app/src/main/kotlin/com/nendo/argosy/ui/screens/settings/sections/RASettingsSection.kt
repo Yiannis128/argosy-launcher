@@ -50,6 +50,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 @Composable
 fun RASettingsSection(
@@ -152,7 +153,7 @@ private fun RALoggedInContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                            LocalLauncherTheme.current.semanticColors.warningContainer.copy(alpha = 0.3f),
                             RoundedCornerShape(Dimens.radiusMd)
                         )
                         .padding(Dimens.spacingMd),

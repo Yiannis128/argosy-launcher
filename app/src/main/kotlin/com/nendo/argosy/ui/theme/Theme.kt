@@ -70,8 +70,7 @@ private fun darken(color: Color, factor: Float = 0.6f): Color {
 
 internal fun createDarkColorScheme(
     primary: Color = ALauncherColors.Cyan,
-    secondary: Color = ALauncherColors.Teal,
-    tertiary: Color = ALauncherColors.Green
+    secondary: Color = ALauncherColors.Teal
 ) = darkColorScheme(
     primary = primary,
     onPrimary = Color.White,
@@ -83,10 +82,10 @@ internal fun createDarkColorScheme(
     secondaryContainer = toContainerDark(secondary),
     onSecondaryContainer = secondary,
 
-    tertiary = tertiary,
+    tertiary = secondary,
     onTertiary = Color.White,
-    tertiaryContainer = toContainerDark(tertiary),
-    onTertiaryContainer = tertiary,
+    tertiaryContainer = toContainerDark(secondary),
+    onTertiaryContainer = secondary,
 
     background = ALauncherColors.SurfaceDark,
     onBackground = ALauncherColors.OnSurfaceDark,
@@ -102,8 +101,7 @@ internal fun createDarkColorScheme(
 
 internal fun createLightColorScheme(
     primary: Color = ALauncherColors.CyanDark,
-    secondary: Color = ALauncherColors.TealDark,
-    tertiary: Color = ALauncherColors.GreenDark
+    secondary: Color = ALauncherColors.TealDark
 ) = lightColorScheme(
     primary = primary,
     onPrimary = Color.White,
@@ -115,10 +113,10 @@ internal fun createLightColorScheme(
     secondaryContainer = toContainerLight(secondary),
     onSecondaryContainer = darken(secondary),
 
-    tertiary = tertiary,
+    tertiary = secondary,
     onTertiary = Color.White,
-    tertiaryContainer = toContainerLight(tertiary),
-    onTertiaryContainer = darken(tertiary),
+    tertiaryContainer = toContainerLight(secondary),
+    onTertiaryContainer = darken(secondary),
 
     background = ALauncherColors.SurfaceLight,
     onBackground = ALauncherColors.OnSurfaceLight,

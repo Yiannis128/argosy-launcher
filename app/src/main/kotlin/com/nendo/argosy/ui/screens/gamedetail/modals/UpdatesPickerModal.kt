@@ -155,7 +155,7 @@ private fun UpdateFileItem(
         UpdateFileType.DLC -> "DLC"
     }
     val typeBgColor = when (file.type) {
-        UpdateFileType.UPDATE -> MaterialTheme.colorScheme.tertiary
+        UpdateFileType.UPDATE -> MaterialTheme.colorScheme.primary
         UpdateFileType.DLC -> MaterialTheme.colorScheme.secondary
     }
 
@@ -191,7 +191,7 @@ private fun UpdateFileItem(
                 Text(
                     text = typeLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onTertiary,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
                         .clip(RoundedCornerShape(Dimens.radiusSm))
                         .background(typeBgColor)

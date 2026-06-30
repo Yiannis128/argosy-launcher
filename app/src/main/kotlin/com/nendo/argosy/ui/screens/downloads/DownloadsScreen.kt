@@ -72,6 +72,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.util.formatBytes
 
 @Composable
@@ -288,12 +289,12 @@ private fun DownloadItem(
         download.statusMessage != null && download.state == DownloadState.EXTRACTING -> Triple(
             Icons.Filled.FolderZip,
             download.statusMessage,
-            MaterialTheme.colorScheme.tertiary
+            LocalLauncherTheme.current.semanticColors.info
         )
         isExtracting -> Triple(
             Icons.Filled.FolderZip,
             "Extracting...",
-            MaterialTheme.colorScheme.tertiary
+            LocalLauncherTheme.current.semanticColors.info
         )
         isActiveDownload -> {
             val byteText = "${formatBytes(download.bytesDownloaded)} / ${formatBytes(download.totalBytes)}"
@@ -533,8 +534,8 @@ private fun ShimmerProgressBar() {
         label = "shimmerOffset"
     )
 
-    val baseColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
-    val shimmerColor = MaterialTheme.colorScheme.tertiary
+    val baseColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+    val shimmerColor = MaterialTheme.colorScheme.primary
 
     BoxWithConstraints(
         modifier = Modifier

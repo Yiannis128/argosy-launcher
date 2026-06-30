@@ -179,7 +179,7 @@ private fun DriverReleaseRow(
                 }
                 if (release.prerelease) {
                     Spacer(modifier = Modifier.width(Dimens.spacingSm))
-                    StatusPill(text = "Pre", color = MaterialTheme.colorScheme.tertiary)
+                    StatusPill(text = "Pre", color = LocalLauncherTheme.current.semanticColors.warning)
                 }
             }
             val firstArtifact = release.artifacts.firstOrNull()

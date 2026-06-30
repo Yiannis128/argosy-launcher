@@ -622,7 +622,7 @@ fun ActionPreference(
                     Box(
                         modifier = Modifier
                             .background(
-                                color = MaterialTheme.colorScheme.tertiary,
+                                color = MaterialTheme.colorScheme.secondary,
                                 shape = RoundedCornerShape(Dimens.radiusSm)
                             )
                             .padding(horizontal = Dimens.spacingXs, vertical = 2.dp)
@@ -630,7 +630,7 @@ fun ActionPreference(
                         Text(
                             text = badge,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiary
+                            color = MaterialTheme.colorScheme.onSecondary
                         )
                     }
                 }

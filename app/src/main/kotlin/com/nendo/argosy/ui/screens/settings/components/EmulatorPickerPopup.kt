@@ -375,7 +375,7 @@ private fun EmulatorPickerItem(
                     imageVector = Icons.Default.SystemUpdate,
                     contentDescription = "Update available",
                     tint = (if (isHighlighted) MaterialTheme.colorScheme.onPrimaryContainer
-                           else MaterialTheme.colorScheme.tertiary).copy(alpha = contentAlpha),
+                           else LocalLauncherTheme.current.semanticColors.info).copy(alpha = contentAlpha),
                     modifier = Modifier.size(Dimens.iconSm)
                 )
                 isDownload -> Icon(
