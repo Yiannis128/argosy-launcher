@@ -380,8 +380,9 @@ class UserPreferencesRepository @Inject constructor(
         startTime: Instant,
         coreName: String?,
         isHardcore: Boolean,
-        channelName: String? = null
-    ) = sessionPrefs.persistActiveSession(gameId, emulatorPackage, startTime, coreName, isHardcore, channelName)
+        channelName: String? = null,
+        variantFileId: Long? = null
+    ) = sessionPrefs.persistActiveSession(gameId, emulatorPackage, startTime, coreName, isHardcore, channelName, variantFileId)
 
     suspend fun clearActiveSession() = sessionPrefs.clearActiveSession()
 

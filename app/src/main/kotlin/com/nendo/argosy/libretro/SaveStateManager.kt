@@ -21,7 +21,8 @@ class SaveStateManager(
     private val gameDao: GameDao,
     private val saveCacheManager: SaveCacheManager,
     private val usesExternalMemcard: Boolean = false,
-    channelName: String? = null
+    channelName: String? = null,
+    private val isVariant: Boolean = false
 ) {
     private var lastSramHash: String? = null
     var hasQuickSave by mutableStateOf(false)
@@ -97,6 +98,16 @@ class SaveStateManager(
         if (usesExternalMemcard) {
             Log.d(TAG, "External memcard (GCI folder) - skipping flat .srm restore")
             return RestoreResult(null)
+        }
+        if (isVariant) {
+            return when (launchMode) {
+                LaunchMode.NEW_HARDCORE, LaunchMode.NEW_CASUAL -> {
+                    getSramFile().delete()
+                    deleteAllStates()
+                    RestoreResult(null)
+                }
+                else -> RestoreResult(getSramFile().takeIf { it.exists() }?.readBytes())
+            }
         }
         if (gameId < 0) {
             Log.w(TAG, "No valid gameId, using existing save")

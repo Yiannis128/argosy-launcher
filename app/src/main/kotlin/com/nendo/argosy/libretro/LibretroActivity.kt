@@ -170,6 +170,7 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var achievementBridge: LibretroAchievementBridge
 
     private var gameId: Long = -1L
+    private var variantFileId: Long = -1L
     private var platformId: Long = -1L
     private var platformSlug: String = ""
     private var coreName: String? = null
@@ -313,10 +314,12 @@ class LibretroActivity : ComponentActivity() {
             savesDir = guestSaves
             statesDir = guestStates
         } else {
-            savesDir = (intent.getStringExtra(EXTRA_SAVES_DIR)?.let { File(it) }
-                ?: AppPaths.libretroSavesDir(filesDir)).apply { mkdirs() }
-            statesDir = (intent.getStringExtra(EXTRA_STATES_DIR)?.let { File(it) }
-                ?: AppPaths.libretroStatesDir(filesDir)).apply { mkdirs() }
+            val baseSavesDir = intent.getStringExtra(EXTRA_SAVES_DIR)?.let { File(it) }
+                ?: AppPaths.libretroSavesDir(filesDir)
+            val baseStatesDir = intent.getStringExtra(EXTRA_STATES_DIR)?.let { File(it) }
+                ?: AppPaths.libretroStatesDir(filesDir)
+            savesDir = variantIsolatedDir(baseSavesDir).apply { mkdirs() }
+            statesDir = variantIsolatedDir(baseStatesDir).apply { mkdirs() }
         }
 
         val game = kotlinx.coroutines.runBlocking { gameDao.getById(gameId) }
@@ -410,7 +413,7 @@ class LibretroActivity : ComponentActivity() {
 
         if (gameId != -1L) {
             val isNewGame = launchMode == LaunchMode.NEW_CASUAL || launchMode == LaunchMode.NEW_HARDCORE
-            playSessionTracker.startSession(gameId, EmulatorRegistry.BUILTIN_PACKAGE, coreName, hardcoreMode, isNewGame, isNetplayGuest = isGuestJoinedSession)
+            playSessionTracker.startSession(gameId, EmulatorRegistry.BUILTIN_PACKAGE, coreName, hardcoreMode, isNewGame, isNetplayGuest = isGuestJoinedSession, variantFileId = variantFileId.takeIf { it >= 0 })
             cheatManager.loadCheats(hardcoreMode)
             achievementBridge.start(gameId, romPath, hardcoreMode, retroView)
         }
@@ -421,6 +424,7 @@ class LibretroActivity : ComponentActivity() {
         intent.getStringExtra(EXTRA_CORE_PATH) ?: run { finish(); return false }
         gameName = intent.getStringExtra(EXTRA_GAME_NAME) ?: File(romPath).nameWithoutExtension
         gameId = intent.getLongExtra(EXTRA_GAME_ID, -1L)
+        variantFileId = intent.getLongExtra(EXTRA_VARIANT_FILE_ID, -1L)
         coreName = intent.getStringExtra(EXTRA_CORE_NAME)
         launchMode = LaunchMode.fromString(intent.getStringExtra(LaunchMode.EXTRA_LAUNCH_MODE))
         hardcoreMode = launchMode.isHardcore
@@ -455,6 +459,9 @@ class LibretroActivity : ComponentActivity() {
         return true
     }
 
+    private fun variantIsolatedDir(baseDir: File): File =
+        if (variantFileId >= 0) File(baseDir, "variants/$variantFileId") else baseDir
+
     private fun initializeSaveState(savesDir: File, statesDir: File, channelName: String? = null) {
         saveStateManager = SaveStateManager(
             savesDir = savesDir,
@@ -464,7 +471,8 @@ class LibretroActivity : ComponentActivity() {
             gameDao = gameDao,
             saveCacheManager = saveCacheManager,
             usesExternalMemcard = com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug) == "gc",
-            channelName = channelName
+            channelName = channelName,
+            isVariant = variantFileId >= 0
         )
         val restoreResult = kotlinx.coroutines.runBlocking {
             saveStateManager.restoreSaveForLaunchMode(launchMode)
@@ -2148,6 +2156,7 @@ class LibretroActivity : ComponentActivity() {
         const val EXTRA_SYSTEM_DIR = "system_dir"
         const val EXTRA_GAME_NAME = "game_name"
         const val EXTRA_GAME_ID = "game_id"
+        const val EXTRA_VARIANT_FILE_ID = "variant_file_id"
         const val EXTRA_PLATFORM_SLUG = "platform_slug"
         const val EXTRA_CORE_NAME = "core_name"
         const val EXTRA_CORE_VAR_KEYS = "core_var_keys"

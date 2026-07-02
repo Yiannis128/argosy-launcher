@@ -182,8 +182,7 @@ class GameLauncher @Inject constructor(
             initialRomFile = romFile,
             forResume = forResume,
             selectedDiscPath = selectedDiscPath,
-            cacheKey = PRIMARY_CACHE_KEY,
-            isPrimary = true,
+            variantFileId = null,
         )
     }
 
@@ -192,10 +191,11 @@ class GameLauncher @Inject constructor(
         initialRomFile: File,
         forResume: Boolean,
         selectedDiscPath: String?,
-        cacheKey: String,
-        isPrimary: Boolean,
+        variantFileId: Long?,
     ): LaunchResult {
         val gameId = game.id
+        val cacheKey = variantFileId?.let { variantCacheKey(it) } ?: PRIMARY_CACHE_KEY
+        val isPrimary = variantFileId == null
         var romFile = initialRomFile
 
         val emulator = resolveEmulator(game)
@@ -243,7 +243,7 @@ class GameLauncher @Inject constructor(
 
         romFile = applyExtensionPreferenceIfNeeded(game, romFile)
 
-        val intent = buildIntent(emulator, romFile, game, forResume)
+        val intent = buildIntent(emulator, romFile, game, forResume, variantFileId)
             ?: return when (emulator.launchConfig) {
                 is LaunchConfig.RetroArch, is LaunchConfig.BuiltIn -> {
                     LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError).also {
@@ -291,7 +291,7 @@ class GameLauncher @Inject constructor(
             val m3u = variant.m3uPath?.let { File(it) }
             if (m3u != null && m3u.exists()) {
                 val emulator = resolveEmulator(game) ?: return LaunchResult.NoEmulator(game.platformSlug)
-                val intent = buildIntent(emulator, m3u, game, forResume) ?: return LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError)
+                val intent = buildIntent(emulator, m3u, game, forResume, variant.id) ?: return LaunchResult.NoCore(game.platformSlug, lastCoreDownloadError)
                 gameDao.recordPlayStart(game.id, java.time.Instant.now())
                 val alreadyLaunched = intent.getBooleanExtra(EXTRA_ALREADY_LAUNCHED, false)
                 return LaunchResult.Success(intent, alreadyLaunched = alreadyLaunched)
@@ -304,8 +304,7 @@ class GameLauncher @Inject constructor(
             initialRomFile = variantFile,
             forResume = forResume,
             selectedDiscPath = null,
-            cacheKey = variantCacheKey(variant.id),
-            isPrimary = false,
+            variantFileId = variant.id,
         )
     }
 
@@ -462,7 +461,7 @@ class GameLauncher @Inject constructor(
         return LaunchResult.Success(intent)
     }
 
-    private suspend fun buildBuiltInIntent(romFile: File, game: GameEntity): Intent? {
+    private suspend fun buildBuiltInIntent(romFile: File, game: GameEntity, variantFileId: Long? = null): Intent? {
         Logger.debug(TAG, "[BuiltIn] Preparing launch: rom=${romFile.name}, platform=${game.platformSlug}")
         lastCoreDownloadError = null
 
@@ -514,6 +513,7 @@ class GameLauncher @Inject constructor(
         val effectiveStatePath = platformLibretroOverride?.statePath ?: builtinSettings.customStatePath
         return Intent(context, LibretroActivity::class.java).apply {
             putExtra(LibretroActivity.EXTRA_ROM_PATH, romFile.absolutePath)
+            putExtra(LibretroActivity.EXTRA_VARIANT_FILE_ID, variantFileId ?: -1L)
             putExtra(LibretroActivity.EXTRA_CORE_PATH, corePath)
             putExtra(LibretroActivity.EXTRA_SYSTEM_DIR, systemDir.absolutePath)
             putExtra(LibretroActivity.EXTRA_GAME_NAME, game.title)
@@ -638,12 +638,12 @@ class GameLauncher @Inject constructor(
         return emulatorDetector.getPreferredEmulator(game.platformSlug, builtinEnabled)?.def
     }
 
-    private suspend fun buildIntent(emulator: EmulatorDef, romFile: File, game: GameEntity, forResume: Boolean): Intent? {
+    private suspend fun buildIntent(emulator: EmulatorDef, romFile: File, game: GameEntity, forResume: Boolean, variantFileId: Long? = null): Intent? {
         val configType = emulator.launchConfig::class.simpleName
         Logger.debug(TAG, "buildIntent: emulator=${emulator.displayName}, config=$configType, rom=${romFile.name}, forResume=$forResume")
 
         if (emulator.launchConfig.isInProcess) {
-            return buildBuiltInIntent(romFile, game)
+            return buildBuiltInIntent(romFile, game, variantFileId)
         }
 
         val command = buildEffectiveCommand(emulator, romFile, game, forResume) ?: return null

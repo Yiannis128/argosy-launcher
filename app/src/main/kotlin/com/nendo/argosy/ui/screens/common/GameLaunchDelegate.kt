@@ -191,22 +191,21 @@ class GameLaunchDelegate @Inject constructor(
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
 
-                val canResume = !sessionRequiresKill && playSessionTracker.canResumeSession(gameId)
-
-                // Stale session active - end it and kill emulator before fresh launch
-                if (!canResume && activeSession != null && !sessionRequiresKill) {
-                    android.util.Log.d("GameLaunchDelegate", "Evicting stale session for game ${activeSession.gameId}, killing ${activeSession.emulatorPackage}")
-                    playSessionTracker.endSession()
-                    gameLauncher.forceStopEmulator(activeSession.emulatorPackage)
-                    delay(EMULATOR_KILL_DELAY_MS)
-                }
-
                 val game = gameRepository.getById(gameId)
                 if (game == null) {
                     onLaunchFailed()
                     return@launch
                 }
                 val resolvedVariantId = variantResolver.resolveVariant(game)?.id
+
+                val canResume = !sessionRequiresKill && playSessionTracker.canResumeSession(gameId, resolvedVariantId)
+
+                if (!canResume && activeSession != null && !sessionRequiresKill) {
+                    android.util.Log.d("GameLaunchDelegate", "Evicting stale session for game ${activeSession.gameId}, killing ${activeSession.emulatorPackage}")
+                    playSessionTracker.endSession()
+                    gameLauncher.forceStopEmulator(activeSession.emulatorPackage)
+                    delay(EMULATOR_KILL_DELAY_MS)
+                }
 
                 if (canResume) {
                     val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId, prefetchedGame = game)
@@ -219,7 +218,7 @@ class GameLaunchDelegate @Inject constructor(
                 val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
                 val emulatorId = emulatorPackage?.let { emulatorResolver.resolveEmulatorId(it) }
                 val prefs = preferencesRepository.preferences.first()
-                val canSync = emulatorId != null && SavePathRegistry.canSyncWithSettings(
+                val canSync = resolvedVariantId == null && emulatorId != null && SavePathRegistry.canSyncWithSettings(
                     emulatorId,
                     prefs.saveSyncEnabled
                 )
@@ -238,7 +237,7 @@ class GameLaunchDelegate @Inject constructor(
                 var localModifiedInfo: SyncProgress.LocalModified? = null
                 var localModifiedChoice: LocalModifiedChoice? = null
 
-                launchWithSyncUseCase.invokeWithProgress(gameId, channelName, skipPreLaunchSync).collect { progress ->
+                launchWithSyncUseCase.invokeWithProgress(gameId, channelName, skipPreLaunchSync || resolvedVariantId != null).collect { progress ->
                     if (canSync && progress != SyncProgress.Skipped && progress != SyncProgress.Idle) {
                         when (progress) {
                             is SyncProgress.HardcoreConflict -> {
