@@ -18,7 +18,8 @@ data class PersistedSession(
     val startTime: Instant,
     val coreName: String?,
     val isHardcore: Boolean,
-    val channelName: String? = null
+    val channelName: String? = null,
+    val variantFileId: Long? = null
 )
 
 @Singleton
@@ -32,6 +33,7 @@ class SessionPreferencesRepository @Inject constructor(
         val ACTIVE_SESSION_CORE_NAME = stringPreferencesKey("active_session_core_name")
         val ACTIVE_SESSION_IS_HARDCORE = booleanPreferencesKey("active_session_is_hardcore")
         val ACTIVE_SESSION_CHANNEL_NAME = stringPreferencesKey("active_session_channel_name")
+        val ACTIVE_SESSION_VARIANT_FILE_ID = stringPreferencesKey("active_session_variant_file_id")
     }
 
     val activeSessionFlow: Flow<PersistedSession?> = dataStore.data.map { prefs ->
@@ -44,7 +46,8 @@ class SessionPreferencesRepository @Inject constructor(
         startTime: Instant,
         coreName: String?,
         isHardcore: Boolean,
-        channelName: String? = null
+        channelName: String? = null,
+        variantFileId: Long? = null
     ) {
         dataStore.edit { prefs ->
             prefs[Keys.ACTIVE_SESSION_GAME_ID] = gameId.toString()
@@ -55,6 +58,8 @@ class SessionPreferencesRepository @Inject constructor(
             prefs[Keys.ACTIVE_SESSION_IS_HARDCORE] = isHardcore
             if (channelName != null) prefs[Keys.ACTIVE_SESSION_CHANNEL_NAME] = channelName
             else prefs.remove(Keys.ACTIVE_SESSION_CHANNEL_NAME)
+            if (variantFileId != null) prefs[Keys.ACTIVE_SESSION_VARIANT_FILE_ID] = variantFileId.toString()
+            else prefs.remove(Keys.ACTIVE_SESSION_VARIANT_FILE_ID)
         }
     }
 
@@ -66,6 +71,7 @@ class SessionPreferencesRepository @Inject constructor(
             prefs.remove(Keys.ACTIVE_SESSION_CORE_NAME)
             prefs.remove(Keys.ACTIVE_SESSION_IS_HARDCORE)
             prefs.remove(Keys.ACTIVE_SESSION_CHANNEL_NAME)
+            prefs.remove(Keys.ACTIVE_SESSION_VARIANT_FILE_ID)
         }
     }
 
@@ -85,7 +91,8 @@ class SessionPreferencesRepository @Inject constructor(
             startTime = startTime,
             coreName = this[Keys.ACTIVE_SESSION_CORE_NAME],
             isHardcore = this[Keys.ACTIVE_SESSION_IS_HARDCORE] ?: false,
-            channelName = this[Keys.ACTIVE_SESSION_CHANNEL_NAME]
+            channelName = this[Keys.ACTIVE_SESSION_CHANNEL_NAME],
+            variantFileId = this[Keys.ACTIVE_SESSION_VARIANT_FILE_ID]?.toLongOrNull()
         )
     }
 }

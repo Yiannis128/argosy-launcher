@@ -37,6 +37,7 @@ import javax.inject.Singleton
 
 private const val TAG = "BiosRepository"
 private const val BIOS_INTERNAL_DIR = "bios"
+private const val FIRMWARE_DOWNLOAD_TIMEOUT_MS = 90_000L
 
 data class BiosPlatformStatus(
     val platformSlug: String,
@@ -189,8 +190,12 @@ class BiosRepository @Inject constructor(
                     var bytesRead: Int
                     var totalBytesRead = 0L
                     val totalBytes = body.contentLength()
+                    val deadline = System.currentTimeMillis() + FIRMWARE_DOWNLOAD_TIMEOUT_MS
 
                     while (input.read(buffer).also { bytesRead = it } != -1) {
+                        if (System.currentTimeMillis() > deadline) {
+                            throw java.io.IOException("Firmware download timed out after ${FIRMWARE_DOWNLOAD_TIMEOUT_MS}ms")
+                        }
                         output.write(buffer, 0, bytesRead)
                         totalBytesRead += bytesRead
                         onProgress?.invoke(

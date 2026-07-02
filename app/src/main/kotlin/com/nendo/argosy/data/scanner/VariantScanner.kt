@@ -1,6 +1,5 @@
 package com.nendo.argosy.data.scanner
 
-import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameFileEntity
@@ -18,8 +17,7 @@ private val DISC_COMPONENT_EXTENSIONS = setOf("bin", "raw", "wav", "ogg", "img",
 
 @Singleton
 class VariantScanner @Inject constructor(
-    private val gameFileDao: GameFileDao,
-    private val gameDiscDao: GameDiscDao
+    private val gameFileDao: GameFileDao
 ) {
     suspend fun scanForVariants(game: GameEntity): Int {
         if (game.platformSlug in VariantCategory.VARIANT_EXCLUDED_PLATFORMS) return 0
@@ -33,66 +31,44 @@ class VariantScanner @Inject constructor(
         val platformDef = PlatformDefinitions.getBySlug(game.platformSlug) ?: return 0
         val validExtensions = platformDef.extensions + setOf("m3u")
 
-        val primaryAbsolute = primaryFile.absolutePath
-        val primaryM3u = game.m3uPath?.let { File(it).absolutePath }
-
-        val discPaths = gameDiscDao.getDiscsForGame(game.id).mapNotNull { it.localPath }.toSet()
-
-        val referencedFiles = mutableSetOf<String>()
-
-        val allFiles = parentDir.listFiles()?.filter { it.isFile } ?: return 0
-
-        for (file in allFiles) {
-            when (file.extension.lowercase()) {
-                "m3u" -> file.readLines()
-                    .filter { it.isNotBlank() && !it.startsWith("#") }
-                    .forEach { referencedFiles.add(File(parentDir, it.trim()).absolutePath) }
-                "cue" -> file.readLines()
-                    .filter { it.trimStart().startsWith("FILE", ignoreCase = true) }
-                    .forEach { line ->
-                        val match = Regex("""FILE\s+"([^"]+)"""", RegexOption.IGNORE_CASE).find(line)
-                            ?: Regex("""FILE\s+(\S+)""", RegexOption.IGNORE_CASE).find(line)
-                        match?.groupValues?.getOrNull(1)?.let {
-                            referencedFiles.add(File(parentDir, it).absolutePath)
-                        }
-                    }
+        val categoryDirs = parentDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.mapNotNull { dir ->
+                val category = VariantCategory.fromKey(dir.name.lowercase())
+                if (category.isLaunchTarget && category != VariantCategory.GAME && category != VariantCategory.UNKNOWN) {
+                    dir to category
+                } else null
             }
-        }
+            ?: emptyList()
 
-        val candidates = allFiles.filter { file ->
-            val ext = file.extension.lowercase()
-            val nameLC = file.name.lowercase()
-            if (ext in PATCH_EXTENSIONS) return@filter false
-            if (ext in DISC_COMPONENT_EXTENSIONS) return@filter false
-            if (ext !in validExtensions) return@filter false
-            if (nameLC.endsWith(".zip.m3u") || nameLC.endsWith(".7z.m3u")) return@filter false
-            if (file.absolutePath == primaryAbsolute) return@filter false
-            if (file.absolutePath == primaryM3u) return@filter false
-            if (file.absolutePath in discPaths) return@filter false
-            if (file.absolutePath in referencedFiles) return@filter false
-            true
-        }.sortedBy { it.name }
-
-        val launchTargets = candidates
+        val candidates = categoryDirs.flatMap { (dir, category) ->
+            dir.listFiles()?.filter { file ->
+                val ext = file.extension.lowercase()
+                file.isFile &&
+                    !file.name.startsWith("._") &&
+                    ext !in PATCH_EXTENSIONS &&
+                    ext !in DISC_COMPONENT_EXTENSIONS &&
+                    ext in validExtensions
+            }?.map { it to category } ?: emptyList()
+        }.sortedBy { it.first.name }
 
         val existingVariants = gameFileDao.getVariantsForGame(game.id)
-        val launchTargetPaths = launchTargets.map { it.absolutePath }.toSet()
+        val launchTargetPaths = candidates.map { it.first.absolutePath }.toSet()
         for (variant in existingVariants) {
-            val path = variant.localPath ?: continue
-            if (path !in launchTargetPaths && variant.rommFileId == null) {
+            if (variant.rommFileId != null) continue
+            val path = variant.localPath
+            if (path == null || path !in launchTargetPaths) {
                 gameFileDao.deleteById(variant.id)
-                Logger.debug(TAG, "Removed stale variant: ${variant.fileName} for game ${game.title}")
+                Logger.debug(TAG, "Removed stale local variant: ${variant.fileName} for game ${game.title}")
             }
         }
 
         var added = 0
-        for (file in launchTargets) {
+        for ((file, category) in candidates) {
             val existing = gameFileDao.getByLocalPath(file.absolutePath)
             if (existing != null) continue
 
             val isM3u = file.extension.equals("m3u", ignoreCase = true)
-            val category = if (isM3u) VariantCategory.UNKNOWN else FilenameTagParser.inferCategory(file.name)
-
             gameFileDao.insert(
                 GameFileEntity(
                     gameId = game.id,
@@ -108,7 +84,7 @@ class VariantScanner @Inject constructor(
                 )
             )
             added++
-            Logger.debug(TAG, "Found local variant: ${file.name} (${category.key}) for game ${game.title}")
+            Logger.debug(TAG, "Found local variant: ${file.name} (${category.key}) in ${file.parentFile?.name} for game ${game.title}")
         }
 
         return added

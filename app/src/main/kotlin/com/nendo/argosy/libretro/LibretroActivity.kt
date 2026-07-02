@@ -72,6 +72,8 @@ import com.nendo.argosy.libretro.ui.cheats.CheatsScreen
 import com.nendo.argosy.libretro.ui.cheats.CheatsTab
 import com.nendo.argosy.libretro.ui.AchievementPopup
 import com.nendo.argosy.libretro.ui.AutoRestorePrompt
+import com.nendo.argosy.data.emulator.M3uManager
+import com.nendo.argosy.libretro.ui.DiscMenu
 import com.nendo.argosy.libretro.ui.InGameMenu
 import com.nendo.argosy.libretro.ui.InGameMenuAction
 import com.nendo.argosy.libretro.ui.NetplayConnectionProgressOverlay
@@ -170,6 +172,7 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var achievementBridge: LibretroAchievementBridge
 
     private var gameId: Long = -1L
+    private var variantFileId: Long = -1L
     private var platformId: Long = -1L
     private var platformSlug: String = ""
     private var coreName: String? = null
@@ -221,6 +224,13 @@ class LibretroActivity : ComponentActivity() {
     private var quickTimelineVisible by mutableStateOf(false)
     private var quickTimelineEntries by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
     private var quickTimelineFocusIndex by mutableStateOf(0)
+    private var menuDiscCount = 0
+    private var discPaths: List<File> = emptyList()
+    private var currentDiscIndex = 0
+    private var discMenuVisible by mutableStateOf(false)
+    private var discMenuFocusIndex by mutableStateOf(0)
+    private var discMenuCurrentIndex by mutableStateOf(0)
+    private var discMenuLabels by mutableStateOf<List<String>>(emptyList())
     private var pendingSaveScreenshot: Bitmap? = null
 
     private lateinit var netplay: LibretroNetplayCoordinator
@@ -245,7 +255,7 @@ class LibretroActivity : ComponentActivity() {
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
-        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || quickTimelineVisible ||
+        get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || quickTimelineVisible || discMenuVisible ||
             isClosing || netplay.isAnyDialogVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -313,10 +323,12 @@ class LibretroActivity : ComponentActivity() {
             savesDir = guestSaves
             statesDir = guestStates
         } else {
-            savesDir = (intent.getStringExtra(EXTRA_SAVES_DIR)?.let { File(it) }
-                ?: AppPaths.libretroSavesDir(filesDir)).apply { mkdirs() }
-            statesDir = (intent.getStringExtra(EXTRA_STATES_DIR)?.let { File(it) }
-                ?: AppPaths.libretroStatesDir(filesDir)).apply { mkdirs() }
+            val baseSavesDir = intent.getStringExtra(EXTRA_SAVES_DIR)?.let { File(it) }
+                ?: AppPaths.libretroSavesDir(filesDir)
+            val baseStatesDir = intent.getStringExtra(EXTRA_STATES_DIR)?.let { File(it) }
+                ?: AppPaths.libretroStatesDir(filesDir)
+            savesDir = variantIsolatedDir(baseSavesDir).apply { mkdirs() }
+            statesDir = variantIsolatedDir(baseStatesDir).apply { mkdirs() }
         }
 
         val game = kotlinx.coroutines.runBlocking { gameDao.getById(gameId) }
@@ -410,7 +422,7 @@ class LibretroActivity : ComponentActivity() {
 
         if (gameId != -1L) {
             val isNewGame = launchMode == LaunchMode.NEW_CASUAL || launchMode == LaunchMode.NEW_HARDCORE
-            playSessionTracker.startSession(gameId, EmulatorRegistry.BUILTIN_PACKAGE, coreName, hardcoreMode, isNewGame, isNetplayGuest = isGuestJoinedSession)
+            playSessionTracker.startSession(gameId, EmulatorRegistry.BUILTIN_PACKAGE, coreName, hardcoreMode, isNewGame, isNetplayGuest = isGuestJoinedSession, variantFileId = variantFileId.takeIf { it >= 0 })
             cheatManager.loadCheats(hardcoreMode)
             achievementBridge.start(gameId, romPath, hardcoreMode, retroView)
         }
@@ -421,6 +433,9 @@ class LibretroActivity : ComponentActivity() {
         intent.getStringExtra(EXTRA_CORE_PATH) ?: run { finish(); return false }
         gameName = intent.getStringExtra(EXTRA_GAME_NAME) ?: File(romPath).nameWithoutExtension
         gameId = intent.getLongExtra(EXTRA_GAME_ID, -1L)
+        variantFileId = intent.getLongExtra(EXTRA_VARIANT_FILE_ID, -1L)
+        discPaths = intent.getStringExtra(EXTRA_DISC_M3U_PATH)
+            ?.let { M3uManager.parseAllDiscs(File(it)) } ?: emptyList()
         coreName = intent.getStringExtra(EXTRA_CORE_NAME)
         launchMode = LaunchMode.fromString(intent.getStringExtra(LaunchMode.EXTRA_LAUNCH_MODE))
         hardcoreMode = launchMode.isHardcore
@@ -455,6 +470,9 @@ class LibretroActivity : ComponentActivity() {
         return true
     }
 
+    private fun variantIsolatedDir(baseDir: File): File =
+        if (variantFileId >= 0) File(baseDir, "variants/$variantFileId") else baseDir
+
     private fun initializeSaveState(savesDir: File, statesDir: File, channelName: String? = null) {
         saveStateManager = SaveStateManager(
             savesDir = savesDir,
@@ -464,7 +482,8 @@ class LibretroActivity : ComponentActivity() {
             gameDao = gameDao,
             saveCacheManager = saveCacheManager,
             usesExternalMemcard = com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug) == "gc",
-            channelName = channelName
+            channelName = channelName,
+            isVariant = variantFileId >= 0
         )
         val restoreResult = kotlinx.coroutines.runBlocking {
             saveStateManager.restoreSaveForLaunchMode(launchMode)
@@ -790,6 +809,7 @@ class LibretroActivity : ComponentActivity() {
                         onFocusChange = { menuFocusIndex = it },
                         onAction = ::handleMenuAction,
                         isHardcoreMode = hardcoreMode,
+                        availableDiscs = menuDiscCount,
                         netplaySupported = netplay.isCoreSupported(),
                         isInNetplaySession = netplay.inSession,
                         netplayRole = netplay.role,
@@ -799,6 +819,28 @@ class LibretroActivity : ComponentActivity() {
                         hasQuickSave = saveStateManager.hasQuickSave,
                         quickHistoryFocused = menuQuickHistoryFocused,
                         onQuickHistoryFocusChange = { menuQuickHistoryFocused = it }
+                    )
+                }
+                if (discMenuVisible) {
+                    activeMenuHandler = DiscMenu(
+                        labels = discMenuLabels,
+                        currentIndex = discMenuCurrentIndex,
+                        focusedIndex = discMenuFocusIndex,
+                        onFocusChange = { discMenuFocusIndex = it },
+                        onSelect = { index ->
+                            if (index != discMenuCurrentIndex) {
+                                discPaths.getOrNull(index)?.let { retroView.changeDisk(index, it.absolutePath) }
+                                currentDiscIndex = index
+                                inGameMessage = "Inserted ${discMenuLabels.getOrNull(index) ?: "Disc ${index + 1}"}"
+                            }
+                            discMenuVisible = false
+                            hideMenu()
+                        },
+                        onDismiss = {
+                            discMenuVisible = false
+                            menuFocusIndex = 0
+                            menuVisible = true
+                        }
                     )
                 }
                 if (netplay.modePickerVisible) {
@@ -1417,6 +1459,13 @@ class LibretroActivity : ComponentActivity() {
 
     private fun handleMenuAction(action: InGameMenuAction) {
         when (action) {
+            InGameMenuAction.SwapDisc -> {
+                menuVisible = false
+                discMenuLabels = discPaths.map { it.nameWithoutExtension }
+                discMenuCurrentIndex = currentDiscIndex.coerceIn(0, (discPaths.size - 1).coerceAtLeast(0))
+                discMenuFocusIndex = discMenuCurrentIndex
+                discMenuVisible = true
+            }
             InGameMenuAction.Resume -> hideMenu()
             InGameMenuAction.QuickSave -> {
                 val stateData = try { retroView.serializeState() } catch (_: Exception) { null }
@@ -1801,7 +1850,9 @@ class LibretroActivity : ComponentActivity() {
         }
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = try { retroView.captureRawFrame() } catch (_: Exception) { null }
-        menuFocusIndex = 0
+        menuDiscCount = if (netplay.inSession) 0 else discPaths.size
+        val discSwapShown = menuDiscCount > 1
+        menuFocusIndex = if (discSwapShown) 1 else 0
         menuQuickHistoryFocused = false
         menuVisible = true
     }
@@ -2148,6 +2199,8 @@ class LibretroActivity : ComponentActivity() {
         const val EXTRA_SYSTEM_DIR = "system_dir"
         const val EXTRA_GAME_NAME = "game_name"
         const val EXTRA_GAME_ID = "game_id"
+        const val EXTRA_VARIANT_FILE_ID = "variant_file_id"
+        const val EXTRA_DISC_M3U_PATH = "disc_m3u_path"
         const val EXTRA_PLATFORM_SLUG = "platform_slug"
         const val EXTRA_CORE_NAME = "core_name"
         const val EXTRA_CORE_VAR_KEYS = "core_var_keys"

@@ -328,7 +328,7 @@ class ZipExtractorTest {
     }
 
     @Test
-    fun `extractFolderRom uses existing m3u from zip`() {
+    fun `extractFolderRom prunes archive m3u and regenerates its own`() {
         val zipFile = File(tempDir, "game.zip")
         createTestZip(zipFile, mapOf(
             "Game (Disc 1).chd" to "disc1",
@@ -339,7 +339,8 @@ class ZipExtractorTest {
         val result = ZipExtractor.extractFolderRom(zipFile, "Multi Disc Game", tempDir, "psx")
 
         assertNotNull(result.m3uFile)
-        assertEquals("Game.m3u", result.m3uFile?.name)
+        assertEquals("Multi Disc Game.m3u", result.m3uFile?.name)
+        assertFalse(File(result.gameFolder, "Game.m3u").exists())
     }
 
     @Test

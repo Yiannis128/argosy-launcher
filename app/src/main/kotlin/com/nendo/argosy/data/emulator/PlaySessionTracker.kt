@@ -61,7 +61,8 @@ data class ActiveSession(
     val isNewGame: Boolean = false,
     val channelName: String? = null,
     val isOnOlderSave: Boolean = false,
-    val isNetplayGuest: Boolean = false
+    val isNetplayGuest: Boolean = false,
+    val variantFileId: Long? = null
 )
 
 sealed class SessionEndResult {
@@ -222,6 +223,10 @@ class PlaySessionTracker @Inject constructor(
     }
 
     private suspend fun recoverOrphanedSave(orphaned: PersistedSession) {
+        if (orphaned.variantFileId != null) {
+            Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Variant session, skipping save recovery")
+            return
+        }
         try {
             val game = gameDao.getById(orphaned.gameId)
             if (game == null) {
@@ -407,7 +412,7 @@ class PlaySessionTracker @Inject constructor(
         }
     }
 
-    fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false, isNetplayGuest: Boolean = false) {
+    fun startSession(gameId: Long, emulatorPackage: String, coreName: String? = null, isHardcore: Boolean = false, isNewGame: Boolean = false, isNetplayGuest: Boolean = false, variantFileId: Long? = null) {
         lastScreenOnTime = Instant.now()
         isScreenOn = true
         lastScreenOffTime = null
@@ -422,13 +427,14 @@ class PlaySessionTracker @Inject constructor(
             coreName = coreName,
             isHardcore = isHardcore,
             isNewGame = isNewGame,
-            isNetplayGuest = isNetplayGuest
+            isNetplayGuest = isNetplayGuest,
+            variantFileId = variantFileId
         )
         Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Session started | emulator=$emulatorPackage, core=$coreName, hardcore=$isHardcore, newGame=$isNewGame")
 
         scope.launch {
             val game = gameDao.getById(gameId)
-            val channelName = if (isHardcore) null else game?.activeSaveChannel
+            val channelName = if (isHardcore || variantFileId != null) null else game?.activeSaveChannel
 
             _activeSession.value = _activeSession.value?.copy(channelName = channelName)
 
@@ -438,7 +444,8 @@ class PlaySessionTracker @Inject constructor(
                 startTime = startTime,
                 coreName = coreName,
                 isHardcore = isHardcore,
-                channelName = channelName
+                channelName = channelName,
+                variantFileId = variantFileId
             )
 
             val displayId = if (sessionStateStore.isRolesSwapped()) {
@@ -500,8 +507,9 @@ class PlaySessionTracker @Inject constructor(
     private suspend fun startGameSessionService(gameId: Long, emulatorPackage: String, coreName: String?, isHardcore: Boolean, sessionStartTime: Long) {
         val game = gameDao.getById(gameId) ?: return
         val emulatorId = emulatorResolver.resolveEmulatorId(emulatorPackage)
+        val isVariant = _activeSession.value?.variantFileId != null
 
-        val savePath = if (emulatorId != null && SavePathRegistry.getConfig(emulatorId) != null) {
+        val savePath = if (!isVariant && emulatorId != null && SavePathRegistry.getConfig(emulatorId) != null) {
             saveSyncRepository.get().discoverSavePath(
                 emulatorId = emulatorId,
                 gameTitle = game.title,
@@ -620,7 +628,7 @@ class PlaySessionTracker @Inject constructor(
                 }
             }
 
-            val effectiveSkipSaveSync = skipSaveSync || session.isNetplayGuest
+            val effectiveSkipSaveSync = skipSaveSync || session.isNetplayGuest || session.variantFileId != null
             return try {
                 val cacheResult = coroutineScope {
                     val saveJob = async {
@@ -923,6 +931,7 @@ class PlaySessionTracker @Inject constructor(
     /** Cache the current session's save to local Room with needsRemoteSync=true, synchronously. Called from the in-game Quit handler so the save is persisted before libretro core teardown begins -- teardown can be slow enough on some cores (PSP shader cache, etc.) to trigger an OS-imposed process kill, taking endSession's coroutine with it. The upload itself is handled later by the sync coordinator draining the dirty cache row. */
     suspend fun cacheCurrentSessionForQuit(): SaveCacheManager.CacheResult? {
         val session = _activeSession.value ?: return null
+        if (session.variantFileId != null) return null
         val game = gameDao.getById(session.gameId) ?: return null
         val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
             ?: return null
@@ -961,6 +970,7 @@ class PlaySessionTracker @Inject constructor(
      * so states survive an OS process kill during teardown instead of dying with endSession's coroutine. */
     suspend fun cacheCurrentSessionStatesForQuit() {
         val session = _activeSession.value ?: return
+        if (session.variantFileId != null) return
         val result = syncStatesOnSessionEndUseCase.get()(
             session.gameId,
             session.emulatorPackage,
@@ -975,7 +985,7 @@ class PlaySessionTracker @Inject constructor(
         Logger.debug(TAG, "[SaveSync] SESSION | Force stopped service (no active session)")
     }
 
-    fun canResumeSession(gameId: Long): Boolean {
+    fun canResumeSession(gameId: Long, variantFileId: Long? = null): Boolean {
         val session = _activeSession.value
         if (session == null) {
             Logger.debug(TAG, "canResumeSession($gameId): no active session")
@@ -983,6 +993,10 @@ class PlaySessionTracker @Inject constructor(
         }
         if (session.gameId != gameId) {
             Logger.debug(TAG, "canResumeSession($gameId): gameId mismatch (active=${session.gameId})")
+            return false
+        }
+        if (session.variantFileId != variantFileId) {
+            Logger.debug(TAG, "canResumeSession($gameId): variant mismatch (active=${session.variantFileId}, requested=$variantFileId)")
             return false
         }
         val inForeground = permissionHelper.isPackageInForeground(application, session.emulatorPackage, withinMs = 300_000)

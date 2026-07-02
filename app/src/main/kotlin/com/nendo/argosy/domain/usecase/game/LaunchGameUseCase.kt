@@ -29,7 +29,8 @@ class LaunchGameUseCase @Inject constructor(
                     ?: result.intent.`package`
                     ?: "",
                 coreName = coreName,
-                isNewGame = !forResume
+                isNewGame = !forResume,
+                variantFileId = variantFileId
             )
         }
         return result

@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.download
 
 import android.util.Log
+import com.nendo.argosy.data.emulator.M3uManager
 import com.nendo.argosy.data.platform.PlatformDefinitions
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.zip.ZipFile
@@ -559,20 +560,14 @@ object ZipExtractor {
         val launchableDiscFiles = filterToLaunchableDiscs(extractionResult.rootDiscFiles)
         Log.d(TAG, "Launchable disc files: ${launchableDiscFiles.size}")
 
+        extractionResult.allFiles
+            .filter { it.extension.equals("m3u", ignoreCase = true) }
+            .forEach { if (it.delete()) Log.d(TAG, "Pruned archive-supplied m3u: ${it.name}") }
+
         val m3uFile = when {
-            launchableDiscFiles.size <= 1 -> {
-                Log.d(TAG, "Single disc game - skipping m3u, will use disc file directly")
-                null
-            }
-            extractionResult.existingM3u != null && isValidM3u(extractionResult.existingM3u, launchableDiscFiles) -> {
-                Log.d(TAG, "Using validated existing m3u")
-                extractionResult.existingM3u
-            }
-            launchableDiscFiles.size > 1 -> {
-                Log.d(TAG, "Generating new m3u for ${launchableDiscFiles.size} discs")
-                generateM3uFile(gameFolder, sanitizedTitle, launchableDiscFiles)
-            }
-            else -> null
+            !M3uManager.supportsM3u(platformSlug) -> null
+            launchableDiscFiles.size <= 1 -> null
+            else -> generateM3uFile(gameFolder, sanitizedTitle, launchableDiscFiles)
         }
 
         return ExtractedFolderRom(
@@ -580,7 +575,7 @@ object ZipExtractor {
             discFiles = extractionResult.rootDiscFiles.sortedBy { it.name },
             m3uFile = m3uFile,
             gameFolder = gameFolder,
-            allFiles = extractionResult.allFiles
+            allFiles = extractionResult.allFiles.filterNot { it.extension.equals("m3u", ignoreCase = true) }
         )
     }
 
@@ -758,42 +753,6 @@ object ZipExtractor {
             // Otherwise, use iso/bin/img files directly
             else -> discFiles.filter { it.extension.lowercase() in setOf("iso", "bin", "img", "cdi") }
         }
-    }
-
-    private fun isValidM3u(m3uFile: File, launchableDiscs: List<File>): Boolean {
-        if (!m3uFile.exists()) return false
-
-        val lines = try {
-            m3uFile.readLines().filter { it.isNotBlank() && !it.startsWith("#") }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to read m3u for validation: ${e.message}")
-            return false
-        }
-
-        // M3U should list exactly the launchable disc files
-        if (lines.size != launchableDiscs.size) {
-            Log.d(TAG, "M3U validation failed: ${lines.size} entries vs ${launchableDiscs.size} launchable discs")
-            return false
-        }
-
-        // Each line should reference an existing launchable file
-        val launchableNames = launchableDiscs.map { it.name.lowercase() }.toSet()
-        val m3uDir = m3uFile.parentFile ?: return false
-
-        for (line in lines) {
-            val referencedFile = File(m3uDir, line)
-            if (!referencedFile.exists()) {
-                Log.d(TAG, "M3U validation failed: referenced file doesn't exist: $line")
-                return false
-            }
-            // Check if it references a launchable file (not a data file like .iso when .cue exists)
-            if (referencedFile.name.lowercase() !in launchableNames) {
-                Log.d(TAG, "M3U validation failed: $line is not a launchable disc file")
-                return false
-            }
-        }
-
-        return true
     }
 
     private fun sanitizeFileName(name: String): String {

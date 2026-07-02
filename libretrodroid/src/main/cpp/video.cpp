@@ -416,7 +416,10 @@ void Video::onNewFrame(const void *data, unsigned width, unsigned height, size_t
         videoLayout.updateContentSize(width, height);
         {
             std::lock_guard<std::mutex> lock(frameMutex);
-            size_t frameBytes = (size_t) height * pitch;
+            int bytesPerPixel = framePixelFormat == RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2;
+            size_t frameBytes = height > 0
+                ? (size_t) (height - 1) * pitch + (size_t) width * bytesPerPixel
+                : 0;
             const auto* src = static_cast<const uint8_t*>(data);
             lastFrameData.assign(src, src + frameBytes);
             lastFrameWidth = (int) width;
