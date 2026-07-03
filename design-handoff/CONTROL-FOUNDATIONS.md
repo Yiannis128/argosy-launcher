@@ -42,12 +42,35 @@ decision record and the annotation text for that page. Token VALUES live in `tok
 
 Sharp surfaces, soft controls - the inverse of Material's over-rounded panels.
 
-- `radiusPanel` ~6dp: modals, drawers, sheets, side rails, panels (today `GlassPanel` uses 16dp - too round).
-- `radiusControl` ~10-12dp: action buttons (rounded-rect), list rows.
+- `radiusPanel` 6dp: modals, drawers, sheets, side rails, panels (today `GlassPanel` uses 16dp - too round).
+- `radiusControl` 8dp: action buttons (rounded-rect), list rows. Settled by the canvas: every
+  button and row on the V2 boards is drawn at r8 (earlier drafts said ~10-12 and ~6; 8 is canonical).
 - `radiusPill` 999: capsule TOKENS only - chips, tags, filter/segment pills, toggles, the enum
   inline. NOT action buttons.
 
+All three live in `tokens.json` `dimension.radius` as `panel` / `control` / `pill`.
+
 Shape encodes role: rounded-RECT = a command you trigger; full PILL = a value/state you pick.
+
+## Density
+
+The default UI is ~30 percent too big - Material's metrics carry excess whitespace (56dp list
+rows, 16dp gaps). Decision (2026-07-02): cut CONTAINER metrics, not type. The type scale holds
+for the 10-foot read; row heights, paddings, and gaps shrink. Scope is menus/controls only -
+Home and Game Detail (the locked anchors) keep their validated layouts. Lands as baked token
+defaults, not a user-facing density setting.
+
+Canonical metrics (formalized from the tightest V2 boards, Nav Sidebar and Modals, which
+applied the cut by eye at 40-46px rows before it was written down):
+
+- Menu row: 40 single-line / 52 two-line (`layout.menuRowHeight` / `menuRowHeightLg`), list gap 8
+  (`layout.listGap`).
+- `layout.settingsItemMinHeight` 56 -> 40; `layout.footerHeight` 50 -> 44.
+- Action button: 44 tall (`layout.buttonHeight`), padding 16h/10v (was 22h/14v).
+- The Controls V2 sheet (56px rows, 16px gaps) predates this decision and needs a retrofit pass.
+
+Supersedes the ui-redesign branch's `cc959405` (0.7 global uiScale) - a global scale shrinks
+type and the anchors too; container metrics are the chosen mechanism.
 
 ## States
 
@@ -55,7 +78,8 @@ One canonical set, reused by every interactive primitive: `neutral / focused / a
 disabled`.
 
 Focus is the primary visual event, but its TREATMENT is per component class, composed from five
-indicators (already implemented in `primitives/Focus.kt` as `FocusIndicators`, motion-tier-aware springs):
+indicators (implemented as `FocusIndicators` in `primitives/Focus.kt` ON THE `ui-redesign`
+BRANCH - not yet on `ui-redesign-beta`; the port is part of the migration):
 
 - `lift` - translateY -6dp + scale 1.04
 - `halo` - radial accent glow behind (0.55 -> 0.14 -> transparent)
@@ -182,7 +206,7 @@ Two families already exist as primitives (`PillButton`, `RowButton`); formalize 
     Filled, never outline-only. Focus solidifies identically. Color is the only primary/secondary
     difference, so the accent button is unmistakably THE primary; several neutral secondaries are
     fine, one accent primary per context.
-  - Padding 22h / 14v; `pressScale` press feedback (touch + gamepad).
+  - Padding 16h / 10v, 44 tall (density pass; was 22h/14v); `pressScale` press feedback (touch + gamepad).
   - `PillButton` primitive swaps its shape `radiusPill` -> `radiusControl` (then mis-named; rename
     is a later cleanup). Full pills are reserved for capsule tokens, never commands.
 - **Row** (`RowButton`, `radiusMd` 8dp, full-width) - the list affordance. Plain = list row
@@ -195,7 +219,10 @@ Two families already exist as primitives (`PillButton`, `RowButton`); formalize 
 
 ## Warning / confirm modal
 
-Today these are raw Material `AlertDialog`s (8 of them) - foreign focus model, over-rounded, and
+Today these are raw Material `AlertDialog`s (20 call sites across 10 files - SettingsScreen x8,
+4 collections dialogs, GameDataSection, Downloads, FileBrowser, GameModeSelection, CheatDialogs
+x4; `ModalInputRouter` passes them through so they escape the custom InputHandler entirely) -
+foreign focus model, over-rounded, and
 the destructive button uses Material dark `colorScheme.error`, a pale red that is a hard read on
 near-black. Replace with an Argosy modal that splits the two signals Material conflates:
 
@@ -232,8 +259,9 @@ you get the dual-focus ghost - a hidden native cursor that travels to a boundary
   native focus. Use the Argosy primitives instead.
 
 Known offenders to migrate, not copy: the root `.focusable()` sink + resume-`requestFocus` hack in
-`ArgosyApp`, `ControllerColumn` / `ControllerRow` (`.focusable()` + `onPreviewKeyEvent`), the 8
-Material `AlertDialog`s. If native focus is kept for a11y/IME, it must be a hidden slave mirrored to
+`ArgosyApp` (the only live offender on `ui-redesign-beta`), the 20 Material `AlertDialog`s, and
+`MainActivity.dispatchKeyEvent`'s `super` fallthrough. (`ControllerColumn` / `ControllerRow` exist
+only on the old `ui-redesign` branch - do not port them.) If native focus is kept for a11y/IME, it must be a hidden slave mirrored to
 the custom index - never self-navigating. The durable fix is a primitive that owns this wiring so
 menus declare items instead of re-authoring input; until then, this list is the manual guard.
 
@@ -256,16 +284,29 @@ Concrete treatments settled while building the control specimen sheet (default +
   solidifies its wrapped fill to 100% on focus. Action at rest = wrapped 82% fill + accent outline,
   squarer (`radiusControl` ~6).
 
+## Resolved (2026-07-02)
+
+- Token reconciliation: LANDED. `tokens.json` carries the full dark ramp (`surfaceElevated
+  #262834` added), a real light ramp (cool near-white base `#FBFBFD` -> `#DEE1E9` elevated,
+  replacing the flat warm M3 values), radius roles (`panel`/`control`/`pill`), and the density
+  metrics. Generated Kotlin regenerated.
+- Cover tile focus motion: KEEP `lift` as the single deliberate signature on Home/Library tiles.
+- `pressScale`: KEEP as tactile press feedback (momentary, not a focus state).
+- Density: decided and recorded above; mechanism is container metrics, not global scale.
+- Primitives source: `Focus.kt` / `PillButton` / `RowButton` / `GlassPanel` / `ModalScaffold`
+  live on the `ui-redesign` branch (26 commits, 402 behind beta). Decision: PORT the primitives
+  + theme substrate (`LocalArgosyTheme`, `pressScale`, motion tier springs, `clickableNoFocus`
+  interactionSource overload) onto beta; redo screen conversions fresh. Do not merge the branch.
+
 ## Open items
 
-- Token reconciliation: dark ramp canonical = Home's rendered near-black family; sync Penpot
-  color tokens (stale `#121212`) and `tokens.json` to it.
-- Cover tile focus motion: keep `lift` (translate + scale) as the single deliberate signature on
-  Home/Library tiles, or drop it for halo-only so NOTHING moves on focus anywhere.
-- `pressScale` (momentary scale-down on actuation, separate from focus): keep as tactile press
-  feedback, or remove it too under the no-movement stance.
-- Migrate 8 Material `AlertDialog`s (4 collections dialogs, settings, downloads, file browser) to
-  the Argosy warning/confirm modal pattern.
-- Light-mode ramp exists but is flat: `surfaceElevated` collapses to `surfaceBase` (`SurfaceLight`),
-  no real elevation steps. Build it to mirror dark (distinct near-white base / raised / elevated,
-  light accent variants, lighter bloom).
+- Migrate the 20 Material `AlertDialog` call sites to the Argosy warning/confirm modal pattern
+  (destructive-confirm subset first: Purge, Reset Library, Reset/Clear Save Cache, Delete
+  Collection, Remove Game, Delete Cheat).
+- Light-mode QA: ramp VALUES are in tokens; on-device light-mode verification (accent bias,
+  bloom washout) is a follow-up phase.
+- Centered-cursor list scrolling: `SectionScroll.kt` already centers; still missing end-clamping
+  for non-focusable content, no-scroll-when-content-fits, and the aspect-adaptive section rail.
+- Guide bar: `FooterHint.hidePriority` inversion fix, singleton push/pop bar, empty-bar collapse
+  animation.
+- Retrofit the Controls V2 / Buttons V2 Penpot sheets to the density metrics.
