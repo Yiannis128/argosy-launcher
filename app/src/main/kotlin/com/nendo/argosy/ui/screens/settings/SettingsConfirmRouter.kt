@@ -26,6 +26,7 @@ import com.nendo.argosy.ui.screens.settings.sections.InterfaceItem
 import com.nendo.argosy.ui.screens.settings.sections.InterfaceLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.MainSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.StorageItem
+import com.nendo.argosy.ui.screens.settings.sections.aboutHasChangelog
 import com.nendo.argosy.ui.screens.settings.sections.aboutItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.boxArtItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.controlsItemAtFocusIndex
@@ -517,14 +518,18 @@ private fun routePermissionsConfirm(vm: SettingsViewModel, state: SettingsUiStat
 
 private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val hasLogPath = state.fileLoggingPath != null
-    when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath)) {
+    val hasChangelog = aboutHasChangelog(state.updateCheck)
+    when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath, hasChangelog)) {
         AboutItem.CheckUpdates -> {
-            if (state.updateCheck.updateAvailable) {
+            if (state.aboutUpdateActionIndex == 1) {
+                vm.openChangelog()
+            } else if (state.updateCheck.updateAvailable) {
                 vm.viewModelScope.launch { vm._downloadUpdateEvent.emit(Unit) }
             } else {
                 vm.checkForUpdates()
             }
         }
+        AboutItem.ChangelogPreview -> vm.openChangelog()
         AboutItem.BetaUpdates -> {
             vm.setBetaUpdatesEnabled(!state.betaUpdatesEnabled)
             return InputResult.handled(SoundType.TOGGLE)
@@ -577,6 +582,7 @@ private fun routeFramePickerConfirm(vm: SettingsViewModel, state: SettingsUiStat
 internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
     val state = vm._uiState.value
     return when {
+        state.changelog.visible -> { vm.closeChangelog(); true }
         state.systemizeResult != null -> { vm.dismissSystemizeDialog(); true }
         state.emulators.showSavePathModal -> { vm.dismissSavePathModal(); true }
         state.emulators.showMemcardPicker -> { vm.dismissMemcardPicker(); true }
@@ -773,7 +779,7 @@ private fun computeMaxFocusIndex(
     SettingsSection.BIOS -> biosMaxFocusIndex(state.bios.platformGroups, state.bios.expandedPlatformIndex)
     SettingsSection.PERMISSIONS -> permissionsMaxFocusIndex(state.permissions)
     SettingsSection.DRIVERS -> (state.drivers.groups.size - 1).coerceAtLeast(0)
-    SettingsSection.ABOUT -> aboutMaxFocusIndex(state.fileLoggingPath != null)
+    SettingsSection.ABOUT -> aboutMaxFocusIndex(state.fileLoggingPath != null, aboutHasChangelog(state.updateCheck))
     SettingsSection.SOCIAL -> com.nendo.argosy.ui.screens.settings.sections.socialMaxFocusIndex(state.social)
 }
 

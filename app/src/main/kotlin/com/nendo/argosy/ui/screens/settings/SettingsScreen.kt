@@ -54,6 +54,7 @@ import com.nendo.argosy.ui.filebrowser.FileFilter
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.screens.settings.components.PlatformSettingsModal
+import com.nendo.argosy.ui.screens.settings.components.ReleaseChangelogModal
 import com.nendo.argosy.ui.screens.settings.components.SoundPickerPopup
 import com.nendo.argosy.ui.screens.settings.delegates.BuiltinNavigationTarget
 import com.nendo.argosy.ui.screens.settings.sections.AboutSection
@@ -554,6 +555,11 @@ fun SettingsScreen(
             }
         }
 
+        ReleaseChangelogModal(
+            state = uiState.changelog,
+            onLoadMore = { viewModel.loadChangelogPage() },
+            onDismiss = { viewModel.closeChangelog() }
+        )
     }
 
     uiState.pendingBuiltinPathMigration?.let { migration ->

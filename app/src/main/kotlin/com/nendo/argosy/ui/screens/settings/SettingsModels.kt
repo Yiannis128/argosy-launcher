@@ -786,11 +786,29 @@ data class UpdateCheckState(
     val hasChecked: Boolean = false,
     val updateAvailable: Boolean = false,
     val latestVersion: String? = null,
+    val latestName: String? = null,
+    val latestBody: String? = null,
     val downloadUrl: String? = null,
     val error: String? = null,
     val isDownloading: Boolean = false,
     val downloadProgress: Int = 0,
     val readyToInstall: Boolean = false
+)
+
+data class ChangelogRelease(
+    val tag: String,
+    val name: String,
+    val body: String?,
+    val prerelease: Boolean,
+    val publishedAt: String?
+)
+
+data class ChangelogState(
+    val visible: Boolean = false,
+    val releases: List<ChangelogRelease> = emptyList(),
+    val page: Int = 0,
+    val canLoadMore: Boolean = false,
+    val isLoading: Boolean = false
 )
 
 data class PermissionsState(
@@ -1026,6 +1044,8 @@ data class SettingsUiState(
     val pendingBuiltinPathMigration: BuiltinPathMigration? = null,
     val appVersion: String = BuildConfig.VERSION_NAME,
     val updateCheck: UpdateCheckState = UpdateCheckState(),
+    val changelog: ChangelogState = ChangelogState(),
+    val aboutUpdateActionIndex: Int = 0,
     val betaUpdatesEnabled: Boolean = false,
     val fileLoggingEnabled: Boolean = false,
     val fileLoggingPath: String? = null,

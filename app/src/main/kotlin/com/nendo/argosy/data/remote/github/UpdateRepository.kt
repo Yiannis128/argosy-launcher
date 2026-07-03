@@ -23,6 +23,8 @@ sealed class UpdateState {
     data class Error(val message: String) : UpdateState()
 }
 
+data class ReleasePage(val releases: List<GitHubRelease>, val hasMore: Boolean)
+
 data class VersionInfo(
     val major: Int,
     val minor: Int,
@@ -109,6 +111,7 @@ class UpdateRepository @Inject constructor(
     companion object {
         private const val TAG = "UpdateRepository"
         private const val GITHUB_API_BASE = "https://api.github.com/"
+        private const val RELEASES_PER_PAGE = 10
     }
 
     private val api: GitHubApi by lazy { createApi() }
@@ -223,6 +226,26 @@ class UpdateRepository @Inject constructor(
             val error = UpdateState.Error(e.message ?: "Unknown error")
             _updateState.value = error
             error
+        }
+    }
+
+    suspend fun listReleases(page: Int): Result<ReleasePage> {
+        return try {
+            val betaEnabled = userPreferencesRepository.userPreferences.first().betaUpdatesEnabled
+            val response = api.getReleases(perPage = RELEASES_PER_PAGE, page = page)
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("GitHub API returned ${response.code()}"))
+            }
+            val releases = response.body().orEmpty()
+            Result.success(
+                ReleasePage(
+                    releases = releases.filter { !it.draft && (betaEnabled || !it.prerelease) },
+                    hasMore = releases.size == RELEASES_PER_PAGE
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to list releases (page $page)", e)
+            Result.failure(e)
         }
     }
 

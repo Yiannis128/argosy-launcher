@@ -11,6 +11,7 @@ import com.nendo.argosy.ui.screens.settings.sections.ControlsItem
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.HomeScreenItem
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
+import com.nendo.argosy.ui.screens.settings.sections.aboutHasChangelog
 import com.nendo.argosy.ui.screens.settings.sections.aboutItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.aboutSections
 import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
@@ -151,7 +152,9 @@ internal class LightSectionsInput(
     private fun handleAboutLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         val hasLogPath = state.fileLoggingPath != null
-        when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath)) {
+        val hasChangelog = aboutHasChangelog(state.updateCheck)
+        when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath, hasChangelog)) {
+            AboutItem.CheckUpdates -> { viewModel.moveUpdateActionFocus(direction); return InputResult.HANDLED }
             AboutItem.LogLevel -> { viewModel.cycleFileLogLevel(direction); return InputResult.HANDLED }
             else -> {}
         }
@@ -183,7 +186,7 @@ internal class LightSectionsInput(
             SettingsSection.BIOS -> biosSections(state.bios.platformGroups, state.bios.expandedPlatformIndex)
             SettingsSection.SERVER -> gameDataSections(buildGameDataItemsFromState(state))
             SettingsSection.SOCIAL -> socialSections()
-            SettingsSection.ABOUT -> aboutSections(state.fileLoggingPath != null)
+            SettingsSection.ABOUT -> aboutSections(state.fileLoggingPath != null, aboutHasChangelog(state.updateCheck))
             else -> return InputResult.HANDLED
         }
         val jumped = if (direction < 0) viewModel.jumpToPrevSection(sections)

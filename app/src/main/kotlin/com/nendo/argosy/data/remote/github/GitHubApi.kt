@@ -14,7 +14,8 @@ interface GitHubApi {
 
     @GET("repos/nendotools/argosy-launcher/releases")
     suspend fun getReleases(
-        @Query("per_page") perPage: Int = 10
+        @Query("per_page") perPage: Int = 10,
+        @Query("page") page: Int = 1
     ): Response<List<GitHubRelease>>
 
     @GET("repos/{owner}/{repo}/releases/latest")

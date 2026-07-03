@@ -87,6 +87,8 @@ internal fun routeCheckForUpdates(vm: SettingsViewModel) {
                             isChecking = false,
                             updateAvailable = true,
                             latestVersion = state.release.tagName,
+                            latestName = state.release.name,
+                            latestBody = state.release.body,
                             downloadUrl = state.apkAsset.downloadUrl
                         )
                     )
@@ -106,6 +108,74 @@ internal fun routeCheckForUpdates(vm: SettingsViewModel) {
                 vm._uiState.update { it.copy(updateCheck = UpdateCheckState(isChecking = false)) }
             }
         }
+    }
+}
+
+internal fun routeMoveUpdateActionFocus(vm: SettingsViewModel, delta: Int) {
+    vm._uiState.update {
+        it.copy(aboutUpdateActionIndex = (it.aboutUpdateActionIndex + delta).coerceIn(0, 1))
+    }
+}
+
+internal fun routeOpenChangelog(vm: SettingsViewModel) {
+    val check = vm._uiState.value.updateCheck
+    val seed = if (check.updateAvailable && check.latestVersion != null) {
+        listOf(
+            ChangelogRelease(
+                tag = check.latestVersion,
+                name = check.latestName ?: check.latestVersion,
+                body = check.latestBody,
+                prerelease = check.latestVersion.contains("-"),
+                publishedAt = null
+            )
+        )
+    } else {
+        emptyList()
+    }
+    vm._uiState.update { it.copy(changelog = ChangelogState(visible = true, releases = seed)) }
+    routeLoadChangelogPage(vm)
+}
+
+internal fun routeCloseChangelog(vm: SettingsViewModel) {
+    vm._uiState.update { it.copy(changelog = ChangelogState()) }
+}
+
+internal fun routeLoadChangelogPage(vm: SettingsViewModel) {
+    val changelog = vm._uiState.value.changelog
+    if (changelog.isLoading) return
+    val nextPage = changelog.page + 1
+    vm._uiState.update { it.copy(changelog = it.changelog.copy(isLoading = true)) }
+
+    vm.viewModelScope.launch {
+        vm.updateRepository.listReleases(nextPage).fold(
+            onSuccess = { pageResult ->
+                vm._uiState.update { state ->
+                    val existing = if (nextPage == 1) emptyList() else state.changelog.releases
+                    val incoming = pageResult.releases.map { release ->
+                        ChangelogRelease(
+                            tag = release.tagName,
+                            name = release.name,
+                            body = release.body,
+                            prerelease = release.prerelease,
+                            publishedAt = release.publishedAt
+                        )
+                    }
+                    state.copy(
+                        changelog = state.changelog.copy(
+                            releases = (existing + incoming).distinctBy { it.tag },
+                            page = nextPage,
+                            canLoadMore = pageResult.hasMore,
+                            isLoading = false
+                        )
+                    )
+                }
+            },
+            onFailure = {
+                vm._uiState.update { state ->
+                    state.copy(changelog = state.changelog.copy(isLoading = false))
+                }
+            }
+        )
     }
 }
 

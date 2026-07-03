@@ -1029,6 +1029,10 @@ class SettingsViewModel @Inject constructor(
 
     fun checkForUpdates() = routeCheckForUpdates(this)
     fun downloadAndInstallUpdate(context: android.content.Context) = routeDownloadAndInstallUpdate(this, context)
+    fun moveUpdateActionFocus(delta: Int) = routeMoveUpdateActionFocus(this, delta)
+    fun openChangelog() = routeOpenChangelog(this)
+    fun closeChangelog() = routeCloseChangelog(this)
+    fun loadChangelogPage() = routeLoadChangelogPage(this)
 
     fun writeSystemizeScript() {
         _uiState.update { it.copy(systemizeResult = com.nendo.argosy.util.SystemizeScript.write(context)) }
