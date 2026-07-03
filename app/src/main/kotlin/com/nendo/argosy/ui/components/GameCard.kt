@@ -118,7 +118,10 @@ fun GameCard(
 
     val glowColorMode = boxArtStyle.glowColorMode
     val glowGradientColors: Pair<Color, Color>? = when (glowColorMode) {
-        GlowColorMode.AUTO -> coverGradientColors
+        GlowColorMode.AUTO -> when (boxArtStyle.borderStyle) {
+            BoxArtBorderStyle.GRADIENT, BoxArtBorderStyle.GLASS -> coverGradientColors
+            else -> null
+        }
         GlowColorMode.ACCENT -> null
         GlowColorMode.ACCENT_GRADIENT -> {
             val accent = boxArtStyle.accentColor
