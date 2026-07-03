@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +61,7 @@ import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusInfo
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusRow
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveSyncStatus
@@ -707,10 +707,7 @@ private fun InProgressRowCard(row: InProgressRow, isFocused: Boolean) {
                 }
                 if (row.progress > 0f) {
                     Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                    LinearProgressIndicator(
-                        progress = { row.progress.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    ArgosyProgressBar(progress = row.progress.coerceIn(0f, 1f))
                 }
             }
         }

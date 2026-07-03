@@ -1,12 +1,14 @@
 package com.nendo.argosy.ui.screens.downloads
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,16 +26,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,20 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -71,8 +59,14 @@ import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.theme.Dimens
-import com.nendo.argosy.ui.theme.LocalLauncherTheme
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.LocalUiScale
+import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.util.formatBytes
 
 @Composable
@@ -265,157 +259,159 @@ private fun SectionHeader(title: String, speedSuffix: String? = null) {
 }
 
 @Composable
+private fun DownloadCard(
+    isFocused: Boolean,
+    content: @Composable RowScope.() -> Unit
+) {
+    val theme = LocalArgosyTheme.current
+    val scale = LocalUiScale.current.scale
+    val shape = RoundedCornerShape(Dimens.radiusControl)
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) theme.focusAccent else theme.hairlineLow,
+        animationSpec = Motion.focusColorSpec,
+        label = "download-border"
+    )
+    val washColor by animateColorAsState(
+        targetValue = if (isFocused) theme.focusAccent.copy(alpha = 0.10f) else Color.Transparent,
+        animationSpec = Motion.focusColorSpec,
+        label = "download-wash"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((ComponentDefaults.DownloadItem.rowHeight * scale).dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(washColor)
+            .border(width = Dimens.borderThin, color = borderColor, shape = shape)
+            .padding(horizontal = Dimens.spacingMd),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun DownloadItemHeader(download: DownloadProgress) {
+    val theme = LocalArgosyTheme.current
+    Text(
+        text = download.displayTitle,
+        style = MaterialTheme.typography.titleSmall,
+        color = theme.textPrimary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+    Text(
+        text = download.platformSlug.uppercase(),
+        style = MaterialTheme.typography.bodySmall,
+        color = theme.textDim
+    )
+}
+
+@Composable
 private fun DownloadItem(
     download: DownloadProgress,
     isInActiveList: Boolean,
     isFocused: Boolean,
     availableStorage: Long
 ) {
-    val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    val isActiveDownload = isInActiveList && download.state != DownloadState.PAUSED
+    val theme = LocalArgosyTheme.current
+    val workingColor = if (theme.isDark) ColorTokens.Semantic.Dark.progress else ColorTokens.Semantic.Light.progress
     val isExtracting = download.state == DownloadState.EXTRACTING
+    val isActiveDownload = isInActiveList && !isExtracting && download.state != DownloadState.PAUSED &&
+        download.state != DownloadState.WAITING_FOR_STORAGE && download.state != DownloadState.FAILED
+    val byteText = "${formatBytes(download.bytesDownloaded)} / ${formatBytes(download.totalBytes)}"
 
-    val (statusIcon, statusText, statusColor) = when {
-        download.statusMessage != null && download.state == DownloadState.QUEUED -> Triple(
-            Icons.Default.Schedule,
-            download.statusMessage,
-            MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        download.statusMessage != null && download.state == DownloadState.EXTRACTING -> Triple(
-            Icons.Filled.FolderZip,
-            download.statusMessage,
-            LocalLauncherTheme.current.semanticColors.progress
-        )
-        isExtracting -> Triple(
-            Icons.Filled.FolderZip,
-            "Extracting...",
-            LocalLauncherTheme.current.semanticColors.progress
-        )
-        isActiveDownload -> {
-            val byteText = "${formatBytes(download.bytesDownloaded)} / ${formatBytes(download.totalBytes)}"
-            val text = if (download.statusMessage != null) "$byteText ${download.statusMessage}" else byteText
-            Triple(
-                Icons.Default.Download,
-                text,
-                MaterialTheme.colorScheme.primary
-            )
-        }
-        download.state == DownloadState.PAUSED -> Triple(
-            Icons.Default.Pause,
-            "${formatBytes(download.bytesDownloaded)} / ${formatBytes(download.totalBytes)}",
-            MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        download.state == DownloadState.WAITING_FOR_STORAGE -> Triple(
-            Icons.Default.Warning,
-            "Need ${formatBytes(download.totalBytes - download.bytesDownloaded)}, Available ${formatBytes(availableStorage)}",
-            MaterialTheme.colorScheme.error
-        )
-        download.state == DownloadState.FAILED -> Triple(
-            Icons.Default.Error,
-            download.errorReason ?: "Download failed",
-            MaterialTheme.colorScheme.error
-        )
-        else -> Triple(
-            Icons.Default.Schedule,
-            if (download.totalBytes > 0) "${formatBytes(download.bytesDownloaded)} / ${formatBytes(download.totalBytes)}" else "Queued",
-            MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    val (statusIcon, iconTint) = when {
+        isExtracting -> Icons.Filled.FolderZip to workingColor
+        isActiveDownload -> Icons.Default.Download to theme.focusAccent
+        download.state == DownloadState.PAUSED -> Icons.Default.Pause to theme.textMute
+        download.state == DownloadState.WAITING_FOR_STORAGE -> Icons.Default.Warning to ColorTokens.Domain.difficulty
+        download.state == DownloadState.FAILED -> Icons.Default.Error to ColorTokens.Domain.difficulty
+        else -> Icons.Default.Schedule to theme.textMute
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 2.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(Dimens.radiusLg)
-            ),
-        shape = RoundedCornerShape(Dimens.radiusLg),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.spacingMd),
-            verticalAlignment = Alignment.CenterVertically
+    DownloadCard(isFocused = isFocused) {
+        DownloadCover(download)
+        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
-            DownloadCover(download)
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = download.displayTitle,
-                    style = MaterialTheme.typography.titleMedium,
+            DownloadItemHeader(download)
+            when {
+                isExtracting -> {
+                    ArgosyProgressBar(progress = null, style = ProgressBarStyle.Working)
+                    Text(
+                        text = download.statusMessage ?: "Extracting...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = workingColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                isActiveDownload -> {
+                    ArgosyProgressBar(progress = download.progressPercent, style = ProgressBarStyle.Active)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (download.statusMessage != null) "$byteText ${download.statusMessage}" else byteText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = theme.focusAccent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (download.bytesPerSecond > 0) {
+                            Text(
+                                text = formatSpeed(download.bytesPerSecond),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = theme.textMute
+                            )
+                        }
+                    }
+                }
+                download.state == DownloadState.PAUSED -> {
+                    ArgosyProgressBar(progress = download.progressPercent, style = ProgressBarStyle.Paused)
+                    Text(
+                        text = byteText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = theme.textMute
+                    )
+                }
+                download.state == DownloadState.WAITING_FOR_STORAGE -> Text(
+                    text = "Need ${formatBytes(download.totalBytes - download.bytesDownloaded)}, Available ${formatBytes(availableStorage)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ColorTokens.Domain.difficulty,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                download.state == DownloadState.FAILED -> Text(
+                    text = download.errorReason ?: "Download failed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ColorTokens.Domain.difficulty,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                else -> Text(
+                    text = download.statusMessage ?: "Queued",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = theme.textMute,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = download.platformSlug.uppercase(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                when {
-                    isExtracting -> {
-                        Spacer(modifier = Modifier.height(Dimens.spacingSm))
-                        ShimmerProgressBar()
-                    }
-                    isActiveDownload -> {
-                        Spacer(modifier = Modifier.height(Dimens.spacingSm))
-                        LinearProgressIndicator(
-                            progress = { download.progressPercent },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    download.totalBytes > 0 -> {
-                        Spacer(modifier = Modifier.height(Dimens.spacingSm))
-                        LinearProgressIndicator(
-                            progress = { download.progressPercent },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = statusColor,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (isActiveDownload && download.bytesPerSecond > 0) {
-                        Text(
-                            text = formatSpeed(download.bytesPerSecond),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
-                }
             }
-
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-            Icon(
-                imageVector = statusIcon,
-                contentDescription = null,
-                tint = statusColor,
-                modifier = Modifier.size(Dimens.iconMd)
-            )
         }
+        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        Icon(
+            imageVector = statusIcon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(Dimens.iconMd)
+        )
     }
 }
 
@@ -424,94 +420,70 @@ private fun CompletedDownloadItem(
     download: DownloadProgress,
     isFocused: Boolean
 ) {
+    val theme = LocalArgosyTheme.current
     val (icon, iconColor) = when (download.state) {
-        DownloadState.COMPLETED -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.primary
-        DownloadState.FAILED -> Icons.Default.Error to MaterialTheme.colorScheme.error
-        else -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.onSurfaceVariant
+        DownloadState.COMPLETED -> Icons.Default.CheckCircle to theme.focusAccent
+        DownloadState.FAILED -> Icons.Default.Error to ColorTokens.Domain.difficulty
+        else -> Icons.Default.CheckCircle to theme.textMute
     }
 
-    val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 2.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(Dimens.radiusLg)
-            ),
-        shape = RoundedCornerShape(Dimens.radiusLg),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.spacingMd),
-            verticalAlignment = Alignment.CenterVertically
+    DownloadCard(isFocused = isFocused) {
+        DownloadCover(download)
+        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
-            DownloadCover(download)
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = download.displayTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
+            DownloadItemHeader(download)
+            when {
+                download.state == DownloadState.FAILED -> Text(
+                    text = download.errorReason ?: "Download failed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ColorTokens.Domain.difficulty,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = download.platformSlug.uppercase(),
+                download.state == DownloadState.COMPLETED -> Text(
+                    text = "Installed",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = theme.focusAccent
                 )
-                if (download.state == DownloadState.FAILED && download.errorReason != null) {
-                    Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                    Text(
-                        text = download.errorReason,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconColor
-            )
         }
+        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(Dimens.iconMd)
+        )
     }
 }
 
 @Composable
 private fun DownloadCover(download: DownloadProgress) {
+    val theme = LocalArgosyTheme.current
+    val scale = LocalUiScale.current.scale
+    val thumbModifier = Modifier
+        .size((ComponentDefaults.DownloadItem.thumbSize * scale).dp)
+        .clip(RoundedCornerShape(Dimens.radiusPanel))
     if (download.coverPath != null) {
         AsyncImage(
             model = rememberFileImageModel(download.coverPath),
             contentDescription = download.gameTitle,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(Dimens.radiusMd)),
+            modifier = thumbModifier.background(theme.surfaceElevated),
             contentScale = ContentScale.Crop
         )
     } else {
         Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(Dimens.radiusMd)),
+            modifier = thumbModifier.background(theme.surfaceElevated),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Download,
                 contentDescription = null,
                 modifier = Modifier.size(Dimens.iconLg),
-                tint = MaterialTheme.colorScheme.primary
+                tint = theme.focusAccent
             )
         }
     }
@@ -519,46 +491,6 @@ private fun DownloadCover(download: DownloadProgress) {
 
 private fun formatSpeed(bytesPerSecond: Long): String {
     return "${formatBytes(bytesPerSecond)}/s"
-}
-
-@Composable
-private fun ShimmerProgressBar() {
-    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = -0.5f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerOffset"
-    )
-
-    val baseColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-    val shimmerColor = MaterialTheme.colorScheme.primary
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .clip(RoundedCornerShape(2.dp))
-    ) {
-        val width = constraints.maxWidth.toFloat()
-        val shimmerWidth = width * 0.4f
-        val center = shimmerOffset * width
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(baseColor, shimmerColor, baseColor),
-                        start = Offset(center - shimmerWidth, 0f),
-                        end = Offset(center + shimmerWidth, 0f)
-                    )
-                )
-        )
-    }
 }
 
 @Composable
