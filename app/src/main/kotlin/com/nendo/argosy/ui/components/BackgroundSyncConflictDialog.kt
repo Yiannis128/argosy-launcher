@@ -13,11 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,11 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.data.sync.ConflictInfo
+import com.nendo.argosy.ui.primitives.FocusIndicators
+import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.util.clickableNoFocus
 import java.time.Duration
 import java.time.Instant
 
@@ -74,9 +75,9 @@ fun BackgroundSyncConflictDialog(
     ) {
         Text(
             text = if (conflictInfo.isHashConflict)
-                "Your local save has changed since the last sync."
+                "Your local save has changed since the last sync. Pick which save wins."
             else
-                "A newer save exists on the server.",
+                "A newer save exists on the server. Pick which save wins.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -84,43 +85,27 @@ fun BackgroundSyncConflictDialog(
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
         Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
-            SaveSourceRow(
+            ConflictChoiceRow(
                 icon = Icons.Default.PhoneAndroid,
                 label = "Local",
                 timestamp = localTimeStr,
-                isNewer = localIsNewer
+                isNewer = localIsNewer,
+                isFocused = focusIndex == 0,
+                onClick = onKeepLocal
             )
-            SaveSourceRow(
+            ConflictChoiceRow(
                 icon = Icons.Default.Cloud,
                 label = "Server",
                 subtitle = conflictInfo.serverDeviceName,
                 timestamp = serverTimeStr,
-                isNewer = !localIsNewer
-            )
-        }
-
-        Spacer(modifier = Modifier.height(Dimens.spacingLg))
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
-        ) {
-            ConflictActionButton(
-                icon = Icons.Default.CloudUpload,
-                label = "Upload Local",
-                isFocused = focusIndex == 0,
-                onClick = onKeepLocal
-            )
-            ConflictActionButton(
-                icon = Icons.Default.CloudDownload,
-                label = "Download Server",
+                isNewer = !localIsNewer,
                 isFocused = focusIndex == 1,
                 onClick = onKeepServer
             )
-            ConflictActionButton(
+            ConflictChoiceRow(
                 label = "Skip",
+                subtitle = "Keep both for now",
                 isFocused = focusIndex == 2,
-                isDimmed = true,
                 onClick = onSkip
             )
         }
@@ -128,91 +113,73 @@ fun BackgroundSyncConflictDialog(
 }
 
 @Composable
-private fun SaveSourceRow(
-    icon: ImageVector,
-    label: String,
-    timestamp: String,
-    isNewer: Boolean,
-    subtitle: String? = null
-) {
-    val tint = if (isNewer) MaterialTheme.colorScheme.primary
-    else MaterialTheme.colorScheme.onSurfaceVariant
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusMd))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(Dimens.iconMd)
-        )
-        Spacer(modifier = Modifier.width(Dimens.spacingSm))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isNewer) FontWeight.Bold else FontWeight.Normal,
-                color = tint
-            )
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Text(
-            text = timestamp,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isNewer) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ConflictActionButton(
+private fun ConflictChoiceRow(
     label: String,
     isFocused: Boolean,
     onClick: () -> Unit,
     icon: ImageVector? = null,
-    isDimmed: Boolean = false
+    subtitle: String? = null,
+    timestamp: String? = null,
+    isNewer: Boolean = false
 ) {
-    val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
-        else -> Color.Transparent
-    }
-    val contentColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-        isDimmed -> MaterialTheme.colorScheme.onSurfaceVariant
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusControl)
+    val labelColor = when {
+        isFocused -> lerp(theme.focusAccent, Color.White, 0.45f)
+        isNewer -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurface
     }
+    val metaColor = when {
+        isFocused -> lerp(theme.focusAccent, Color.White, 0.45f).copy(alpha = 0.65f)
+        isNewer -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(44.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = backgroundColor,
-            contentColor = contentColor
-        ),
-        shape = RoundedCornerShape(Dimens.radiusMd)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .argosyFocusIndicators(
+                focused = isFocused,
+                indicators = FocusIndicators.NavRow,
+                shape = shape
+            )
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(Dimens.iconSm)
+                tint = labelColor,
+                modifier = Modifier.size(Dimens.iconMd)
             )
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
         }
-        Text(label)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isNewer) FontWeight.Bold else FontWeight.Normal,
+                color = labelColor
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = metaColor
+                )
+            }
+        }
+        if (timestamp != null) {
+            Text(
+                text = timestamp,
+                style = MaterialTheme.typography.bodySmall,
+                color = metaColor
+            )
+        }
     }
 }
 
