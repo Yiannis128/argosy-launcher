@@ -65,6 +65,38 @@ object ComponentDefaults {
         const val glowAlphaUnfocused = 0f
     }
 
+    object ActionButton {
+        const val restFillAlpha = 0.82f
+        const val restRimAlpha = 0.9f
+        const val disabledFillAlpha = 0.6f
+    }
+
+    object Toggle {
+        const val trackWidth = 44
+        const val trackHeight = 24
+        const val trackRadius = 7
+        const val knobWidth = 12
+        const val knobHeight = 20
+        const val knobRadius = 5
+    }
+
+    object TrackSlider {
+        const val trackHeight = 6
+        const val trackRadius = 2
+        const val thumbSize = 10
+    }
+
+    object ProgressBar {
+        const val height = 6
+        const val stripeWidth = 7
+        const val stripeGap = 5
+    }
+
+    object DownloadItem {
+        const val rowHeight = 92
+        const val thumbSize = 64
+    }
+
     object Modal {
         const val blurRadius = 8
     }

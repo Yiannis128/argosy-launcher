@@ -28,6 +28,7 @@ import com.nendo.argosy.data.preferences.SystemIconPosition
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.FooterStyleConfig
 import com.nendo.argosy.ui.components.LocalFooterStyle
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 
 private fun colorToHsv(color: Color): FloatArray {
     val hsv = FloatArray(3)
@@ -69,8 +70,8 @@ private fun darken(color: Color, factor: Float = 0.6f): Color {
 }
 
 internal fun createDarkColorScheme(
-    primary: Color = ALauncherColors.Cyan,
-    secondary: Color = ALauncherColors.Teal
+    primary: Color = ColorTokens.Scheme.Dark.primary,
+    secondary: Color = ColorTokens.Scheme.Dark.secondary
 ) = darkColorScheme(
     primary = primary,
     onPrimary = Color.White,
@@ -87,21 +88,21 @@ internal fun createDarkColorScheme(
     tertiaryContainer = toContainerDark(secondary),
     onTertiaryContainer = secondary,
 
-    background = ALauncherColors.SurfaceDark,
-    onBackground = ALauncherColors.OnSurfaceDark,
+    background = ColorTokens.Scheme.Dark.background,
+    onBackground = ColorTokens.Scheme.Dark.onSurface,
 
-    surface = ALauncherColors.SurfaceDark,
-    onSurface = ALauncherColors.OnSurfaceDark,
-    surfaceVariant = ALauncherColors.SurfaceDarkVariant,
-    onSurfaceVariant = ALauncherColors.OnSurfaceDark.copy(alpha = 0.8f),
+    surface = ColorTokens.Scheme.Dark.surface,
+    onSurface = ColorTokens.Scheme.Dark.onSurface,
+    surfaceVariant = ColorTokens.Scheme.Dark.surfaceVariant,
+    onSurfaceVariant = ColorTokens.Scheme.Dark.onSurface.copy(alpha = 0.8f),
 
-    outline = Color.White.copy(alpha = 0.12f),
-    outlineVariant = Color.White.copy(alpha = 0.06f)
+    outline = ColorTokens.Scheme.Dark.outline,
+    outlineVariant = ColorTokens.Scheme.Dark.outlineVariant
 )
 
 internal fun createLightColorScheme(
-    primary: Color = ALauncherColors.CyanDark,
-    secondary: Color = ALauncherColors.TealDark
+    primary: Color = ColorTokens.Scheme.Light.primary,
+    secondary: Color = ColorTokens.Scheme.Light.secondary
 ) = lightColorScheme(
     primary = primary,
     onPrimary = Color.White,
@@ -118,16 +119,16 @@ internal fun createLightColorScheme(
     tertiaryContainer = toContainerLight(secondary),
     onTertiaryContainer = darken(secondary),
 
-    background = ALauncherColors.SurfaceLight,
-    onBackground = ALauncherColors.OnSurfaceLight,
+    background = ColorTokens.Scheme.Light.background,
+    onBackground = ColorTokens.Scheme.Light.onSurface,
 
-    surface = ALauncherColors.SurfaceLight,
-    onSurface = ALauncherColors.OnSurfaceLight,
-    surfaceVariant = ALauncherColors.SurfaceLightVariant,
-    onSurfaceVariant = ALauncherColors.OnSurfaceLight.copy(alpha = 0.8f),
+    surface = ColorTokens.Scheme.Light.surface,
+    onSurface = ColorTokens.Scheme.Light.onSurface,
+    surfaceVariant = ColorTokens.Scheme.Light.surfaceVariant,
+    onSurfaceVariant = ColorTokens.Scheme.Light.onSurface.copy(alpha = 0.8f),
 
-    outline = Color.Black.copy(alpha = 0.12f),
-    outlineVariant = Color.Black.copy(alpha = 0.06f)
+    outline = ColorTokens.Scheme.Light.outline,
+    outlineVariant = ColorTokens.Scheme.Light.outlineVariant
 )
 
 data class SemanticColors(
@@ -241,8 +242,8 @@ internal fun rememberArgosyPalette(
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val defaultPrimary = if (BuildConfig.DEBUG) ALauncherColors.Orange else ALauncherColors.Indigo
-    val defaultPrimaryDark = if (BuildConfig.DEBUG) ALauncherColors.OrangeDark else ALauncherColors.IndigoDark
+    val defaultPrimary = if (BuildConfig.DEBUG) ColorTokens.Scheme.DebugOverrides.Dark.primary else ColorTokens.Scheme.Dark.primary
+    val defaultPrimaryDark = if (BuildConfig.DEBUG) ColorTokens.Scheme.DebugOverrides.Light.primary else ColorTokens.Scheme.Light.primary
     val rawPrimary = primaryOverride ?: themeState.primaryColor?.let { Color(it) }
     val rawSecondary = themeState.secondaryColor?.let { Color(it) }
     val effectivePrimary = rawPrimary ?: if (isDarkTheme) defaultPrimary else defaultPrimaryDark
@@ -287,8 +288,7 @@ fun ProvideArgosyThemeLocals(
     palette: ArgosyPalette,
     content: @Composable () -> Unit
 ) {
-    val defaultPrimary = if (BuildConfig.DEBUG) ALauncherColors.Orange else ALauncherColors.Indigo
-    val focusGlow = (palette.rawPrimary ?: defaultPrimary).copy(alpha = 0.4f)
+    val focusGlow = palette.effectivePrimary.copy(alpha = 0.4f)
     val semanticColors = if (palette.isDarkTheme) DarkSemanticColors else LightSemanticColors
 
     val launcherConfig = LauncherThemeConfig(
@@ -343,6 +343,7 @@ fun ProvideArgosyThemeLocals(
     CompositionLocalProvider(
         LocalUiScale provides uiScaleConfig,
         LocalLauncherTheme provides launcherConfig,
+        LocalArgosyTheme provides argosyThemeTokens(palette),
         LocalBoxArtStyle provides boxArtStyle,
         LocalFooterStyle provides footerStyle,
         content = content

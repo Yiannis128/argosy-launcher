@@ -3,56 +3,59 @@ package com.nendo.argosy.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.theme.generated.DimensionTokens
 
 object Dimens {
     private val scale: Float
         @Composable get() = LocalUiScale.current.scale
 
-    // Spacing - SCALED (with minimum floors for usability)
-    val spacingXs: Dp @Composable get() = maxOf(4.dp * scale, 2.dp)
-    val spacingSm: Dp @Composable get() = maxOf(8.dp * scale, 4.dp)
-    val spacingMd: Dp @Composable get() = maxOf(16.dp * scale, 8.dp)
-    val spacingLg: Dp @Composable get() = maxOf(24.dp * scale, 12.dp)
-    val spacingXl: Dp @Composable get() = maxOf(32.dp * scale, 16.dp)
-    val spacingXxl: Dp @Composable get() = maxOf(48.dp * scale, 24.dp)
+    val spacingXs: Dp @Composable get() = maxOf(DimensionTokens.Spacing.Xs.base.dp * scale, DimensionTokens.Spacing.Xs.floor.dp)
+    val spacingSm: Dp @Composable get() = maxOf(DimensionTokens.Spacing.Sm.base.dp * scale, DimensionTokens.Spacing.Sm.floor.dp)
+    val spacingMd: Dp @Composable get() = maxOf(DimensionTokens.Spacing.Md.base.dp * scale, DimensionTokens.Spacing.Md.floor.dp)
+    val spacingLg: Dp @Composable get() = maxOf(DimensionTokens.Spacing.Lg.base.dp * scale, DimensionTokens.Spacing.Lg.floor.dp)
+    val spacingXl: Dp @Composable get() = maxOf(DimensionTokens.Spacing.Xl.base.dp * scale, DimensionTokens.Spacing.Xl.floor.dp)
+    val spacingXxl: Dp @Composable get() = maxOf(DimensionTokens.Spacing.Xxl.base.dp * scale, DimensionTokens.Spacing.Xxl.floor.dp)
 
-    // Radius - SCALED
-    val radiusSm: Dp @Composable get() = 4.dp * scale
-    val radiusMd: Dp @Composable get() = 8.dp * scale
-    val radiusLg: Dp @Composable get() = 12.dp * scale
-    val radiusXl: Dp @Composable get() = 16.dp * scale
+    val radiusSm: Dp @Composable get() = DimensionTokens.Radius.sm.dp * scale
+    val radiusMd: Dp @Composable get() = DimensionTokens.Radius.md.dp * scale
+    val radiusLg: Dp @Composable get() = DimensionTokens.Radius.lg.dp * scale
+    val radiusXl: Dp @Composable get() = DimensionTokens.Radius.xl.dp * scale
+    val radiusPanel: Dp @Composable get() = DimensionTokens.Radius.panel.dp * scale
+    val radiusControl: Dp @Composable get() = DimensionTokens.Radius.control.dp * scale
+    val radiusPill: Dp get() = DimensionTokens.Radius.pill.dp
 
-    // Component sizing - SCALED
-    val gameCardWidth: Dp @Composable get() = 180.dp * scale
-    val gameCardHeight: Dp @Composable get() = 240.dp * scale
-    val settingsItemMinHeight: Dp @Composable get() = 56.dp * scale
+    val gameCardWidth: Dp @Composable get() = DimensionTokens.Layout.gameCardWidth.dp * scale
+    val gameCardHeight: Dp @Composable get() = DimensionTokens.Layout.gameCardHeight.dp * scale
+    val settingsItemMinHeight: Dp @Composable get() = DimensionTokens.Layout.settingsItemMinHeight.dp * scale
+    val menuRowHeight: Dp @Composable get() = DimensionTokens.Layout.menuRowHeight.dp * scale
+    val menuRowHeightLg: Dp @Composable get() = DimensionTokens.Layout.menuRowHeightLg.dp * scale
+    val listGap: Dp @Composable get() = maxOf(DimensionTokens.Layout.listGap.dp * scale, 4.dp)
+    val buttonHeight: Dp @Composable get() = DimensionTokens.Layout.buttonHeight.dp * scale
+    val buttonPaddingH: Dp @Composable get() = DimensionTokens.Layout.buttonPaddingH.dp * scale
+    val buttonPaddingV: Dp @Composable get() = DimensionTokens.Layout.buttonPaddingV.dp * scale
 
-    // Icons - SCALED
-    val dotSm: Dp @Composable get() = 10.dp * scale
-    val dotLg: Dp @Composable get() = 14.dp * scale
-    val iconXs: Dp @Composable get() = 14.dp * scale
-    val iconSm: Dp @Composable get() = 18.dp * scale
-    val iconMd: Dp @Composable get() = 24.dp * scale
-    val iconLg: Dp @Composable get() = 32.dp * scale
-    val iconXl: Dp @Composable get() = 48.dp * scale
+    val dotSm: Dp @Composable get() = DimensionTokens.Dot.sm.dp * scale
+    val dotLg: Dp @Composable get() = DimensionTokens.Dot.lg.dp * scale
+    val iconXs: Dp @Composable get() = DimensionTokens.Icon.xs.dp * scale
+    val iconSm: Dp @Composable get() = DimensionTokens.Icon.sm.dp * scale
+    val iconMd: Dp @Composable get() = DimensionTokens.Icon.md.dp * scale
+    val iconLg: Dp @Composable get() = DimensionTokens.Icon.lg.dp * scale
+    val iconXl: Dp @Composable get() = DimensionTokens.Icon.xl.dp * scale
 
-    // Layout - SCALED
-    val headerHeight: Dp @Composable get() = 72.dp * scale
-    val headerHeightLg: Dp @Composable get() = 140.dp * scale
-    val footerHeight: Dp @Composable get() = 50.dp * scale
-    val modalWidth: Dp @Composable get() = 400.dp * scale
-    val modalWidthLg: Dp @Composable get() = 520.dp * scale
-    val modalWidthXl: Dp @Composable get() = 575.dp * scale
+    val headerHeight: Dp @Composable get() = DimensionTokens.Layout.headerHeight.dp * scale
+    val headerHeightLg: Dp @Composable get() = DimensionTokens.Layout.headerHeightLg.dp * scale
+    val footerHeight: Dp @Composable get() = DimensionTokens.Layout.footerHeight.dp * scale
+    val modalWidth: Dp @Composable get() = DimensionTokens.Layout.modalWidth.dp * scale
+    val modalWidthLg: Dp @Composable get() = DimensionTokens.Layout.modalWidthLg.dp * scale
+    val modalWidthXl: Dp @Composable get() = DimensionTokens.Layout.modalWidthXl.dp * scale
 
-    // Borders - FIXED (too thin to scale)
-    val borderThin = 1.dp
-    val borderMedium = 2.dp
-    val borderThick = 2.dp
+    val borderThin = DimensionTokens.Border.thin.dp
+    val borderMedium = DimensionTokens.Border.medium.dp
+    val borderThick = DimensionTokens.Border.thick.dp
 
-    // Elevation - FIXED (shadows shouldn't scale)
-    val elevationNone = 0.dp
-    val elevationSm = 2.dp
-    val elevationMd = 4.dp
-    val elevationLg = 8.dp
-    val elevationFocused = 16.dp
+    val elevationNone = DimensionTokens.Elevation.none.dp
+    val elevationSm = DimensionTokens.Elevation.sm.dp
+    val elevationMd = DimensionTokens.Elevation.md.dp
+    val elevationLg = DimensionTokens.Elevation.lg.dp
+    val elevationFocused = DimensionTokens.Elevation.focused.dp
 }

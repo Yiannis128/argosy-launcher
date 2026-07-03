@@ -29,7 +29,7 @@ object DimensionTokens {
     object Border {
         const val thin = 1
         const val medium = 2
-        const val thick = 4
+        const val thick = 2
     }
 
     object Icon {
