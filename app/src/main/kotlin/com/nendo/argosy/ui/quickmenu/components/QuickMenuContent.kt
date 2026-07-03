@@ -40,7 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +54,7 @@ import com.nendo.argosy.ui.quickmenu.GameRowUi
 import com.nendo.argosy.ui.quickmenu.QuickMenuOrb
 import com.nendo.argosy.ui.quickmenu.QuickMenuUiState
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun QuickMenuContent(
@@ -144,7 +148,8 @@ private fun SearchContent(
                 .fillMaxWidth()
                 .then(inputBorderModifier)
                 .background(
-                    if (isInputFocused) MaterialTheme.colorScheme.primaryContainer
+                    if (isInputFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
                     else MaterialTheme.colorScheme.surfaceVariant,
                     inputShape
                 )
@@ -219,7 +224,7 @@ private fun RandomContent(
         return
     }
 
-    val shape = RoundedCornerShape(Dimens.radiusXl)
+    val shape = RoundedCornerShape(Dimens.radiusPanel)
     val borderModifier = if (isFocused) {
         Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
     } else Modifier
@@ -229,7 +234,8 @@ private fun RandomContent(
             .fillMaxSize()
             .then(borderModifier)
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surface,
                 shape
             )
@@ -456,7 +462,8 @@ private fun RecentSearchRow(
             .fillMaxWidth()
             .then(borderModifier)
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surface,
                 shape
             )
@@ -468,14 +475,14 @@ private fun RecentSearchRow(
         Icon(
             Icons.Default.History,
             contentDescription = null,
-            tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            tint = if (isFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Dimens.iconSm)
         )
         Text(
             text = query,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
             else MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

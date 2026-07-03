@@ -14,8 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,11 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import java.time.Duration
 import java.time.Instant
 
@@ -107,49 +106,21 @@ fun SaveConflictModal(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            Button(
+            ActionButton(
+                label = "Skip Sync",
                 onClick = onKeepLocal,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(44.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (focusedButton == 0) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        Color.Transparent
-                    },
-                    contentColor = if (focusedButton == 0) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                ),
-                shape = RoundedCornerShape(Dimens.radiusMd)
-            ) {
-                Text("Skip Sync")
-            }
+                focused = focusedButton == 0,
+                modifier = Modifier.weight(1f)
+            )
 
-            Button(
+            ActionButton(
+                label = "Overwrite",
                 onClick = onOverwrite,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(44.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (focusedButton == 1) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        Color.Transparent
-                    },
-                    contentColor = if (focusedButton == 1) {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    }
-                ),
-                shape = RoundedCornerShape(Dimens.radiusMd)
-            ) {
-                Text("Overwrite")
-            }
+                focused = focusedButton == 1,
+                primary = true,
+                accentColor = ColorTokens.Domain.difficulty,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

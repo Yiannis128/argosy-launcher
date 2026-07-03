@@ -59,6 +59,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -89,6 +91,7 @@ import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.util.formatRelativeTime
 
@@ -456,7 +459,7 @@ private fun SocialTabBar(
                     .clickableNoFocus { onTabSelected(tab) }
                     .then(
                         if (isSelected) {
-                            Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                            Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f))
                         } else Modifier
                     )
                     .padding(vertical = 12.dp),
@@ -1461,7 +1464,8 @@ private fun CommunitySearchDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
                         .background(
-                            if (isItemFocused) MaterialTheme.colorScheme.primaryContainer
+                            if (isItemFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(MaterialTheme.colorScheme.surface)
                             else MaterialTheme.colorScheme.surface
                         )
                         .clickableNoFocus(onClick = {
@@ -1485,7 +1489,7 @@ private fun CommunitySearchDialog(
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (isItemFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                             else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -1494,7 +1498,7 @@ private fun CommunitySearchDialog(
                             Text(
                                 text = item.platform,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = if (isItemFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
                                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }

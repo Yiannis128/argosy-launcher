@@ -64,6 +64,8 @@ import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.StatusPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.UpdatesPickerModal
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.util.touchOnly
 import com.nendo.argosy.util.formatPlayTime
@@ -221,7 +223,7 @@ internal fun DualSteamInstallPickerContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp)
@@ -658,7 +660,7 @@ private fun DualEmulatorPickerContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp)
@@ -722,7 +724,7 @@ private fun DualCorePickerContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp)
@@ -785,7 +787,7 @@ private fun DualVariantPickerContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp)
@@ -845,7 +847,7 @@ private fun DualDiscPickerContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp)
@@ -869,8 +871,7 @@ private fun DualDiscPickerContent(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                    .copy(alpha = 0.5f)
+                                if (isSelected) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                                 else Color.Transparent
                             )
                             .then(
@@ -919,8 +920,7 @@ private fun EmulatorPickerItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(
-                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                    .copy(alpha = 0.5f)
+                if (isSelected) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                 else Color.Transparent
             )
             .then(
@@ -983,7 +983,7 @@ private fun DualCollectionModalContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp)
@@ -1008,8 +1008,7 @@ private fun DualCollectionModalContent(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                        .copy(alpha = 0.5f)
+                                    LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                                 else Color.Transparent
                             )
                             .then(
@@ -1049,8 +1048,7 @@ private fun DualCollectionModalContent(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                        .copy(alpha = 0.5f)
+                                    LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                                 else Color.Transparent
                             )
                             .then(
@@ -1214,7 +1212,7 @@ private fun DualSaveNamePrompt(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.5f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
                 .padding(24.dp),

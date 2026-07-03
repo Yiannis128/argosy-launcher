@@ -45,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,6 +63,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
@@ -512,7 +515,7 @@ private fun SizeSelector(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         when {
-                            isSizeFocused -> MaterialTheme.colorScheme.primaryContainer
+                            isSizeFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                             isSelected -> MaterialTheme.colorScheme.secondaryContainer
                             else -> Color.Transparent
                         }
@@ -525,7 +528,7 @@ private fun SizeSelector(
                     text = "${size.pixels}",
                     style = MaterialTheme.typography.labelMedium,
                     color = when {
-                        isSizeFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+                        isSizeFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                         isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
                         else -> MaterialTheme.colorScheme.onSurface
                     }
@@ -838,7 +841,8 @@ private fun GamePickerDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
                         .background(
-                            if (isNoneFocused) MaterialTheme.colorScheme.primaryContainer
+                            if (isNoneFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(MaterialTheme.colorScheme.surface)
                             else MaterialTheme.colorScheme.surface
                         )
                         .clickableNoFocus(onClick = { onSelectItem(0) })
@@ -848,7 +852,7 @@ private fun GamePickerDialog(
                     Text(
                         text = "No game",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isNoneFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                        color = if (isNoneFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -863,7 +867,8 @@ private fun GamePickerDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
                         .background(
-                            if (isItemFocused) MaterialTheme.colorScheme.primaryContainer
+                            if (isItemFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(MaterialTheme.colorScheme.surface)
                             else MaterialTheme.colorScheme.surface
                         )
                         .clickableNoFocus(onClick = { onSelectItem(displayIndex) })
@@ -885,14 +890,14 @@ private fun GamePickerDialog(
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (isItemFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                             else MaterialTheme.colorScheme.onSurface
                         )
                         if (item.platform != null) {
                             Text(
                                 text = item.platform,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = if (isItemFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
                                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }

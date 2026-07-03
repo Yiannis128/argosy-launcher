@@ -54,6 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -75,6 +76,7 @@ import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.parseInlineMarkdown
 import com.nendo.argosy.ui.input.LocalInputDispatcher
@@ -1007,7 +1009,8 @@ private fun CommentInput(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (isCommentInputFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isCommentInputFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surfaceVariant,
                 RoundedCornerShape(8.dp)
             )

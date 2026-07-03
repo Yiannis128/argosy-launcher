@@ -66,7 +66,9 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun FileBrowserScreen(
@@ -380,13 +382,13 @@ private fun VolumeItem(
     }
 
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
 
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -591,19 +593,19 @@ private fun FileItem(
     }
 
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
 
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
 
     val iconTint = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         entry.isDirectory -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }

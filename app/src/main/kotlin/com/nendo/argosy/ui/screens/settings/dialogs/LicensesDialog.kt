@@ -19,7 +19,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -30,6 +29,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 
 private data class LicenseEntry(
@@ -64,7 +64,7 @@ fun LicensesDialog(onDismiss: () -> Unit) {
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(Dimens.radiusXl),
+            shape = RoundedCornerShape(Dimens.radiusPanel),
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -132,9 +132,11 @@ fun LicensesDialog(onDismiss: () -> Unit) {
                         .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Close")
-                    }
+                    ActionButton(
+                        label = "Close",
+                        onClick = onDismiss,
+                        primary = true
+                    )
                 }
             }
         }

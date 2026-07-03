@@ -44,7 +44,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -65,6 +68,7 @@ import com.nendo.argosy.ui.screens.doodle.DoodleEncoder
 import com.nendo.argosy.ui.screens.doodle.DoodlePreview
 import com.nendo.argosy.ui.screens.doodle.GamePickerItem
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
@@ -712,7 +716,8 @@ private fun PostGamePickerDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
                         .background(
-                            if (isNoneFocused) MaterialTheme.colorScheme.primaryContainer
+                            if (isNoneFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(MaterialTheme.colorScheme.surface)
                             else MaterialTheme.colorScheme.surface
                         )
                         .clickableNoFocus(onClick = { onSelectItem(0) })
@@ -722,7 +727,7 @@ private fun PostGamePickerDialog(
                     Text(
                         text = "No game",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isNoneFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                        color = if (isNoneFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -737,7 +742,8 @@ private fun PostGamePickerDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
                         .background(
-                            if (isItemFocused) MaterialTheme.colorScheme.primaryContainer
+                            if (isItemFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(MaterialTheme.colorScheme.surface)
                             else MaterialTheme.colorScheme.surface
                         )
                         .clickableNoFocus(onClick = { onSelectItem(displayIndex) })
@@ -759,14 +765,14 @@ private fun PostGamePickerDialog(
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (isItemFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                             else MaterialTheme.colorScheme.onSurface
                         )
                         if (item.platform != null) {
                             Text(
                                 text = item.platform,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = if (isItemFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
                                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }

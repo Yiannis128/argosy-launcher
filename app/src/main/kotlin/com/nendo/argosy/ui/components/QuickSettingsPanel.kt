@@ -53,8 +53,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.data.preferences.ThemeMode
+import com.nendo.argosy.ui.primitives.ArgosyToggle
+import com.nendo.argosy.ui.primitives.ArgosyTrackSlider
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+
+@Composable
+private fun quickFocusBackground(isFocused: Boolean): Color =
+    if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f) else Color.Transparent
 
 enum class FanMode(val value: Int, val label: String) {
     QUIET(1, "Quiet"),
@@ -370,8 +377,7 @@ private fun QuickSettingItem(
 ) {
     val backgroundColor = when {
         isDisabled -> Color.Transparent
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
-        else -> Color.Transparent
+        else -> quickFocusBackground(isFocused)
     }
 
     val contentColor = when {
@@ -431,8 +437,7 @@ private fun QuickSettingItemTwoLine(
 ) {
     val backgroundColor = when {
         isDisabled -> Color.Transparent
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
-        else -> Color.Transparent
+        else -> quickFocusBackground(isFocused)
     }
 
     val contentColor = when {
@@ -491,11 +496,7 @@ private fun QuickSettingToggle(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
+    val backgroundColor = quickFocusBackground(isFocused)
 
     val contentColor = if (isFocused) {
         MaterialTheme.colorScheme.primary
@@ -529,20 +530,10 @@ private fun QuickSettingToggle(
             color = contentColor,
             modifier = Modifier.weight(1f)
         )
-        val uiScale = com.nendo.argosy.ui.theme.LocalUiScale.current.scale
-        Switch(
+        ArgosyToggle(
             checked = isEnabled,
-            onCheckedChange = null,
-            modifier = Modifier
-                .focusProperties { canFocus = false }
-                .scale(uiScale),
-            interactionSource = remember { MutableInteractionSource() },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            onToggle = { onClick() },
+            focused = isFocused
         )
     }
 }
@@ -557,11 +548,7 @@ private fun FanSpeedSlider(
     val maxSpeed = 35000f
     val percentage = ((speed - minSpeed) / (maxSpeed - minSpeed) * 100).toInt()
 
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
+    val backgroundColor = quickFocusBackground(isFocused)
 
     val shape = RoundedCornerShape(topStart = Dimens.radiusMd, bottomStart = Dimens.radiusMd)
 
@@ -588,17 +575,12 @@ private fun FanSpeedSlider(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        Slider(
+        ArgosyTrackSlider(
             value = speed.toFloat(),
             onValueChange = { onSpeedChange(it.toInt()) },
-            valueRange = minSpeed..maxSpeed,
-            steps = 9,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            modifier = Modifier.height(Dimens.iconMd)
+            minValue = minSpeed,
+            maxValue = maxSpeed,
+            focused = isFocused
         )
     }
 }
@@ -611,11 +593,7 @@ private fun VibrationStrengthSlider(
 ) {
     val percentage = (strength * 100).toInt()
 
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
+    val backgroundColor = quickFocusBackground(isFocused)
 
     val shape = RoundedCornerShape(topStart = Dimens.radiusMd, bottomStart = Dimens.radiusMd)
 
@@ -642,17 +620,10 @@ private fun VibrationStrengthSlider(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        Slider(
+        ArgosyTrackSlider(
             value = strength,
             onValueChange = onStrengthChange,
-            valueRange = 0f..1f,
-            steps = 9,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            modifier = Modifier.height(Dimens.iconMd)
+            focused = isFocused
         )
     }
 }
@@ -666,11 +637,7 @@ private fun SystemVolumeSlider(
 ) {
     val percentage = (volume * 100).toInt()
 
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
+    val backgroundColor = quickFocusBackground(isFocused)
 
     val shape = RoundedCornerShape(topStart = Dimens.radiusMd, bottomStart = Dimens.radiusMd)
 
@@ -707,17 +674,10 @@ private fun SystemVolumeSlider(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        Slider(
+        ArgosyTrackSlider(
             value = volume,
             onValueChange = onVolumeChange,
-            valueRange = 0f..1f,
-            steps = 19,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            modifier = Modifier.height(Dimens.iconMd)
+            focused = isFocused
         )
     }
 }
@@ -731,11 +691,7 @@ private fun ScreenBrightnessSlider(
 ) {
     val percentage = (brightness * 100).toInt()
 
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        Color.Transparent
-    }
+    val backgroundColor = quickFocusBackground(isFocused)
 
     val shape = RoundedCornerShape(topStart = Dimens.radiusMd, bottomStart = Dimens.radiusMd)
 
@@ -772,17 +728,10 @@ private fun ScreenBrightnessSlider(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        Slider(
+        ArgosyTrackSlider(
             value = brightness,
             onValueChange = onBrightnessChange,
-            valueRange = 0f..1f,
-            steps = 19,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            modifier = Modifier.height(Dimens.iconMd)
+            focused = isFocused
         )
     }
 }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,7 +37,9 @@ import com.nendo.argosy.data.netplay.JoinCandidate
 import com.nendo.argosy.data.netplay.JoinVariant
 import com.nendo.argosy.data.netplay.NetplayJoinState
 import com.nendo.argosy.data.netplay.VerifySubState
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun NetplayJoinModal(
@@ -110,11 +112,7 @@ private fun MatchingCoreContent(sub: CoreSubState) {
         is CoreSubState.Downloading -> {
             StatusLine("Downloading core")
             Spacer(Modifier.height(Dimens.spacingSm))
-            LinearProgressIndicator(
-                progress = { sub.pct.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
+            ArgosyProgressBar(progress = sub.pct.coerceIn(0f, 1f))
         }
         is CoreSubState.Ready -> StatusLine("Core ready")
     }
@@ -199,18 +197,19 @@ private fun CandidateRow(
     progress: Float?
 ) {
     val alpha by animateFloatAsState(if (dimmed) 0.4f else 1f, label = "candidateAlpha")
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val containerColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        focusAccent.copy(alpha = 0.15f)
     } else {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
     val titleColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
     val metaColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+        lerp(focusAccent, Color.White, 0.45f).copy(alpha = 0.8f)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -253,11 +252,7 @@ private fun CandidateRow(
         }
         if (progress != null) {
             Spacer(Modifier.height(Dimens.spacingXs))
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
+            ArgosyProgressBar(progress = progress.coerceIn(0f, 1f))
         }
     }
 }
@@ -312,18 +307,19 @@ private fun VariantPicker(sub: VerifySubState.HashMismatchVariants) {
 
 @Composable
 private fun VariantRow(variant: JoinVariant, isFocused: Boolean, isTrying: Boolean) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val containerColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        focusAccent.copy(alpha = 0.15f)
     } else {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
     val titleColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
     val metaColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+        lerp(focusAccent, Color.White, 0.45f).copy(alpha = 0.8f)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }

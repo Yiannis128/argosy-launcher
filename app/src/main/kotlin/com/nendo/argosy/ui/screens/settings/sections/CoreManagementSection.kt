@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nendo.argosy.ui.components.FocusedScroll
@@ -42,6 +43,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 internal sealed class CoreManagementItem(val key: String) {
     val isFocusable: Boolean get() = this is Platform
@@ -169,13 +171,14 @@ private fun PlatformCoreRowItem(
     downloadingCoreId: String?,
     onCoreClick: () -> Unit
 ) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 if (isPlatformFocused) {
-                    MaterialTheme.colorScheme.primaryContainer
+                    focusAccent.copy(alpha = 0.15f)
                 } else {
                     Color.Transparent
                 }
@@ -186,7 +189,7 @@ private fun PlatformCoreRowItem(
             text = platform.platformName,
             style = MaterialTheme.typography.titleSmall,
             color = if (isPlatformFocused) {
-                MaterialTheme.colorScheme.onPrimaryContainer
+                lerp(focusAccent, Color.White, 0.45f)
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
@@ -223,6 +226,7 @@ private fun CoreChip(
     isDownloading: Boolean,
     onClick: () -> Unit
 ) {
+    val focusedContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     val statusColor = when {
         core.isActive -> Color(0xFF4CAF50)
         core.isInstalled -> Color(0xFF2196F3)
@@ -231,7 +235,7 @@ private fun CoreChip(
     }
 
     val textColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> focusedContent
         isPlatformFocused -> statusColor.copy(alpha = 0.8f)
         else -> statusColor.copy(alpha = 0.6f)
     }
@@ -243,12 +247,12 @@ private fun CoreChip(
             onClick = onClick,
             modifier = Modifier.height(buttonHeight),
             contentPadding = PaddingValues(horizontal = Dimens.spacingSm, vertical = Dimens.elevationNone),
-            border = BorderStroke(Dimens.borderThin, MaterialTheme.colorScheme.onPrimaryContainer)
+            border = BorderStroke(Dimens.borderThin, focusedContent)
         ) {
             CoreChipContent(
                 core = core,
                 isDownloading = isDownloading,
-                textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                textColor = focusedContent,
                 statusColor = statusColor
             )
         }

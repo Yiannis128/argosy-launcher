@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +62,7 @@ import com.nendo.argosy.ui.components.friends.FriendCodeModal
 import com.nendo.argosy.ui.components.friends.FriendsOption
 import com.nendo.argosy.ui.components.friends.FriendsOptionsModal
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.navigation.Screen
 
 @Composable
@@ -367,7 +369,7 @@ private fun FriendItem(
     onJoinSession: (Friend) -> Unit
 ) {
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
@@ -435,7 +437,7 @@ private fun FriendItem(
                 text = friend.displayName,
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isFocused) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
+                    lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
@@ -555,7 +557,7 @@ private fun DrawerMenuItem(
     onClick: () -> Unit
 ) {
     val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         isSelected -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         else -> Color.Transparent
     }

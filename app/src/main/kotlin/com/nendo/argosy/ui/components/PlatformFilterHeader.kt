@@ -30,11 +30,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.util.PlatformFilterLogic
 
@@ -175,7 +177,7 @@ fun PlatformFilterHeader(
                             text = { Text(label) },
                             onClick = { onSortModeChange(mode) },
                             modifier = Modifier.background(
-                                if (index == sortMenuIndex) MaterialTheme.colorScheme.primaryContainer
+                                if (index == sortMenuIndex) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                                 else Color.Transparent
                             )
                         )
@@ -242,10 +244,11 @@ private fun HeaderIconButton(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(Dimens.radiusSm))
-            .background(if (isFocused) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+            .background(if (isFocused) focusAccent.copy(alpha = 0.15f) else Color.Transparent)
             .clickableNoFocus(onClick = onClick)
             .padding(Dimens.spacingSm),
         contentAlignment = Alignment.Center
@@ -253,7 +256,7 @@ private fun HeaderIconButton(
         Icon(
             imageVector = icon,
             contentDescription = description,
-            tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            tint = if (isFocused) lerp(focusAccent, Color.White, 0.45f)
                    else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Dimens.iconSm)
         )

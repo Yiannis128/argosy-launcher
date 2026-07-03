@@ -60,7 +60,9 @@ import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import androidx.compose.ui.graphics.compositeOver
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun VirtualBrowserScreen(
@@ -311,7 +313,7 @@ private fun CategoryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     val borderModifier = if (isFocused) {
         Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
     } else Modifier
@@ -324,7 +326,8 @@ private fun CategoryRow(
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.primaryContainer
+                LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }

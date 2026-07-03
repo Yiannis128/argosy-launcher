@@ -4,14 +4,10 @@ import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,12 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.screens.settings.SavePathModalInfo
 import com.nendo.argosy.ui.screens.settings.sections.formatStoragePath
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun SavePathModal(
@@ -97,18 +95,19 @@ private fun SavePathOptionItem(
     onReset: (() -> Unit)? = null,
     enabled: Boolean = true
 ) {
+    val focusContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     val contentColor = when {
         !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> focusContent
         else -> MaterialTheme.colorScheme.onSurface
     }
     val secondaryColor = when {
         !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        isFocused -> focusContent.copy(alpha = 0.7f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val backgroundColor = if (isFocused && enabled) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
@@ -146,7 +145,7 @@ private fun SavePathOptionItem(
                     Text(
                         text = "(custom)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                        color = if (isFocused) focusContent else MaterialTheme.colorScheme.primary
                     )
                 }
                 if (!enabled) {
@@ -163,45 +162,18 @@ private fun SavePathOptionItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (onReset != null) {
-                        Button(
+                        ActionButton(
+                            label = "Reset",
                             onClick = onReset,
-                            modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs),
-                            contentPadding = PaddingValues(horizontal = Dimens.spacingMd, vertical = 0.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (resetFocused) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                                },
-                                contentColor = if (resetFocused) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                }
-                            )
-                        ) {
-                            Text(text = "Reset", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                    Button(
-                        onClick = onClick,
-                        modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs),
-                        contentPadding = PaddingValues(horizontal = Dimens.spacingMd, vertical = 0.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (changeFocused) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                            },
-                            contentColor = if (changeFocused) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            }
+                            focused = resetFocused
                         )
-                    ) {
-                        Text(text = "Change", style = MaterialTheme.typography.labelMedium)
                     }
+                    ActionButton(
+                        label = "Change",
+                        onClick = onClick,
+                        focused = changeFocused,
+                        primary = true
+                    )
                 }
             }
         }
@@ -209,7 +181,7 @@ private fun SavePathOptionItem(
             Text(
                 text = path,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isCustom && isFocused) MaterialTheme.colorScheme.onPrimaryContainer else if (isCustom) MaterialTheme.colorScheme.primary else secondaryColor,
+                color = if (isCustom && isFocused) focusContent else if (isCustom) MaterialTheme.colorScheme.primary else secondaryColor,
                 modifier = Modifier.padding(top = Dimens.spacingXs)
             )
         } else if (enabled) {

@@ -29,11 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 @Composable
@@ -64,7 +67,7 @@ fun RegionPickerPopup(
         Column(
             modifier = Modifier
                 .width(Dimens.modalWidthLg)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg),
@@ -120,13 +123,15 @@ private fun RegionPickerItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 when {
-                    isFocused -> MaterialTheme.colorScheme.primaryContainer
+                    isFocused -> theme.focusAccent.copy(alpha = 0.15f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
                     isSelected -> MaterialTheme.colorScheme.surfaceVariant
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 }
@@ -139,14 +144,14 @@ private fun RegionPickerItem(
         Text(
             text = name,
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f)
                     else MaterialTheme.colorScheme.onSurface
         )
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                tint = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f)
                        else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(Dimens.iconSm)
             )

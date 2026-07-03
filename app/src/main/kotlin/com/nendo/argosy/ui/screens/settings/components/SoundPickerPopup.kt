@@ -28,12 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.SoundPreset
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 @Composable
@@ -73,7 +75,7 @@ fun SoundPickerPopup(
             modifier = Modifier
                 .width(Dimens.modalWidthLg)
                 .heightIn(max = maxModalHeight)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg),
@@ -121,13 +123,14 @@ private fun SoundPickerItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val focusContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 when {
-                    isFocused -> MaterialTheme.colorScheme.primaryContainer
+                    isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                     isSelected -> MaterialTheme.colorScheme.surfaceVariant
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 }
@@ -140,14 +143,14 @@ private fun SoundPickerItem(
         Text(
             text = name,
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) focusContent
                     else MaterialTheme.colorScheme.onSurface
         )
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                tint = if (isFocused) focusContent
                        else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(Dimens.iconSm)
             )

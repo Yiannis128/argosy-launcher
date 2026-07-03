@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +36,8 @@ import com.nendo.argosy.ui.components.SectionFocusedScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.window.Dialog
 import com.nendo.argosy.ui.components.ExpandedChildItem
 import com.nendo.argosy.ui.components.ImageCachePreference
@@ -45,8 +46,11 @@ import com.nendo.argosy.ui.screens.settings.BiosPlatformGroup
 import com.nendo.argosy.ui.screens.settings.DistributeResultItem
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 // --- Item definitions ---
@@ -301,7 +305,7 @@ internal fun DistributeResultModal(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(Dimens.spacingMd)
         ) {
@@ -368,21 +372,12 @@ internal fun DistributeResultModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(Dimens.radiusSm))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickableNoFocus { onDismiss() }
-                    .padding(Dimens.spacingSm),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "OK",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            }
+            ActionButton(
+                label = "OK",
+                onClick = onDismiss,
+                primary = true,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -412,7 +407,7 @@ private fun GpuDriverPromptModal(
         Column(
             modifier = Modifier
                 .width(Dimens.modalWidth)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingMd)
@@ -449,68 +444,40 @@ private fun GpuDriverPromptModal(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                LinearProgressIndicator(
-                    progress = { installProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
+                ArgosyProgressBar(progress = installProgress)
             } else {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
-                    GpuDriverOptionButton(
-                        text = if (driverName != null && driverVersion != null) {
+                    ActionButton(
+                        label = if (driverName != null && driverVersion != null) {
                             "Install Recommended ($driverVersion)"
                         } else {
                             "Install Recommended"
                         },
-                        isSelected = focusIndex == 0,
-                        onClick = onInstallRecommended
+                        onClick = onInstallRecommended,
+                        focused = focusIndex == 0,
+                        primary = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    GpuDriverOptionButton(
-                        text = "Install from File",
-                        isSelected = focusIndex == 1,
-                        onClick = onInstallFromFile
+                    ActionButton(
+                        label = "Install from File",
+                        onClick = onInstallFromFile,
+                        focused = focusIndex == 1,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    GpuDriverOptionButton(
-                        text = "Skip",
-                        isSelected = focusIndex == 2,
-                        onClick = onSkip
+                    ActionButton(
+                        label = "Skip",
+                        onClick = onSkip,
+                        focused = focusIndex == 2,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GpuDriverOptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusSm))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .clickableNoFocus { onClick() }
-            .padding(Dimens.spacingSm),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
@@ -528,12 +495,12 @@ private fun BiosSummaryCard(
     onDistributeAll: () -> Unit
 ) {
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -544,7 +511,7 @@ private fun BiosSummaryCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .background(backgroundColor)
             .padding(Dimens.spacingMd)
     ) {
@@ -595,12 +562,7 @@ private fun BiosSummaryCard(
                 color = contentColor.copy(alpha = 0.7f)
             )
             Spacer(modifier = Modifier.height(Dimens.spacingXs))
-            LinearProgressIndicator(
-                progress = { downloadProgress },
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            )
+            ArgosyProgressBar(progress = downloadProgress)
         }
 
         if (isDistributing) {
@@ -629,69 +591,36 @@ private fun BiosSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
                 val downloadSelected = isFocused && actionIndex == 0
-                val downloadBgColor = when {
-                    downloadSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-                val downloadTextColor = when {
-                    downloadSelected -> MaterialTheme.colorScheme.onPrimary
-                    else -> contentColor
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(Dimens.radiusSm))
-                        .background(downloadBgColor)
-                        .clickableNoFocus { onDownloadAll() }
-                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
-                    contentAlignment = Alignment.Center
+                ActionButton(
+                    onClick = onDownloadAll,
+                    focused = downloadSelected,
+                    primary = true,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.CloudDownload,
-                            contentDescription = null,
-                            tint = downloadTextColor,
-                            modifier = Modifier.size(Dimens.spacingMd)
-                        )
-                        Spacer(modifier = Modifier.width(Dimens.spacingXs))
-                        Text(
-                            text = if (missingFiles > 0) "Download $missingFiles" else "Redownload",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = downloadTextColor
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.CloudDownload,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(Dimens.spacingMd)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                    Text(
+                        text = if (missingFiles > 0) "Download $missingFiles" else "Redownload",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        maxLines = 1
+                    )
                 }
 
                 val distributeSelected = isFocused && actionIndex == 1
                 val distributeEnabled = downloadedFiles > 0
-                val distributeBgColor = when {
-                    distributeSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-                val distributeTextColor = when {
-                    distributeSelected -> MaterialTheme.colorScheme.onPrimary
-                    !distributeEnabled -> contentColor.copy(alpha = 0.5f)
-                    else -> contentColor
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(Dimens.radiusSm))
-                        .background(distributeBgColor)
-                        .clickableNoFocus(enabled = distributeEnabled) { onDistributeAll() }
-                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Distribute",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = distributeTextColor
-                    )
-                }
+                ActionButton(
+                    label = "Distribute",
+                    onClick = onDistributeAll,
+                    focused = distributeSelected,
+                    enabled = distributeEnabled,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -710,12 +639,13 @@ private fun BiosPlatformItem(
     val downloadSubFocused = isFocused && subFocusIndex == 1
 
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+            .compositeOver(MaterialTheme.colorScheme.surface)
     } else {
         MaterialTheme.colorScheme.surface
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -724,7 +654,7 @@ private fun BiosPlatformItem(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Dimens.settingsItemMinHeight)
-            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .background(backgroundColor)
             .clickableNoFocus { onClick() }
             .padding(Dimens.spacingMd),

@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +37,8 @@ import com.nendo.argosy.libretro.touch.TouchBackdropCache
 import com.nendo.argosy.libretro.touch.TouchLayoutEditor
 import com.nendo.argosy.libretro.touch.TouchLayoutRegistry
 import com.nendo.argosy.data.repository.TouchLayoutRepository
+import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.EnumValueControl
 import kotlinx.coroutines.launch
 
 @Composable
@@ -109,33 +109,31 @@ fun TouchLayoutEditorModal(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(onClick = {
-                    platformIndex = (platformIndex - 1 + supported.size) % supported.size
-                }) { Text("◀") }
-                Text(
-                    text = platformSlug,
-                    color = Color.White,
-                    modifier = Modifier.width(140.dp)
+                EnumValueControl(
+                    value = platformSlug,
+                    focused = false,
+                    onPrev = { platformIndex = (platformIndex - 1 + supported.size) % supported.size },
+                    onNext = { platformIndex = (platformIndex + 1) % supported.size },
+                    onOpen = {},
+                    modifier = Modifier.width(180.dp)
                 )
-                OutlinedButton(onClick = {
-                    platformIndex = (platformIndex + 1) % supported.size
-                }) { Text("▶") }
 
                 Spacer(modifier = Modifier.padding(8.dp))
 
-                OutlinedButton(onClick = {
-                    orientation = if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-                        Configuration.ORIENTATION_LANDSCAPE
-                    } else {
-                        Configuration.ORIENTATION_PORTRAIT
+                ActionButton(
+                    label = if (orientation == Configuration.ORIENTATION_PORTRAIT) "Portrait" else "Landscape",
+                    onClick = {
+                        orientation = if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                            Configuration.ORIENTATION_LANDSCAPE
+                        } else {
+                            Configuration.ORIENTATION_PORTRAIT
+                        }
                     }
-                }) {
-                    Text(if (orientation == Configuration.ORIENTATION_PORTRAIT) "Portrait" else "Landscape")
-                }
+                )
 
                 Spacer(modifier = Modifier.padding(8.dp))
 
-                Button(onClick = onDismiss) { Text("Close") }
+                ActionButton(label = "Close", onClick = onDismiss, primary = true)
             }
         }
 

@@ -75,11 +75,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.GridDensity
@@ -1223,7 +1226,8 @@ private fun FilterMenuOverlay(
                                 } else Modifier
                             )
                             .background(
-                                if (isCurrent) MaterialTheme.colorScheme.primaryContainer
+                                if (isCurrent) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                    .compositeOver(MaterialTheme.colorScheme.surface)
                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             )
                             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
@@ -1231,7 +1235,7 @@ private fun FilterMenuOverlay(
                         Text(
                             text = category.label,
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (isCurrent) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                                     else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -1301,7 +1305,7 @@ private fun FilterMenuOverlay(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(Dimens.radiusSm))
                                 .then(
-                                    if (isFocused) Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                                    if (isFocused) Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f))
                                     else Modifier
                                 )
                                 .clickableNoFocus { onOptionSelect(index) }
@@ -1312,14 +1316,14 @@ private fun FilterMenuOverlay(
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = null,
-                                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = if (isFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                                        else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(Dimens.iconSm)
                             )
                             Text(
                                 text = recentQuery,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                                color = if (isFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                                         else MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -1380,7 +1384,8 @@ private fun FilterOptionItem(
             .clickableNoFocus(onClick = onClick)
             .background(
                 when {
-                    isFocused -> MaterialTheme.colorScheme.primaryContainer
+                    isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
                     isSelected -> MaterialTheme.colorScheme.surfaceVariant
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 }
@@ -1392,14 +1397,14 @@ private fun FilterOptionItem(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                     else MaterialTheme.colorScheme.onSurface
         )
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                tint = if (isFocused) lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                        else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(Dimens.iconSm)
             )
@@ -1531,12 +1536,12 @@ private fun QuickMenuItem(
     val contentColor = when {
         isDangerous && isFocused -> MaterialTheme.colorScheme.onErrorContainer
         isDangerous -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = when {
         isDangerous && isFocused -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 

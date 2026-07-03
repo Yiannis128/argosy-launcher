@@ -55,7 +55,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -65,7 +64,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -203,6 +206,7 @@ private fun TabHeader(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val focusAccent = LocalArgosyTheme.current.focusAccent
         availableTabs.forEach { tab ->
             val isSelected = tab == currentTab
             Box(
@@ -210,7 +214,7 @@ private fun TabHeader(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer
+                            focusAccent.copy(alpha = 0.15f)
                         } else {
                             Color.Transparent
                         }
@@ -223,7 +227,7 @@ private fun TabHeader(
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
+                        lerp(focusAccent, Color.White, 0.45f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
@@ -263,11 +267,7 @@ private fun SavesTabContent(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (isSyncing) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                )
+                ArgosyProgressBar(progress = null, style = ProgressBarStyle.Working)
             }
             Row(
                 modifier = Modifier
@@ -317,10 +317,10 @@ private fun SavesTabContent(
                         color = Color.White
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth(0.5f)
-                            .height(4.dp)
+                    ArgosyProgressBar(
+                        progress = null,
+                        style = ProgressBarStyle.Working,
+                        modifier = Modifier.fillMaxWidth(0.5f)
                     )
                 }
             }
@@ -788,13 +788,9 @@ private fun OptionsTabContent(
             }
             val progressVisual: (@Composable () -> Unit)? = if (dlState == "DOWNLOADING" || dlState == "EXTRACTING") {
                 {
-                    LinearProgressIndicator(
-                        progress = { downloadProgress ?: 0f },
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                    ArgosyProgressBar(
+                        progress = downloadProgress ?: 0f,
+                        modifier = Modifier.width(80.dp)
                     )
                 }
             } else null
@@ -1034,8 +1030,7 @@ private fun OptionItem(
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (isSelected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                        .copy(alpha = 0.5f)
+                    LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                 } else {
                     Color.Transparent
                 }

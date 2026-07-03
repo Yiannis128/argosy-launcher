@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.FocusedScroll
@@ -36,7 +36,9 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.screens.settings.DriverDownloadState
 import com.nendo.argosy.ui.screens.settings.DriverGroupUi
 import com.nendo.argosy.ui.screens.settings.DriverReleaseUi
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
@@ -67,7 +69,7 @@ fun DriverVersionPickerModal(
         Column(
             modifier = Modifier
                 .width(Dimens.modalWidthLg)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg),
@@ -143,12 +145,13 @@ private fun DriverReleaseRow(
     onClick: () -> Unit
 ) {
     val displayName = release.title.ifBlank { release.tagName }
+    val focusContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
             .clickableNoFocus(onClick = onClick)
@@ -159,7 +162,7 @@ private fun DriverReleaseRow(
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = "Downloaded",
-                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                tint = if (isFocused) focusContent
                        else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(Dimens.iconSm)
             )
@@ -170,7 +173,7 @@ private fun DriverReleaseRow(
                 Text(
                     text = displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                    color = if (isFocused) focusContent
                             else MaterialTheme.colorScheme.onSurface
                 )
                 if (release.isLatestStable) {
@@ -191,7 +194,7 @@ private fun DriverReleaseRow(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                color = if (isFocused) focusContent.copy(alpha = 0.7f)
                         else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -243,12 +246,7 @@ private fun DownloadStatusBlock(download: DriverDownloadState) {
                 val progress = if (download.total > 0) {
                     download.downloaded.toFloat() / download.total
                 } else 0f
-                LinearProgressIndicator(
-                    progress = { progress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Dimens.radiusSm)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                ArgosyProgressBar(progress = progress.coerceIn(0f, 1f))
                 Text(
                     text = "${formatBytes(download.downloaded)} / ${formatBytes(download.total)}",
                     style = MaterialTheme.typography.bodySmall,

@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 enum class StartMenuItem {
     SETTINGS,
@@ -112,7 +114,7 @@ private fun StartMenuCard(
     Column(
         modifier = modifier
             .width(400.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Dimens.radiusPanel))
             .background(MaterialTheme.colorScheme.surface)
     ) {
         // Header
@@ -207,7 +209,7 @@ private fun StartMenuItemRow(
             .fillMaxWidth()
             .then(
                 if (isSelected) {
-                    Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                    Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f))
                 } else Modifier
             )
             .clickableNoFocus(onClick = onClick)

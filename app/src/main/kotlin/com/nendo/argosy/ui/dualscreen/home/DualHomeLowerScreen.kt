@@ -63,6 +63,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,7 +78,9 @@ import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.AlphabetSidebar
 import com.nendo.argosy.ui.components.GameCard
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.screens.home.HomeGameUi
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.util.touchOnly
 import kotlin.math.abs
@@ -185,16 +188,18 @@ fun DualHomeLowerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onCollectionsClick) {
+                ActionButton(onClick = onCollectionsClick) {
                     Icon(
                         Icons.Default.Folder,
                         contentDescription = null,
+                        tint = LocalArgosyTheme.current.textPrimary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Collections",
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
+                        color = LocalArgosyTheme.current.textPrimary
                     )
                 }
                 IconButton(onClick = onLibraryToggle) {
@@ -374,7 +379,8 @@ private fun DualCollectionRow(
                 if (isSelected) {
                     Modifier
                         .background(
-                            MaterialTheme.colorScheme.primaryContainer,
+                            LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(MaterialTheme.colorScheme.surface),
                             RoundedCornerShape(8.dp)
                         )
                         .border(
@@ -823,7 +829,8 @@ fun DualFilterOverlay(
                                 if (index == focusedIndex) {
                                     Modifier
                                         .background(
-                                            MaterialTheme.colorScheme.primaryContainer,
+                                            LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                                                .compositeOver(MaterialTheme.colorScheme.surface),
                                             RoundedCornerShape(6.dp)
                                         )
                                         .border(

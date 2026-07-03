@@ -35,14 +35,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -51,6 +52,7 @@ import com.nendo.argosy.ui.screens.settings.SocialAuthStatus
 import com.nendo.argosy.ui.screens.settings.SocialState
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 internal data class SocialLayoutState(
     val isConnected: Boolean
@@ -325,10 +327,11 @@ private fun NotLinkedContent(
 
         Spacer(modifier = Modifier.height(Dimens.spacingLg))
 
-        FocusableButton(
-            text = "Link Account",
-            isFocused = isFocused,
-            onClick = onStartAuth
+        ActionButton(
+            label = "Link Account",
+            onClick = onStartAuth,
+            focused = isFocused,
+            primary = true
         )
     }
 }
@@ -421,10 +424,10 @@ private fun AwaitingAuthContent(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FocusableButton(
-                text = "Cancel",
-                isFocused = isFocused,
-                onClick = onCancel
+            ActionButton(
+                label = "Cancel",
+                onClick = onCancel,
+                focused = isFocused
             )
         }
     }
@@ -461,47 +464,11 @@ private fun ErrorContent(
 
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-        FocusableButton(
-            text = "Try Again",
-            isFocused = isFocused,
-            onClick = onRetry
-        )
-    }
-}
-
-@Composable
-private fun FocusableButton(
-    text: String,
-    isFocused: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val textColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(Dimens.radiusMd))
-            .background(backgroundColor)
-            .clickable(
-                onClick = onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            )
-            .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = textColor
+        ActionButton(
+            label = "Try Again",
+            onClick = onRetry,
+            focused = isFocused,
+            primary = true
         )
     }
 }
@@ -586,12 +553,13 @@ private fun AccountInfoCard(
     isFocused: Boolean
 ) {
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+            .compositeOver(MaterialTheme.colorScheme.surface)
     } else {
         MaterialTheme.colorScheme.surface
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -607,7 +575,7 @@ private fun AccountInfoCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .background(backgroundColor)
             .padding(Dimens.spacingMd),
         verticalAlignment = Alignment.CenterVertically

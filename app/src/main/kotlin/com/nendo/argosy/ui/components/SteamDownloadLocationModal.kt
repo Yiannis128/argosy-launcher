@@ -13,8 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 data class SteamDownloadLocationPrompt(
@@ -74,11 +76,12 @@ private fun SteamLocationRow(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
-    val contentColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+    val focusAccent = LocalArgosyTheme.current.focusAccent
+    val contentColor = if (isFocused) lerp(focusAccent, Color.White, 0.45f)
         else MaterialTheme.colorScheme.onSurface
-    val subtitleColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+    val subtitleColor = if (isFocused) lerp(focusAccent, Color.White, 0.45f).copy(alpha = 0.8f)
         else MaterialTheme.colorScheme.onSurfaceVariant
-    val background = if (isFocused) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+    val background = if (isFocused) focusAccent.copy(alpha = 0.15f) else Color.Transparent
 
     Column(
         modifier = Modifier

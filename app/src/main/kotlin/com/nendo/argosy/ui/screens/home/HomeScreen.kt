@@ -92,7 +92,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -1631,12 +1633,12 @@ private fun MenuOption(
     val contentColor = when {
         isDangerous && isFocused -> MaterialTheme.colorScheme.onErrorContainer
         isDangerous -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = when {
         isDangerous && isFocused -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 

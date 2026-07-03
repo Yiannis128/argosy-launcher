@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -50,6 +51,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun SearchScreen(
@@ -226,13 +228,14 @@ private fun SearchResultItem(
             .fillMaxWidth()
             .then(
                 if (isFocused) {
-                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimens.radiusLg))
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimens.radiusControl))
                 } else Modifier
             )
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surface,
-                RoundedCornerShape(Dimens.radiusLg)
+                RoundedCornerShape(Dimens.radiusControl)
             )
             .padding(Dimens.radiusLg),
         verticalAlignment = Alignment.CenterVertically

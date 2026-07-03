@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.FocusedScroll
@@ -37,6 +38,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.screens.gamedetail.UpdateFileType
 import com.nendo.argosy.ui.screens.gamedetail.UpdateFileUi
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 @Composable
@@ -70,7 +72,7 @@ fun UpdatesPickerModal(
         Column(
             modifier = Modifier
                 .width(Dimens.modalWidthXl)
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Dimens.radiusLg))
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Dimens.radiusPanel))
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg)
         ) {
@@ -126,26 +128,27 @@ private fun UpdateFileItem(
     onClick: () -> Unit
 ) {
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
 
     val dimmed = !file.isDownloaded
+    val focusedContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     val contentColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> focusedContent
         dimmed -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val secondaryColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        isFocused -> focusedContent.copy(alpha = 0.7f)
         dimmed -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val icon = if (file.isDownloaded) Icons.Outlined.FolderZip else Icons.Outlined.CloudDownload
     val iconTint = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> focusedContent
         file.isDownloaded -> MaterialTheme.colorScheme.onSurface
         else -> secondaryColor
     }

@@ -16,9 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun OptionItem(
@@ -37,13 +39,13 @@ fun OptionItem(
         !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
         isDangerous && isFocused -> MaterialTheme.colorScheme.onErrorContainer
         isDangerous -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = when {
         !isEnabled -> Color.Transparent
         isDangerous && isFocused -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 

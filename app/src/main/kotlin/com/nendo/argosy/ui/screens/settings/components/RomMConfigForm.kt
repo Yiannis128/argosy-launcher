@@ -41,6 +41,7 @@ import com.nendo.argosy.ui.screens.settings.RomMAuthMethod
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
@@ -120,7 +121,7 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 }
                 .then(
                     if (uiState.focusedIndex == 0)
-                        Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                        Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                     else Modifier
                 )
         )
@@ -183,7 +184,7 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         .focusRequester(usernameFocusRequester)
                         .then(
                             if (uiState.focusedIndex == 2)
-                                Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                                Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                             else Modifier
                         )
                 )
@@ -201,7 +202,7 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         .focusRequester(passwordFocusRequester)
                         .then(
                             if (uiState.focusedIndex == 3)
-                                Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                                Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                             else Modifier
                         )
                 )

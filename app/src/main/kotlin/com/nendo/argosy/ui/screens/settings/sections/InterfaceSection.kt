@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.preferences.ThemeMode
@@ -38,6 +40,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 internal data class InterfaceLayoutState(
     val display: DisplayState,
@@ -457,12 +460,14 @@ private fun SoundCustomizationItem(
         .split(" ")
         .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 
+    val focusAccent = LocalArgosyTheme.current.focusAccent
+    val focusedContent = lerp(focusAccent, Color.White, 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) focusAccent.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
             .clickableNoFocus(onClick = onClick)
@@ -473,13 +478,13 @@ private fun SoundCustomizationItem(
         Text(
             text = displayName,
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) focusedContent
                     else MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = displayValue,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            color = if (isFocused) focusedContent.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
@@ -514,12 +519,14 @@ private fun BackgroundMusicFileItem(
 ) {
     val displayValue = filePath?.let { truncatePathMiddle(it) } ?: "None selected"
 
+    val focusAccent = LocalArgosyTheme.current.focusAccent
+    val focusedContent = lerp(focusAccent, Color.White, 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) focusAccent.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
             .clickableNoFocus(onClick = onClick)
@@ -530,13 +537,13 @@ private fun BackgroundMusicFileItem(
         Text(
             text = "Music File(s)",
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) focusedContent
                     else MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = displayValue,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            color = if (isFocused) focusedContent.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

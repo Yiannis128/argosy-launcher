@@ -38,12 +38,9 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -56,13 +53,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.util.formatRelativeTimeShort
 
@@ -318,36 +318,36 @@ private fun BlockedSyncContent(
             modifier = Modifier.fillMaxWidth(0.8f)
         ) {
             if (isPermissionIssue && onGrantPermission != null) {
-                Button(
+                ActionButton(
+                    label = "Grant Permission",
                     onClick = onGrantPermission,
+                    primary = true,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Grant Permission")
-                }
+                )
             }
 
             if ((isSavePathNotFound || (isAccessDenied && onOpenSettings != null)) && onOpenSettings != null) {
-                Button(
+                ActionButton(
+                    label = "Configure Save Path",
                     onClick = onOpenSettings,
+                    primary = true,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Configure Save Path")
-                }
+                )
             } else if (onDisableSync != null && !isSavePathNotFound) {
-                OutlinedButton(
+                ActionButton(
+                    label = "Disable Sync",
                     onClick = onDisableSync,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Disable Sync")
-                }
+                )
             }
         }
 
         if (onSkip != null) {
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
-            TextButton(onClick = onSkip) {
-                Text("Skip for Now")
-            }
+            ActionButton(
+                label = "Skip for Now",
+                onClick = onSkip
+            )
         }
     }
 }
@@ -630,18 +630,19 @@ private fun ConflictOption(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
     val subtitleColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        lerp(focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }

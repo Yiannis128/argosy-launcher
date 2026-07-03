@@ -45,9 +45,11 @@ import com.nendo.argosy.ui.screens.settings.components.VariantPickerModal
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.NetplaySupportLevel
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 
 // -- Item definitions --
 
@@ -575,15 +577,16 @@ fun PlatformDetailSection(
                 )
                 Spacer(modifier = Modifier.height(Dimens.spacingLg))
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)) {
-                    androidx.compose.material3.OutlinedButton(
+                    ActionButton(
+                        label = "Cancel",
                         onClick = { viewModel.dismissRemoveConfirm() }
-                    ) { Text("Cancel") }
-                    androidx.compose.material3.Button(
+                    )
+                    ActionButton(
+                        label = "Delete",
                         onClick = { viewModel.confirmRemoveLocalFiles(config.platform.id) },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) { Text("Delete") }
+                        primary = true,
+                        accentColor = ColorTokens.Domain.difficulty
+                    )
                 }
             }
         }

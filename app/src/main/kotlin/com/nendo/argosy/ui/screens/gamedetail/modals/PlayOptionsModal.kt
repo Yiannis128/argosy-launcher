@@ -23,11 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 sealed class PlayOptionAction {
@@ -145,17 +147,17 @@ private fun PlayOptionRow(
     val disabledAlpha = 0.38f
     val contentColor = when {
         !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val subtextColor = when {
         !isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = disabledAlpha)
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val backgroundColor = when {
         !isEnabled -> Color.Transparent
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
     val effectiveIconTint = when {

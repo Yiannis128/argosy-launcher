@@ -20,8 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
@@ -33,17 +37,18 @@ fun PermissionCard(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val shape = RoundedCornerShape(Dimens.radiusControl)
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface)
         else -> MaterialTheme.colorScheme.surface
     }
     val contentColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val secondaryColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        isFocused -> lerp(focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val leadingIcon = if (isGranted) Icons.Default.CheckCircle else icon

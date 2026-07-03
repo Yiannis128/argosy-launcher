@@ -63,7 +63,7 @@ fun Modal(
                 )
                 .background(
                     MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
+                    RoundedCornerShape(Dimens.radiusPanel)
                 )
                 .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
                 .padding(Dimens.spacingLg)
@@ -123,7 +123,7 @@ fun CenteredModal(
                 .width(modalWidth)
                 .background(
                     MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
+                    RoundedCornerShape(Dimens.radiusPanel)
                 )
                 .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
                 .padding(Dimens.spacingLg),
@@ -173,7 +173,7 @@ fun NestedModal(
                 .width(modalWidth)
                 .background(
                     MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
+                    RoundedCornerShape(Dimens.radiusPanel)
                 )
                 .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
                 .padding(Dimens.spacingLg),

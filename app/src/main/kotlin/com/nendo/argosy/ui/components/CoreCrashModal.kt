@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,9 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 data class CoreCrashPrompt(
@@ -78,10 +80,7 @@ fun CoreCrashModal(
                 }
             )
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
-            LinearProgressIndicator(
-                progress = { downloading.fraction },
-                modifier = Modifier.fillMaxWidth()
-            )
+            ArgosyProgressBar(progress = downloading.fraction)
             return@Modal
         }
 
@@ -118,7 +117,7 @@ private fun CoreCrashOptionRow(
             .height(44.dp)
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
-                if (focused) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                if (focused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f) else Color.Transparent
             )
             .clickableNoFocus { onClick() }
             .padding(horizontal = Dimens.spacingMd),
@@ -129,7 +128,7 @@ private fun CoreCrashOptionRow(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
             color = if (focused) {
-                MaterialTheme.colorScheme.onPrimaryContainer
+                lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
             } else {
                 MaterialTheme.colorScheme.onSurface
             }

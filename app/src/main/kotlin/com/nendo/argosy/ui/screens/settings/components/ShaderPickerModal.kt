@@ -27,12 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.libretro.shader.ShaderRegistry
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
@@ -101,7 +103,7 @@ fun ShaderPickerModal(
             modifier = Modifier
                 .width(Dimens.modalWidthLg)
                 .heightIn(max = maxModalHeight)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg),
@@ -170,13 +172,14 @@ private fun ShaderPickerEntry(
     isDownloading: Boolean,
     onClick: () -> Unit
 ) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val bgColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
     val textColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }

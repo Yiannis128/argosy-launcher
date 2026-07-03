@@ -71,7 +71,9 @@ import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.blur
@@ -302,7 +304,7 @@ fun AppsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    shape = RoundedCornerShape(Dimens.radiusLg),
+                    shape = RoundedCornerShape(Dimens.radiusPanel),
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = Dimens.elevationLg,
                     modifier = Modifier.clickableNoFocus(enabled = false) {}
@@ -378,20 +380,20 @@ private fun ContextMenuItem(
 
     val backgroundColor = when {
         isFocused && isDangerous -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 
     val contentColor = when {
         isFocused && isDangerous -> MaterialTheme.colorScheme.onErrorContainer
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         isDangerous -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
 
     val iconColor = when {
         isFocused && isDangerous -> MaterialTheme.colorScheme.onErrorContainer
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         isDangerous -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
