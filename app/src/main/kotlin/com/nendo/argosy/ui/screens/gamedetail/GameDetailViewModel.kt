@@ -187,6 +187,11 @@ class GameDetailViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            gameLaunchDelegate.variantPickerState.collect { pickerState ->
+                _uiState.update { it.copy(launchVariantPickerState = pickerState) }
+            }
+        }
+        viewModelScope.launch {
             collectionModalDelegate.state.collect { modalState ->
                 _uiState.update {
                     it.copy(
@@ -486,7 +491,7 @@ class GameDetailViewModel @Inject constructor(
             val (updateFilesUi, dlcFilesUi) = loadUpdateAndDlcFiles(gameId, game.platformSlug, game.localPath)
 
             variantScanner.scanForVariants(game)
-            val hasVariants = gameFileDao.getVariantsForGame(gameId).isNotEmpty()
+            val hasVariants = variantResolver.getVariantOptions(game) != null
 
             val downloadSizeBytes = when {
                 game.isMultiDisc -> gameDiscDao.getTotalFileSize(gameId)
@@ -1276,6 +1281,12 @@ class GameDetailViewModel @Inject constructor(
     fun dismissMemcardPicker() = gameLaunchDelegate.dismissMemcardPicker()
     fun setMemcardPickerFocusIndex(index: Int) {
         _uiState.update { it.copy(memcardPickerFocusIndex = index) }
+    }
+
+    fun selectLaunchVariant(variantFileId: Long?) = gameLaunchDelegate.selectVariant(viewModelScope, variantFileId)
+    fun dismissLaunchVariantPicker() = gameLaunchDelegate.dismissVariantPicker()
+    fun setLaunchVariantPickerFocusIndex(index: Int) {
+        _uiState.update { it.copy(launchVariantPickerFocusIndex = index) }
     }
     fun navigateDiscPicker(direction: Int) = pickerModalDelegate.moveDiscPickerFocus(direction)
     fun selectFocusedDisc() = pickerModalDelegate.confirmDiscSelection()

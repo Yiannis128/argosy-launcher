@@ -143,7 +143,11 @@ fun GameDetailScreen(
         val pending = pendingLaunch ?: return@LaunchedEffect
         if (pending.gameId == gameId && uiState.game?.id == gameId) {
             argosyViewModel.consumePendingLaunch()
-            viewModel.playGame(discId = pending.discId)
+            if (pending.discId != null) {
+                viewModel.playGame(discId = pending.discId)
+            } else {
+                viewModel.primaryAction()
+            }
         }
     }
 
@@ -359,6 +363,32 @@ fun GameDetailScreen(
     DisposableEffect(showMemcardPicker) {
         onDispose {
             if (showMemcardPicker) {
+                inputDispatcher.popModal()
+            }
+        }
+    }
+
+    val launchVariantPickerInputHandler = remember(viewModel) {
+        com.nendo.argosy.ui.input.VariantPickerInputHandler(
+            getVariants = { uiState.launchVariantPickerState?.variants ?: emptyList() },
+            getFocusIndex = { uiState.launchVariantPickerFocusIndex },
+            onFocusChange = { viewModel.setLaunchVariantPickerFocusIndex(it) },
+            onSelect = { viewModel.selectLaunchVariant(it) },
+            onDismiss = { viewModel.dismissLaunchVariantPicker() }
+        )
+    }
+
+    val showLaunchVariantPicker = uiState.launchVariantPickerState != null
+    LaunchedEffect(showLaunchVariantPicker) {
+        if (showLaunchVariantPicker) {
+            viewModel.setLaunchVariantPickerFocusIndex(0)
+            inputDispatcher.pushModal(launchVariantPickerInputHandler)
+        }
+    }
+
+    DisposableEffect(showLaunchVariantPicker) {
+        onDispose {
+            if (showLaunchVariantPicker) {
                 inputDispatcher.popModal()
             }
         }
@@ -888,6 +918,15 @@ private fun GameDetailModals(
             selectedCardPath = null,
             onSelectCard = viewModel::selectMemcard,
             onDismiss = viewModel::dismissMemcardPicker
+        )
+    }
+
+    uiState.launchVariantPickerState?.let { pickerState ->
+        com.nendo.argosy.ui.screens.gamedetail.modals.VariantPickerModal(
+            variants = pickerState.variants,
+            focusIndex = uiState.launchVariantPickerFocusIndex,
+            onSelectVariant = viewModel::selectLaunchVariant,
+            onDismiss = viewModel::dismissLaunchVariantPicker
         )
     }
 

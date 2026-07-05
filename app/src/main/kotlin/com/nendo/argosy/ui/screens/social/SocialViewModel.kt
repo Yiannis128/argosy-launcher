@@ -178,7 +178,7 @@ class SocialViewModel @Inject constructor(
                 gameRepository.getByIgdbId(igdbId)?.id
                     ?: return@launch _launchEvents.emit(SocialLaunchEvent.LaunchError("Local game not found"))
             }
-            when (val result = launchGameUseCase(gameId = gameId)) {
+            when (val result = launchGameUseCase(gameId = gameId, allowVariantPrompt = false)) {
                 is LaunchResult.Success -> {
                     val decorated = Intent(result.intent).apply {
                         putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_SESSION_ID, session.sessionId)

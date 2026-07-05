@@ -902,7 +902,7 @@ class ArgosyViewModel @Inject constructor(
         val gameId = coreCrashController.prompt.value?.gameId ?: return
         coreCrashController.dismiss()
         viewModelScope.launch {
-            (launchGameUseCase(gameId = gameId) as? LaunchResult.Success)?.let {
+            (launchGameUseCase(gameId = gameId, allowVariantPrompt = false) as? LaunchResult.Success)?.let {
                 _coreCrashLaunch.tryEmit(it.intent)
             }
         }
@@ -980,7 +980,7 @@ class ArgosyViewModel @Inject constructor(
                     return@launch
                 }
             }
-            when (val result = launchGameUseCase(gameId = gameId)) {
+            when (val result = launchGameUseCase(gameId = gameId, allowVariantPrompt = false)) {
                 is LaunchResult.Success -> {
                     val decorated = android.content.Intent(result.intent).apply {
                         putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_SESSION_ID, session.sessionId)
@@ -1061,7 +1061,7 @@ class ArgosyViewModel @Inject constructor(
                 )
                 return@launch
             }
-            when (val result = launchGameUseCase(gameId = game.id)) {
+            when (val result = launchGameUseCase(gameId = game.id, allowVariantPrompt = false)) {
                 is LaunchResult.Success -> {
                     val decorated = android.content.Intent(result.intent).apply {
                         putExtra(LibretroActivity.EXTRA_NETPLAY_JOIN_SESSION_ID, invite.sessionId)

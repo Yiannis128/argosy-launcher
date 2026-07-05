@@ -133,6 +133,7 @@ class GameLaunchDelegate @Inject constructor(
     private val _variantPickerState = MutableStateFlow<VariantPickerState?>(null)
     val variantPickerState: StateFlow<VariantPickerState?> = _variantPickerState.asStateFlow()
 
+
     private val _memcardPickerState = MutableStateFlow<MemcardPickerState?>(null)
     val memcardPickerState: StateFlow<MemcardPickerState?> = _memcardPickerState.asStateFlow()
 
@@ -162,6 +163,7 @@ class GameLaunchDelegate @Inject constructor(
         channelName: String? = null,
         skipPreLaunchSync: Boolean = false,
         overrideLaunchMode: LaunchMode? = null,
+        allowVariantPrompt: Boolean = true,
         onLaunch: (Intent) -> Unit,
         onLaunchFailed: () -> Unit = {}
     ) {
@@ -208,8 +210,8 @@ class GameLaunchDelegate @Inject constructor(
                 }
 
                 if (canResume) {
-                    val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId, prefetchedGame = game)
-                    dispatchPrimaryLaunchResult(result, channelName, launchMode = overrideLaunchMode, onLaunch, onLaunchFailed)
+                    val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId, allowVariantPrompt = false, prefetchedGame = game)
+                    dispatchPrimaryLaunchResult(result, channelName, discId, launchMode = overrideLaunchMode, onLaunch, onLaunchFailed)
                     return@launch
                 }
 
@@ -351,8 +353,8 @@ class GameLaunchDelegate @Inject constructor(
                     else -> null
                 }
 
-                val result = launchGameUseCase(gameId, discId, variantFileId = resolvedVariantId, prefetchedGame = game)
-                dispatchPrimaryLaunchResult(result, channelName, launchMode, onLaunch, onLaunchFailed)
+                val result = launchGameUseCase(gameId, discId, variantFileId = resolvedVariantId, allowVariantPrompt = allowVariantPrompt, prefetchedGame = game)
+                dispatchPrimaryLaunchResult(result, channelName, discId, launchMode, onLaunch, onLaunchFailed)
             } finally {
                 _syncOverlayState.value = null
                 launchInFlight.set(false)
@@ -360,9 +362,10 @@ class GameLaunchDelegate @Inject constructor(
         }
     }
 
-    private fun dispatchPrimaryLaunchResult(
+    private suspend fun dispatchPrimaryLaunchResult(
         result: LaunchResult,
         channelName: String?,
+        discId: Long?,
         launchMode: LaunchMode?,
         onLaunch: (Intent) -> Unit,
         onLaunchFailed: () -> Unit
@@ -382,13 +385,21 @@ class GameLaunchDelegate @Inject constructor(
                 )
             }
             is LaunchResult.SelectVariant -> {
-                _variantPickerState.value = VariantPickerState(
-                    gameId = result.gameId,
-                    variants = result.variants,
-                    channelName = channelName,
-                    launchMode = launchMode,
-                    onLaunch = onLaunch
-                )
+                val launchable = result.variants
+                    .filter { it.fileId == null || it.isDownloaded }
+                    .sortedBy { com.nendo.argosy.data.model.VariantCategory.fromKey(it.category).sortOrder }
+                if (launchable.size <= 1) {
+                    val retry = launchGameUseCase(result.gameId, discId, allowVariantPrompt = false)
+                    dispatchPrimaryLaunchResult(retry, channelName, discId, launchMode, onLaunch, onLaunchFailed)
+                } else {
+                    _variantPickerState.value = VariantPickerState(
+                        gameId = result.gameId,
+                        variants = launchable,
+                        channelName = channelName,
+                        launchMode = launchMode,
+                        onLaunch = onLaunch
+                    )
+                }
             }
             is LaunchResult.SelectMemcard -> {
                 _memcardPickerState.value = MemcardPickerState(
@@ -641,6 +652,28 @@ class GameLaunchDelegate @Inject constructor(
 
     fun dismissDiscPicker() {
         _discPickerState.value = null
+        _onLaunchFailed?.invoke()
+        _onLaunchFailed = null
+    }
+
+    fun selectVariant(scope: CoroutineScope, variantFileId: Long?) {
+        val state = _variantPickerState.value ?: return
+        _variantPickerState.value = null
+        val onFailed = _onLaunchFailed ?: {}
+        _onLaunchFailed = null
+
+        scope.launch {
+            val result = if (variantFileId != null) {
+                launchGameUseCase(gameId = state.gameId, variantFileId = variantFileId)
+            } else {
+                launchGameUseCase(gameId = state.gameId, skipVariantPrompt = true)
+            }
+            dispatchPrimaryLaunchResult(result, state.channelName, null, state.launchMode, state.onLaunch, onFailed)
+        }
+    }
+
+    fun dismissVariantPicker() {
+        _variantPickerState.value = null
         _onLaunchFailed?.invoke()
         _onLaunchFailed = null
     }
