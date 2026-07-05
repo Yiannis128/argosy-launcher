@@ -105,6 +105,44 @@ suspend fun GameEntity.toLibraryGameUi(
     isHidden = isHidden
 )
 
+suspend fun GameListItem.toHomeGameUi(
+    downloadStatus: DownloadFileStatusRepository,
+    platformDisplayName: String? = null,
+    newThreshold: Instant = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
+): HomeGameUi {
+    val downloaded = resolveDownloaded(downloadStatus)
+    return HomeGameUi(
+        id = id,
+        title = title,
+        platformId = platformId,
+        platformSlug = platformSlug,
+        platformDisplayName = platformDisplayName ?: platformSlug,
+        coverPath = coverPath,
+        backgroundPath = coverPath,
+        developer = null,
+        releaseYear = releaseYear,
+        genre = genre,
+        isFavorite = isFavorite,
+        isDownloaded = downloaded,
+        isRommGame = rommId != null,
+        isSteamGame = steamAppId != null,
+        rating = rating,
+        userRating = userRating,
+        userDifficulty = userDifficulty,
+        isAndroidApp = isAndroidApp,
+        packageName = packageName,
+        needsInstall = needsAndroidInstall,
+        isNew = addedAt.isAfter(newThreshold) && lastPlayed == null,
+        sortTitle = sortTitle,
+        gameModes = gameModes,
+        addedAt = addedAt.toEpochMilli(),
+        playCount = playCount,
+        playTimeMinutes = playTimeMinutes,
+        lastPlayedAt = lastPlayed?.toEpochMilli(),
+        isPlayable = downloaded
+    )
+}
+
 suspend fun GameListItem.toLibraryGameUi(
     downloadStatus: DownloadFileStatusRepository,
     platformDisplayName: String? = null,

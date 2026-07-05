@@ -63,6 +63,8 @@ object RAConsoleIds {
         "amiga" to 35,
         // Arcade
         "arcade" to 27,
+        "fbneo" to 27,
+        "mame" to 27,
         "cps1" to 27,
         "cps2" to 27,
         "cps3" to 27,

@@ -656,7 +656,9 @@ data class ServerState(
     val rommDevicePairing: Boolean = false,
     val rommDeviceUserCode: String? = null,
     val rommDeviceVerificationUrl: String? = null,
-    val syncScreenshotsEnabled: Boolean = false
+    val syncScreenshotsEnabled: Boolean = false,
+    val uploadScreenshotsEnabled: Boolean = true,
+    val screenshotUploadSupported: Boolean = false
 )
 
 data class PlatformFilterItem(

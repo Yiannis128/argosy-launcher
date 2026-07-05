@@ -810,6 +810,17 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    suspend fun userScreenshotTargetFile(rommId: Long, screenshotId: Long, version: String): File {
+        val slug = resolveRommPlatformSlug(rommId)
+        return File(platformDir(slug, "screenshots"), "uss_${rommId}_${screenshotId}_${version.md5Hash()}.png")
+    }
+
+    fun pruneStaleUserScreenshots(rommId: Long, screenshotId: Long, keep: File) {
+        keep.parentFile?.listFiles()?.forEach { file ->
+            if (file.name.startsWith("uss_${rommId}_${screenshotId}_") && file.name != keep.name) file.delete()
+        }
+    }
+
     fun resumePendingScreenshotCache() {
         scope.launch {
             val uncached = gameDao.getGamesWithUncachedScreenshots()
@@ -904,6 +915,13 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    private fun hasTransparentPixels(bitmap: Bitmap): Boolean {
+        if (!bitmap.hasAlpha()) return false
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        return pixels.any { (it ushr 24) < 0xFF }
+    }
+
     private fun removeBlackBackground(source: Bitmap): Bitmap {
         val width = source.width
         val height = source.height
@@ -995,23 +1013,26 @@ class ImageCacheManager @Inject constructor(
             return
         }
         val prefix = if (isGameIdRequest) "cover_g${request.gameId}" else "cover_${request.id}"
-        val fileName = "${prefix}_${request.url.md5Hash()}.jpg"
+        val baseName = "${prefix}_${request.url.md5Hash()}"
         val slug = if (isGameIdRequest) resolveGamePlatformSlug(request.gameId!!)
                    else resolveRommPlatformSlug(request.id)
-        val cachedFile = File(platformDir(slug, "covers"), fileName)
+        val coverDir = platformDir(slug, "covers")
+        val existingFile = listOf("jpg", "png")
+            .map { File(coverDir, "$baseName.$it") }
+            .firstOrNull { it.exists() }
 
-        if (cachedFile.exists()) {
-            if (isValidImageFile(cachedFile)) {
+        if (existingFile != null) {
+            if (isValidImageFile(existingFile)) {
                 if (isGameIdRequest) {
-                    gameDao.updateCoverPath(request.gameId!!, cachedFile.absolutePath)
-                    _localCoverWritten.tryEmit(request.gameId to cachedFile.absolutePath)
+                    gameDao.updateCoverPath(request.gameId!!, existingFile.absolutePath)
+                    _localCoverWritten.tryEmit(request.gameId to existingFile.absolutePath)
                 } else {
-                    updateGameCover(request.id, cachedFile.absolutePath)
+                    updateGameCover(request.id, existingFile.absolutePath)
                 }
                 return
             } else {
-                cachedFile.delete()
-                Log.w(TAG, "Deleted invalid cached cover: ${cachedFile.name}")
+                existingFile.delete()
+                Log.w(TAG, "Deleted invalid cached cover: ${existingFile.name}")
             }
         }
 
@@ -1019,8 +1040,14 @@ class ImageCacheManager @Inject constructor(
             ?: game?.steamAppId?.let { downloadSteamCoverFallback(it) }
             ?: return
 
+        val hasTransparency = hasTransparentPixels(bitmap)
+        val cachedFile = File(coverDir, "$baseName.${if (hasTransparency) "png" else "jpg"}")
         FileOutputStream(cachedFile).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            if (hasTransparency) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            } else {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
         }
         bitmap.recycle()
 

@@ -14,6 +14,7 @@ import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.local.entity.CollectionGameEntity
+import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
@@ -351,9 +352,9 @@ class DualGameDetailViewModel(
                 platformCores.find { it.id == selectedCoreId }?.displayName
             } else null
 
-            val downloadedVariants = gameRepository.getVariantsForGame(game.id)
+            val downloadedVariants = excludePrimaryFile(gameRepository.getVariantsForGame(game.id), game)
                 .filter { it.localPath != null }
-            val hasMultipleVariants = downloadedVariants.size > 1
+            val hasMultipleVariants = downloadedVariants.isNotEmpty()
             val selectedVariantName = if (hasMultipleVariants && game.activeVariantFileId != null) {
                 downloadedVariants.find { it.id == game.activeVariantFileId }?.fileName
             } else null
@@ -946,9 +947,17 @@ class DualGameDetailViewModel(
         _corePickerFocusIndex.update { (it + delta).coerceIn(0, max) }
     }
 
-    suspend fun getDownloadedVariants(): List<GameFileEntity> =
-        gameRepository.getVariantsForGame(_uiState.value.gameId)
+    suspend fun getDownloadedVariants(): List<GameFileEntity> {
+        val gameId = _uiState.value.gameId
+        val game = gameRepository.getById(gameId) ?: return emptyList()
+        return excludePrimaryFile(gameRepository.getVariantsForGame(gameId), game)
             .filter { it.localPath != null }
+    }
+
+    private fun excludePrimaryFile(variants: List<GameFileEntity>, game: GameEntity): List<GameFileEntity> {
+        val primaryFileName = game.rommFileName ?: game.localPath?.substringAfterLast('/')
+        return variants.filterNot { primaryFileName != null && it.fileName == primaryFileName }
+    }
 
     fun openVariantPicker(variants: List<GameFileEntity>) {
         _variantPickerList.value = variants

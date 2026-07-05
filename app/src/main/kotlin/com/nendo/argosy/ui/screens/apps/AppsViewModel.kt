@@ -306,7 +306,16 @@ class AppsViewModel @Inject constructor(
             val existing = gameRepository.getByPackageName(packageName)
 
             if (isCurrentlyOnHome) {
-                existing?.let { gameRepository.delete(it) }
+                existing?.let { game ->
+                    if (game.rommId != null) {
+                        gameRepository.update(game.copy(
+                            packageName = null,
+                            source = GameSource.ROMM_REMOTE
+                        ))
+                    } else {
+                        gameRepository.delete(game)
+                    }
+                }
             } else {
                 val gameId: Long
                 if (existing != null) {

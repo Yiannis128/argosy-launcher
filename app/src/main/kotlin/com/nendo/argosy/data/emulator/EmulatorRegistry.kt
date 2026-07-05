@@ -332,7 +332,7 @@ object EmulatorRegistry {
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
-                "arcade", "supergrafx",
+                "arcade", "fbneo", "mame", "supergrafx",
                 "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
@@ -352,7 +352,7 @@ object EmulatorRegistry {
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
-                "arcade", "supergrafx",
+                "arcade", "fbneo", "mame", "supergrafx",
                 "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
@@ -816,14 +816,14 @@ object EmulatorRegistry {
             id = "mame4droid",
             packageName = "com.seleuco.mame4droid",
             displayName = "MAME4droid",
-            supportedPlatforms = setOf("arcade"),
+            supportedPlatforms = setOf("arcade", "mame"),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.seleuco.mame4droid"
         ),
         EmulatorDef(
             id = "fbalpha",
             packageName = "com.bangkokfusion.finalburn",
             displayName = "FinalBurn Alpha",
-            supportedPlatforms = setOf("arcade", "neogeo"),
+            supportedPlatforms = setOf("arcade", "fbneo", "neogeo"),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.bangkokfusion.finalburn"
         ),
 
@@ -978,6 +978,8 @@ object EmulatorRegistry {
         "dreamcast" to listOf("redream", "flycast"),
         "saturn" to listOf("builtin", "yabasanshiro", "yabasanshiro_pro", "saturn_emu", "retroarch", "retroarch_64"),
         "arcade" to listOf("flycast", "mame4droid", "fbalpha", "retroarch", "retroarch_64"),
+        "fbneo" to listOf("fbalpha", "retroarch", "retroarch_64"),
+        "mame" to listOf("mame4droid", "retroarch", "retroarch_64"),
         "neogeo" to listOf("fbalpha", "retroarch", "retroarch_64"),
         "dos" to listOf("magic_dosbox", "dosbox_turbo"),
         "scummvm" to listOf("scummvm", "retroarch", "retroarch_64"),
@@ -1038,6 +1040,8 @@ object EmulatorRegistry {
         "ngpc" to "mednafen_ngp",
         "neogeo" to "fbneo",
         "arcade" to "fbneo",
+        "fbneo" to "fbneo",
+        "mame" to "mame2003_plus",
         "dos" to "dosbox_pure",
         "msx" to "bluemsx",
         "msx2" to "bluemsx",
@@ -1086,6 +1090,8 @@ object EmulatorRegistry {
         "neogeocd" to listOf("neocd", "fbneo"),
         "supergrafx" to listOf("mednafen_supergrafx"),
         "arcade" to listOf("fbneo", "mame", "fbalpha"),
+        "fbneo" to listOf("fbneo", "fbalpha"),
+        "mame" to listOf("mame", "mame2003_plus", "mame2010"),
         "amstradcpc" to listOf("cap32", "crocods"),
         "dos" to listOf("dosbox_pure", "dosbox_core", "dosbox_svn"),
         "msx" to listOf("bluemsx", "fmsx"),
@@ -1249,6 +1255,14 @@ object EmulatorRegistry {
             RetroArchCore("mame2003_plus", "MAME 2003-Plus"),
             RetroArchCore("mame2010", "MAME 2010"),
             RetroArchCore("fbalpha2012", "FB Alpha 2012")
+        ),
+        "fbneo" to listOf(
+            RetroArchCore("fbneo", "FinalBurn Neo"),
+            RetroArchCore("fbalpha2012", "FB Alpha 2012")
+        ),
+        "mame" to listOf(
+            RetroArchCore("mame2003_plus", "MAME 2003-Plus"),
+            RetroArchCore("mame2010", "MAME 2010")
         ),
         "msx" to listOf(
             RetroArchCore("bluemsx", "blueMSX"),
@@ -1593,7 +1607,7 @@ object EmulatorRegistry {
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini",
-                "arcade", "supergrafx",
+                "arcade", "fbneo", "mame", "supergrafx",
                 "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,

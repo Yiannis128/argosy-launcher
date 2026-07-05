@@ -135,6 +135,7 @@ object MigrationRegistry {
         Migration_128_129,
         Migration_129_130,
         Migration_130_131,
+        Migration_131_132,
     )
 
     val ARRAY: Array<Migration> = ALL.toTypedArray()

@@ -1435,6 +1435,7 @@ class DualScreenManager(
                 scope = scope,
                 gameId = gameId,
                 channelName = channelName,
+                allowVariantPrompt = false,
                 onLaunch = { intent ->
                     syncConflictMirrorJob?.cancel()
                     discPickerObserverJob?.cancel()

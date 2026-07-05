@@ -17,6 +17,7 @@ import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.remote.ra.RAConsoleIds
+import com.nendo.argosy.data.remote.romm.RomMCapabilities
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.GameRepository
@@ -37,6 +38,7 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.ui.common.isAndroidApp
 import com.nendo.argosy.ui.common.isSteamGame
+import com.nendo.argosy.ui.common.toHomeGameUi
 import com.nendo.argosy.ui.screens.common.CollectionModalDelegate
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
 import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
@@ -107,7 +109,8 @@ class GameDetailViewModel @Inject constructor(
     private val variantScanner: com.nendo.argosy.data.scanner.VariantScanner,
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
     private val downloadManager: com.nendo.argosy.data.download.DownloadManager,
-    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
+    private val getRelatedGamesUseCase: com.nendo.argosy.domain.usecase.game.GetRelatedGamesUseCase
 ) : ViewModel() {
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
@@ -183,6 +186,11 @@ class GameDetailViewModel @Inject constructor(
         viewModelScope.launch {
             gameLaunchDelegate.memcardPickerState.collect { pickerState ->
                 _uiState.update { it.copy(memcardPickerState = pickerState) }
+            }
+        }
+        viewModelScope.launch {
+            gameLaunchDelegate.variantPickerState.collect { pickerState ->
+                _uiState.update { it.copy(launchVariantPickerState = pickerState) }
             }
         }
         viewModelScope.launch {
@@ -388,6 +396,7 @@ class GameDetailViewModel @Inject constructor(
             }
 
             val game = gameRepository.getById(gameId) ?: return@launch
+            loadRelatedGames(game)
             val platform = platformRepository.getById(game.platformId)
 
             val gameSpecificConfig = emulatorConfigDao.getByGameId(gameId)
@@ -485,7 +494,7 @@ class GameDetailViewModel @Inject constructor(
             val (updateFilesUi, dlcFilesUi) = loadUpdateAndDlcFiles(gameId, game.platformSlug, game.localPath)
 
             variantScanner.scanForVariants(game)
-            val hasVariants = gameFileDao.getVariantsForGame(gameId).isNotEmpty()
+            val hasVariants = variantResolver.getVariantOptions(game) != null
 
             val downloadSizeBytes = when {
                 game.isMultiDisc -> gameDiscDao.getTotalFileSize(gameId)
@@ -535,6 +544,9 @@ class GameDetailViewModel @Inject constructor(
 
             if (game.rommId != null) {
                 refreshUserPropsInBackground(gameId)
+                if (romMRepository.isVersionAtLeast(RomMCapabilities.SCREENSHOT_UPLOAD_MIN_VERSION)) {
+                    refreshUserScreenshotsInBackground(game.rommId)
+                }
                 if (!game.isMultiDisc && (game.fileSizeBytes == null || game.fileSizeBytes == 0L)) {
                     downloadDelegate.refreshDownloadSizeInBackground(viewModelScope, game.rommId, gameId)
                 }
@@ -667,6 +679,20 @@ class GameDetailViewModel @Inject constructor(
                     }
                 }
                 is RomMResult.Error -> { }
+            }
+        }
+    }
+
+    private fun refreshUserScreenshotsInBackground(rommId: Long) {
+        viewModelScope.launch {
+            val localPaths = romMRepository.fetchUserScreenshots(rommId)
+            if (localPaths.isEmpty()) return@launch
+            val userShots = localPaths.map { ScreenshotPair(remoteUrl = it, cachedPath = it) }
+            _uiState.update { state ->
+                val game = state.game ?: return@update state
+                val existing = game.screenshots.map { it.remoteUrl }.toSet()
+                val merged = game.screenshots + userShots.filter { it.remoteUrl !in existing }
+                state.copy(game = game.copy(screenshots = merged))
             }
         }
     }
@@ -1259,6 +1285,12 @@ class GameDetailViewModel @Inject constructor(
     fun setMemcardPickerFocusIndex(index: Int) {
         _uiState.update { it.copy(memcardPickerFocusIndex = index) }
     }
+
+    fun selectLaunchVariant(variantFileId: Long?) = gameLaunchDelegate.selectVariant(viewModelScope, variantFileId)
+    fun dismissLaunchVariantPicker() = gameLaunchDelegate.dismissVariantPicker()
+    fun setLaunchVariantPickerFocusIndex(index: Int) {
+        _uiState.update { it.copy(launchVariantPickerFocusIndex = index) }
+    }
     fun navigateDiscPicker(direction: Int) = pickerModalDelegate.moveDiscPickerFocus(direction)
     fun selectFocusedDisc() = pickerModalDelegate.confirmDiscSelection()
 
@@ -1379,7 +1411,8 @@ class GameDetailViewModel @Inject constructor(
             hasScreenshots = game?.screenshots?.isNotEmpty() == true,
             hasAchievements = game?.achievements?.isNotEmpty() == true,
             hasSocialAccount = state.hasSocialAccount,
-            hasSaveSync = hasSaveSync
+            hasSaveSync = hasSaveSync,
+            hasRelated = state.relatedGames.isNotEmpty()
         )
     }
 
@@ -1410,9 +1443,43 @@ class GameDetailViewModel @Inject constructor(
             MenuItem.Description -> {}
             MenuItem.Screenshots -> openScreenshotViewer()
             MenuItem.Achievements -> showAchievementList()
+            MenuItem.RelatedGames -> {}
             null -> {}
         }
     }
+
+    private fun loadRelatedGames(game: com.nendo.argosy.data.local.entity.GameEntity) {
+        _uiState.update { it.copy(relatedGames = emptyList(), relatedFocusIndex = 0) }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val related = getRelatedGamesUseCase(game)
+            val platformNames = related.map { it.platformId }.distinct()
+                .mapNotNull { pid -> platformRepository.getById(pid)?.let { pid to it.name } }
+                .toMap()
+            val ui = related.map {
+                it.toHomeGameUi(downloadFileStatusRepository, platformNames[it.platformId])
+            }
+            if (currentGameId == game.id) {
+                _uiState.update { it.copy(relatedGames = ui, relatedFocusIndex = 0) }
+            }
+        }
+    }
+
+    fun moveRelatedFocus(delta: Int) {
+        _uiState.update { state ->
+            if (state.relatedGames.isEmpty()) state
+            else state.copy(relatedFocusIndex = (state.relatedFocusIndex + delta).coerceIn(0, state.relatedGames.size - 1))
+        }
+    }
+
+    fun setRelatedFocusIndex(index: Int) {
+        _uiState.update { state ->
+            if (state.relatedGames.isEmpty()) state
+            else state.copy(relatedFocusIndex = index.coerceIn(0, state.relatedGames.size - 1))
+        }
+    }
+
+    fun focusedRelatedGameId(): Long? =
+        _uiState.value.let { it.relatedGames.getOrNull(it.relatedFocusIndex)?.id }
 
     // --- Achievements ---
 
@@ -1538,7 +1605,8 @@ class GameDetailViewModel @Inject constructor(
         onSectionRight: () -> Unit = {},
         onPrevGame: () -> Unit = {},
         onNextGame: () -> Unit = {},
-        isInScreenshotsSection: () -> Boolean = { false }
+        isInScreenshotsSection: () -> Boolean = { false },
+        onNavigateToGame: (Long) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
             val state = _uiState.value
@@ -1707,6 +1775,8 @@ class GameDetailViewModel @Inject constructor(
                 state.showRatingsStatusMenu -> confirmRatingsStatusSelection()
                 state.showPlayOptions -> confirmPlayOptionSelection()
                 state.showMoreOptions -> confirmOptionSelection(onBack, onNavigateToPlatformSettings)
+                menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.RelatedGames ->
+                    focusedRelatedGameId()?.let(onNavigateToGame)
                 else -> executeMenuAction()
             }
             return InputResult.HANDLED

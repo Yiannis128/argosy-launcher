@@ -261,10 +261,11 @@ class PickerModalDelegate @Inject constructor(
     // region Variant Picker
 
     fun showVariantPicker(options: List<com.nendo.argosy.data.emulator.VariantOption>) {
+        val sorted = options.sortedBy { com.nendo.argosy.data.model.VariantCategory.fromKey(it.category).sortOrder }
         _state.update {
             it.copy(
                 showVariantPicker = true,
-                variantPickerOptions = options,
+                variantPickerOptions = sorted,
                 variantPickerFocusIndex = 0
             )
         }

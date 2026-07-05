@@ -543,7 +543,8 @@ class PlaySessionTracker @Inject constructor(
             gameTitle = game.title,
             channelName = channelName,
             isHardcore = isHardcore,
-            sessionStartTime = sessionStartTime
+            sessionStartTime = sessionStartTime,
+            emulatorPackage = emulatorPackage
         )
     }
 

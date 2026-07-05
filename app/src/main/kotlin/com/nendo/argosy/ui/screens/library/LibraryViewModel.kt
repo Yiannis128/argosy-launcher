@@ -213,6 +213,8 @@ data class LibraryUiState(
     val syncOverlayState: SyncOverlayState? = null,
     val discPickerState: DiscPickerState? = null,
     val discPickerFocusIndex: Int = 0,
+    val variantPickerState: com.nendo.argosy.ui.screens.common.VariantPickerState? = null,
+    val variantPickerFocusIndex: Int = 0,
     val memcardPickerState: com.nendo.argosy.ui.screens.common.MemcardPickerState? = null,
     val memcardPickerFocusIndex: Int = 0,
     val isTouchMode: Boolean = false,
@@ -431,6 +433,11 @@ class LibraryViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            gameLaunchDelegate.variantPickerState.collect { pickerState ->
+                _uiState.update { it.copy(variantPickerState = pickerState) }
+            }
+        }
+        viewModelScope.launch {
             gameLaunchDelegate.memcardPickerState.collect { pickerState ->
                 _uiState.update { it.copy(memcardPickerState = pickerState) }
             }
@@ -479,6 +486,18 @@ class LibraryViewModel @Inject constructor(
 
     fun setDiscPickerFocusIndex(index: Int) {
         _uiState.update { it.copy(discPickerFocusIndex = index) }
+    }
+
+    fun selectVariant(variantFileId: Long?) {
+        gameLaunchDelegate.selectVariant(viewModelScope, variantFileId)
+    }
+
+    fun dismissVariantPicker() {
+        gameLaunchDelegate.dismissVariantPicker()
+    }
+
+    fun setVariantPickerFocusIndex(index: Int) {
+        _uiState.update { it.copy(variantPickerFocusIndex = index) }
     }
 
     fun selectMemcard(cardPath: String) {

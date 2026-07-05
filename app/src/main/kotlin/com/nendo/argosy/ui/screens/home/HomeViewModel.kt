@@ -539,6 +539,7 @@ class HomeViewModel @Inject constructor(
             scope = viewModelScope,
             gameId = gameId,
             channelName = channelName,
+            allowVariantPrompt = false,
             onLaunch = { intent ->
                 viewModelScope.launch {
                     val options = displayAffinityHelper.getActivityOptions(

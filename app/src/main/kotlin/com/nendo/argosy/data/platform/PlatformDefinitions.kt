@@ -275,9 +275,7 @@ object PlatformDefinitions {
         "bandai_wonderswan" to "wonderswan",
         "bandai-wonderswan" to "wonderswan",
         // Arcade
-        "mame" to "arcade",
-        "fbneo" to "arcade",
-        "fba" to "arcade",
+        "fba" to "fbneo",
         "cps-1" to "cps1",
         "cps-2" to "cps2",
         "cps-3" to "cps3",
@@ -467,6 +465,8 @@ object PlatformDefinitions {
         PlatformDef("cps2", "CPS-2", "CPS2", setOf("zip", "7z"), 660),
         PlatformDef("cps3", "CPS-3", "CPS3", setOf("zip", "7z"), 665),
         PlatformDef("daphne", "Daphne", "Daphne", setOf("daphne", "zip", "7z"), 670),
+        PlatformDef("fbneo", "FB Neo", "FBNeo", setOf("zip", "7z"), 671),
+        PlatformDef("mame", "MAME", "MAME", setOf("zip", "7z", "chd"), 673),
         PlatformDef("model2", "Model 2", "Model 2", setOf("zip", "7z"), 675),
         PlatformDef("model3", "Model 3", "Model 3", setOf("zip", "7z"), 676),
 
@@ -583,7 +583,12 @@ object PlatformDefinitions {
 
     private val pico8NamePattern = Regex("pico[-_ ]?8", RegexOption.IGNORE_CASE)
 
-    fun resolveImportSlug(slug: String, name: String?): String {
+    private val manyToOneSlugs = setOf("arcade")
+
+    fun resolveImportSlug(slug: String, name: String?, fsSlug: String? = null): String {
+        if (slug.lowercase() in manyToOneSlugs && !fsSlug.isNullOrBlank()) {
+            return fsSlug.lowercase()
+        }
         if (slug.equals("pico", ignoreCase = true) && name != null && pico8NamePattern.containsMatchIn(name)) {
             return "pico8"
         }

@@ -59,6 +59,7 @@ data class RomMRom(
     @Json(name = "revision") val revision: String?,
 
     @Json(name = "merged_screenshots") val screenshotPaths: List<String>? = null,
+    @Json(name = "user_screenshots") val userScreenshots: List<RomMUserScreenshot>? = null,
     @Json(name = "rom_user") val romUser: RomMRomUser? = null,
 
     @Json(name = "tags") val tags: List<String>? = null,
@@ -116,6 +117,19 @@ data class RomMRom(
 }
 
 @JsonClass(generateAdapter = true)
+data class RomMUserScreenshot(
+    @Json(name = "id") val id: Long,
+    @Json(name = "rom_id") val romId: Long,
+    @Json(name = "user_id") val userId: Long? = null,
+    @Json(name = "file_name") val fileName: String? = null,
+    @Json(name = "download_path") val downloadPath: String? = null,
+    @Json(name = "is_gallery") val isGallery: Boolean = false,
+    @Json(name = "is_public") val isPublic: Boolean = false,
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null
+)
+
+@JsonClass(generateAdapter = true)
 data class RomMSibling(
     @Json(name = "id") val id: Long,
     @Json(name = "name") val name: String? = null,
@@ -166,6 +180,7 @@ data class RomMMetadatum(
     @Json(name = "companies") val companies: List<String>? = null,
     @Json(name = "first_release_date") val firstReleaseDate: Long? = null,
     @Json(name = "franchises") val franchises: List<String>? = null,
+    @Json(name = "collections") val collections: List<String>? = null,
     @Json(name = "game_modes") val gameModes: List<String>? = null,
     @Json(name = "average_rating") val averageRating: Float? = null
 )

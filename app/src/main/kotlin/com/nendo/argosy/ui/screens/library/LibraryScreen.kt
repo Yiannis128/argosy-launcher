@@ -99,6 +99,7 @@ import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.icons.InputIcons
 import com.nendo.argosy.ui.input.DiscPickerInputHandler
 import com.nendo.argosy.ui.input.MemcardPickerInputHandler
+import com.nendo.argosy.ui.input.VariantPickerInputHandler
 import com.nendo.argosy.ui.input.HardcoreConflictInputHandler
 import com.nendo.argosy.ui.input.LocalModifiedInputHandler
 import com.nendo.argosy.ui.input.LocalInputDispatcher
@@ -270,7 +271,7 @@ fun LibraryScreen(
         }
     }
 
-    val showAnyOverlay = uiState.showFilterMenu || uiState.showQuickMenu || uiState.showAddToCollectionModal || uiState.syncOverlayState != null || uiState.discPickerState != null || uiState.memcardPickerState != null
+    val showAnyOverlay = uiState.showFilterMenu || uiState.showQuickMenu || uiState.showAddToCollectionModal || uiState.syncOverlayState != null || uiState.discPickerState != null || uiState.variantPickerState != null || uiState.memcardPickerState != null
     val modalBlur by animateDpAsState(
         targetValue = if (showAnyOverlay) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
@@ -579,6 +580,40 @@ fun LibraryScreen(
         DisposableEffect(uiState.discPickerState) {
             onDispose {
                 if (uiState.discPickerState != null) {
+                    inputDispatcher.popModal()
+                }
+            }
+        }
+
+        uiState.variantPickerState?.let { pickerState ->
+            com.nendo.argosy.ui.screens.gamedetail.modals.VariantPickerModal(
+                variants = pickerState.variants,
+                focusIndex = uiState.variantPickerFocusIndex,
+                onSelectVariant = viewModel::selectVariant,
+                onDismiss = viewModel::dismissVariantPicker
+            )
+        }
+
+        val variantPickerInputHandler = remember(viewModel) {
+            VariantPickerInputHandler(
+                getVariants = { uiState.variantPickerState?.variants ?: emptyList() },
+                getFocusIndex = { uiState.variantPickerFocusIndex },
+                onFocusChange = { viewModel.setVariantPickerFocusIndex(it) },
+                onSelect = { viewModel.selectVariant(it) },
+                onDismiss = { viewModel.dismissVariantPicker() }
+            )
+        }
+
+        LaunchedEffect(uiState.variantPickerState) {
+            if (uiState.variantPickerState != null) {
+                viewModel.setVariantPickerFocusIndex(0)
+                inputDispatcher.pushModal(variantPickerInputHandler)
+            }
+        }
+
+        DisposableEffect(uiState.variantPickerState) {
+            onDispose {
+                if (uiState.variantPickerState != null) {
                     inputDispatcher.popModal()
                 }
             }

@@ -162,6 +162,12 @@ object BiosPathRegistry {
         "arcade" to listOf(
             BiosRequirement("arcade", "neogeo.zip", null, "Neo Geo BIOS for arcade")
         ),
+        "fbneo" to listOf(
+            BiosRequirement("fbneo", "neogeo.zip", null, "Neo Geo BIOS for FBNeo")
+        ),
+        "mame" to listOf(
+            BiosRequirement("mame", "neogeo.zip", null, "Neo Geo BIOS for MAME")
+        ),
         "ps2" to listOf(
             BiosRequirement("ps2", "ps2-bios.bin", null, "PlayStation 2 BIOS", isRequired = true)
         ),
@@ -199,6 +205,7 @@ object BiosPathRegistry {
             supportedPlatforms = setOf(
                 "psx", "saturn", "scd", "dreamcast", "dc", "neogeo",
                 "3do", "nds", "gba", "tgcd", "pcfx", "lynx", "arcade",
+                "fbneo", "mame",
                 "amiga", "amigacd32", "cdtv"
             )
         ),
@@ -211,6 +218,7 @@ object BiosPathRegistry {
             supportedPlatforms = setOf(
                 "psx", "saturn", "scd", "dreamcast", "dc", "neogeo",
                 "3do", "nds", "gba", "tgcd", "pcfx", "lynx", "arcade",
+                "fbneo", "mame",
                 "amiga", "amigacd32", "cdtv"
             )
         ),

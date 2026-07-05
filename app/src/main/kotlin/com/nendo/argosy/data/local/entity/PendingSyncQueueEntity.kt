@@ -38,7 +38,8 @@ enum class SyncType {
     DIFFICULTY,
     STATUS,
     FAVORITE,
-    ACHIEVEMENT
+    ACHIEVEMENT,
+    SCREENSHOT
 }
 
 enum class SyncStatus {

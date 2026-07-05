@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -73,6 +75,10 @@ import com.nendo.argosy.ui.screens.gamedetail.ScreenshotPair
 import com.nendo.argosy.core.game.AchievementUi
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalBoxArtStyle
+import com.nendo.argosy.ui.components.GameCard
+import com.nendo.argosy.ui.screens.home.HomeGameUi
+import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.delay
 
 @Composable
@@ -498,6 +504,72 @@ fun ScreenshotsSection(
                             onError = { failedCachePaths[index] = true }
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RelatedGamesSection(
+    games: List<HomeGameUi>,
+    listState: LazyListState,
+    focusedIndex: Int,
+    isActive: Boolean,
+    onGameTap: (Long) -> Unit,
+    onPositioned: (Int) -> Unit,
+    onSectionFocus: () -> Unit = {}
+) {
+    val boxArtStyle = LocalBoxArtStyle.current
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val cardWidth = screenWidth * 0.12f
+    val cardHeight = cardWidth / boxArtStyle.aspectRatio
+
+    LaunchedEffect(focusedIndex, isActive) {
+        if (isActive && games.isNotEmpty()) {
+            listState.animateScrollToItem(focusedIndex.coerceIn(0, games.size - 1))
+        }
+    }
+
+    Column(
+        modifier = Modifier.onGloballyPositioned { coords ->
+            onPositioned(coords.positionInParent().y.toInt())
+        }
+    ) {
+        Text(
+            text = "RELATED GAMES",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(Dimens.radiusLg))
+
+        val endInset = Dimens.spacingXl
+        LazyRow(
+            state = listState,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
+            contentPadding = PaddingValues(end = endInset),
+            modifier = Modifier.layout { measurable, constraints ->
+                val extra = endInset.roundToPx()
+                val placeable = measurable.measure(constraints.copy(maxWidth = constraints.maxWidth + extra))
+                layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
+            }
+        ) {
+            itemsIndexed(games, key = { _, related -> related.id }) { index, related ->
+                Box(
+                    modifier = Modifier
+                        .width(cardWidth)
+                        .height(cardHeight)
+                ) {
+                    GameCard(
+                        game = related,
+                        isFocused = isActive && index == focusedIndex,
+                        focusScale = 1f,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickableNoFocus {
+                                if (isActive) onGameTap(related.id) else onSectionFocus()
+                            }
+                    )
                 }
             }
         }

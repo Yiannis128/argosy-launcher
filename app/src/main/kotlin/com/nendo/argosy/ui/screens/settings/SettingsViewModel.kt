@@ -137,6 +137,9 @@ class SettingsViewModel @Inject constructor(
     internal val _requestScreenCapturePermissionEvent = MutableSharedFlow<Unit>()
     val requestScreenCapturePermissionEvent: SharedFlow<Unit> = _requestScreenCapturePermissionEvent.asSharedFlow()
 
+    internal val _requestMediaPermissionEvent = MutableSharedFlow<Unit>()
+    val requestMediaPermissionEvent: SharedFlow<Unit> = _requestMediaPermissionEvent.asSharedFlow()
+
     val imageCacheProgress: StateFlow<ImageCacheProgress> = imageCacheManager.progress
 
     val openBackgroundPickerEvent: SharedFlow<Unit> = displayDelegate.openBackgroundPickerEvent
@@ -877,6 +880,7 @@ class SettingsViewModel @Inject constructor(
     fun setDeleteOrphans(delete: Boolean) = syncDelegate.setDeleteOrphans(viewModelScope, delete)
 
     fun toggleSyncScreenshots() = routeToggleSyncScreenshots(this)
+    fun toggleUploadScreenshots() = routeToggleUploadScreenshots(this)
 
     fun enableSaveSync() = syncDelegate.enableSaveSync(viewModelScope)
     fun toggleSaveSync() = syncDelegate.toggleSaveSync(viewModelScope)
@@ -885,6 +889,7 @@ class SettingsViewModel @Inject constructor(
     fun onStoragePermissionResult(granted: Boolean) = routeOnStoragePermissionResult(this, granted)
 
     fun onNotificationPermissionResult(granted: Boolean) = syncDelegate.onNotificationPermissionResult(viewModelScope, granted)
+    fun onMediaPermissionResult(granted: Boolean) = routeOnMediaPermissionResult(this, granted)
     fun runSaveSyncNow() = syncDelegate.runSaveSyncNow(viewModelScope)
 
     fun requestResetSaveCache() = syncDelegate.requestResetSaveCache()

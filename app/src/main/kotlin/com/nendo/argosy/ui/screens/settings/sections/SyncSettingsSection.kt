@@ -20,8 +20,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import com.nendo.argosy.data.cache.ImageCacheProgress
 import com.nendo.argosy.data.preferences.RegionFilterMode
@@ -49,6 +53,7 @@ internal sealed class SyncSettingsItem(val key: String, val section: String) {
     data object MetadataFilters : SyncSettingsItem("metadataFilters", "filters")
     data object MediaHeader : SyncSettingsItem("mediaHeader", "media")
     data object CacheScreenshots : SyncSettingsItem("cacheScreenshots", "media")
+    data object UploadScreenshots : SyncSettingsItem("uploadScreenshots", "media")
     data object ImageCacheLocation : SyncSettingsItem("imageCacheLocation", "media")
     data object ImageCacheProgressIndicator : SyncSettingsItem("imageCacheProgress", "media")
 }
@@ -59,6 +64,7 @@ private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Boolean>(
         SyncSettingsItem.MetadataFilters,
         SyncSettingsItem.MediaHeader,
         SyncSettingsItem.CacheScreenshots,
+        SyncSettingsItem.UploadScreenshots,
         SyncSettingsItem.ImageCacheLocation,
         SyncSettingsItem.ImageCacheProgressIndicator
     ),
@@ -95,6 +101,13 @@ fun SyncSettingsSection(
     )
 
     val isProcessing = imageCacheProgress.isProcessing
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refreshUsageStatsPermission()
+        }
+    }
 
     fun isFocused(item: SyncSettingsItem): Boolean =
         uiState.focusedIndex == syncSettingsLayout.focusIndexOf(item, isProcessing)
@@ -148,6 +161,25 @@ fun SyncSettingsSection(
                             isFocused = isFocused(item),
                             onToggle = { viewModel.toggleSyncScreenshots() }
                         )
+                    }
+                    SyncSettingsItem.UploadScreenshots -> {
+                        val supported = uiState.server.screenshotUploadSupported
+                        val hasUsageAccess = uiState.controls.hasUsageStatsPermission
+                        val subtitle = when {
+                            !supported -> "Requires RomM 5.0 or newer"
+                            uiState.server.uploadScreenshotsEnabled && !hasUsageAccess ->
+                                "Grant usage access for exact game matching"
+                            else -> "Send screenshots taken during play to RomM"
+                        }
+                        Box(modifier = Modifier.alpha(if (supported) 1f else 0.45f)) {
+                            SwitchPreference(
+                                title = "Upload Screenshots",
+                                subtitle = subtitle,
+                                isEnabled = supported && uiState.server.uploadScreenshotsEnabled,
+                                isFocused = isFocused(item),
+                                onToggle = { if (supported) viewModel.toggleUploadScreenshots() }
+                            )
+                        }
                     }
                     SyncSettingsItem.ImageCacheLocation -> {
                         val cachePath = uiState.syncSettings.imageCachePath

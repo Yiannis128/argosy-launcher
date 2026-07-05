@@ -73,6 +73,7 @@ import com.nendo.argosy.ui.screens.gamedetail.components.GameHeader
 import com.nendo.argosy.ui.screens.gamedetail.components.MenuItem
 import com.nendo.argosy.ui.screens.gamedetail.components.MenuLayoutState
 import com.nendo.argosy.ui.screens.gamedetail.components.menuLayout
+import com.nendo.argosy.ui.screens.gamedetail.components.RelatedGamesSection
 import com.nendo.argosy.ui.screens.gamedetail.components.ScreenshotViewerOverlay
 import com.nendo.argosy.ui.screens.gamedetail.components.ScreenshotsSection
 import com.nendo.argosy.ui.components.DiscPickerModal
@@ -109,6 +110,7 @@ fun GameDetailScreen(
     gameId: Long,
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (platformId: Long) -> Unit = {},
+    onNavigateToGame: (gameId: Long) -> Unit = {},
     viewModel: GameDetailViewModel = hiltViewModel(),
     argosyViewModel: ArgosyViewModel = hiltViewModel()
 ) {
@@ -143,7 +145,11 @@ fun GameDetailScreen(
         val pending = pendingLaunch ?: return@LaunchedEffect
         if (pending.gameId == gameId && uiState.game?.id == gameId) {
             argosyViewModel.consumePendingLaunch()
-            viewModel.playGame(discId = pending.discId)
+            if (pending.discId != null) {
+                viewModel.playGame(discId = pending.discId)
+            } else {
+                viewModel.primaryAction()
+            }
         }
     }
 
@@ -170,10 +176,12 @@ fun GameDetailScreen(
 
     val screenshotListState = rememberLazyListState()
     val achievementListState = rememberLazyListState()
+    val relatedListState = rememberLazyListState()
 
     var descriptionTopY by remember { mutableIntStateOf(0) }
     var screenshotTopY by remember { mutableIntStateOf(0) }
     var achievementTopY by remember { mutableIntStateOf(0) }
+    var relatedTopY by remember { mutableIntStateOf(0) }
 
     val game = uiState.game
     val hasDescription by remember { derivedStateOf { uiState.game?.description?.isNotEmpty() == true } }
@@ -189,11 +197,13 @@ fun GameDetailScreen(
     }
     val screenshotCount by remember { derivedStateOf { uiState.game?.screenshots?.size ?: 0 } }
     val achievementColumnCount by remember { derivedStateOf { uiState.game?.achievements?.chunked(3)?.size ?: 0 } }
+    val hasRelated by remember { derivedStateOf { uiState.relatedGames.isNotEmpty() } }
 
     LaunchedEffect(uiState.game?.id) {
         scrollState.scrollTo(0)
         screenshotListState.scrollToItem(0)
         achievementListState.scrollToItem(0)
+        relatedListState.scrollToItem(0)
     }
 
     val inputHandler = remember(onBack, uiState.menuFocusIndex, screenshotCount, achievementColumnCount) {
@@ -214,7 +224,8 @@ fun GameDetailScreen(
                     hasScreenshots = hasScreenshots,
                     hasAchievements = hasAchievements,
                     hasSocialAccount = uiState.hasSocialAccount,
-                    hasSaveSync = hasSaveSync
+                    hasSaveSync = hasSaveSync,
+                    hasRelated = hasRelated
                 )
                 when (menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState)) {
                     MenuItem.Screenshots -> if (screenshotCount > 0) {
@@ -227,6 +238,7 @@ fun GameDetailScreen(
                         val newIndex = (currentIndex - 1).coerceAtLeast(0)
                         coroutineScope.launch { achievementListState.animateScrollToItem(newIndex) }
                     }
+                    MenuItem.RelatedGames -> viewModel.moveRelatedFocus(-1)
                     else -> {}
                 }
             },
@@ -236,7 +248,8 @@ fun GameDetailScreen(
                     hasScreenshots = hasScreenshots,
                     hasAchievements = hasAchievements,
                     hasSocialAccount = uiState.hasSocialAccount,
-                    hasSaveSync = hasSaveSync
+                    hasSaveSync = hasSaveSync,
+                    hasRelated = hasRelated
                 )
                 when (menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState)) {
                     MenuItem.Screenshots -> if (screenshotCount > 0) {
@@ -249,18 +262,21 @@ fun GameDetailScreen(
                         val newIndex = (currentIndex + 1).coerceAtMost(achievementColumnCount - 1)
                         coroutineScope.launch { achievementListState.animateScrollToItem(newIndex) }
                     }
+                    MenuItem.RelatedGames -> viewModel.moveRelatedFocus(1)
                     else -> {}
                 }
             },
             onPrevGame = { viewModel.navigateToPreviousGame() },
             onNextGame = { viewModel.navigateToNextGame() },
+            onNavigateToGame = onNavigateToGame,
             isInScreenshotsSection = {
                 val layoutState = MenuLayoutState(
                     hasDescription = hasDescription,
                     hasScreenshots = hasScreenshots,
                     hasAchievements = hasAchievements,
                     hasSocialAccount = uiState.hasSocialAccount,
-                    hasSaveSync = hasSaveSync
+                    hasSaveSync = hasSaveSync,
+                    hasRelated = hasRelated
                 )
                 menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState) == MenuItem.Screenshots
             }
@@ -364,6 +380,32 @@ fun GameDetailScreen(
         }
     }
 
+    val launchVariantPickerInputHandler = remember(viewModel) {
+        com.nendo.argosy.ui.input.VariantPickerInputHandler(
+            getVariants = { uiState.launchVariantPickerState?.variants ?: emptyList() },
+            getFocusIndex = { uiState.launchVariantPickerFocusIndex },
+            onFocusChange = { viewModel.setLaunchVariantPickerFocusIndex(it) },
+            onSelect = { viewModel.selectLaunchVariant(it) },
+            onDismiss = { viewModel.dismissLaunchVariantPicker() }
+        )
+    }
+
+    val showLaunchVariantPicker = uiState.launchVariantPickerState != null
+    LaunchedEffect(showLaunchVariantPicker) {
+        if (showLaunchVariantPicker) {
+            viewModel.setLaunchVariantPickerFocusIndex(0)
+            inputDispatcher.pushModal(launchVariantPickerInputHandler)
+        }
+    }
+
+    DisposableEffect(showLaunchVariantPicker) {
+        onDispose {
+            if (showLaunchVariantPicker) {
+                inputDispatcher.popModal()
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         if (uiState.isLoading || game == null) {
             GameDetailSkeleton()
@@ -376,11 +418,14 @@ fun GameDetailScreen(
                 scrollState = scrollState,
                 screenshotListState = screenshotListState,
                 achievementListState = achievementListState,
+                relatedListState = relatedListState,
                 onDescriptionPositioned = { descriptionTopY = it },
                 onScreenshotPositioned = { screenshotTopY = it },
                 onAchievementPositioned = { achievementTopY = it },
+                onRelatedPositioned = { relatedTopY = it },
                 onBack = onBack,
                 onNavigateToPlatformSettings = onNavigateToPlatformSettings,
+                onNavigateToGame = onNavigateToGame,
                 localModifiedFocusIndex = localModifiedFocusIndex
             )
         }
@@ -396,11 +441,14 @@ private fun GameDetailContent(
     scrollState: ScrollState,
     screenshotListState: LazyListState,
     achievementListState: LazyListState,
+    relatedListState: LazyListState,
     onDescriptionPositioned: (Int) -> Unit,
     onScreenshotPositioned: (Int) -> Unit,
     onAchievementPositioned: (Int) -> Unit,
+    onRelatedPositioned: (Int) -> Unit,
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (Long) -> Unit,
+    onNavigateToGame: (Long) -> Unit,
     localModifiedFocusIndex: Int
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -422,6 +470,7 @@ private fun GameDetailContent(
     var descriptionTopY by remember { mutableIntStateOf(0) }
     var screenshotTopY by remember { mutableIntStateOf(0) }
     var achievementTopY by remember { mutableIntStateOf(0) }
+    var relatedTopY by remember { mutableIntStateOf(0) }
 
     val headerScrollThreshold = 200
     val isHeaderCollapsed = scrollState.value > headerScrollThreshold
@@ -436,7 +485,8 @@ private fun GameDetailContent(
         hasScreenshots = game.screenshots.isNotEmpty(),
         hasAchievements = game.achievements.isNotEmpty(),
         hasSocialAccount = uiState.hasSocialAccount,
-        hasSaveSync = contentHasSaveSync
+        hasSaveSync = contentHasSaveSync,
+        hasRelated = uiState.relatedGames.isNotEmpty()
     )
 
     val menuDisplayState = GameDetailMenuState(
@@ -474,6 +524,7 @@ private fun GameDetailContent(
                 MenuItem.Description -> scrollState.animateScrollTo(descriptionTopY.coerceAtLeast(0))
                 MenuItem.Screenshots -> scrollState.animateScrollTo(screenshotTopY.coerceAtLeast(0))
                 MenuItem.Achievements -> scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
+                MenuItem.RelatedGames -> scrollState.animateScrollTo(relatedTopY.coerceAtLeast(0))
                 else -> {}
             }
         } finally {
@@ -483,18 +534,19 @@ private fun GameDetailContent(
 
     // Sync menu focus with scroll position (reverse direction)
     @OptIn(FlowPreview::class)
-    LaunchedEffect(scrollState, menuLayoutState.hasDescription, menuLayoutState.hasScreenshots, menuLayoutState.hasAchievements) {
+    LaunchedEffect(scrollState, menuLayoutState.hasDescription, menuLayoutState.hasScreenshots, menuLayoutState.hasAchievements, menuLayoutState.hasRelated) {
         snapshotFlow { scrollState.value }
             .debounce(100)
             .distinctUntilChanged()
             .collect { scrollY ->
                 if (programmaticScrollInFlight) return@collect
                 val currentFocus = menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, menuLayoutState)
-                if (currentFocus !in listOf(MenuItem.Details, MenuItem.Description, MenuItem.Screenshots, MenuItem.Achievements)) {
+                if (currentFocus !in listOf(MenuItem.Details, MenuItem.Description, MenuItem.Screenshots, MenuItem.Achievements, MenuItem.RelatedGames)) {
                     return@collect
                 }
 
                 val visibleSection = when {
+                    menuLayoutState.hasRelated && scrollY >= relatedTopY - 100 -> MenuItem.RelatedGames
                     menuLayoutState.hasAchievements && scrollY >= achievementTopY - 100 -> MenuItem.Achievements
                     menuLayoutState.hasScreenshots && scrollY >= screenshotTopY - 100 -> MenuItem.Screenshots
                     menuLayoutState.hasDescription && scrollY >= descriptionTopY - 100 -> MenuItem.Description
@@ -593,6 +645,9 @@ private fun GameDetailContent(
                                     MenuItem.Achievements -> coroutineScope.launch {
                                         scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
                                     }
+                                    MenuItem.RelatedGames -> coroutineScope.launch {
+                                        scrollState.animateScrollTo(relatedTopY.coerceAtLeast(0))
+                                    }
                                 }
                             },
                             onFocusChange = viewModel::setMenuFocusIndex,
@@ -662,6 +717,24 @@ private fun GameDetailContent(
                                 )
                                 Spacer(modifier = Modifier.height(Dimens.spacingLg))
                             }
+
+                            if (uiState.relatedGames.isNotEmpty()) {
+                                RelatedGamesSection(
+                                    games = uiState.relatedGames,
+                                    listState = relatedListState,
+                                    focusedIndex = uiState.relatedFocusIndex,
+                                    isActive = focusedItem == MenuItem.RelatedGames,
+                                    onGameTap = { relatedId -> onNavigateToGame(relatedId) },
+                                    onPositioned = { y ->
+                                        relatedTopY = y
+                                        onRelatedPositioned(y)
+                                    },
+                                    onSectionFocus = {
+                                        viewModel.setMenuFocusIndex(menuLayout.focusIndexOf(MenuItem.RelatedGames, menuLayoutState))
+                                    }
+                                )
+                                Spacer(modifier = Modifier.height(Dimens.spacingLg))
+                            }
                             }
 
                             // Gradient fade at bottom of content
@@ -694,7 +767,7 @@ private fun GameDetailContent(
                 FooterBar(
                     hints = buildList {
                         add(InputButton.LB_RB to "Prev/Next Game")
-                        if (focusedItem == MenuItem.Screenshots || focusedItem == MenuItem.Achievements) {
+                        if (focusedItem == MenuItem.Screenshots || focusedItem == MenuItem.Achievements || focusedItem == MenuItem.RelatedGames) {
                             add(InputButton.DPAD_HORIZONTAL to "Scroll")
                         }
                         when (focusedItem) {
@@ -716,6 +789,7 @@ private fun GameDetailContent(
                             MenuItem.Options -> add(InputButton.A to "Options")
                             MenuItem.Screenshots -> add(InputButton.A to "View")
                             MenuItem.Achievements -> add(InputButton.A to "View All")
+                            MenuItem.RelatedGames -> add(InputButton.A to "Open")
                             MenuItem.Details, MenuItem.Description, null -> {}
                         }
                         add(InputButton.B to "Back")
@@ -728,7 +802,13 @@ private fun GameDetailContent(
                     },
                     onHintClick = { button ->
                         when (button) {
-                            InputButton.A -> viewModel.executeMenuAction()
+                            InputButton.A -> {
+                                if (focusedItem == MenuItem.RelatedGames) {
+                                    viewModel.focusedRelatedGameId()?.let(onNavigateToGame)
+                                } else {
+                                    viewModel.executeMenuAction()
+                                }
+                            }
                             InputButton.B -> onBack()
                             InputButton.X -> {
                                 if (canShowPlayOptions) viewModel.showPlayOptions()
@@ -888,6 +968,15 @@ private fun GameDetailModals(
             selectedCardPath = null,
             onSelectCard = viewModel::selectMemcard,
             onDismiss = viewModel::dismissMemcardPicker
+        )
+    }
+
+    uiState.launchVariantPickerState?.let { pickerState ->
+        com.nendo.argosy.ui.screens.gamedetail.modals.VariantPickerModal(
+            variants = pickerState.variants,
+            focusIndex = uiState.launchVariantPickerFocusIndex,
+            onSelectVariant = viewModel::selectLaunchVariant,
+            onDismiss = viewModel::dismissLaunchVariantPicker
         )
     }
 

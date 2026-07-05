@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.sync
 
+import android.content.Context
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
@@ -18,12 +19,14 @@ import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.repository.ScreenshotUploader
 import com.nendo.argosy.data.repository.StateCacheManager
 import com.nendo.argosy.data.sync.strategy.LocalSaveState
 import com.nendo.argosy.data.sync.strategy.ReconcilePlan
 import com.nendo.argosy.data.sync.strategy.SaveSyncStrategySelector
 import com.nendo.argosy.util.Logger
 import dagger.Lazy
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -36,6 +39,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SyncCoordinator @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val pendingSyncQueueDao: PendingSyncQueueDao,
     private val saveCacheDao: SaveCacheDao,
     private val saveSyncDao: com.nendo.argosy.data.local.dao.SaveSyncDao,
@@ -51,13 +55,17 @@ class SyncCoordinator @Inject constructor(
     private val strategySelector: SaveSyncStrategySelector,
     private val pendingConflictDao: PendingConflictDao,
     private val reconcileEffectApplier: ReconcileEffectApplier,
-    private val saveRecoveryGate: SaveRecoveryGate
+    private val saveRecoveryGate: SaveRecoveryGate,
+    private val screenshotUploader: ScreenshotUploader
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
         private val NEGOTIATE_COOLDOWN: Duration = Duration.ofMinutes(5)
         private const val ORPHAN_RECOVERY_TIMEOUT_MS = 10_000L
+        private const val PENDING_SCREENSHOTS_DIR = "pending_screenshots"
     }
+
+    private var screenshotSweepDone = false
 
     private val mutex = Mutex()
 
@@ -287,6 +295,8 @@ class SyncCoordinator @Inject constructor(
                 processed += validated
             }
 
+            cleanupScreenshotArtifacts()
+
             finalizeDrainedSessions()
 
             Logger.info(TAG, "processQueue: Completed | processed=$processed, failed=$failed")
@@ -336,6 +346,7 @@ class SyncCoordinator @Inject constructor(
                 SyncType.STATUS -> processProperty(item)
                 SyncType.FAVORITE -> processFavorite(item)
                 SyncType.ACHIEVEMENT -> processAchievement(item)
+                SyncType.SCREENSHOT -> processScreenshot(item)
             }
         } catch (e: Exception) {
             Logger.error(TAG, "processItem: Exception processing ${item.syncType}", e)
@@ -456,6 +467,58 @@ class SyncCoordinator @Inject constructor(
         val isFavorite = payload.intValue == 1
 
         return romMRepository.get().syncFavorite(item.rommId, isFavorite)
+    }
+
+    private suspend fun processScreenshot(item: PendingSyncQueueEntity): Boolean {
+        val payload = payloadCodec.decodeScreenshot(item.payloadJson) ?: return false
+        val file = File(payload.localPath)
+        if (!file.exists()) {
+            Logger.debug(TAG, "processScreenshot: file missing, dropping queue item for gameId=${item.gameId}")
+            return true
+        }
+
+        return when (val result = screenshotUploader.upload(file, item.rommId)) {
+            is ScreenshotUploader.Result.Success -> {
+                file.delete()
+                true
+            }
+            is ScreenshotUploader.Result.NotSupported -> {
+                file.delete()
+                Logger.debug(TAG, "processScreenshot: server does not support screenshot upload, dropping")
+                true
+            }
+            is ScreenshotUploader.Result.NotConnected -> false
+            is ScreenshotUploader.Result.Error -> {
+                Logger.warn(TAG, "processScreenshot: upload failed for gameId=${item.gameId}: ${result.message}")
+                false
+            }
+        }
+    }
+
+    private suspend fun cleanupScreenshotArtifacts() {
+        val exhausted = pendingSyncQueueDao.getExhaustedBySyncType(SyncType.SCREENSHOT)
+        for (item in exhausted) {
+            payloadCodec.decodeScreenshot(item.payloadJson)?.let { File(it.localPath).delete() }
+            pendingSyncQueueDao.deleteById(item.id)
+        }
+        if (exhausted.isNotEmpty()) {
+            Logger.info(TAG, "cleanupScreenshotArtifacts: removed ${exhausted.size} exhausted screenshot uploads")
+        }
+
+        if (screenshotSweepDone) return
+        screenshotSweepDone = true
+        val dir = File(context.filesDir, PENDING_SCREENSHOTS_DIR)
+        if (!dir.isDirectory) return
+        val referenced = pendingSyncQueueDao.getBySyncType(SyncType.SCREENSHOT)
+            .mapNotNull { payloadCodec.decodeScreenshot(it.payloadJson)?.localPath }
+            .toSet()
+        var swept = 0
+        dir.listFiles()?.forEach { file ->
+            if (file.absolutePath !in referenced && file.delete()) swept++
+        }
+        if (swept > 0) {
+            Logger.info(TAG, "cleanupScreenshotArtifacts: swept $swept orphaned pending screenshots")
+        }
     }
 
     private suspend fun processAchievement(item: PendingSyncQueueEntity): Boolean {

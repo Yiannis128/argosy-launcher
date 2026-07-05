@@ -112,6 +112,7 @@ class GameLauncher @Inject constructor(
         selectedDiscPath: String? = null,
         variantFileId: Long? = null,
         skipVariantPrompt: Boolean = false,
+        allowVariantPrompt: Boolean = true,
         prefetchedGame: GameEntity? = null
     ): LaunchResult {
         Logger.debug(TAG, "launch() called: gameId=$gameId, discId=$discId, forResume=$forResume, variantFileId=$variantFileId, skipVariantPrompt=$skipVariantPrompt")
@@ -131,7 +132,7 @@ class GameLauncher @Inject constructor(
             return launchAndroidApp(game)
         }
 
-        if (variantFileId == null && !skipVariantPrompt) {
+        if (variantFileId == null && !skipVariantPrompt && allowVariantPrompt) {
             val options = variantResolver.getVariantOptions(game)
             if (options != null) {
                 return LaunchResult.SelectVariant(gameId, options)
@@ -1666,20 +1667,26 @@ class GameLauncher @Inject constructor(
         }
     }
 
-    /** Switch-family titles ship base + update + DLC together in a per-game folder; an update or DLC file is unbootable alone, so redirect to the base rom and persist it. Climbs out of an update/dlc subfolder to the game folder. Never applied to the shared platform root, where a malformed library mixes unrelated titles. */
+    /** An update or DLC file is unbootable alone, so redirect to the base rom and persist it; excluded (title-id) platforms always re-elect the base, other platforms only when the launch target is provably update/dlc content, preferring an m3u so multi-disc folders keep their playlist. */
     private suspend fun resolveBaseRomFile(game: GameEntity, romFile: File): File {
-        if (game.platformSlug !in VariantCategory.VARIANT_EXCLUDED_PLATFORMS) return romFile
+        val excluded = game.platformSlug in VariantCategory.VARIANT_EXCLUDED_PLATFORMS
         val parent = romFile.parentFile ?: return romFile
-        val gameFolder = if (parent.name.lowercase() in EXTCONTENT_SOURCE_NAMES) {
+        val inContentSubfolder = parent.name.lowercase() in EXTCONTENT_SOURCE_NAMES
+        if (!excluded && !inContentSubfolder && !isUpdateOrDlc(romFile.name)) return romFile
+        val gameFolder = if (inContentSubfolder) {
             parent.parentFile ?: return romFile
         } else {
             parent
         }
         if (isPlatformRoot(gameFolder, game.platformSlug)) return romFile
-        val base = (gameFolder.listFiles()?.filter { it.isFile } ?: return romFile)
+        val candidates = (gameFolder.listFiles()?.filter { it.isFile } ?: return romFile)
             .filterNot { isUpdateOrDlc(it.name) }
-            .maxByOrNull { it.length() }
-            ?: return romFile
+        val base = if (excluded) {
+            candidates.maxByOrNull { it.length() }
+        } else {
+            candidates.firstOrNull { it.extension.equals("m3u", ignoreCase = true) }
+                ?: candidates.maxByOrNull { it.length() }
+        } ?: return romFile
         if (base.absolutePath == romFile.absolutePath) return romFile
         Logger.info(TAG, "resolveBaseRomFile: redirecting ${romFile.name} -> ${base.name} for ${game.title}")
         gameDao.updateLocalPath(game.id, base.absolutePath, game.source)
