@@ -1,12 +1,14 @@
 package com.nendo.argosy.data.emulator
 
 import android.Manifest
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
@@ -46,32 +48,41 @@ class ScreenshotCaptureMonitor @Inject constructor(
     private val scope = SafeCoroutineScope(Dispatchers.IO, "ScreenshotCaptureMonitor")
     private val processMutex = Mutex()
 
-    private var observer: ContentObserver? = null
-    private var sessionGameId: Long = -1
-    private var sessionEmulatorPackage: String? = null
-    private var lastSeenMediaId: Long = -1
-    private var sessionStartEpochSec: Long = 0
+    @Volatile private var observer: ContentObserver? = null
+    @Volatile private var sessionGameId: Long = -1
+    @Volatile private var sessionEmulatorPackage: String? = null
+    @Volatile private var lastSeenMediaId: Long = -1
+    @Volatile private var sessionStartEpochSec: Long = 0
+    @Volatile private var usageAccessWarned: Boolean = false
 
     fun start(gameId: Long, emulatorPackage: String?, sessionStartTime: Long) {
         stop()
         if (gameId <= 0) return
+        if (!hasMediaPermission()) return
+        if (!connectionManager.getCapabilities().supportsScreenshotUpload) return
         sessionGameId = gameId
         sessionEmulatorPackage = emulatorPackage
         sessionStartEpochSec = sessionStartTime / 1000
+        lastSeenMediaId = -1
+        usageAccessWarned = false
+
+        val contentObserver = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                scope.launch { processNewScreenshots() }
+            }
+        }
+        context.contentResolver.registerContentObserver(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, contentObserver
+        )
+        observer = contentObserver
 
         scope.launch {
-            if (!hasMediaPermission()) return@launch
-            if (!connectionManager.getCapabilities().supportsScreenshotUpload) return@launch
-            lastSeenMediaId = queryMaxMediaId()
-            val contentObserver = object : ContentObserver(null) {
-                override fun onChange(selfChange: Boolean, uri: Uri?) {
-                    scope.launch { processNewScreenshots() }
+            val baseline = queryMaxMediaId()
+            processMutex.withLock {
+                if (observer === contentObserver) {
+                    lastSeenMediaId = maxOf(lastSeenMediaId, baseline)
                 }
             }
-            context.contentResolver.registerContentObserver(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, contentObserver
-            )
-            observer = contentObserver
             Logger.debug(TAG, "Watching for screenshots (gameId=$sessionGameId, lastSeenId=$lastSeenMediaId)")
         }
     }
@@ -100,10 +111,15 @@ class ScreenshotCaptureMonitor @Inject constructor(
             null, EmulatorRegistry.BUILTIN_PACKAGE -> context.packageName
             else -> pkg
         }
-        if (!permissionHelper.isPackageInForeground(context, foregroundPackage, withinMs = FOREGROUND_WINDOW_MS)) {
-            Logger.debug(TAG, "Screenshot ignored: $foregroundPackage not foregrounded")
-            candidates.maxOfOrNull { it.mediaId }?.let { lastSeenMediaId = maxOf(lastSeenMediaId, it) }
-            return
+        if (permissionHelper.hasUsageStatsPermission(context)) {
+            if (!permissionHelper.isPackageInForeground(context, foregroundPackage, withinMs = FOREGROUND_WINDOW_MS)) {
+                Logger.debug(TAG, "Screenshot ignored: $foregroundPackage not foregrounded")
+                candidates.maxOfOrNull { it.mediaId }?.let { lastSeenMediaId = maxOf(lastSeenMediaId, it) }
+                return
+            }
+        } else if (!usageAccessWarned) {
+            usageAccessWarned = true
+            Logger.warn(TAG, "Usage access not granted; attributing screenshots to the active session without foreground check")
         }
 
         for (candidate in candidates) {
@@ -171,14 +187,25 @@ class ScreenshotCaptureMonitor @Inject constructor(
 
     private fun queryMaxMediaId(): Long {
         return try {
-            context.contentResolver.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Images.Media._ID),
-                null, null,
-                "${MediaStore.Images.Media._ID} DESC LIMIT 1"
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getLong(0) else -1L
-            } ?: -1L
+            val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val args = Bundle().apply {
+                    putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Images.Media._ID))
+                    putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
+                    putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
+                }
+                context.contentResolver.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Images.Media._ID), args, null
+                )
+            } else {
+                context.contentResolver.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Images.Media._ID),
+                    null, null,
+                    "${MediaStore.Images.Media._ID} DESC LIMIT 1"
+                )
+            }
+            cursor?.use { if (it.moveToFirst()) it.getLong(0) else -1L } ?: -1L
         } catch (e: Exception) {
             Logger.error(TAG, "Failed to query max media id", e)
             -1L

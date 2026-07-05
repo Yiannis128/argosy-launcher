@@ -815,6 +815,12 @@ class ImageCacheManager @Inject constructor(
         return File(platformDir(slug, "screenshots"), "uss_${rommId}_${screenshotId}_${version.md5Hash()}.png")
     }
 
+    fun pruneStaleUserScreenshots(rommId: Long, screenshotId: Long, keep: File) {
+        keep.parentFile?.listFiles()?.forEach { file ->
+            if (file.name.startsWith("uss_${rommId}_${screenshotId}_") && file.name != keep.name) file.delete()
+        }
+    }
+
     fun resumePendingScreenshotCache() {
         scope.launch {
             val uncached = gameDao.getGamesWithUncachedScreenshots()

@@ -43,7 +43,8 @@ class SyncSettingsDelegate @Inject constructor(
     private val platformRepository: PlatformRepository,
     private val rommRepository: RomMRepository,
     private val imageCacheManager: ImageCacheManager,
-    private val notificationManager: NotificationManager
+    private val notificationManager: NotificationManager,
+    private val permissionHelper: com.nendo.argosy.util.PermissionHelper
 ) {
     private val _state = MutableStateFlow(SyncSettingsState())
     val state: StateFlow<SyncSettingsState> = _state.asStateFlow()
@@ -256,6 +257,7 @@ class SyncSettingsDelegate @Inject constructor(
             }
             preferencesRepository.setUploadScreenshotsEnabled(newValue)
             onChanged(newValue)
+            if (newValue) promptUsageAccessIfMissing()
         }
     }
 
@@ -264,6 +266,13 @@ class SyncSettingsDelegate @Inject constructor(
         scope.launch {
             preferencesRepository.setUploadScreenshotsEnabled(true)
             onChanged(true)
+            promptUsageAccessIfMissing()
+        }
+    }
+
+    private fun promptUsageAccessIfMissing() {
+        if (!permissionHelper.hasUsageStatsPermission(application)) {
+            permissionHelper.openUsageStatsSettings(application)
         }
     }
 

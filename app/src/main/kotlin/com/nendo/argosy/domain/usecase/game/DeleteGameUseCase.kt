@@ -7,11 +7,13 @@ import com.nendo.argosy.data.local.dao.OrphanedFileDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.OrphanedFileEntity
+import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.repository.SteamResult
+import com.nendo.argosy.data.sync.SyncPayloadCodec
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,7 +31,8 @@ class DeleteGameUseCase @Inject constructor(
     private val saveSyncDao: SaveSyncDao,
     private val pendingSyncQueueDao: PendingSyncQueueDao,
     private val orphanedFileDao: OrphanedFileDao,
-    private val steamRepository: SteamRepository
+    private val steamRepository: SteamRepository,
+    private val payloadCodec: SyncPayloadCodec
 ) {
     suspend operator fun invoke(gameId: Long): Boolean {
         val game = gameDao.getById(gameId) ?: return false
@@ -47,6 +50,7 @@ class DeleteGameUseCase @Inject constructor(
 
         saveCacheManager.deleteAllCachesForGame(gameId)
         saveSyncDao.deleteByGame(gameId)
+        deleteQueuedScreenshotFiles(gameId)
         pendingSyncQueueDao.deleteByGameId(gameId)
         gameDao.updateActiveSaveChannel(gameId, null)
         gameDao.updateActiveSaveTimestamp(gameId, null)
@@ -85,6 +89,17 @@ class DeleteGameUseCase @Inject constructor(
 
         Logger.debug(TAG, "Deleted local file and all save data for game $gameId")
         return true
+    }
+
+    private suspend fun deleteQueuedScreenshotFiles(gameId: Long) {
+        val rows = pendingSyncQueueDao.getByGameId(gameId)
+            .filter { it.syncType == SyncType.SCREENSHOT }
+        if (rows.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            rows.forEach { row ->
+                payloadCodec.decodeScreenshot(row.payloadJson)?.let { File(it.localPath).delete() }
+            }
+        }
     }
 
     private suspend fun deleteSteamGame(steamAppId: Long?): Boolean {

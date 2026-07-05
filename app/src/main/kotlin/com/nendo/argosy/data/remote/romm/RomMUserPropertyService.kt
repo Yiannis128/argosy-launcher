@@ -102,6 +102,7 @@ class RomMUserPropertyService @Inject constructor(
                     target.outputStream().use { output -> input.copyTo(output) }
                 }
                 if (target.length() > 0) {
+                    imageCacheManager.pruneStaleUserScreenshots(rommId, shot.id, target)
                     target.absolutePath
                 } else {
                     target.delete()

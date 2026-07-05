@@ -238,11 +238,11 @@ private fun InputButton.faceButtonPriority(): Int = when (this) {
 }
 
 private fun InputButton.hidePriority(): Int = when (this) {
-    InputButton.A, InputButton.B -> 4
-    InputButton.X, InputButton.Y -> 3
-    InputButton.START, InputButton.SELECT -> 2
+    InputButton.X, InputButton.Y -> 5
+    InputButton.START, InputButton.SELECT -> 4
     InputButton.LB, InputButton.RB, InputButton.LB_RB,
-    InputButton.LT, InputButton.RT, InputButton.LT_RT -> 1
+    InputButton.LT, InputButton.RT, InputButton.LT_RT -> 3
+    InputButton.A, InputButton.B -> 1
     else -> 0
 }
 
