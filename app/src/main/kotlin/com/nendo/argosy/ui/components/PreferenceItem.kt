@@ -77,7 +77,7 @@ internal fun preferenceModifier(
     val accent = preferenceAccent(isDangerous)
     val surface = MaterialTheme.colorScheme.surface
     val background by animateColorAsState(
-        targetValue = if (isFocused) accent.copy(alpha = 0.15f).compositeOver(surface) else surface,
+        targetValue = if (isFocused) accent.copy(alpha = 0.15f).compositeOver(surface) else surface.copy(alpha = 0.10f),
         animationSpec = Motion.focusColorSpec,
         label = "pref-bg"
     )

@@ -406,10 +406,10 @@ fun PlatformDetailSection(
 
 
                 // -- PATHS section --
-                PlatformDetailItem.RomPath -> CyclePreference(
+                PlatformDetailItem.RomPath -> ActionPreference(
                     title = "ROM Path",
-                    value = formatPath(storageConfig?.effectivePath),
-                    subtitle = if (storageConfig?.customRomPath != null) "(custom)" else null,
+                    subtitle = formatPath(storageConfig?.effectivePath),
+                    trailingText = if (storageConfig?.customRomPath != null) "(custom)" else null,
                     isFocused = isFocused(item),
                     onClick = { viewModel.openPlatformFolderPicker(config.platform.id) },
                     showResetButton = storageConfig?.customRomPath != null,
@@ -429,14 +429,13 @@ fun PlatformDetailSection(
                         )
                     } else {
                         val isBuiltinEmulator = config.effectiveEmulatorId == "builtin"
-                        CyclePreference(
+                        val accessBlocked = !isBuiltinEmulator && detail.packagePathAccessible == false &&
+                            storageConfig?.isUserSavePathOverride != true
+                        ActionPreference(
                             title = "Save Path",
-                            value = formatPath(storageConfig?.effectiveSavePath),
-                            subtitle = when {
-                                !isBuiltinEmulator && detail.packagePathAccessible == false && storageConfig?.isUserSavePathOverride != true -> "Access blocked -- set a custom save path"
-                                storageConfig?.isUserSavePathOverride == true -> "(custom)"
-                                else -> null
-                            },
+                            subtitle = if (accessBlocked) "Access blocked -- set a custom save path"
+                                       else formatPath(storageConfig?.effectiveSavePath),
+                            trailingText = if (storageConfig?.isUserSavePathOverride == true) "(custom)" else null,
                             isFocused = isFocused(item),
                             onClick = { viewModel.launchSavePathPicker(config.platform.id) },
                             showResetButton = storageConfig?.isUserSavePathOverride == true,
@@ -462,10 +461,10 @@ fun PlatformDetailSection(
                         else ->
                             "Not selected" to "Multiple memory cards detected -- select one to enable save sync"
                     }
-                    CyclePreference(
+                    ActionPreference(
                         title = "Memory Card",
-                        value = value,
-                        subtitle = subtitle,
+                        subtitle = subtitle ?: value,
+                        trailingText = if (subtitle != null) value else null,
                         isFocused = isFocused(item),
                         onClick = { viewModel.openMemcardPicker(config) },
                         showResetButton = selected != null && !isOverridingSavePath,
@@ -487,10 +486,10 @@ fun PlatformDetailSection(
                             }
                         )
                     } else {
-                        CyclePreference(
+                        ActionPreference(
                             title = "State Path",
-                            value = formatPath(storageConfig?.effectiveStatePath),
-                            subtitle = if (storageConfig?.isUserStatePathOverride == true) "(custom)" else null,
+                            subtitle = formatPath(storageConfig?.effectiveStatePath),
+                            trailingText = if (storageConfig?.isUserStatePathOverride == true) "(custom)" else null,
                             isFocused = isFocused(item),
                             onClick = { viewModel.launchStatePathPicker(config.platform.id) },
                             showResetButton = storageConfig?.isUserStatePathOverride == true,
