@@ -38,6 +38,7 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.ui.common.isAndroidApp
 import com.nendo.argosy.ui.common.isSteamGame
+import com.nendo.argosy.ui.common.toHomeGameUi
 import com.nendo.argosy.ui.screens.common.CollectionModalDelegate
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
 import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
@@ -108,7 +109,8 @@ class GameDetailViewModel @Inject constructor(
     private val variantScanner: com.nendo.argosy.data.scanner.VariantScanner,
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
     private val downloadManager: com.nendo.argosy.data.download.DownloadManager,
-    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
+    private val getRelatedGamesUseCase: com.nendo.argosy.domain.usecase.game.GetRelatedGamesUseCase
 ) : ViewModel() {
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
@@ -394,6 +396,7 @@ class GameDetailViewModel @Inject constructor(
             }
 
             val game = gameRepository.getById(gameId) ?: return@launch
+            loadRelatedGames(game)
             val platform = platformRepository.getById(game.platformId)
 
             val gameSpecificConfig = emulatorConfigDao.getByGameId(gameId)
@@ -1408,7 +1411,8 @@ class GameDetailViewModel @Inject constructor(
             hasScreenshots = game?.screenshots?.isNotEmpty() == true,
             hasAchievements = game?.achievements?.isNotEmpty() == true,
             hasSocialAccount = state.hasSocialAccount,
-            hasSaveSync = hasSaveSync
+            hasSaveSync = hasSaveSync,
+            hasRelated = state.relatedGames.isNotEmpty()
         )
     }
 
@@ -1439,9 +1443,43 @@ class GameDetailViewModel @Inject constructor(
             MenuItem.Description -> {}
             MenuItem.Screenshots -> openScreenshotViewer()
             MenuItem.Achievements -> showAchievementList()
+            MenuItem.RelatedGames -> {}
             null -> {}
         }
     }
+
+    private fun loadRelatedGames(game: com.nendo.argosy.data.local.entity.GameEntity) {
+        _uiState.update { it.copy(relatedGames = emptyList(), relatedFocusIndex = 0) }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val related = getRelatedGamesUseCase(game)
+            val platformNames = related.map { it.platformId }.distinct()
+                .mapNotNull { pid -> platformRepository.getById(pid)?.let { pid to it.name } }
+                .toMap()
+            val ui = related.map {
+                it.toHomeGameUi(downloadFileStatusRepository, platformNames[it.platformId])
+            }
+            if (currentGameId == game.id) {
+                _uiState.update { it.copy(relatedGames = ui, relatedFocusIndex = 0) }
+            }
+        }
+    }
+
+    fun moveRelatedFocus(delta: Int) {
+        _uiState.update { state ->
+            if (state.relatedGames.isEmpty()) state
+            else state.copy(relatedFocusIndex = (state.relatedFocusIndex + delta).coerceIn(0, state.relatedGames.size - 1))
+        }
+    }
+
+    fun setRelatedFocusIndex(index: Int) {
+        _uiState.update { state ->
+            if (state.relatedGames.isEmpty()) state
+            else state.copy(relatedFocusIndex = index.coerceIn(0, state.relatedGames.size - 1))
+        }
+    }
+
+    fun focusedRelatedGameId(): Long? =
+        _uiState.value.let { it.relatedGames.getOrNull(it.relatedFocusIndex)?.id }
 
     // --- Achievements ---
 
@@ -1567,7 +1605,8 @@ class GameDetailViewModel @Inject constructor(
         onSectionRight: () -> Unit = {},
         onPrevGame: () -> Unit = {},
         onNextGame: () -> Unit = {},
-        isInScreenshotsSection: () -> Boolean = { false }
+        isInScreenshotsSection: () -> Boolean = { false },
+        onNavigateToGame: (Long) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
             val state = _uiState.value
@@ -1736,6 +1775,8 @@ class GameDetailViewModel @Inject constructor(
                 state.showRatingsStatusMenu -> confirmRatingsStatusSelection()
                 state.showPlayOptions -> confirmPlayOptionSelection()
                 state.showMoreOptions -> confirmOptionSelection(onBack, onNavigateToPlatformSettings)
+                menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.RelatedGames ->
+                    focusedRelatedGameId()?.let(onNavigateToGame)
                 else -> executeMenuAction()
             }
             return InputResult.HANDLED

@@ -244,6 +244,9 @@ fun NavGraph(
                     navController.navigate(
                         Screen.Settings.createRoute(section = "platform_detail", platformId = platformId)
                     )
+                },
+                onNavigateToGame = { relatedGameId ->
+                    navController.navigate(Screen.GameDetail.createRoute(relatedGameId))
                 }
             )
         }

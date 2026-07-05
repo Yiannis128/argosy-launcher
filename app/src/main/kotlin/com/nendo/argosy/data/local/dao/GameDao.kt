@@ -457,6 +457,37 @@ interface GameDao {
     """)
     fun observeByGameMode(gameMode: String): Flow<List<GameEntity>>
 
+    @Query("""
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, coverPath, isFavorite, isHidden, isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes, lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt FROM games
+        WHERE isHidden = 0
+        AND id != :excludeGameId
+        AND collections LIKE '%' || :token || '%'
+        ORDER BY releaseYear ASC
+        LIMIT :limit
+    """)
+    suspend fun getRelatedByCollection(token: String, excludeGameId: Long, limit: Int): List<GameListItem>
+
+    @Query("""
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, coverPath, isFavorite, isHidden, isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes, lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt FROM games
+        WHERE isHidden = 0
+        AND id != :excludeGameId
+        AND franchises LIKE '%' || :token || '%'
+        ORDER BY rating DESC
+        LIMIT :limit
+    """)
+    suspend fun getRelatedByFranchise(token: String, excludeGameId: Long, limit: Int): List<GameListItem>
+
+    @Query("""
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, coverPath, isFavorite, isHidden, isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes, lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt FROM games
+        WHERE isHidden = 0
+        AND id != :excludeGameId
+        AND releaseYear BETWEEN :yearLo AND :yearHi
+        AND (genres LIKE '%' || :token || '%' OR (genres IS NULL AND genre = :token))
+        ORDER BY rating DESC
+        LIMIT :limit
+    """)
+    suspend fun getRelatedByGenreAndYear(token: String, yearLo: Int, yearHi: Int, excludeGameId: Long, limit: Int): List<GameListItem>
+
     @Query("SELECT * FROM games WHERE screenshotPaths IS NOT NULL AND cachedScreenshotPaths IS NULL AND rommId IS NOT NULL")
     suspend fun getGamesWithUncachedScreenshots(): List<GameEntity>
 

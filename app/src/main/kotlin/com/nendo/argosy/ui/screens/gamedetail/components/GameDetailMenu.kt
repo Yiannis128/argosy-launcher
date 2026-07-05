@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -23,6 +26,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
@@ -38,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +60,8 @@ data class MenuLayoutState(
     val hasScreenshots: Boolean = false,
     val hasAchievements: Boolean = false,
     val hasSocialAccount: Boolean = false,
-    val hasSaveSync: Boolean = false
+    val hasSaveSync: Boolean = false,
+    val hasRelated: Boolean = false
 )
 
 sealed class MenuItem(
@@ -71,9 +77,10 @@ sealed class MenuItem(
     data object Description : MenuItem("description", visibleWhen = { it.hasDescription })
     data object Screenshots : MenuItem("screenshots", visibleWhen = { it.hasScreenshots })
     data object Achievements : MenuItem("achievements", visibleWhen = { it.hasAchievements })
+    data object RelatedGames : MenuItem("related", visibleWhen = { it.hasRelated })
 
     companion object {
-        val ALL = listOf(Play, Saves, Favorite, Privacy, Options, Details, Description, Screenshots, Achievements)
+        val ALL = listOf(Play, Saves, Favorite, Privacy, Options, Details, Description, Screenshots, Achievements, RelatedGames)
     }
 }
 
@@ -107,8 +114,23 @@ fun GameDetailMenu(
     isCompact: Boolean = false
 ) {
     val visibleItems = menuLayout.visibleItems(layoutState)
+    val listState = rememberLazyListState()
 
-    Column(
+    LaunchedEffect(displayState.focusedIndex, visibleItems) {
+        val position = visibleItems.indexOfFirst {
+            menuLayout.focusIndexOf(it, layoutState) == displayState.focusedIndex
+        }
+        if (position < 0) return@LaunchedEffect
+        val layoutInfo = listState.layoutInfo
+        val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == position }
+        val fullyVisible = itemInfo != null &&
+            itemInfo.offset >= layoutInfo.viewportStartOffset &&
+            itemInfo.offset + itemInfo.size <= layoutInfo.viewportEndOffset
+        if (!fullyVisible) listState.animateScrollToItem(position)
+    }
+
+    LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxHeight()
             .padding(end = if (isCompact) Dimens.spacingXs else Dimens.spacingMd),
@@ -116,7 +138,7 @@ fun GameDetailMenu(
         horizontalAlignment = if (isCompact) Alignment.CenterHorizontally else Alignment.Start
     ) {
 
-        visibleItems.forEach { item ->
+        items(visibleItems, key = { it.key }) { item ->
             val focusIndex = menuLayout.focusIndexOf(item, layoutState)
             val isFocused = focusIndex == displayState.focusedIndex
 
@@ -210,6 +232,16 @@ fun GameDetailMenu(
                     IconTextMenuItem(
                         label = "Achievements",
                         icon = Icons.Default.EmojiEvents,
+                        isFocused = isFocused,
+                        isCompact = isCompact,
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
+                    )
+                }
+
+                MenuItem.RelatedGames -> {
+                    IconTextMenuItem(
+                        label = "Related Games",
+                        icon = Icons.Default.Gamepad,
                         isFocused = isFocused,
                         isCompact = isCompact,
                         onClick = { onFocusChange(focusIndex); onItemClick(item) }
