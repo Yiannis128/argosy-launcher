@@ -371,6 +371,7 @@ class GameRepository @Inject constructor(
             val platformDir = getDownloadDir(platformSlug)
             if (!platformDir.isDirectory) continue
             val fileIndex by lazy { buildPlatformFileIndex(platformDir) }
+            val folderExists = HashMap<String, Boolean>()
 
             for (entry in entries) {
                 val folderCandidates = buildList {
@@ -382,7 +383,8 @@ class GameRepository @Inject constructor(
 
                 val found = folderCandidates.firstNotNullOfOrNull { folderName ->
                     val gameFolder = File(platformDir, folderName)
-                    if (!gameFolder.isDirectory) return@firstNotNullOfOrNull null
+                    val exists = folderExists.getOrPut(folderName) { gameFolder.isDirectory }
+                    if (!exists) return@firstNotNullOfOrNull null
                     categoryCandidates.firstNotNullOfOrNull { category ->
                         val categoryFolder = File(gameFolder, category)
                         val candidate = File(categoryFolder, entry.fileName)
@@ -404,7 +406,7 @@ class GameRepository @Inject constructor(
     private fun buildPlatformFileIndex(platformDir: File): Map<String, File> {
         val index = HashMap<String, File>()
         platformDir.walkTopDown()
-            .maxDepth(6)
+            .maxDepth(3)
             .filter { it.isFile && !it.name.startsWith("._") }
             .forEach { file -> if (file.name !in index) index[file.name] = file }
         return index
