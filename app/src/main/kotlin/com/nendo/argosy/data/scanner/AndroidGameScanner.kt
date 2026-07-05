@@ -284,16 +284,24 @@ class AndroidGameScanner @Inject constructor(
             val key = matchKey(game.title)
             if (key.isEmpty()) continue
             val match = installedByName[key]?.singleOrNull() ?: continue
-            if (gameDao.getByPackageName(match.packageName) != null) continue
+            val holder = gameDao.getByPackageName(match.packageName)
+            if (holder != null && (holder.id == game.id || holder.rommId != null)) continue
+            if (holder != null) gameDao.delete(holder.id)
             gameDao.update(
                 game.copy(
                     packageName = match.packageName,
                     source = GameSource.ANDROID_APP,
-                    localPath = null
+                    localPath = null,
+                    isFavorite = game.isFavorite || holder?.isFavorite == true,
+                    playCount = game.playCount + (holder?.playCount ?: 0),
+                    playTimeMinutes = game.playTimeMinutes + (holder?.playTimeMinutes ?: 0),
+                    lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull(),
+                    coverPath = game.coverPath ?: holder?.coverPath
                 )
             )
             relinked++
-            Log.d(TAG, "Relinked Android game '${game.title}' -> ${match.packageName}")
+            Log.d(TAG, "Relinked Android game '${game.title}' -> ${match.packageName}" +
+                if (holder != null) " (merged duplicate ${holder.id})" else "")
         }
         if (relinked > 0) updatePlatformGameCount()
         relinked

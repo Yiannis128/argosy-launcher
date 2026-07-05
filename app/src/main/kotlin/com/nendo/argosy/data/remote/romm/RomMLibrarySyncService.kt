@@ -42,6 +42,7 @@ import javax.inject.Singleton
 
 private const val SYNC_PAGE_SIZE = 100
 private const val TAG = "RomMLibrarySyncService"
+private const val ANDROID_SLUG = "android"
 
 @Singleton
 class RomMLibrarySyncService @Inject constructor(
@@ -64,7 +65,8 @@ class RomMLibrarySyncService @Inject constructor(
     private val installedAppResolver: InstalledAppResolver,
     private val gameRepository: dagger.Lazy<com.nendo.argosy.data.repository.GameRepository>,
     private val syncVirtualCollectionsUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.collection.SyncVirtualCollectionsUseCase>,
-    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer
+    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer,
+    private val androidGameScanner: dagger.Lazy<com.nendo.argosy.data.scanner.AndroidGameScanner>
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
     private val syncMutex = Mutex()
@@ -146,7 +148,13 @@ class RomMLibrarySyncService @Inject constructor(
         _syncProgress.value = SyncProgress(isSyncing = true, platformsTotal = 1)
 
         try {
-            val platformResponse = currentApi.getPlatform(platformId)
+            val remoteQueryId = if (platformId == LocalPlatformIds.ANDROID) {
+                resolveRemoteAndroidPlatformId(currentApi)
+                    ?: return SyncResult(0, 0, 0, 0, listOf("Android platform not found on server"))
+            } else {
+                platformId
+            }
+            val platformResponse = currentApi.getPlatform(remoteQueryId)
             if (!platformResponse.isSuccessful) {
                 return SyncResult(0, 0, 0, 0, listOf("Failed to fetch platform: ${platformResponse.code()}"))
             }
@@ -158,13 +166,16 @@ class RomMLibrarySyncService @Inject constructor(
 
             _syncProgress.value = _syncProgress.value.copy(currentPlatform = platform.name)
 
-            gameDao.markSyncDirty(platform.id, ROMM_SOURCES)
+            val storageId = storagePlatformId(platform)
+            gameDao.markSyncDirty(storageId, ROMM_SOURCES)
 
             val result = syncPlatformRoms(currentApi, platform, filters)
 
-            val gamesDeleted = processPostPlatformSync(currentApi, platform.id, result, filters)
+            val gamesDeleted = processPostPlatformSync(currentApi, storageId, result, filters)
 
             gameDao.clearAllSyncDirty()
+
+            androidGameScanner.get().relinkInstalledRommAndroidApps()
 
             syncVirtualCollectionsUseCase.get()()
 
@@ -245,7 +256,7 @@ class RomMLibrarySyncService @Inject constructor(
             }
 
             val enabledPlatforms = platforms.filter { platform ->
-                val local = platformDao.getById(platform.id)
+                val local = platformDao.getById(storagePlatformId(platform))
                 local?.syncEnabled != false
             }
 
@@ -259,14 +270,15 @@ class RomMLibrarySyncService @Inject constructor(
                     platformsDone = index
                 )
 
-                gameDao.markSyncDirty(platform.id, ROMM_SOURCES)
+                val storageId = storagePlatformId(platform)
+                gameDao.markSyncDirty(storageId, ROMM_SOURCES)
 
                 val result = syncPlatformRoms(currentApi, platform, filters)
                 gamesAdded += result.added
                 gamesUpdated += result.updated
                 result.error?.let { errors.add(it) }
 
-                gamesDeleted += processPostPlatformSync(currentApi, platform.id, result, filters)
+                gamesDeleted += processPostPlatformSync(currentApi, storageId, result, filters)
 
                 platformsSynced++
             }
@@ -274,6 +286,8 @@ class RomMLibrarySyncService @Inject constructor(
             gameDao.clearAllSyncDirty()
 
             cleanupLegacyPlatforms(platforms)
+
+            androidGameScanner.get().relinkInstalledRommAndroidApps()
 
             userPreferencesRepository.setLastRommSyncTime(Instant.now())
 
@@ -290,10 +304,24 @@ class RomMLibrarySyncService @Inject constructor(
         return SyncResult(platformsSynced, gamesAdded, gamesUpdated, gamesDeleted, errors)
     }
 
+    private fun storagePlatformId(platform: RomMPlatform): Long {
+        val slug = PlatformDefinitions.resolveImportSlug(platform.slug, platform.displayName ?: platform.name)
+        return if (slug == ANDROID_SLUG) LocalPlatformIds.ANDROID else platform.id
+    }
+
+    private suspend fun resolveRemoteAndroidPlatformId(api: RomMApi): Long? {
+        val platforms = api.getPlatforms().takeIf { it.isSuccessful }?.body() ?: return null
+        return platforms.firstOrNull { storagePlatformId(it) == LocalPlatformIds.ANDROID }?.id
+    }
+
     private suspend fun syncPlatformMetadata(remote: RomMPlatform) {
         val platformId = remote.id
-        val existing = platformDao.getById(platformId)
         val effectiveSlug = PlatformDefinitions.resolveImportSlug(remote.slug, remote.displayName ?: remote.name)
+        if (effectiveSlug == ANDROID_SLUG) {
+            syncAndroidPlatformMetadata(remote)
+            return
+        }
+        val existing = platformDao.getById(platformId)
         val platformDef = PlatformDefinitions.getBySlug(effectiveSlug)
 
         val logoUrl = remote.logoUrl?.let { apiClient.buildMediaUrl(it) }
@@ -336,9 +364,49 @@ class RomMLibrarySyncService @Inject constructor(
         }
     }
 
+    private suspend fun syncAndroidPlatformMetadata(remote: RomMPlatform) {
+        if (platformDao.getById(LocalPlatformIds.ANDROID) == null) {
+            PlatformDefinitions.getBySlug(ANDROID_SLUG)?.let { def ->
+                PlatformDefinitions.toLocalPlatformEntity(def)?.let { platformDao.insert(it) }
+            }
+        }
+
+        val legacy = platformDao.getById(remote.id)
+        if (legacy != null && legacy.slug == ANDROID_SLUG) {
+            migrateLegacyAndroidPlatform(legacy)
+        }
+
+        val local = platformDao.getById(LocalPlatformIds.ANDROID) ?: return
+        val logoUrl = remote.logoUrl?.let { apiClient.buildMediaUrl(it) }
+        if (local.logoPath == null && logoUrl != null) {
+            platformDao.updateLogoPath(LocalPlatformIds.ANDROID, logoUrl)
+            if (logoUrl.startsWith("http")) {
+                imageCacheManager.queuePlatformLogoCache(LocalPlatformIds.ANDROID, logoUrl)
+            }
+        }
+    }
+
+    private suspend fun migrateLegacyAndroidPlatform(legacy: PlatformEntity) {
+        database.withTransaction {
+            val moved = gameDao.countByPlatform(legacy.id)
+            gameDao.migratePlatform(legacy.id, LocalPlatformIds.ANDROID, ANDROID_SLUG)
+            emulatorConfigDao.migratePlatform(legacy.id, LocalPlatformIds.ANDROID)
+            platformDao.getById(LocalPlatformIds.ANDROID)?.let { local ->
+                platformDao.update(local.copy(
+                    isVisible = legacy.isVisible,
+                    syncEnabled = legacy.syncEnabled,
+                    customRomPath = legacy.customRomPath ?: local.customRomPath
+                ))
+            }
+            platformDao.deleteById(legacy.id)
+            platformDao.updateGameCount(LocalPlatformIds.ANDROID, gameDao.countByPlatform(LocalPlatformIds.ANDROID))
+            Logger.info(TAG, "migrateLegacyAndroidPlatform: moved $moved games from platform ${legacy.id} to local android platform")
+        }
+    }
+
     private suspend fun syncRom(rom: RomMRom): Pair<Boolean, GameEntity> {
-        val platformId = rom.platformId
         val platformSlug = PlatformDefinitions.resolveImportSlug(rom.platformSlug, rom.platformName)
+        val platformId = if (platformSlug == ANDROID_SLUG) LocalPlatformIds.ANDROID else rom.platformId
         val existing = gameDao.getByRommId(rom.id)
 
         val migrationSources = if (existing == null && rom.igdbId != null) {
@@ -829,6 +897,7 @@ class RomMLibrarySyncService @Inject constructor(
         val allLocal = platformDao.getAllPlatforms()
 
         for (local in allLocal) {
+            if (local.id < 0) continue
             if (local.id in remoteIds) continue
 
             val matchingRemote = remoteByComposite[local.slug to local.fsSlug]
