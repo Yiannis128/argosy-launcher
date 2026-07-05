@@ -390,7 +390,7 @@ object MappingPlatforms {
         "vectrex" -> VECTREX
         "intellivision" -> INTV
         "saturn" -> SATURN
-        "arcade", "cps1", "cps2", "cps3", "neogeocd" -> ARCADE6
+        "arcade", "fbneo", "mame", "cps1", "cps2", "cps3", "neogeocd" -> ARCADE6
 
         "nes", "fds", "gameandwatch",
         "sg1000", "sms", "gg",

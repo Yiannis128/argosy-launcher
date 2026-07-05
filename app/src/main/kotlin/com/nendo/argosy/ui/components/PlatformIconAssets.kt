@@ -6,6 +6,11 @@ import com.nendo.argosy.data.platform.PlatformDefinitions
 object PlatformIconAssets {
     private const val ASSET_DIR = "platforms"
 
+    private val iconFallbacks = mapOf(
+        "fbneo" to "arcade",
+        "mame" to "arcade"
+    )
+
     @Volatile private var cached: Set<String>? = null
 
     fun resolveAssetUri(context: Context, platformSlug: String): String? {
@@ -14,6 +19,9 @@ object PlatformIconAssets {
         if (available.isEmpty()) return null
         for (candidate in PlatformDefinitions.getSlugsForCanonical(platformSlug)) {
             if (candidate in available) return "file:///android_asset/$ASSET_DIR/$candidate.svg"
+        }
+        iconFallbacks[PlatformDefinitions.getCanonicalSlug(platformSlug)]?.let { fallback ->
+            if (fallback in available) return "file:///android_asset/$ASSET_DIR/$fallback.svg"
         }
         return null
     }

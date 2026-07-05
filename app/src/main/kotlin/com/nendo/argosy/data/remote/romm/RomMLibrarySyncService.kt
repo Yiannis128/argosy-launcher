@@ -305,7 +305,7 @@ class RomMLibrarySyncService @Inject constructor(
     }
 
     private fun storagePlatformId(platform: RomMPlatform): Long {
-        val slug = PlatformDefinitions.resolveImportSlug(platform.slug, platform.displayName ?: platform.name)
+        val slug = PlatformDefinitions.resolveImportSlug(platform.slug, platform.displayName ?: platform.name, platform.fsSlug)
         return if (slug == ANDROID_SLUG) LocalPlatformIds.ANDROID else platform.id
     }
 
@@ -316,20 +316,31 @@ class RomMLibrarySyncService @Inject constructor(
 
     private suspend fun syncPlatformMetadata(remote: RomMPlatform) {
         val platformId = remote.id
-        val effectiveSlug = PlatformDefinitions.resolveImportSlug(remote.slug, remote.displayName ?: remote.name)
+        val effectiveSlug = PlatformDefinitions.resolveImportSlug(remote.slug, remote.displayName ?: remote.name, remote.fsSlug)
         if (effectiveSlug == ANDROID_SLUG) {
             syncAndroidPlatformMetadata(remote)
             return
         }
         val existing = platformDao.getById(platformId)
         val platformDef = PlatformDefinitions.getBySlug(effectiveSlug)
+        val isSubPlatform = !effectiveSlug.equals(remote.slug, ignoreCase = true)
 
         val logoUrl = remote.logoUrl?.let { apiClient.buildMediaUrl(it) }
-        val derivedNames = PlatformDefinitions.getAliasDisplayName(remote.slug)
-            ?: PlatformDefinitions.deriveDisplayName(remote.slug)
-            ?: PlatformDefinitions.deriveDisplayName(remote.fsSlug)
-        val normalizedName = remote.customName?.takeIf { it.isNotBlank() }
-            ?: remote.displayName ?: derivedNames?.first ?: remote.name
+        val derivedNames = if (isSubPlatform) {
+            PlatformDefinitions.getAliasDisplayName(effectiveSlug)
+                ?: PlatformDefinitions.deriveDisplayName(effectiveSlug)
+        } else {
+            PlatformDefinitions.getAliasDisplayName(remote.slug)
+                ?: PlatformDefinitions.deriveDisplayName(remote.slug)
+                ?: PlatformDefinitions.deriveDisplayName(remote.fsSlug)
+        }
+        val normalizedName = if (isSubPlatform) {
+            remote.customName?.takeIf { it.isNotBlank() }
+                ?: derivedNames?.first ?: platformDef?.name ?: remote.name
+        } else {
+            remote.customName?.takeIf { it.isNotBlank() }
+                ?: remote.displayName ?: derivedNames?.first ?: remote.name
+        }
         val resolvedShortName = derivedNames?.second ?: platformDef?.shortName ?: normalizedName
         val entity = PlatformEntity(
             id = platformId,
@@ -405,7 +416,8 @@ class RomMLibrarySyncService @Inject constructor(
     }
 
     private suspend fun syncRom(rom: RomMRom): Pair<Boolean, GameEntity> {
-        val platformSlug = PlatformDefinitions.resolveImportSlug(rom.platformSlug, rom.platformName)
+        val platformSlug = platformDao.getById(rom.platformId)?.slug
+            ?: PlatformDefinitions.resolveImportSlug(rom.platformSlug, rom.platformName)
         val platformId = if (platformSlug == ANDROID_SLUG) LocalPlatformIds.ANDROID else rom.platformId
         val existing = gameDao.getByRommId(rom.id)
 

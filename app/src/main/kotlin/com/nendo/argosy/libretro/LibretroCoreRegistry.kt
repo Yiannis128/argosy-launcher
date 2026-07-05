@@ -354,7 +354,7 @@ object LibretroCoreRegistry {
             coreId = "fbneo",
             fileName = "fbneo_libretro_android.so",
             displayName = "FBNeo",
-            platforms = setOf("arcade", "neogeo", "cps1", "cps2", "cps3"),
+            platforms = setOf("arcade", "fbneo", "neogeo", "cps1", "cps2", "cps3"),
             estimatedSizeBytes = 15_000_000L,
             isDefault = true,
             netplaySupport = NetplaySupportLevel.SUPPORTED
@@ -363,7 +363,7 @@ object LibretroCoreRegistry {
             coreId = "mame2003_plus",
             fileName = "mame2003_plus_libretro_android.so",
             displayName = "MAME 2003+",
-            platforms = setOf("arcade"),
+            platforms = setOf("arcade", "mame"),
             estimatedSizeBytes = 8_000_000L
         ),
 

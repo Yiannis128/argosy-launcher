@@ -163,17 +163,28 @@ class RomMApiClient @Inject constructor(
             if (response.isSuccessful) {
                 val platforms = response.body() ?: emptyList()
                 val entities = platforms.map { remote ->
-                    val effectiveSlug = PlatformDefinitions.resolveImportSlug(remote.slug, remote.displayName ?: remote.name)
+                    val effectiveSlug = PlatformDefinitions.resolveImportSlug(remote.slug, remote.displayName ?: remote.name, remote.fsSlug)
+                    val isSubPlatform = !effectiveSlug.equals(remote.slug, ignoreCase = true)
                     val existing = platformDao.getById(remote.id)
                         ?: platformDao.getBySlugAndFsSlug(remote.slug, remote.fsSlug)
                         ?: platformDao.getBySlug(remote.slug)
                     val platformDef = PlatformDefinitions.getBySlug(effectiveSlug)
                     val logoUrl = remote.logoUrl?.let { buildMediaUrl(it) }
-                    val derivedNames = PlatformDefinitions.getAliasDisplayName(remote.slug)
-                        ?: PlatformDefinitions.deriveDisplayName(remote.slug)
-                        ?: PlatformDefinitions.deriveDisplayName(remote.fsSlug)
-                    val normalizedName = remote.customName?.takeIf { it.isNotBlank() }
-                        ?: remote.displayName ?: derivedNames?.first ?: remote.name
+                    val derivedNames = if (isSubPlatform) {
+                        PlatformDefinitions.getAliasDisplayName(effectiveSlug)
+                            ?: PlatformDefinitions.deriveDisplayName(effectiveSlug)
+                    } else {
+                        PlatformDefinitions.getAliasDisplayName(remote.slug)
+                            ?: PlatformDefinitions.deriveDisplayName(remote.slug)
+                            ?: PlatformDefinitions.deriveDisplayName(remote.fsSlug)
+                    }
+                    val normalizedName = if (isSubPlatform) {
+                        remote.customName?.takeIf { it.isNotBlank() }
+                            ?: derivedNames?.first ?: platformDef?.name ?: remote.name
+                    } else {
+                        remote.customName?.takeIf { it.isNotBlank() }
+                            ?: remote.displayName ?: derivedNames?.first ?: remote.name
+                    }
                     val resolvedShortName = derivedNames?.second ?: platformDef?.shortName ?: normalizedName
                     PlatformEntity(
                         id = remote.id,
