@@ -514,6 +514,8 @@ class RomMLibrarySyncService @Inject constructor(
             languages = rom.languages?.joinToString(","),
             gameModes = rom.metadatum?.gameModes?.joinToString(","),
             franchises = rom.metadatum?.franchises?.joinToString(","),
+            genres = rom.genres?.joinToString(","),
+            collections = rom.metadatum?.collections?.joinToString(","),
             userRating = rom.romUser?.rating ?: localDataSource?.userRating ?: 0,
             userDifficulty = rom.romUser?.difficulty ?: localDataSource?.userDifficulty ?: 0,
             completion = rom.romUser?.completion ?: localDataSource?.completion ?: 0,

@@ -28,7 +28,9 @@ import java.time.Instant
         Index(value = ["packageName"], unique = true),
         Index("regions"),
         Index("gameModes"),
-        Index("franchises")
+        Index("franchises"),
+        Index("genres"),
+        Index("collections")
     ]
 )
 data class GameEntity(
@@ -71,6 +73,8 @@ data class GameEntity(
     val languages: String? = null,
     val gameModes: String? = null,
     val franchises: String? = null,
+    val genres: String? = null,
+    val collections: String? = null,
 
     val userRating: Int = 0,
     val userDifficulty: Int = 0,

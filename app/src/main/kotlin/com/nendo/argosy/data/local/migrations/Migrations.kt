@@ -1906,3 +1906,12 @@ object Migration_130_131 : Migration(130, 131) {
         db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN portraitPosition TEXT DEFAULT NULL")
     }
 }
+
+object Migration_131_132 : Migration(131, 132) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE games ADD COLUMN genres TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE games ADD COLUMN collections TEXT DEFAULT NULL")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_games_genres ON games(genres)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_games_collections ON games(collections)")
+    }
+}
