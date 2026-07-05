@@ -139,18 +139,32 @@ class ApkInstallManager @Inject constructor(
         scope.launch {
             try {
                 gameDao.getById(pending.gameId)?.let { game ->
+                    val holder = gameDao.getByPackageName(packageName)?.takeIf { it.id != game.id }
+                    if (holder != null && holder.rommId != null) {
+                        Log.w(TAG, "Package $packageName already owned by game ${holder.id} with rommId, skipping link")
+                        return@let
+                    }
+                    if (holder != null) {
+                        gameDao.delete(holder.id)
+                    }
                     val updatedGame = game.copy(
                         packageName = packageName,
                         source = GameSource.ANDROID_APP,
-                        localPath = null
+                        localPath = null,
+                        isFavorite = game.isFavorite || holder?.isFavorite == true,
+                        playCount = game.playCount + (holder?.playCount ?: 0),
+                        playTimeMinutes = game.playTimeMinutes + (holder?.playTimeMinutes ?: 0),
+                        lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull(),
+                        coverPath = game.coverPath ?: holder?.coverPath
                     )
                     gameDao.update(updatedGame)
 
-                    if (game.coverPath.isNullOrBlank()) {
+                    if (updatedGame.coverPath.isNullOrBlank()) {
                         imageCacheManager.queueAppIconCache(pending.gameId, packageName)
                     }
 
-                    Log.d(TAG, "Game ${game.title} updated with package $packageName")
+                    Log.d(TAG, "Game ${game.title} updated with package $packageName" +
+                        if (holder != null) " (merged duplicate ${holder.id})" else "")
                 }
 
                 val apkFile = File(pending.apkPath)

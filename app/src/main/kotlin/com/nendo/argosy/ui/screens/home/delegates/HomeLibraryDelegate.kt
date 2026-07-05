@@ -142,6 +142,7 @@ class HomeLibraryDelegate @Inject constructor(
         cachedPlatformDisplayNames = allPlatforms.associate { it.id to it.getDisplayName() }
         var favorites = gameRepository.getFavorites()
         val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
+            .let { if (installedOnly) filterPlayable(it) else it }
         val steamGames = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
             .let { if (installedOnly) filterSteamInstalled(it) else it }
 
@@ -370,6 +371,7 @@ class HomeLibraryDelegate @Inject constructor(
         cachedPlatformDisplayNames = allPlatforms.associate { it.id to it.getDisplayName() }
         val platformUis = platforms.map { it.toHomePlatformUi(emulatorDetector) }
         val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
+            .let { if (installedOnly) filterPlayable(it) else it }
         val androidGameUis = androidGames.map { it.toUi() }
         val steamGames = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_GAMES_LIMIT)
             .let { if (installedOnly) filterSteamInstalled(it) else it }
@@ -478,7 +480,9 @@ class HomeLibraryDelegate @Inject constructor(
                 RefreshResult(_state.value.recommendedGames.map { it.id })
             }
             HomeRow.Android -> {
+                val installedOnly = preferencesRepository.userPreferences.first().installedOnlyHome
                 val games = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_GAMES_LIMIT)
+                    .let { if (installedOnly) filterPlayable(it) else it }
                 val gameUis = games.map { it.toUi() }
                 _state.update { it.copy(androidGames = gameUis) }
                 RefreshResult(gameUis.map { it.id }, isEmpty = gameUis.isEmpty())

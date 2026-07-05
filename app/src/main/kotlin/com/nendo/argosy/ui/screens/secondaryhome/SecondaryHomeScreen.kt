@@ -140,17 +140,26 @@ fun SecondaryHomeScreen(
                                 }
                             },
                             onLongPressAction = {
-                                if (game.isPlayable) {
-                                    val (intent, options) = viewModel.launchGame(game.id)
-                                    intent?.let {
-                                        if (options != null) {
-                                            context.startActivity(it, options)
-                                        } else {
-                                            context.startActivity(it)
+                                when {
+                                    game.isPlayable -> {
+                                        val (intent, options) = viewModel.launchGame(game.id)
+                                        intent?.let {
+                                            if (options != null) {
+                                                context.startActivity(it, options)
+                                            } else {
+                                                context.startActivity(it)
+                                            }
                                         }
                                     }
-                                } else {
-                                    viewModel.startDownload(game.id)
+                                    game.needsInstall -> {
+                                        val (intent, options) = viewModel.getGameDetailIntent(game.id)
+                                        if (options != null) {
+                                            context.startActivity(intent, options)
+                                        } else {
+                                            context.startActivity(intent)
+                                        }
+                                    }
+                                    else -> viewModel.startDownload(game.id)
                                 }
                             }
                         )

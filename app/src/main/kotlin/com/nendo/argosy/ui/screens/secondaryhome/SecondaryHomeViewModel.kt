@@ -14,6 +14,8 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.AppsRepository
 import com.nendo.argosy.ui.common.GridDirection
 import com.nendo.argosy.ui.common.GridFocusNavigator
+import com.nendo.argosy.ui.common.isAndroidApp
+import com.nendo.argosy.ui.common.needsAndroidInstall
 import com.nendo.argosy.ui.util.GridUtils
 import com.nendo.argosy.util.DisplayAffinityHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +46,7 @@ data class SecondaryGameUi(
     val coverPath: String?,
     val platformSlug: String,
     val isPlayable: Boolean,
+    val needsInstall: Boolean = false,
     val downloadProgress: Float? = null,
     val isPrivate: Boolean = false
 )
@@ -439,11 +442,13 @@ class SecondaryHomeViewModel @Inject constructor(
 
     fun launchFocusedGame(): Pair<Intent?, android.os.Bundle?>? {
         val game = _uiState.value.focusedGame ?: return null
-        return if (game.isPlayable) {
-            launchGame(game.id)
-        } else {
-            startDownload(game.id)
-            null
+        return when {
+            game.isPlayable -> launchGame(game.id)
+            game.needsInstall -> getGameDetailIntent(game.id)
+            else -> {
+                startDownload(game.id)
+                null
+            }
         }
     }
 
@@ -595,7 +600,8 @@ class SecondaryHomeViewModel @Inject constructor(
         title = title,
         coverPath = coverPath,
         platformSlug = platformSlug,
-        isPlayable = localPath != null,
+        isPlayable = if (isAndroidApp) packageName != null else localPath != null,
+        needsInstall = needsAndroidInstall,
         isPrivate = igdbId != null && igdbId.toInt() in hiddenIds
     )
 }
