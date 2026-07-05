@@ -170,6 +170,9 @@ class RomMRepository @Inject constructor(
     suspend fun refreshGameData(gameId: Long): RomMResult<Unit> =
         userPropertyService.refreshGameData(gameId)
 
+    suspend fun fetchUserScreenshots(rommId: Long): List<String> =
+        userPropertyService.fetchUserScreenshots(rommId)
+
     // --- Achievements ---
 
     fun getEarnedBadgeIds(raGameId: Long): Set<String> = achievementService.getEarnedBadgeIds(raGameId)

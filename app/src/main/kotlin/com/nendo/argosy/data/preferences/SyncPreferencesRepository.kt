@@ -28,6 +28,7 @@ data class SyncPreferences(
     val lastFavoritesCheck: Instant? = null,
     val syncFilters: SyncFilterPreferences = SyncFilterPreferences(),
     val syncScreenshotsEnabled: Boolean = false,
+    val uploadScreenshotsEnabled: Boolean = true,
     val saveSyncEnabled: Boolean = false,
     val stateCacheEnabled: Boolean = true,
     val saveCacheLimit: Int = 10,
@@ -75,6 +76,7 @@ class SyncPreferencesRepository @Inject constructor(
         val SYNC_FILTER_EXCLUDE_HACK = booleanPreferencesKey("sync_filter_exclude_hack")
         val SYNC_FILTER_DELETE_ORPHANS = booleanPreferencesKey("sync_filter_delete_orphans")
         val SYNC_SCREENSHOTS_ENABLED = booleanPreferencesKey("sync_screenshots_enabled")
+        val UPLOAD_SCREENSHOTS_ENABLED = booleanPreferencesKey("upload_screenshots_enabled")
         val SAVE_SYNC_ENABLED = booleanPreferencesKey("save_sync_enabled")
         val STATE_CACHE_ENABLED = booleanPreferencesKey("state_cache_enabled")
         val SAVE_CACHE_LIMIT = intPreferencesKey("save_cache_limit")
@@ -152,6 +154,7 @@ class SyncPreferencesRepository @Inject constructor(
                 deleteOrphans = prefs[Keys.SYNC_FILTER_DELETE_ORPHANS] ?: true
             ),
             syncScreenshotsEnabled = prefs[Keys.SYNC_SCREENSHOTS_ENABLED] ?: false,
+            uploadScreenshotsEnabled = prefs[Keys.UPLOAD_SCREENSHOTS_ENABLED] ?: true,
             saveSyncEnabled = prefs[Keys.SAVE_SYNC_ENABLED] ?: false,
             stateCacheEnabled = prefs[Keys.STATE_CACHE_ENABLED] ?: true,
             saveCacheLimit = prefs[Keys.SAVE_CACHE_LIMIT] ?: 10,
@@ -290,6 +293,10 @@ class SyncPreferencesRepository @Inject constructor(
 
     suspend fun setSyncScreenshotsEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.SYNC_SCREENSHOTS_ENABLED] = enabled }
+    }
+
+    suspend fun setUploadScreenshotsEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.UPLOAD_SCREENSHOTS_ENABLED] = enabled }
     }
 
     suspend fun setSaveSyncEnabled(enabled: Boolean) {

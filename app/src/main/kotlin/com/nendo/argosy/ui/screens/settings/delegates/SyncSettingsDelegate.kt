@@ -54,6 +54,9 @@ class SyncSettingsDelegate @Inject constructor(
     private val _requestNotificationPermissionEvent = MutableSharedFlow<Unit>()
     val requestNotificationPermissionEvent: SharedFlow<Unit> = _requestNotificationPermissionEvent.asSharedFlow()
 
+    private val _requestMediaPermissionEvent = MutableSharedFlow<Unit>()
+    val requestMediaPermissionEvent: SharedFlow<Unit> = _requestMediaPermissionEvent.asSharedFlow()
+
     private val _openImageCachePickerEvent = MutableSharedFlow<Unit>()
     val openImageCachePickerEvent: SharedFlow<Unit> = _openImageCachePickerEvent.asSharedFlow()
 
@@ -241,6 +244,37 @@ class SyncSettingsDelegate @Inject constructor(
             if (newValue) {
                 imageCacheManager.resumePendingScreenshotCache()
             }
+        }
+    }
+
+    fun toggleUploadScreenshots(scope: CoroutineScope, currentValue: Boolean, onChanged: (Boolean) -> Unit) {
+        scope.launch {
+            val newValue = !currentValue
+            if (newValue && !checkMediaPermission()) {
+                _requestMediaPermissionEvent.emit(Unit)
+                return@launch
+            }
+            preferencesRepository.setUploadScreenshotsEnabled(newValue)
+            onChanged(newValue)
+        }
+    }
+
+    fun onMediaPermissionResult(scope: CoroutineScope, granted: Boolean, onChanged: (Boolean) -> Unit) {
+        if (!granted) return
+        scope.launch {
+            preferencesRepository.setUploadScreenshotsEnabled(true)
+            onChanged(true)
+        }
+    }
+
+    fun checkMediaPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                application,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
         }
     }
 

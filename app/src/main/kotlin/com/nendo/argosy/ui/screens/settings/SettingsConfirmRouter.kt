@@ -171,6 +171,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 SyncSettingsItem.PlatformFilters -> vm.showPlatformFiltersModal()
                 SyncSettingsItem.MetadataFilters -> vm.showSyncFiltersModal()
                 SyncSettingsItem.CacheScreenshots -> { vm.toggleSyncScreenshots(); return InputResult.handled(SoundType.TOGGLE) }
+                SyncSettingsItem.UploadScreenshots -> { vm.toggleUploadScreenshots(); return InputResult.handled(SoundType.TOGGLE) }
                 SyncSettingsItem.ImageCacheLocation -> {
                     if (!state.syncSettings.isImageCacheMigrating) {
                         if (state.syncSettings.imageCacheActionIndex == 0) {

@@ -162,6 +162,10 @@ internal fun routeObserveDelegateEvents(vm: SettingsViewModel) {
         vm._requestNotificationPermissionEvent.emit(Unit)
     }.launchIn(vm.viewModelScope)
 
+    vm.syncDelegate.requestMediaPermissionEvent.onEach {
+        vm._requestMediaPermissionEvent.emit(Unit)
+    }.launchIn(vm.viewModelScope)
+
     vm.emulatorDelegate.openUrlEvent.onEach { url ->
         vm._openUrlEvent.emit(url)
     }.launchIn(vm.viewModelScope)
@@ -210,9 +214,12 @@ internal fun routeObserveConnectionState(vm: SettingsViewModel) {
             }
         }
         val version = (connectionState as? ConnectionState.Connected)?.version
+        val screenshotUpload = (connectionState as? ConnectionState.Connected)
+            ?.capabilities?.supportsScreenshotUpload == true
         vm.serverDelegate.updateState(vm._uiState.value.server.copy(
             connectionStatus = status,
-            rommVersion = version
+            rommVersion = version,
+            screenshotUploadSupported = screenshotUpload
         ))
     }.launchIn(vm.viewModelScope)
 }
@@ -537,7 +544,10 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             rommUsername = prefs.rommUsername ?: "",
             rommVersion = rommVersion,
             lastRommSync = prefs.lastRommSync,
-            syncScreenshotsEnabled = prefs.syncScreenshotsEnabled
+            syncScreenshotsEnabled = prefs.syncScreenshotsEnabled,
+            uploadScreenshotsEnabled = prefs.uploadScreenshotsEnabled,
+            screenshotUploadSupported = (connectionState as? ConnectionState.Connected)
+                ?.capabilities?.supportsScreenshotUpload == true
         ))
 
         vm.storageDelegate.updateState(StorageState(

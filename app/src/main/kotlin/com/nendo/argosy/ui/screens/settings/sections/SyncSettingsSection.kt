@@ -49,6 +49,7 @@ internal sealed class SyncSettingsItem(val key: String, val section: String) {
     data object MetadataFilters : SyncSettingsItem("metadataFilters", "filters")
     data object MediaHeader : SyncSettingsItem("mediaHeader", "media")
     data object CacheScreenshots : SyncSettingsItem("cacheScreenshots", "media")
+    data object UploadScreenshots : SyncSettingsItem("uploadScreenshots", "media")
     data object ImageCacheLocation : SyncSettingsItem("imageCacheLocation", "media")
     data object ImageCacheProgressIndicator : SyncSettingsItem("imageCacheProgress", "media")
 }
@@ -59,6 +60,7 @@ private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Boolean>(
         SyncSettingsItem.MetadataFilters,
         SyncSettingsItem.MediaHeader,
         SyncSettingsItem.CacheScreenshots,
+        SyncSettingsItem.UploadScreenshots,
         SyncSettingsItem.ImageCacheLocation,
         SyncSettingsItem.ImageCacheProgressIndicator
     ),
@@ -147,6 +149,17 @@ fun SyncSettingsSection(
                             isEnabled = uiState.server.syncScreenshotsEnabled,
                             isFocused = isFocused(item),
                             onToggle = { viewModel.toggleSyncScreenshots() }
+                        )
+                    }
+                    SyncSettingsItem.UploadScreenshots -> {
+                        val supported = uiState.server.screenshotUploadSupported
+                        SwitchPreference(
+                            title = "Upload Screenshots",
+                            subtitle = if (supported) "Send screenshots taken during play to RomM"
+                                       else "Requires RomM 5.0 or newer",
+                            isEnabled = supported && uiState.server.uploadScreenshotsEnabled,
+                            isFocused = isFocused(item),
+                            onToggle = { viewModel.toggleUploadScreenshots() }
                         )
                     }
                     SyncSettingsItem.ImageCacheLocation -> {

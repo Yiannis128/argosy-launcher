@@ -810,6 +810,11 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    suspend fun userScreenshotTargetFile(rommId: Long, screenshotId: Long, version: String): File {
+        val slug = resolveRommPlatformSlug(rommId)
+        return File(platformDir(slug, "screenshots"), "uss_${rommId}_${screenshotId}_${version.md5Hash()}.png")
+    }
+
     fun resumePendingScreenshotCache() {
         scope.launch {
             val uncached = gameDao.getGamesWithUncachedScreenshots()

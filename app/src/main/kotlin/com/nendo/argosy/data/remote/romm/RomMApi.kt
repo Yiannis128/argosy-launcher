@@ -214,6 +214,19 @@ interface RomMApi {
         @Path("id") saveId: Long
     ): Response<ResponseBody>
 
+    @Multipart
+    @POST("api/screenshots")
+    suspend fun uploadScreenshot(
+        @Query("rom_id") romId: Long,
+        @Part screenshotFile: MultipartBody.Part
+    ): Response<RomMUserScreenshot>
+
+    @Streaming
+    @GET("api/screenshots/{id}/content")
+    suspend fun downloadScreenshotContent(
+        @Path("id") screenshotId: Long
+    ): Response<ResponseBody>
+
     // Device endpoints (RomM 4.7.0+)
 
     @POST("api/devices")

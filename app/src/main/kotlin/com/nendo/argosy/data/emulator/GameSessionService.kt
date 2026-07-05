@@ -51,6 +51,7 @@ class GameSessionService : Service() {
 
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var gameDao: GameDao
+    @Inject lateinit var screenshotCaptureMonitor: ScreenshotCaptureMonitor
 
     private val serviceScope = SafeCoroutineScope(Dispatchers.IO, "GameSessionService")
     private val handler = Handler(Looper.getMainLooper())
@@ -117,6 +118,7 @@ class GameSessionService : Service() {
                 val channelName = intent?.getStringExtra(EXTRA_CHANNEL_NAME)
                 val isHardcore = intent?.getBooleanExtra(EXTRA_IS_HARDCORE, false) ?: false
                 val startTime = intent?.getLongExtra(EXTRA_SESSION_START_TIME, 0) ?: 0
+                val emulatorPackage = intent?.getStringExtra(EXTRA_EMULATOR_PACKAGE)
 
                 currentGameTitle = gameTitle
                 currentGameId = gameId
@@ -139,6 +141,8 @@ class GameSessionService : Service() {
                     removeOverlay()
                     startWatching(watchPath)
                 }
+
+                screenshotCaptureMonitor.start(gameId, emulatorPackage, sessionStartTime)
             }
         }
         return START_REDELIVER_INTENT
@@ -149,6 +153,7 @@ class GameSessionService : Service() {
     override fun onDestroy() {
         Logger.debug(TAG, "Service destroyed")
         cleanupPresenceKeepalive()
+        screenshotCaptureMonitor.stop()
         stopWatching()
         removeOverlay()
         releaseWakeLock()
@@ -598,6 +603,7 @@ class GameSessionService : Service() {
         private const val EXTRA_CHANNEL_NAME = "channel_name"
         private const val EXTRA_IS_HARDCORE = "is_hardcore"
         private const val EXTRA_SESSION_START_TIME = "session_start_time"
+        private const val EXTRA_EMULATOR_PACKAGE = "emulator_package"
         private const val WAKELOCK_TAG = "argosy:game_session_wakelock"
         private const val WIFILOCK_TAG = "argosy:game_session_wifilock"
         private const val MAX_WAKELOCK_DURATION_MS = 4 * 60 * 60 * 1000L // 4 hours max
@@ -625,7 +631,8 @@ class GameSessionService : Service() {
             gameTitle: String,
             channelName: String?,
             isHardcore: Boolean,
-            sessionStartTime: Long
+            sessionStartTime: Long,
+            emulatorPackage: String? = null
         ) {
             Logger.debug(TAG, "Starting service for: $gameTitle (gameId=$gameId, sessionStart=$sessionStartTime)")
             val intent = Intent(context, GameSessionService::class.java).apply {
@@ -637,6 +644,7 @@ class GameSessionService : Service() {
                 putExtra(EXTRA_CHANNEL_NAME, channelName)
                 putExtra(EXTRA_IS_HARDCORE, isHardcore)
                 putExtra(EXTRA_SESSION_START_TIME, sessionStartTime)
+                putExtra(EXTRA_EMULATOR_PACKAGE, emulatorPackage)
             }
             context.startForegroundService(intent)
         }

@@ -33,17 +33,24 @@ data class AchievementPayload(
     val earnedAt: Long
 )
 
+@JsonClass(generateAdapter = true)
+data class ScreenshotPayload(
+    val localPath: String
+)
+
 @Singleton
 class SyncPayloadCodec @Inject constructor(moshi: Moshi) {
     private val saveFileAdapter = moshi.adapter(SaveFilePayload::class.java)
     private val saveStateAdapter = moshi.adapter(SaveStatePayload::class.java)
     private val propertyAdapter = moshi.adapter(PropertyPayload::class.java)
     private val achievementAdapter = moshi.adapter(AchievementPayload::class.java)
+    private val screenshotAdapter = moshi.adapter(ScreenshotPayload::class.java)
 
     fun encode(p: SaveFilePayload): String = saveFileAdapter.toJson(p)
     fun encode(p: SaveStatePayload): String = saveStateAdapter.toJson(p)
     fun encode(p: PropertyPayload): String = propertyAdapter.toJson(p)
     fun encode(p: AchievementPayload): String = achievementAdapter.toJson(p)
+    fun encode(p: ScreenshotPayload): String = screenshotAdapter.toJson(p)
 
     fun decodeSaveFile(json: String): SaveFilePayload? =
         runCatching { saveFileAdapter.fromJson(json) }.getOrNull()
@@ -56,4 +63,7 @@ class SyncPayloadCodec @Inject constructor(moshi: Moshi) {
 
     fun decodeAchievement(json: String): AchievementPayload? =
         runCatching { achievementAdapter.fromJson(json) }.getOrNull()
+
+    fun decodeScreenshot(json: String): ScreenshotPayload? =
+        runCatching { screenshotAdapter.fromJson(json) }.getOrNull()
 }

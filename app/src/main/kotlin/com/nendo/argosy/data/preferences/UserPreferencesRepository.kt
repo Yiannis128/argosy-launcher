@@ -72,6 +72,7 @@ class UserPreferencesRepository @Inject constructor(
             lastFavoritesCheck = sync.lastFavoritesCheck,
             syncFilters = sync.syncFilters,
             syncScreenshotsEnabled = sync.syncScreenshotsEnabled,
+            uploadScreenshotsEnabled = sync.uploadScreenshotsEnabled,
             backgroundBlur = display.backgroundBlur,
             backgroundSaturation = display.backgroundSaturation,
             backgroundOpacity = display.backgroundOpacity,
@@ -244,6 +245,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setSyncFilterExcludeHack(exclude: Boolean) = syncPrefs.setSyncFilterExcludeHack(exclude)
     suspend fun setSyncFilterDeleteOrphans(delete: Boolean) = syncPrefs.setSyncFilterDeleteOrphans(delete)
     suspend fun setSyncScreenshotsEnabled(enabled: Boolean) = syncPrefs.setSyncScreenshotsEnabled(enabled)
+    suspend fun setUploadScreenshotsEnabled(enabled: Boolean) = syncPrefs.setUploadScreenshotsEnabled(enabled)
     suspend fun setSaveSyncEnabled(enabled: Boolean) = syncPrefs.setSaveSyncEnabled(enabled)
     suspend fun setSaveCacheLimit(limit: Int) = syncPrefs.setSaveCacheLimit(limit)
     suspend fun setSaveDebugLoggingEnabled(enabled: Boolean) = syncPrefs.setSaveDebugLoggingEnabled(enabled)
@@ -523,6 +525,7 @@ data class UserPreferences(
     val lastFavoritesCheck: Instant? = null,
     val syncFilters: SyncFilterPreferences = SyncFilterPreferences(),
     val syncScreenshotsEnabled: Boolean = false,
+    val uploadScreenshotsEnabled: Boolean = true,
     val hiddenApps: Set<String> = emptySet(),
     val secondaryHomeApps: Set<String> = emptySet(),
     val visibleSystemApps: Set<String> = emptySet(),

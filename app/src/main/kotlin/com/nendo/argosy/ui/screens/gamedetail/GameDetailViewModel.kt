@@ -17,6 +17,7 @@ import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.remote.ra.RAConsoleIds
+import com.nendo.argosy.data.remote.romm.RomMCapabilities
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.GameRepository
@@ -535,6 +536,9 @@ class GameDetailViewModel @Inject constructor(
 
             if (game.rommId != null) {
                 refreshUserPropsInBackground(gameId)
+                if (romMRepository.isVersionAtLeast(RomMCapabilities.SCREENSHOT_UPLOAD_MIN_VERSION)) {
+                    refreshUserScreenshotsInBackground(game.rommId)
+                }
                 if (!game.isMultiDisc && (game.fileSizeBytes == null || game.fileSizeBytes == 0L)) {
                     downloadDelegate.refreshDownloadSizeInBackground(viewModelScope, game.rommId, gameId)
                 }
@@ -667,6 +671,20 @@ class GameDetailViewModel @Inject constructor(
                     }
                 }
                 is RomMResult.Error -> { }
+            }
+        }
+    }
+
+    private fun refreshUserScreenshotsInBackground(rommId: Long) {
+        viewModelScope.launch {
+            val localPaths = romMRepository.fetchUserScreenshots(rommId)
+            if (localPaths.isEmpty()) return@launch
+            val userShots = localPaths.map { ScreenshotPair(remoteUrl = it, cachedPath = it) }
+            _uiState.update { state ->
+                val game = state.game ?: return@update state
+                val existing = game.screenshots.map { it.remoteUrl }.toSet()
+                val merged = game.screenshots + userShots.filter { it.remoteUrl !in existing }
+                state.copy(game = game.copy(screenshots = merged))
             }
         }
     }

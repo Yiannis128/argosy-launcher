@@ -161,6 +161,12 @@ fun SettingsScreen(
         viewModel.onNotificationPermissionResult(granted)
     }
 
+    val mediaPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.onMediaPermissionResult(granted)
+    }
+
     val inputDispatcher = LocalInputDispatcher.current
     val inputHandler = remember(onBack) {
         viewModel.createInputHandler(onBack = onBack)
@@ -240,6 +246,16 @@ fun SettingsScreen(
                 notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 viewModel.onNotificationPermissionResult(true)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.requestMediaPermissionEvent.collect {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                mediaPermissionLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                viewModel.onMediaPermissionResult(true)
             }
         }
     }
