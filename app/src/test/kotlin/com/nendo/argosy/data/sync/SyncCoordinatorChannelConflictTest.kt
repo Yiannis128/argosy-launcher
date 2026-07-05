@@ -102,6 +102,7 @@ class SyncCoordinatorChannelConflictTest {
         } returns conflictInfo
 
         coordinator = SyncCoordinator(
+            context = io.mockk.mockk(relaxed = true) { io.mockk.every { filesDir } returns java.io.File(System.getProperty("java.io.tmpdir")) },
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
             saveSyncDao = mockk(relaxed = true),
@@ -119,7 +120,8 @@ class SyncCoordinatorChannelConflictTest {
             strategySelector = mockk(relaxed = true),
             pendingConflictDao = mockk(relaxed = true),
             reconcileEffectApplier = mockk(relaxed = true),
-            saveRecoveryGate = mockk(relaxed = true)
+            saveRecoveryGate = mockk(relaxed = true),
+            screenshotUploader = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -152,6 +154,7 @@ class SyncCoordinatorChannelConflictTest {
         } returns SaveSyncResult.Success(rommSaveId = 42L)
 
         coordinator = SyncCoordinator(
+            context = io.mockk.mockk(relaxed = true) { io.mockk.every { filesDir } returns java.io.File(System.getProperty("java.io.tmpdir")) },
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
             saveSyncDao = mockk(relaxed = true),
@@ -169,7 +172,8 @@ class SyncCoordinatorChannelConflictTest {
             strategySelector = mockk(relaxed = true),
             pendingConflictDao = mockk(relaxed = true),
             reconcileEffectApplier = mockk(relaxed = true),
-            saveRecoveryGate = mockk(relaxed = true)
+            saveRecoveryGate = mockk(relaxed = true),
+            screenshotUploader = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -212,6 +216,7 @@ class SyncCoordinatorChannelConflictTest {
         )
 
         coordinator = SyncCoordinator(
+            context = io.mockk.mockk(relaxed = true) { io.mockk.every { filesDir } returns java.io.File(System.getProperty("java.io.tmpdir")) },
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
             saveSyncDao = mockk(relaxed = true),
@@ -229,7 +234,8 @@ class SyncCoordinatorChannelConflictTest {
             strategySelector = mockk(relaxed = true),
             pendingConflictDao = mockk(relaxed = true),
             reconcileEffectApplier = mockk(relaxed = true),
-            saveRecoveryGate = mockk(relaxed = true)
+            saveRecoveryGate = mockk(relaxed = true),
+            screenshotUploader = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -253,6 +259,7 @@ class SyncCoordinatorChannelConflictTest {
         every { mockCacheManager.getCacheFile(dirtyCache) } returns cacheFile
 
         coordinator = SyncCoordinator(
+            context = io.mockk.mockk(relaxed = true) { io.mockk.every { filesDir } returns java.io.File(System.getProperty("java.io.tmpdir")) },
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
             saveSyncDao = mockk(relaxed = true),
@@ -270,7 +277,8 @@ class SyncCoordinatorChannelConflictTest {
             strategySelector = mockk(relaxed = true),
             pendingConflictDao = mockk(relaxed = true),
             reconcileEffectApplier = mockk(relaxed = true),
-            saveRecoveryGate = mockk(relaxed = true)
+            saveRecoveryGate = mockk(relaxed = true),
+            screenshotUploader = mockk(relaxed = true)
         )
 
         coordinator.processQueue()

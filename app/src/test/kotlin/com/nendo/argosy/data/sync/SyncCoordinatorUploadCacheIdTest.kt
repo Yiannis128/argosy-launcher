@@ -90,6 +90,7 @@ class SyncCoordinatorUploadCacheIdTest {
             payloadCodec = payloadCodec
         )
         coordinator = SyncCoordinator(
+            context = io.mockk.mockk(relaxed = true) { io.mockk.every { filesDir } returns java.io.File(System.getProperty("java.io.tmpdir")) },
             pendingSyncQueueDao = pendingSyncQueueDao,
             saveCacheDao = saveCacheDao,
             saveSyncDao = saveSyncDao,
@@ -106,6 +107,7 @@ class SyncCoordinatorUploadCacheIdTest {
             pendingConflictDao = pendingConflictDao,
             reconcileEffectApplier = effectApplier,
             saveRecoveryGate = mockk(relaxed = true),
+            screenshotUploader = mockk(relaxed = true),
         )
     }
 
