@@ -38,12 +38,14 @@ class VariantResolver @Inject constructor(
 
     suspend fun getVariantOptions(game: GameEntity): List<VariantOption>? {
         if (game.platformSlug in VariantCategory.VARIANT_EXCLUDED_PLATFORMS) return null
+        val primaryFileName = game.rommFileName ?: game.localPath?.substringAfterLast('/')
         val variants = gameFileDao.getVariantsForGame(game.id)
+            .filterNot { primaryFileName != null && it.fileName == primaryFileName }
         if (variants.isEmpty()) return null
 
         val primary = VariantOption(
             fileId = null,
-            fileName = game.rommFileName ?: game.localPath?.substringAfterLast('/') ?: game.title,
+            fileName = primaryFileName ?: game.title,
             category = VariantCategory.GAME.key,
             isDownloaded = game.localPath != null,
             isMultiDisc = game.isMultiDisc,
