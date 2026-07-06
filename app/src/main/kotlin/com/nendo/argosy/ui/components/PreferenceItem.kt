@@ -659,60 +659,6 @@ fun ActionPreference(
 }
 
 @Composable
-fun PlatformPreference(
-    platformName: String,
-    emulatorCount: Int,
-    selectedEmulator: String?,
-    isFocused: Boolean,
-    isEnabled: Boolean = true,
-    onCycle: () -> Unit
-) {
-    val disabledAlpha = 0.45f
-    val contentColor = when {
-        !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
-        else -> preferenceContentColor(isFocused)
-    }
-    val secondaryColor = when {
-        !isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = disabledAlpha)
-        else -> preferenceSecondaryColor(isFocused)
-    }
-
-    Row(
-        modifier = preferenceModifier(isFocused, onClick = onCycle),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = platformName,
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor
-            )
-            Text(
-                text = if (isEnabled) "$emulatorCount emulators available" else "No emulators installed",
-                style = MaterialTheme.typography.bodySmall,
-                color = secondaryColor
-            )
-        }
-        if (isEnabled) {
-            EnumValueControl(
-                value = selectedEmulator ?: "Auto",
-                focused = isFocused,
-                onPrev = onCycle,
-                onNext = onCycle,
-                onOpen = onCycle
-            )
-        } else {
-            Text(
-                text = "Download",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-            )
-        }
-    }
-}
-
-@Composable
 fun PlatformStatsPreference(
     platformName: String,
     gamesCount: String,

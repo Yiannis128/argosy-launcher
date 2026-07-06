@@ -44,7 +44,7 @@ import com.nendo.argosy.ui.screens.settings.ShaderParamDef
 import com.nendo.argosy.ui.screens.settings.ShaderStackEntry
 import com.nendo.argosy.ui.screens.settings.ShaderStackState
 import com.nendo.argosy.ui.screens.settings.components.ShaderPickerModal
-import com.nendo.argosy.ui.primitives.EnumValueControl
+import com.nendo.argosy.ui.primitives.StepperControl
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
@@ -112,7 +112,11 @@ fun ShaderStackSection(
                                     paramDef = paramDef,
                                     currentValue = currentValue,
                                     isFocused = shaderStack.paramFocusIndex == index,
-                                    onClick = { manager.moveShaderParamFocus(index - shaderStack.paramFocusIndex) }
+                                    onClick = { manager.moveShaderParamFocus(index - shaderStack.paramFocusIndex) },
+                                    onAdjust = { delta ->
+                                        if (shaderStack.paramFocusIndex == index) manager.adjustShaderParam(delta)
+                                        else manager.moveShaderParamFocus(index - shaderStack.paramFocusIndex)
+                                    }
                                 )
                             }
                         }
@@ -220,7 +224,8 @@ private fun ShaderParamItem(
     paramDef: ShaderParamDef,
     currentValue: Float,
     isFocused: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAdjust: (Int) -> Unit
 ) {
     val bgColor = if (isFocused) {
         LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
@@ -256,12 +261,12 @@ private fun ShaderParamItem(
             modifier = Modifier.weight(1f)
         )
         if (!isSectionLabel) {
-            EnumValueControl(
-                value = displayValue,
+            StepperControl(
+                display = displayValue,
                 focused = isFocused,
-                onPrev = onClick,
-                onNext = onClick,
-                onOpen = onClick
+                onDecrement = { onAdjust(-1) },
+                onIncrement = { onAdjust(1) },
+                numericValue = if (paramDef.step > 0f) kotlin.math.round(currentValue / paramDef.step).toInt() else null
             )
         }
     }
