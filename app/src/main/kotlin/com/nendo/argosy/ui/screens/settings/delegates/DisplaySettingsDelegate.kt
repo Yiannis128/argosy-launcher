@@ -434,13 +434,16 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleVideoWallpaperDelay(scope: CoroutineScope) {
-        val options = listOf(0, 1, 3, 5, 10)
-        val next = cycleInList(_state.value.videoWallpaperDelaySeconds, options)
+    fun cycleVideoWallpaperDelay(scope: CoroutineScope, direction: Int = 1) {
+        val next = cycleInList(_state.value.videoWallpaperDelaySeconds, VIDEO_DELAY_SECONDS, direction)
         scope.launch {
             preferencesRepository.setVideoWallpaperDelaySeconds(next)
             _state.update { it.copy(videoWallpaperDelaySeconds = next) }
         }
+    }
+
+    companion object {
+        val VIDEO_DELAY_SECONDS = listOf(0, 1, 3, 5, 10)
     }
 
     fun setVideoWallpaperMuted(scope: CoroutineScope, muted: Boolean) {

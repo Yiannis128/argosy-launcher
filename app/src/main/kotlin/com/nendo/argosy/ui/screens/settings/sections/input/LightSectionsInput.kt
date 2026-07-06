@@ -118,11 +118,23 @@ internal class LightSectionsInput(
 
     private fun handleHomeScreenLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
+        val display = state.display
         val step = SettingsInputHandler.SLIDER_STEP
-        when (homeScreenItemAtFocusIndex(state.focusedIndex, state.display)) {
+        when (homeScreenItemAtFocusIndex(state.focusedIndex, display)) {
             HomeScreenItem.Blur -> { viewModel.adjustBackgroundBlur(direction * step); return InputResult.HANDLED }
             HomeScreenItem.Saturation -> { viewModel.adjustBackgroundSaturation(direction * step); return InputResult.HANDLED }
             HomeScreenItem.Opacity -> { viewModel.adjustBackgroundOpacity(direction * step); return InputResult.HANDLED }
+            HomeScreenItem.GameArtwork ->
+                return toggleLeftRight(direction, display.useGameBackground) { viewModel.setUseGameBackground(it) }
+            HomeScreenItem.VideoWallpaper ->
+                return toggleLeftRight(direction, display.videoWallpaperEnabled) { viewModel.setVideoWallpaperEnabled(it) }
+            HomeScreenItem.VideoDelay -> { viewModel.cycleVideoWallpaperDelay(direction); return InputResult.HANDLED }
+            HomeScreenItem.VideoMuted ->
+                return toggleLeftRight(direction, display.videoWallpaperMuted) { viewModel.setVideoWallpaperMuted(it) }
+            HomeScreenItem.AccentFooter ->
+                return toggleLeftRight(direction, display.useAccentColorFooter) { viewModel.setUseAccentColorFooter(it) }
+            HomeScreenItem.InstalledOnly ->
+                return toggleLeftRight(direction, display.installedOnlyHome) { viewModel.setInstalledOnlyHome(it) }
             else -> {}
         }
         return InputResult.UNHANDLED
@@ -130,11 +142,24 @@ internal class LightSectionsInput(
 
     private fun handleControlsLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
-        when (controlsItemAtFocusIndex(state.focusedIndex, state.controls)) {
-            ControlsItem.VibrationStrength -> if (state.controls.hapticEnabled && state.controls.vibrationSupported) {
+        val controls = state.controls
+        when (controlsItemAtFocusIndex(state.focusedIndex, controls)) {
+            ControlsItem.VibrationStrength -> if (controls.hapticEnabled && controls.vibrationSupported) {
                 viewModel.adjustVibrationStrength(direction * 0.1f)
                 return InputResult.HANDLED
             }
+            ControlsItem.HapticFeedback ->
+                return toggleLeftRight(direction, controls.hapticEnabled) { viewModel.setHapticEnabled(it) }
+            ControlsItem.ControllerLayout -> { viewModel.cycleControllerLayout(direction); return InputResult.HANDLED }
+            ControlsItem.SwapAB ->
+                return toggleLeftRight(direction, controls.swapAB) { viewModel.setSwapAB(it) }
+            ControlsItem.SwapXY ->
+                return toggleLeftRight(direction, controls.swapXY) { viewModel.setSwapXY(it) }
+            ControlsItem.SwapStartSelect ->
+                return toggleLeftRight(direction, controls.swapStartSelect) { viewModel.setSwapStartSelect(it) }
+            ControlsItem.SelectLCombo -> { viewModel.cycleSelectLCombo(direction); return InputResult.HANDLED }
+            ControlsItem.SelectRCombo -> { viewModel.cycleSelectRCombo(direction); return InputResult.HANDLED }
+            ControlsItem.MenuWrap -> { viewModel.cycleMenuWrapMode(direction); return InputResult.HANDLED }
             else -> {}
         }
         return InputResult.UNHANDLED
@@ -142,9 +167,18 @@ internal class LightSectionsInput(
 
     private fun handleSyncSettingsLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
-        if (syncSettingsItemAtFocusIndex(state.focusedIndex) is SyncSettingsItem.ImageCacheLocation) {
-            viewModel.moveImageCacheActionFocus(direction)
-            return InputResult.HANDLED
+        when (syncSettingsItemAtFocusIndex(state.focusedIndex)) {
+            is SyncSettingsItem.ImageCacheLocation -> {
+                viewModel.moveImageCacheActionFocus(direction)
+                return InputResult.HANDLED
+            }
+            SyncSettingsItem.CacheScreenshots ->
+                return toggleLeftRight(direction, state.server.syncScreenshotsEnabled) { viewModel.toggleSyncScreenshots() }
+            SyncSettingsItem.UploadScreenshots -> {
+                if (!state.server.screenshotUploadSupported) return InputResult.UNHANDLED
+                return toggleLeftRight(direction, state.server.uploadScreenshotsEnabled) { viewModel.toggleUploadScreenshots() }
+            }
+            else -> {}
         }
         return InputResult.UNHANDLED
     }
@@ -156,6 +190,15 @@ internal class LightSectionsInput(
         when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath, hasChangelog)) {
             AboutItem.CheckUpdates -> { viewModel.moveUpdateActionFocus(direction); return InputResult.HANDLED }
             AboutItem.LogLevel -> { viewModel.cycleFileLogLevel(direction); return InputResult.HANDLED }
+            AboutItem.BetaUpdates ->
+                return toggleLeftRight(direction, state.betaUpdatesEnabled) { viewModel.setBetaUpdatesEnabled(it) }
+            AboutItem.FileLogging -> if (hasLogPath) {
+                return toggleLeftRight(direction, state.fileLoggingEnabled) { viewModel.toggleFileLogging(it) }
+            }
+            AboutItem.SaveDebugLogging ->
+                return toggleLeftRight(direction, state.saveDebugLoggingEnabled) { viewModel.setSaveDebugLoggingEnabled(it) }
+            AboutItem.AppAffinity ->
+                return toggleLeftRight(direction, state.appAffinityEnabled) { viewModel.setAppAffinityEnabled(it) }
             else -> {}
         }
         return InputResult.UNHANDLED

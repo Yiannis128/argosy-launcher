@@ -218,6 +218,9 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: InterfaceItem): Boolean =
         uiState.focusedIndex == interfaceLayout.focusIndexOf(item, layoutState)
 
+    fun pickerToken(item: InterfaceItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -237,14 +240,11 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     title = "Theme",
                     value = display.themeMode.name.lowercase().replaceFirstChar { it.uppercase() },
                     isFocused = isFocused(item),
-                    onClick = {
-                        val next = when (display.themeMode) {
-                            ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                            ThemeMode.LIGHT -> ThemeMode.DARK
-                            ThemeMode.DARK -> ThemeMode.SYSTEM
-                        }
-                        viewModel.setThemeMode(next)
-                    }
+                    onClick = { viewModel.cycleThemeMode(1) },
+                    onPrev = { viewModel.cycleThemeMode(-1) },
+                    options = remember { ThemeMode.entries.map { mode -> mode.name.lowercase().replaceFirstChar { c -> c.uppercase() } } },
+                    onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 InterfaceItem.AccentColor -> HueSliderPreference(
@@ -277,14 +277,11 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     title = "Grid Density",
                     value = display.gridDensity.name.lowercase().replaceFirstChar { it.uppercase() },
                     isFocused = isFocused(item),
-                    onClick = {
-                        val next = when (display.gridDensity) {
-                            GridDensity.COMPACT -> GridDensity.NORMAL
-                            GridDensity.NORMAL -> GridDensity.SPACIOUS
-                            GridDensity.SPACIOUS -> GridDensity.COMPACT
-                        }
-                        viewModel.setGridDensity(next)
-                    }
+                    onClick = { viewModel.cycleGridDensity(1) },
+                    onPrev = { viewModel.cycleGridDensity(-1) },
+                    options = remember { GridDensity.entries.map { d -> d.name.lowercase().replaceFirstChar { c -> c.uppercase() } } },
+                    onSelect = { viewModel.setGridDensity(GridDensity.entries[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 InterfaceItem.UiScale -> SliderPreference(
@@ -327,7 +324,11 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     subtitle = "Which physical display is the main vs companion screen; Swapped flips top and bottom",
                     value = display.displayRoleOverride.displayName,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleDisplayRoleOverride() }
+                    onClick = { viewModel.cycleDisplayRoleOverride() },
+                    onPrev = { viewModel.cycleDisplayRoleOverride(-1) },
+                    options = remember { DisplayRoleOverride.entries.map { it.displayName } },
+                    onSelect = { viewModel.cycleDisplayRoleOverride(it - display.displayRoleOverride.ordinal) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 InterfaceItem.ScreenDimmer -> SwitchPreference(
@@ -342,7 +343,11 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     title = "Dim After",
                     value = "${storage.screenDimmerTimeoutMinutes} min",
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleScreenDimmerTimeout() }
+                    onClick = { viewModel.cycleScreenDimmerTimeout() },
+                    onPrev = { viewModel.adjustScreenDimmerTimeout(-1) },
+                    options = remember { (1..5).map { "$it min" } },
+                    onSelect = { viewModel.adjustScreenDimmerTimeout((it + 1) - storage.screenDimmerTimeoutMinutes) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 InterfaceItem.DimLevel -> SliderPreference(

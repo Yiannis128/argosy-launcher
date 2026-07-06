@@ -268,6 +268,12 @@ internal fun routeCycleGradientPreset(vm: SettingsViewModel, direction: Int) {
     vm.extractGradientForPreview()
 }
 
+internal fun routeSetGradientPreset(vm: SettingsViewModel, preset: GradientPreset) {
+    vm._uiState.update { it.copy(gradientConfig = preset.toConfig()) }
+    vm.displayDelegate.setGradientPreset(vm.viewModelScope, preset)
+    vm.extractGradientForPreview()
+}
+
 internal fun routeToggleGradientAdvancedMode(vm: SettingsViewModel) {
     vm.displayDelegate.toggleGradientAdvancedMode(vm.viewModelScope)
     vm.extractGradientForPreview()

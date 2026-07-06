@@ -642,6 +642,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setFocusIndex(index: Int) { _uiState.update { it.copy(focusedIndex = index) } }
 
+    fun requestEnumPicker(key: String) {
+        _uiState.update { it.copy(enumPickerKey = key, enumPickerToken = it.enumPickerToken + 1) }
+    }
+
     fun moveFocusWrapped(delta: Int, maxIndex: Int) {
         _uiState.update {
             it.copy(focusedIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
@@ -738,6 +742,7 @@ class SettingsViewModel @Inject constructor(
     fun cycleGlassBorderTint(direction: Int = 1) = displayDelegate.cycleGlassBorderTint(viewModelScope, direction)
 
     fun cycleGradientPreset(direction: Int = 1) = routeCycleGradientPreset(this, direction)
+    fun setGradientPreset(preset: com.nendo.argosy.data.cache.GradientPreset) = routeSetGradientPreset(this, preset)
     fun toggleGradientAdvancedMode() = routeToggleGradientAdvancedMode(this)
 
     fun cycleBoxArtGlowStrength(direction: Int = 1) = displayDelegate.cycleBoxArtGlowStrength(viewModelScope, direction)
@@ -752,7 +757,7 @@ class SettingsViewModel @Inject constructor(
     fun cycleBoxArtInnerEffectThickness(direction: Int = 1) = displayDelegate.cycleBoxArtInnerEffectThickness(viewModelScope, direction)
     fun cycleDefaultView() = displayDelegate.cycleDefaultView(viewModelScope)
     fun setVideoWallpaperEnabled(enabled: Boolean) = displayDelegate.setVideoWallpaperEnabled(viewModelScope, enabled)
-    fun cycleVideoWallpaperDelay() = displayDelegate.cycleVideoWallpaperDelay(viewModelScope)
+    fun cycleVideoWallpaperDelay(direction: Int = 1) = displayDelegate.cycleVideoWallpaperDelay(viewModelScope, direction)
     fun setVideoWallpaperMuted(muted: Boolean) = displayDelegate.setVideoWallpaperMuted(viewModelScope, muted)
     fun setAmbientLedEnabled(enabled: Boolean) = displayDelegate.setAmbientLedEnabled(viewModelScope, enabled)
     fun setAmbientLedBrightness(brightness: Int) = displayDelegate.setAmbientLedBrightness(viewModelScope, brightness)
@@ -823,12 +828,16 @@ class SettingsViewModel @Inject constructor(
     fun clearAmbientAudioFile() = ambientAudioDelegate.clearAudioFile(viewModelScope)
     fun setSwapAB(enabled: Boolean) = controlsDelegate.setSwapAB(viewModelScope, enabled)
     fun setSwapXY(enabled: Boolean) = controlsDelegate.setSwapXY(viewModelScope, enabled)
-    fun cycleControllerLayout() = controlsDelegate.cycleControllerLayout(viewModelScope)
+    fun cycleControllerLayout(direction: Int = 1) = controlsDelegate.cycleControllerLayout(viewModelScope, direction)
+    fun setControllerLayout(layout: String) = controlsDelegate.setControllerLayout(viewModelScope, layout)
     fun refreshDetectedLayout() = controlsDelegate.refreshDetectedLayout()
     fun setSwapStartSelect(enabled: Boolean) = controlsDelegate.setSwapStartSelect(viewModelScope, enabled)
-    fun cycleSelectLCombo() = controlsDelegate.cycleSelectLCombo(viewModelScope)
-    fun cycleSelectRCombo() = controlsDelegate.cycleSelectRCombo(viewModelScope)
-    fun cycleMenuWrapMode() = controlsDelegate.cycleMenuWrapMode(viewModelScope)
+    fun cycleSelectLCombo(direction: Int = 1) = controlsDelegate.cycleSelectLCombo(viewModelScope, direction)
+    fun cycleSelectRCombo(direction: Int = 1) = controlsDelegate.cycleSelectRCombo(viewModelScope, direction)
+    fun setSelectLCombo(value: String) = controlsDelegate.setSelectLCombo(viewModelScope, value)
+    fun setSelectRCombo(value: String) = controlsDelegate.setSelectRCombo(viewModelScope, value)
+    fun cycleMenuWrapMode(direction: Int = 1) = controlsDelegate.cycleMenuWrapMode(viewModelScope, direction)
+    fun setMenuWrapMode(mode: com.nendo.argosy.data.preferences.MenuWrapMode) = controlsDelegate.setMenuWrapMode(viewModelScope, mode)
     fun setAccuratePlayTimeEnabled(enabled: Boolean) = controlsDelegate.setAccuratePlayTimeEnabled(viewModelScope, enabled)
     fun refreshUsageStatsPermission() = controlsDelegate.refreshUsageStatsPermission()
     fun openUsageStatsSettings() = controlsDelegate.openUsageStatsSettings()

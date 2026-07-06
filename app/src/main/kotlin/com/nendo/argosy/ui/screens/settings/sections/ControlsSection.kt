@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.SliderPreference
@@ -69,6 +70,9 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: ControlsItem): Boolean =
         uiState.focusedIndex == controlsLayout.focusIndexOf(item, controls)
 
+    fun pickerToken(item: ControlsItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     FocusedScroll(
         listState = listState,
         focusedIndex = uiState.focusedIndex
@@ -99,11 +103,7 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 )
 
                 ControlsItem.ControllerLayout -> {
-                    val layoutDisplay = when (controls.controllerLayout) {
-                        "nintendo" -> "Nintendo"
-                        "xbox" -> "Xbox"
-                        else -> "Auto"
-                    }
+                    val layoutDisplay = ControlsSettingsDelegate.layoutDisplayName(controls.controllerLayout)
                     val detected = controls.detectedLayout
                     val device = controls.detectedDeviceName
                     val subtitle = when {
@@ -116,7 +116,11 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         value = layoutDisplay,
                         subtitle = subtitle,
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleControllerLayout() }
+                        onClick = { viewModel.cycleControllerLayout() },
+                        onPrev = { viewModel.cycleControllerLayout(-1) },
+                        options = remember { ControlsSettingsDelegate.LAYOUT_CYCLE.map { ControlsSettingsDelegate.layoutDisplayName(it) } },
+                        onSelect = { viewModel.setControllerLayout(ControlsSettingsDelegate.LAYOUT_CYCLE[it]) },
+                        pickerRequestToken = pickerToken(item)
                     )
                 }
 
@@ -149,7 +153,11 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     value = ControlsSettingsDelegate.comboDisplayName(controls.selectLCombo),
                     subtitle = "Hold Select and press L1",
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleSelectLCombo() }
+                    onClick = { viewModel.cycleSelectLCombo() },
+                    onPrev = { viewModel.cycleSelectLCombo(-1) },
+                    options = remember { ControlsSettingsDelegate.COMBO_CYCLE.map { ControlsSettingsDelegate.comboDisplayName(it) } },
+                    onSelect = { viewModel.setSelectLCombo(ControlsSettingsDelegate.COMBO_CYCLE[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 ControlsItem.SelectRCombo -> CyclePreference(
@@ -157,7 +165,11 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     value = ControlsSettingsDelegate.comboDisplayName(controls.selectRCombo),
                     subtitle = "Hold Select and press R1",
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleSelectRCombo() }
+                    onClick = { viewModel.cycleSelectRCombo() },
+                    onPrev = { viewModel.cycleSelectRCombo(-1) },
+                    options = remember { ControlsSettingsDelegate.COMBO_CYCLE.map { ControlsSettingsDelegate.comboDisplayName(it) } },
+                    onSelect = { viewModel.setSelectRCombo(ControlsSettingsDelegate.COMBO_CYCLE[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 ControlsItem.MenuWrap -> CyclePreference(
@@ -165,7 +177,11 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     value = controls.menuWrapMode.displayName,
                     subtitle = "Navigate past the last item to the first",
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleMenuWrapMode() }
+                    onClick = { viewModel.cycleMenuWrapMode() },
+                    onPrev = { viewModel.cycleMenuWrapMode(-1) },
+                    options = remember { MenuWrapMode.entries.map { it.displayName } },
+                    onSelect = { viewModel.setMenuWrapMode(MenuWrapMode.entries[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
             }

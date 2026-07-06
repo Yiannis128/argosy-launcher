@@ -2,8 +2,6 @@ package com.nendo.argosy.ui.screens.settings
 
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.entity.getDisplayName
-import com.nendo.argosy.data.preferences.GridDensity
-import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.ui.input.InputResult
@@ -295,27 +293,25 @@ private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState)
     when (interfaceItemAtFocusIndex(state.focusedIndex, layoutState)) {
         InterfaceItem.DualScreenEnabled -> vm.setDualScreenEnabled(!state.display.dualScreenEnabled)
         InterfaceItem.Theme -> {
-            val next = when (state.display.themeMode) {
-                ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                ThemeMode.LIGHT -> ThemeMode.DARK
-                ThemeMode.DARK -> ThemeMode.SYSTEM
-            }
-            vm.setThemeMode(next)
+            vm.requestEnumPicker(InterfaceItem.Theme.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
         }
         InterfaceItem.GridDensity -> {
-            val next = when (state.display.gridDensity) {
-                GridDensity.COMPACT -> GridDensity.NORMAL
-                GridDensity.NORMAL -> GridDensity.SPACIOUS
-                GridDensity.SPACIOUS -> GridDensity.COMPACT
-            }
-            vm.setGridDensity(next)
+            vm.requestEnumPicker(InterfaceItem.GridDensity.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
         }
         InterfaceItem.UiScale -> vm.cycleUiScale()
         InterfaceItem.BoxArt -> vm.navigateToBoxArt()
         InterfaceItem.HomeScreen -> vm.navigateToHomeScreen()
-        InterfaceItem.DisplayRoles -> vm.cycleDisplayRoleOverride()
+        InterfaceItem.DisplayRoles -> {
+            vm.requestEnumPicker(InterfaceItem.DisplayRoles.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         InterfaceItem.ScreenDimmer -> vm.toggleScreenDimmer()
-        InterfaceItem.DimAfter -> vm.cycleScreenDimmerTimeout()
+        InterfaceItem.DimAfter -> {
+            vm.requestEnumPicker(InterfaceItem.DimAfter.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         InterfaceItem.DimLevel -> vm.cycleScreenDimmerLevel()
         InterfaceItem.AmbientLedSettings -> vm.navigateToAmbientLed()
         InterfaceItem.BgmToggle -> {
@@ -362,7 +358,10 @@ private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.setVideoWallpaperEnabled(!state.display.videoWallpaperEnabled)
             return InputResult.handled(SoundType.TOGGLE)
         }
-        HomeScreenItem.VideoDelay -> vm.cycleVideoWallpaperDelay()
+        HomeScreenItem.VideoDelay -> {
+            vm.requestEnumPicker(HomeScreenItem.VideoDelay.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         HomeScreenItem.VideoMuted -> {
             vm.setVideoWallpaperMuted(!state.display.videoWallpaperMuted)
             return InputResult.handled(SoundType.TOGGLE)
@@ -381,13 +380,16 @@ private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState
 }
 
 private fun routeBoxArtConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
-    when (boxArtItemAtFocusIndex(state.focusedIndex, state.display)) {
-        BoxArtItem.Shape -> vm.cycleBoxArtShape()
-        BoxArtItem.CornerRadius -> vm.cycleBoxArtCornerRadius()
-        BoxArtItem.BorderThickness -> vm.cycleBoxArtBorderThickness()
-        BoxArtItem.BorderStyle -> vm.cycleBoxArtBorderStyle()
-        BoxArtItem.GlassTint -> vm.cycleGlassBorderTint()
-        BoxArtItem.GradientPresetItem -> vm.cycleGradientPreset()
+    val item = boxArtItemAtFocusIndex(state.focusedIndex, state.display)
+    when (item) {
+        BoxArtItem.Shape, BoxArtItem.CornerRadius, BoxArtItem.BorderThickness, BoxArtItem.BorderStyle,
+        BoxArtItem.GlassTint, BoxArtItem.GradientPresetItem, BoxArtItem.IndicatorStyle,
+        BoxArtItem.IndicatorContent, BoxArtItem.IconPos, BoxArtItem.IconPad, BoxArtItem.OuterEffect,
+        BoxArtItem.OuterThickness, BoxArtItem.GlowIntensity, BoxArtItem.GlowColor,
+        BoxArtItem.InnerEffect, BoxArtItem.InnerThickness -> {
+            vm.requestEnumPicker(item.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         BoxArtItem.GradientAdvanced -> vm.toggleGradientAdvancedMode()
         BoxArtItem.SampleGrid -> vm.cycleGradientSampleGrid(1)
         BoxArtItem.SampleRadius -> vm.cycleGradientRadius(1)
@@ -396,16 +398,6 @@ private fun routeBoxArtConfirm(vm: SettingsViewModel, state: SettingsUiState): I
         BoxArtItem.HueDistance -> vm.cycleGradientHueDistance(1)
         BoxArtItem.SaturationBoost -> vm.cycleGradientSaturationBump(1)
         BoxArtItem.BrightnessClamp -> vm.cycleGradientValueClamp(1)
-        BoxArtItem.IndicatorStyle -> vm.cyclePlatformIndicatorStyle()
-        BoxArtItem.IndicatorContent -> vm.cyclePlatformIndicatorContent()
-        BoxArtItem.IconPos -> vm.cycleSystemIconPosition()
-        BoxArtItem.IconPad -> vm.cycleSystemIconPadding()
-        BoxArtItem.OuterEffect -> vm.cycleBoxArtOuterEffect()
-        BoxArtItem.OuterThickness -> vm.cycleBoxArtOuterEffectThickness()
-        BoxArtItem.GlowIntensity -> vm.cycleBoxArtGlowStrength()
-        BoxArtItem.GlowColor -> vm.cycleGlowColorMode()
-        BoxArtItem.InnerEffect -> vm.cycleBoxArtInnerEffect()
-        BoxArtItem.InnerThickness -> vm.cycleBoxArtInnerEffectThickness()
         else -> {}
     }
     return InputResult.HANDLED
@@ -439,13 +431,25 @@ private fun routeControlsConfirm(vm: SettingsViewModel, state: SettingsUiState):
             return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         ControlsItem.VibrationStrength -> vm.cycleVibrationStrength()
-        ControlsItem.ControllerLayout -> vm.cycleControllerLayout()
+        ControlsItem.ControllerLayout -> {
+            vm.requestEnumPicker(ControlsItem.ControllerLayout.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         ControlsItem.SwapAB -> { vm.setSwapAB(!state.controls.swapAB); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SwapXY -> { vm.setSwapXY(!state.controls.swapXY); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SwapStartSelect -> { vm.setSwapStartSelect(!state.controls.swapStartSelect); return InputResult.handled(SoundType.TOGGLE) }
-        ControlsItem.SelectLCombo -> vm.cycleSelectLCombo()
-        ControlsItem.SelectRCombo -> vm.cycleSelectRCombo()
-        ControlsItem.MenuWrap -> vm.cycleMenuWrapMode()
+        ControlsItem.SelectLCombo -> {
+            vm.requestEnumPicker(ControlsItem.SelectLCombo.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ControlsItem.SelectRCombo -> {
+            vm.requestEnumPicker(ControlsItem.SelectRCombo.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ControlsItem.MenuWrap -> {
+            vm.requestEnumPicker(ControlsItem.MenuWrap.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         null -> {}
     }
     return InputResult.HANDLED

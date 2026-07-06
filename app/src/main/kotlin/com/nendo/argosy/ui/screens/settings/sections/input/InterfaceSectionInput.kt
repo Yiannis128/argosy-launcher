@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsInputHandler
@@ -70,6 +71,28 @@ internal class InterfaceSectionInput(
             InterfaceItem.DisplayRoles -> { viewModel.cycleDisplayRoleOverride(direction); return InputResult.HANDLED }
             InterfaceItem.BgmVolume -> if (state.ambientAudio.enabled) { viewModel.adjustAmbientAudioVolume(direction); return InputResult.HANDLED }
             InterfaceItem.UiSoundsVolume -> if (state.sounds.enabled) { viewModel.adjustSoundVolume(direction); return InputResult.HANDLED }
+            InterfaceItem.DualScreenEnabled ->
+                return toggleLeftRight(direction, state.display.dualScreenEnabled) { viewModel.setDualScreenEnabled(it) }
+            InterfaceItem.ScreenDimmer ->
+                return toggleLeftRight(direction, state.storage.screenDimmerEnabled) { viewModel.toggleScreenDimmer() }
+            InterfaceItem.BgmToggle -> {
+                val target = direction > 0
+                if (target == state.ambientAudio.enabled) return InputResult.handled(SoundType.SILENT)
+                viewModel.setAmbientAudioEnabled(target)
+                return InputResult.handled(if (target) SoundType.TOGGLE else SoundType.SILENT)
+            }
+            InterfaceItem.BgmShuffle ->
+                return toggleLeftRight(direction, state.ambientAudio.shuffle) { viewModel.setAmbientAudioShuffle(it) }
+            InterfaceItem.UiSoundsToggle -> {
+                val target = direction > 0
+                if (target == state.sounds.enabled) return InputResult.handled(SoundType.SILENT)
+                viewModel.setSoundEnabled(target)
+                if (target) {
+                    viewModel.soundManager.setEnabled(true)
+                    viewModel.soundManager.play(SoundType.TOGGLE)
+                }
+                return InputResult.handled(SoundType.SILENT)
+            }
             else -> {}
         }
         return InputResult.UNHANDLED

@@ -18,6 +18,7 @@ import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.DisplayState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.screens.settings.delegates.DisplaySettingsDelegate
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 
@@ -112,6 +113,9 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: HomeScreenItem): Boolean =
         uiState.focusedIndex == homeScreenLayout.focusIndexOf(item, display)
 
+    fun pickerToken(item: HomeScreenItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -185,16 +189,20 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 )
 
                 HomeScreenItem.VideoDelay -> {
-                    val delayText = when (display.videoWallpaperDelaySeconds) {
-                        0 -> "Instant"
-                        1 -> "1 second"
-                        else -> "${display.videoWallpaperDelaySeconds} seconds"
-                    }
+                    val delayText = videoDelayLabel(display.videoWallpaperDelaySeconds)
                     CyclePreference(
                         title = "Delay Before Playback",
                         value = delayText,
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleVideoWallpaperDelay() }
+                        onClick = { viewModel.cycleVideoWallpaperDelay() },
+                        onPrev = { viewModel.cycleVideoWallpaperDelay(-1) },
+                        options = remember { DisplaySettingsDelegate.VIDEO_DELAY_SECONDS.map { videoDelayLabel(it) } },
+                        onSelect = { index ->
+                            val currentIndex = DisplaySettingsDelegate.VIDEO_DELAY_SECONDS
+                                .indexOf(display.videoWallpaperDelaySeconds).coerceAtLeast(0)
+                            viewModel.cycleVideoWallpaperDelay(index - currentIndex)
+                        },
+                        pickerRequestToken = pickerToken(item)
                     )
                 }
 
@@ -225,6 +233,12 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 )
             }
     }
+}
+
+private fun videoDelayLabel(seconds: Int): String = when (seconds) {
+    0 -> "Instant"
+    1 -> "1 second"
+    else -> "$seconds seconds"
 }
 
 @Composable

@@ -17,9 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.BoxArtBorderThickness
 import com.nendo.argosy.data.preferences.BoxArtCornerRadius
+import com.nendo.argosy.data.preferences.BoxArtShape
 import com.nendo.argosy.data.preferences.BoxArtGlowStrength
 import com.nendo.argosy.data.preferences.BoxArtInnerEffect
 import com.nendo.argosy.data.preferences.GlassBorderTint
@@ -195,6 +197,12 @@ internal sealed class BoxArtItem(
     }
 }
 
+private val GRADIENT_PRESET_CHOICES = listOf(
+    GradientPreset.VIBRANT,
+    GradientPreset.BALANCED,
+    GradientPreset.SUBTLE
+)
+
 private val boxArtLayout = SettingsLayout<BoxArtItem, DisplayState>(
     allItems = BoxArtItem.ALL,
     isFocusable = { it.isFocusable },
@@ -233,6 +241,9 @@ fun BoxArtSection(
     fun isFocused(item: BoxArtItem): Boolean =
         uiState.focusedIndex == boxArtLayout.focusIndexOf(item, display)
 
+    fun pickerToken(item: BoxArtItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -259,37 +270,61 @@ fun BoxArtSection(
                         title = "Shape",
                         value = display.boxArtShape.displayName,
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtShape() }
+                        onClick = { viewModel.cycleBoxArtShape() },
+                        onPrev = { viewModel.cycleBoxArtShape(-1) },
+                        options = remember { BoxArtShape.entries.map { it.displayName } },
+                        onSelect = { viewModel.cycleBoxArtShape(it - display.boxArtShape.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.CornerRadius -> CyclePreference(
                         title = "Corner Radius",
                         value = display.boxArtCornerRadius.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtCornerRadius() }
+                        onClick = { viewModel.cycleBoxArtCornerRadius() },
+                        onPrev = { viewModel.cycleBoxArtCornerRadius(-1) },
+                        options = remember { BoxArtCornerRadius.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtCornerRadius(it - display.boxArtCornerRadius.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.BorderThickness -> CyclePreference(
                         title = "Border Thickness",
                         value = display.boxArtBorderThickness.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtBorderThickness() }
+                        onClick = { viewModel.cycleBoxArtBorderThickness() },
+                        onPrev = { viewModel.cycleBoxArtBorderThickness(-1) },
+                        options = remember { BoxArtBorderThickness.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtBorderThickness(it - display.boxArtBorderThickness.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.BorderStyle -> CyclePreference(
                         title = "Border Style",
                         value = display.boxArtBorderStyle.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtBorderStyle() }
+                        onClick = { viewModel.cycleBoxArtBorderStyle() },
+                        onPrev = { viewModel.cycleBoxArtBorderStyle(-1) },
+                        options = remember { BoxArtBorderStyle.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtBorderStyle(it - display.boxArtBorderStyle.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.GlassTint -> CyclePreference(
                         title = "Glass Tint",
                         value = display.glassBorderTint.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGlassBorderTint() }
+                        onClick = { viewModel.cycleGlassBorderTint() },
+                        onPrev = { viewModel.cycleGlassBorderTint(-1) },
+                        options = remember { GlassBorderTint.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleGlassBorderTint(it - display.glassBorderTint.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.GradientPresetItem -> CyclePreference(
                         title = "Color Preset",
                         value = display.gradientPreset.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientPreset() }
+                        onClick = { viewModel.cycleGradientPreset() },
+                        onPrev = { viewModel.cycleGradientPreset(-1) },
+                        options = remember { GRADIENT_PRESET_CHOICES.map { it.displayName() } },
+                        onSelect = { viewModel.setGradientPreset(GRADIENT_PRESET_CHOICES[it]) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.GradientAdvanced -> CyclePreference(
                         title = "Advanced",
@@ -302,13 +337,21 @@ fun BoxArtSection(
                         title = "Style",
                         value = display.platformIndicatorStyle.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cyclePlatformIndicatorStyle() }
+                        onClick = { viewModel.cyclePlatformIndicatorStyle() },
+                        onPrev = { viewModel.cyclePlatformIndicatorStyle(-1) },
+                        options = remember { PlatformIndicatorStyle.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cyclePlatformIndicatorStyle(it - display.platformIndicatorStyle.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.IndicatorContent -> CyclePreference(
                         title = "Display",
                         value = display.platformIndicatorContent.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cyclePlatformIndicatorContent() }
+                        onClick = { viewModel.cyclePlatformIndicatorContent() },
+                        onPrev = { viewModel.cyclePlatformIndicatorContent(-1) },
+                        options = remember { PlatformIndicatorContent.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cyclePlatformIndicatorContent(it - display.platformIndicatorContent.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.IconPos -> CyclePreference(
                         title = when (display.platformIndicatorStyle) {
@@ -318,51 +361,87 @@ fun BoxArtSection(
                         },
                         value = display.systemIconPosition.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleSystemIconPosition() }
+                        onClick = { viewModel.cycleSystemIconPosition() },
+                        onPrev = { viewModel.cycleSystemIconPosition(-1) },
+                        options = remember { SystemIconPosition.CORNERS.map { it.displayName() } },
+                        onSelect = { index ->
+                            val currentIndex = SystemIconPosition.CORNERS
+                                .indexOf(display.systemIconPosition).coerceAtLeast(0)
+                            viewModel.cycleSystemIconPosition(index - currentIndex)
+                        },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.IconPad -> CyclePreference(
                         title = "Padding",
                         value = display.systemIconPadding.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleSystemIconPadding() }
+                        onClick = { viewModel.cycleSystemIconPadding() },
+                        onPrev = { viewModel.cycleSystemIconPadding(-1) },
+                        options = remember { SystemIconPadding.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleSystemIconPadding(it - display.systemIconPadding.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
 
                     BoxArtItem.OuterEffect -> CyclePreference(
                         title = "Effect",
                         value = display.boxArtOuterEffect.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtOuterEffect() }
+                        onClick = { viewModel.cycleBoxArtOuterEffect() },
+                        onPrev = { viewModel.cycleBoxArtOuterEffect(-1) },
+                        options = remember { BoxArtOuterEffect.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtOuterEffect(it - display.boxArtOuterEffect.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.OuterThickness -> CyclePreference(
                         title = "Thickness",
                         value = display.boxArtOuterEffectThickness.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtOuterEffectThickness() }
+                        onClick = { viewModel.cycleBoxArtOuterEffectThickness() },
+                        onPrev = { viewModel.cycleBoxArtOuterEffectThickness(-1) },
+                        options = remember { BoxArtOuterEffectThickness.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtOuterEffectThickness(it - display.boxArtOuterEffectThickness.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.GlowIntensity -> CyclePreference(
                         title = "Intensity",
                         value = display.boxArtGlowStrength.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtGlowStrength() }
+                        onClick = { viewModel.cycleBoxArtGlowStrength() },
+                        onPrev = { viewModel.cycleBoxArtGlowStrength(-1) },
+                        options = remember { BoxArtGlowStrength.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtGlowStrength(it - display.boxArtGlowStrength.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.GlowColor -> CyclePreference(
                         title = "Color",
                         value = display.glowColorMode.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGlowColorMode() }
+                        onClick = { viewModel.cycleGlowColorMode() },
+                        onPrev = { viewModel.cycleGlowColorMode(-1) },
+                        options = remember { GlowColorMode.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleGlowColorMode(it - display.glowColorMode.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
 
                     BoxArtItem.InnerEffect -> CyclePreference(
                         title = "Effect",
                         value = display.boxArtInnerEffect.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtInnerEffect() }
+                        onClick = { viewModel.cycleBoxArtInnerEffect() },
+                        onPrev = { viewModel.cycleBoxArtInnerEffect(-1) },
+                        options = remember { BoxArtInnerEffect.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtInnerEffect(it - display.boxArtInnerEffect.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
                     BoxArtItem.InnerThickness -> CyclePreference(
                         title = "Thickness",
                         value = display.boxArtInnerEffectThickness.displayName(),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtInnerEffectThickness() }
+                        onClick = { viewModel.cycleBoxArtInnerEffectThickness() },
+                        onPrev = { viewModel.cycleBoxArtInnerEffectThickness(-1) },
+                        options = remember { BoxArtInnerEffectThickness.entries.map { it.displayName() } },
+                        onSelect = { viewModel.cycleBoxArtInnerEffectThickness(it - display.boxArtInnerEffectThickness.ordinal) },
+                        pickerRequestToken = pickerToken(item)
                     )
 
                     BoxArtItem.SampleGrid -> CyclePreference(

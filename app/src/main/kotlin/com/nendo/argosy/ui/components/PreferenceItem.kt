@@ -36,7 +36,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -166,12 +168,24 @@ fun CyclePreference(
     showResetButton: Boolean = false,
     onReset: (() -> Unit)? = null,
     onPrev: (() -> Unit)? = null,
-    valueFooter: (@Composable () -> Unit)? = null
+    valueFooter: (@Composable () -> Unit)? = null,
+    options: List<String>? = null,
+    onSelect: ((Int) -> Unit)? = null,
+    pickerRequestToken: Int = 0
 ) {
     val valueColor = when {
         isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
         isCustom -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.primary
+    }
+    val hasPicker = options != null && onSelect != null
+    var pickerVisible by remember { mutableStateOf(false) }
+    var consumedPickerToken by remember { mutableIntStateOf(pickerRequestToken) }
+    LaunchedEffect(pickerRequestToken) {
+        if (hasPicker && pickerRequestToken != consumedPickerToken) {
+            consumedPickerToken = pickerRequestToken
+            pickerVisible = true
+        }
     }
 
     val modifier = if (showResetButton && onReset != null) {
@@ -228,7 +242,7 @@ fun CyclePreference(
                     focused = isFocused,
                     onPrev = onPrev ?: onClick,
                     onNext = onClick,
-                    onOpen = onClick,
+                    onOpen = if (hasPicker) ({ pickerVisible = true }) else onClick,
                     valueColor = if (isFocused) null else valueColor
                 )
             }
@@ -236,6 +250,19 @@ fun CyclePreference(
                 valueFooter()
             }
         }
+    }
+    if (options != null && onSelect != null) {
+        EnumPickerModal(
+            title = title,
+            options = options,
+            selectedIndex = options.indexOf(value),
+            onSelect = { index ->
+                pickerVisible = false
+                onSelect(index)
+            },
+            onDismiss = { pickerVisible = false },
+            visible = pickerVisible
+        )
     }
 }
 
