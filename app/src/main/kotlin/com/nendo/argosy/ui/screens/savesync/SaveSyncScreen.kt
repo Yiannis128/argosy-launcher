@@ -57,7 +57,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -200,10 +200,7 @@ fun SaveSyncScreen(
             }
         }
 
-        FooterBar(
-            hints = buildFooterHints(uiState),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+        FooterHints(hints = buildFooterHints(uiState))
     }
 }
 

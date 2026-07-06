@@ -69,7 +69,7 @@ import coil.compose.SubcomposeAsyncImage
 import com.nendo.argosy.ui.coil.AppIconData
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
@@ -260,7 +260,7 @@ fun AppsScreen(
                 }
             }
 
-            FooterBar(
+            FooterHints(
                 hints = when {
                     uiState.isReorderMode -> listOf(
                         InputButton.DPAD to "Move",
@@ -294,6 +294,7 @@ fun AppsScreen(
                     }
                 }
             )
+            Spacer(modifier = Modifier.height(Dimens.footerHeight))
         }
 
         if (uiState.showContextMenu) {

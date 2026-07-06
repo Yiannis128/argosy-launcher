@@ -27,7 +27,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.data.emulator.ApkAssetMatcher
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
@@ -101,7 +101,7 @@ fun VariantPickerModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD to "Navigate",
                     InputButton.A to "Select",

@@ -54,7 +54,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.domain.usecase.collection.CollectionWithCount
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -223,7 +223,7 @@ fun CollectionsScreen(
             } else {
                 emptyList()
             }
-            FooterBar(hints = baseHints + contextHints)
+            FooterHints(hints = baseHints + contextHints)
         }
     }
 

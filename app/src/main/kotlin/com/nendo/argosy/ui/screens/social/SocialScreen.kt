@@ -86,7 +86,8 @@ import com.nendo.argosy.ui.screens.doodle.GamePickerItem
 import com.nendo.argosy.ui.screens.doodle.CanvasSize
 import com.nendo.argosy.ui.screens.doodle.DoodleEncoder
 import com.nendo.argosy.ui.screens.doodle.DoodlePreview
-import com.nendo.argosy.ui.components.FooterBarWithState
+import com.nendo.argosy.ui.components.FooterHintsWithState
+import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
@@ -353,7 +354,7 @@ fun SocialScreen(
                 }
             }
 
-            FooterBarWithState(
+            FooterHintsWithState(
                 hints = buildList {
                     when (uiState.selectedTab) {
                         SocialTab.FEED -> {
@@ -383,6 +384,7 @@ fun SocialScreen(
                     }
                 }
             )
+            Spacer(modifier = Modifier.height(Dimens.footerHeight))
         }
 
         if (optionsState.showOptionsModal) {

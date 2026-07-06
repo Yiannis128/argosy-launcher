@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBarWithState
+import com.nendo.argosy.ui.components.FooterHintsWithState
 import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.NestedModal
@@ -170,7 +170,7 @@ fun SaveChannelModal(
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             val hints = buildFooterHints(state)
-            FooterBarWithState(hints = hints)
+            FooterHintsWithState(hints = hints)
         }
 
         if (state.showRestoreConfirmation &&

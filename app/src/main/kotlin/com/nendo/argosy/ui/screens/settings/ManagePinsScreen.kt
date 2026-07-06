@@ -49,7 +49,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.domain.model.PinnedCollection
 import com.nendo.argosy.domain.usecase.collection.CategoryType
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -154,10 +154,7 @@ fun ManagePinsScreen(
             )
         }
 
-        FooterBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            hints = hints
-        )
+        FooterHints(hints = hints)
     }
 }
 

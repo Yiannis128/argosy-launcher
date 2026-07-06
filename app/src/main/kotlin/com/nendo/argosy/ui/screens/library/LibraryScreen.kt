@@ -90,7 +90,7 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.AddToCollectionModal
 import com.nendo.argosy.ui.components.AlphabetSidebar
 import com.nendo.argosy.ui.components.CollectionItem
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
@@ -1104,7 +1104,7 @@ private fun LibraryFooter(
         add(InputButton.X to "Filter")
         add(InputButton.SELECT to "Quick Menu")
     }
-    FooterBar(
+    FooterHints(
         hints = hints,
         onHintClick = onHintClick
     )
@@ -1388,7 +1388,7 @@ private fun FilterMenuOverlay(
                 }
             }
 
-            FooterBar(
+            FooterHints(
                 hints = if (isSearchCategory) {
                     listOf(
                         InputButton.X to "Clear",

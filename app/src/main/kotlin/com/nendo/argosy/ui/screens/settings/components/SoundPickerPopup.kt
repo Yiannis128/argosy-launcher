@@ -30,7 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.SoundPreset
 import com.nendo.argosy.core.input.SoundType
@@ -105,7 +105,7 @@ fun SoundPickerPopup(
                 }
             }
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.X to "Preview",
                     InputButton.A to "Select",

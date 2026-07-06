@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.libretro.shader.ShaderRegistry
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -153,7 +153,7 @@ fun ShaderPickerModal(
                 }
             }
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD_HORIZONTAL to "Section",
                     InputButton.A to "Add",

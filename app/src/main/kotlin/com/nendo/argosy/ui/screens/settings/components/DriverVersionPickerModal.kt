@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.screens.settings.DriverDownloadState
 import com.nendo.argosy.ui.screens.settings.DriverGroupUi
@@ -132,7 +132,7 @@ fun DriverVersionPickerModal(
                     InputButton.B to "Cancel"
                 )
             }
-            FooterBar(hints = hints)
+            FooterHints(hints = hints)
         }
     }
 }

@@ -50,7 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.ui.components.AlphabetSidebar
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -178,8 +178,7 @@ fun VirtualCategoryScreen(
             }
         }
 
-        FooterBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
+        FooterHints(
             hints = if (uiState.isSearchActive) {
                 listOf(
                     InputButton.A to "Open",

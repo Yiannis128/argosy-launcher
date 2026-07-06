@@ -89,8 +89,7 @@ fun Modal(
             content()
 
             if (footerHints != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                FooterBar(hints = footerHints)
+                FooterHints(hints = footerHints)
             }
         }
     }
@@ -139,8 +138,7 @@ fun CenteredModal(
             content()
 
             if (footerHints != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                FooterBar(hints = footerHints)
+                FooterHints(hints = footerHints)
             }
         }
     }
@@ -189,8 +187,7 @@ fun NestedModal(
             content()
 
             if (footerHints != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingLg))
-                FooterBar(hints = footerHints)
+                FooterHints(hints = footerHints)
             }
         }
     }

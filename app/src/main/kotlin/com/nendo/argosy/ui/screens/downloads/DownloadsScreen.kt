@@ -52,7 +52,7 @@ import coil.compose.AsyncImage
 import com.nendo.argosy.data.download.DownloadProgress
 import com.nendo.argosy.data.download.DownloadState
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -210,10 +210,7 @@ fun DownloadsScreen(
                 add(InputButton.B to "Back")
             }
 
-            FooterBar(
-                hints = footerHints,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+            FooterHints(hints = footerHints)
         }
 
         val failedItem = uiState.focusedItem

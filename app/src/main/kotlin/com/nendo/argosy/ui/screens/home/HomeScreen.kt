@@ -122,7 +122,8 @@ import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.components.GameCard
 import com.nendo.argosy.ui.components.GameCardWithNewBadge
 import com.nendo.argosy.ui.components.InputButton
-import com.nendo.argosy.ui.components.SubtleFooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterVariant
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
 import com.nendo.argosy.ui.components.SyncOverlay
@@ -677,35 +678,38 @@ fun HomeScreen(
 
                 val focusedGame = uiState.focusedGame
                 if (focusedGame != null && !uiState.showGameMenu) {
-                    SubtleFooterBar(
-                        hints = listOf(
-                            InputButton.DPAD_HORIZONTAL to "Game",
-                            InputButton.DPAD_VERTICAL to "Platform",
-                            InputButton.A to when {
-                                focusedGame.needsInstall -> "Install"
-                                focusedGame.isDownloaded -> "Play"
-                                else -> "Download"
-                            },
-                            InputButton.Y to if (focusedGame.isFavorite) "Unfavorite" else "Favorite",
-                            InputButton.X to "Details"
-                        ),
-                        onHintClick = { button ->
-                            when (button) {
-                                InputButton.A -> {
-                                    when {
-                                        focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
-                                        focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
-                                        focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
-                                        else -> viewModel.queueDownload(focusedGame.id)
+                    if (!uiState.isVideoPreviewActive) {
+                        FooterHints(
+                            hints = listOf(
+                                InputButton.DPAD_HORIZONTAL to "Game",
+                                InputButton.DPAD_VERTICAL to "Platform",
+                                InputButton.A to when {
+                                    focusedGame.needsInstall -> "Install"
+                                    focusedGame.isDownloaded -> "Play"
+                                    else -> "Download"
+                                },
+                                InputButton.Y to if (focusedGame.isFavorite) "Unfavorite" else "Favorite",
+                                InputButton.X to "Details"
+                            ),
+                            variant = FooterVariant.SUBTLE,
+                            onHintClick = { button ->
+                                when (button) {
+                                    InputButton.A -> {
+                                        when {
+                                            focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
+                                            focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
+                                            focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
+                                            else -> viewModel.queueDownload(focusedGame.id)
+                                        }
                                     }
+                                    InputButton.Y -> viewModel.toggleFavorite(focusedGame.id)
+                                    InputButton.X -> onGameSelect(focusedGame.id)
+                                    else -> {}
                                 }
-                                InputButton.Y -> viewModel.toggleFavorite(focusedGame.id)
-                                InputButton.X -> onGameSelect(focusedGame.id)
-                                else -> {}
                             }
-                        },
-                        modifier = Modifier.padding(top = Dimens.spacingSm)
-                    )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(Dimens.footerHeight))
                 } else {
                     Spacer(modifier = Modifier.height(Dimens.spacingXl))
                 }

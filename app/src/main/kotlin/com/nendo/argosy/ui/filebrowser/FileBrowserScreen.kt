@@ -70,7 +70,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.nendo.argosy.core.input.SoundType
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.input.InputHandler
@@ -303,7 +303,7 @@ private fun FileBrowserPermissionFooter(
     onGrant: () -> Unit,
     onCancel: () -> Unit
 ) {
-    FooterBar(
+    FooterHints(
         hints = listOf(
             InputButton.A to "Grant Access",
             InputButton.B to "Back"
@@ -316,6 +316,7 @@ private fun FileBrowserPermissionFooter(
             }
         }
     )
+    Spacer(modifier = Modifier.height(Dimens.footerHeight))
 }
 
 @Composable
@@ -683,7 +684,7 @@ private fun FileBrowserFooter(
         }
     }
 
-    FooterBar(
+    FooterHints(
         hints = hints,
         onHintClick = { button ->
             when (button) {
@@ -695,6 +696,7 @@ private fun FileBrowserFooter(
             }
         }
     )
+    Spacer(modifier = Modifier.height(Dimens.footerHeight))
 }
 
 private const val FOLDER_ROW_FIELD = 0

@@ -56,7 +56,7 @@ import coil.compose.AsyncImage
 import com.nendo.argosy.domain.usecase.collection.CategoryWithCount
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.AlphabetSidebar
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -204,7 +204,7 @@ fun VirtualBrowserScreen(
                 )
                 baseHints + pinHint + jumpHint + refreshHint
             }
-            FooterBar(hints = hints)
+            FooterHints(hints = hints)
         }
 
         uiState.overlayLetter?.let { letter ->

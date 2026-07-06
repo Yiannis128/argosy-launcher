@@ -72,7 +72,8 @@ import com.nendo.argosy.data.social.FeedComment
 import com.nendo.argosy.data.social.FeedEventDto
 import com.nendo.argosy.data.social.FeedEventType
 import com.nendo.argosy.data.social.SocialRepository
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
@@ -366,7 +367,7 @@ fun FeedEventDetailScreen(
         }
 
         val isLiked = uiState.event?.isLikedByMe == true
-        FooterBar(
+        FooterHints(
             hints = buildList {
                 add(InputButton.B to "Back")
                 add(InputButton.Y to if (isLiked) "Unlike" else "Like")
@@ -379,6 +380,7 @@ fun FeedEventDetailScreen(
                 }
             }
         )
+        Spacer(modifier = Modifier.height(Dimens.footerHeight))
     }
 }
 

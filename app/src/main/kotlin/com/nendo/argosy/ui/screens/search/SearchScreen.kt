@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -326,7 +326,7 @@ private fun LoadingState() {
 
 @Composable
 private fun SearchFooter(resultCount: Int) {
-    FooterBar(
+    FooterHints(
         hints = listOf(
             InputButton.DPAD to "Navigate",
             InputButton.A to "Select",
@@ -342,5 +342,6 @@ private fun SearchFooter(resultCount: Int) {
             }
         } else null
     )
+    Spacer(modifier = Modifier.height(Dimens.footerHeight))
 }
 

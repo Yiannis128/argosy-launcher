@@ -29,7 +29,7 @@ import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.theme.Dimens
@@ -173,7 +173,7 @@ fun SyncFiltersModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD to "Navigate",
                     InputButton.A to "Toggle",

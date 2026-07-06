@@ -40,7 +40,7 @@ import com.nendo.argosy.data.emulator.EmulatorDef
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.remote.github.VersionFormatter
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.core.emulator.EmulatorDownloadState
 import com.nendo.argosy.ui.screens.settings.EmulatorPickerInfo
@@ -282,7 +282,7 @@ fun EmulatorPickerPopup(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD to "Navigate",
                     InputButton.A to "Select",

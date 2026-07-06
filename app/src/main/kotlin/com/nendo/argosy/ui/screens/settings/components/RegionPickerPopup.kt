@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -105,7 +105,7 @@ fun RegionPickerPopup(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD to "Navigate",
                     InputButton.A to "Toggle",
