@@ -228,6 +228,7 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { interfaceLayout.focusToListIndex(it, layoutState) },
         itemKey = { it.key },
         isNavItem = { it is InterfaceItem.SectionSpacer },
+        isHeader = { it is InterfaceItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

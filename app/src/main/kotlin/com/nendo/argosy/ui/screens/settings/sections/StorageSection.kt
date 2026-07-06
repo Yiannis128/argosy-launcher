@@ -122,6 +122,7 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { layout.focusToListIndex(it, layoutState) },
         itemKey = { it.key },
         isNavItem = { it is StorageItem.SectionSpacer },
+        isHeader = { it is StorageItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

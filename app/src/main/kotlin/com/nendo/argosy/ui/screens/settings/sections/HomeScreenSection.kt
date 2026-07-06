@@ -123,6 +123,7 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { homeScreenLayout.focusToListIndex(it, display) },
         itemKey = { it.key },
         isNavItem = { false },
+        isHeader = { it is HomeScreenItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

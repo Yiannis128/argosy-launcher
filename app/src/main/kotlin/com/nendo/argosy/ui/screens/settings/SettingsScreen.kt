@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,7 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.nendo.argosy.ui.theme.Dimens
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
@@ -57,6 +59,7 @@ import com.nendo.argosy.ui.screens.settings.components.SoundPickerPopup
 import com.nendo.argosy.ui.screens.settings.delegates.BuiltinNavigationTarget
 import com.nendo.argosy.ui.screens.settings.sections.AboutSection
 import com.nendo.argosy.ui.screens.settings.sections.BiosSection
+import com.nendo.argosy.ui.screens.settings.sections.DistributeResultModal
 import com.nendo.argosy.ui.screens.settings.sections.DriversSection
 import com.nendo.argosy.ui.screens.settings.sections.AmbientLedSection
 import com.nendo.argosy.ui.screens.settings.sections.BoxArtSection
@@ -574,6 +577,19 @@ fun SettingsScreen(
             onLoadMore = { viewModel.loadChangelogPage() },
             onDismiss = { viewModel.closeChangelog() }
         )
+
+        uiState.systemizeResult?.let { result ->
+            com.nendo.argosy.ui.screens.settings.dialogs.SystemizeResultDialog(
+                result = result,
+                onDismiss = { viewModel.dismissSystemizeDialog() }
+            )
+        }
+        if (uiState.bios.showDistributeResultModal) {
+            DistributeResultModal(
+                results = uiState.bios.distributeResults,
+                onDismiss = { viewModel.dismissDistributeResultModal() }
+            )
+        }
     }
 
     val builtinMigration = uiState.pendingBuiltinPathMigration
@@ -1043,6 +1059,7 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
         add(InputButton.B to "Back")
     }
 
-    FooterBar(hints = hints)
+    FooterHints(hints = hints)
+    Spacer(modifier = Modifier.height(Dimens.footerHeight))
 }
 

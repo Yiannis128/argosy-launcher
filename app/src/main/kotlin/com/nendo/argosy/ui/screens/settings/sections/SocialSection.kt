@@ -148,6 +148,7 @@ fun SocialSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             focusToListIndex = { socialLayout.focusToListIndex(it, layoutState) },
             itemKey = { it.key },
             isNavItem = { it is SocialItem.SectionSpacer },
+            isHeader = { it is SocialItem.Header },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.spacingMd),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

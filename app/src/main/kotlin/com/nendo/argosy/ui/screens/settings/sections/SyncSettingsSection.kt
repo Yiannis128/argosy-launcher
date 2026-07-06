@@ -122,6 +122,7 @@ fun SyncSettingsSection(
             focusToListIndex = { syncSettingsLayout.focusToListIndex(it, isProcessing) },
             itemKey = { it.key },
             isNavItem = { false },
+            isHeader = { it is SyncSettingsItem.MediaHeader },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

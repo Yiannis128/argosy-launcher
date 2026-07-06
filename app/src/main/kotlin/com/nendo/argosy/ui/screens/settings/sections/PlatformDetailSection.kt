@@ -242,6 +242,7 @@ fun PlatformDetailSection(
             focusToListIndex = { layout.focusToListIndex(it, visibility) },
             itemKey = { it.key },
             isNavItem = { false },
+            isHeader = { it is PlatformDetailItem.Header },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

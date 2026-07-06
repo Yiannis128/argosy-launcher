@@ -1,36 +1,38 @@
 package com.nendo.argosy.ui.screens.settings.dialogs
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.ModalScaffold
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import kotlinx.coroutines.launch
 
 private data class LicenseEntry(
     val name: String,
@@ -55,89 +57,115 @@ private val licenses = listOf(
 
 @Composable
 fun LicensesDialog(onDismiss: () -> Unit) {
-    val listState = rememberLazyListState()
-    val canScrollDown by remember {
-        derivedStateOf {
-            listState.canScrollForward
+    val theme = LocalArgosyTheme.current
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val scrollStepPx = with(LocalDensity.current) { (Dimens.menuRowHeight * 3).toPx() }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    val inputHandler = remember {
+        object : InputHandler {
+            private fun scroll(direction: Int) {
+                scope.launch { scrollState.animateScrollBy(direction * scrollStepPx) }
+            }
+
+            override fun onUp(): InputResult {
+                scroll(-1)
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                scroll(1)
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                currentOnDismiss()
+                return InputResult.HANDLED
+            }
+
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(Dimens.radiusPanel),
-            color = MaterialTheme.colorScheme.surface
+    ModalInputEffect(active = true, handler = inputHandler)
+
+    ModalScaffold(
+        visible = true,
+        onDismiss = onDismiss,
+        maxWidth = Dimens.modalWidthLg
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.7f)
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Open Source Licenses",
+                style = MaterialTheme.typography.titleLarge,
+                color = theme.textPrimary,
+                modifier = Modifier.padding(Dimens.spacingLg)
+            )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.spacingLg)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                licenses.forEach { entry ->
+                    LicenseItem(entry)
+                }
+
+                Spacer(Modifier.height(Dimens.spacingMd))
                 Text(
-                    text = "Open Source Licenses",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(Dimens.spacingLg)
+                    text = "Emulator Cores",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = theme.textPrimary,
+                    fontWeight = FontWeight.Bold
                 )
+                Spacer(Modifier.height(Dimens.spacingXs))
+                Text(
+                    text = "Cores are downloaded from the libretro buildbot. See docs.libretro.com/development/licenses for core licenses.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = theme.textDim
+                )
+                Spacer(Modifier.height(Dimens.spacingSm))
+            }
 
-                Box(modifier = Modifier.weight(1f, fill = false)) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 350.dp)
-                            .padding(horizontal = Dimens.spacingLg),
-                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-                    ) {
-                        items(licenses, key = { it.name }) { entry ->
-                            LicenseItem(entry)
-                        }
+            HorizontalDivider(color = theme.hairlineLow)
 
-                        item {
-                            Spacer(Modifier.height(Dimens.spacingMd))
-                            Column {
-                                Text(
-                                    text = "Emulator Cores",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    text = "Cores are downloaded from the libretro buildbot. See docs.libretro.com/development/licenses for core licenses.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(Modifier.height(Dimens.spacingSm))
-                        }
-                    }
-
-                    if (canScrollDown) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(24.dp)
-                                .background(
-                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.surface.copy(alpha = 0f),
-                                            MaterialTheme.colorScheme.surface
-                                        )
-                                    )
-                                )
-                        )
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.alpha(0.5f))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    ActionButton(
-                        label = "Close",
-                        onClick = onDismiss,
-                        primary = true
-                    )
-                }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
+                horizontalArrangement = Arrangement.End
+            ) {
+                ActionButton(
+                    label = "Close",
+                    onClick = onDismiss,
+                    primary = true,
+                    focused = true
+                )
             }
         }
     }
@@ -145,6 +173,7 @@ fun LicensesDialog(onDismiss: () -> Unit) {
 
 @Composable
 private fun LicenseItem(entry: LicenseEntry) {
+    val theme = LocalArgosyTheme.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -154,19 +183,20 @@ private fun LicenseItem(entry: LicenseEntry) {
             Text(
                 text = entry.name,
                 style = MaterialTheme.typography.bodyMedium,
+                color = theme.textPrimary,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = entry.url,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
         Spacer(Modifier.width(Dimens.spacingMd))
         Text(
             text = entry.license,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
+            color = theme.focusAccent
         )
     }
 }

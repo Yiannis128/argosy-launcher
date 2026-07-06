@@ -187,6 +187,7 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             focusToListIndex = { steamLayout.focusToListIndex(it, layoutState) },
             itemKey = { it.key },
             isNavItem = { it is SteamItem.SectionSpacer },
+            isHeader = { it is SteamItem.Header },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.spacingMd),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

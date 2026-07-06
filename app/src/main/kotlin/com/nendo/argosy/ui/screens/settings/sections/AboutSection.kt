@@ -45,7 +45,6 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.UpdateCheckState
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
 import com.nendo.argosy.ui.screens.settings.dialogs.LicensesDialog
-import com.nendo.argosy.ui.screens.settings.dialogs.SystemizeResultDialog
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.util.LogLevel
@@ -157,9 +156,6 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         LicensesDialog(onDismiss = { showLicensesDialog = false })
     }
 
-    uiState.systemizeResult?.let { result ->
-        SystemizeResultDialog(result = result, onDismiss = { viewModel.dismissSystemizeDialog() })
-    }
 
     SectionPaneLayout(
         items = visibleItems,
@@ -168,6 +164,7 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { aboutLayout.focusToListIndex(it, layoutState) },
         itemKey = { it.key },
         isNavItem = { it == AboutItem.SectionSpacer },
+        isHeader = { it is AboutItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

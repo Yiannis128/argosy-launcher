@@ -257,6 +257,7 @@ fun BoxArtSection(
             focusToListIndex = { boxArtLayout.focusToListIndex(it, display) },
             itemKey = { it.key },
             isNavItem = { false },
+            isHeader = { it is BoxArtItem.Header },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier
                 .weight(1.5f)

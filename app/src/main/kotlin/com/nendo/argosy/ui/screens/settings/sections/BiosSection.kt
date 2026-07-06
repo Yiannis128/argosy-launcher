@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.settings.sections
 
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +30,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import com.nendo.argosy.ui.components.ListSection
 import com.nendo.argosy.ui.components.SectionFocusedScroll
@@ -38,7 +42,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.LocalDensity
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.components.ExpandedChildItem
 import com.nendo.argosy.ui.components.ImageCachePreference
 import com.nendo.argosy.ui.screens.settings.BiosFirmwareItem
@@ -46,12 +51,17 @@ import com.nendo.argosy.ui.screens.settings.BiosPlatformGroup
 import com.nendo.argosy.ui.screens.settings.DistributeResultItem
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.primitives.ModalScaffold
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
+import kotlinx.coroutines.launch
 
 // --- Item definitions ---
 
@@ -274,13 +284,6 @@ fun BiosSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         }
     }
 
-    if (bios.showDistributeResultModal) {
-        DistributeResultModal(
-            results = bios.distributeResults,
-            onDismiss = { viewModel.dismissDistributeResultModal() }
-        )
-    }
-
     if (bios.showGpuDriverPrompt) {
         GpuDriverPromptModal(
             gpuName = bios.deviceGpuName,
@@ -301,18 +304,70 @@ internal fun DistributeResultModal(
     results: List<DistributeResultItem>,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    val theme = LocalArgosyTheme.current
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val scrollStepPx = with(LocalDensity.current) { (Dimens.menuRowHeight * 3).toPx() }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    val inputHandler = remember {
+        object : InputHandler {
+            private fun scroll(direction: Int) {
+                scope.launch { listState.animateScrollBy(direction * scrollStepPx) }
+            }
+
+            override fun onUp(): InputResult {
+                scroll(-1)
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                scroll(1)
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                currentOnDismiss()
+                return InputResult.HANDLED
+            }
+
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+
+    ModalInputEffect(active = true, handler = inputHandler)
+
+    ModalScaffold(
+        visible = true,
+        onDismiss = onDismiss,
+        maxWidth = Dimens.modalWidth
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(Dimens.radiusPanel))
-                .background(MaterialTheme.colorScheme.surface)
                 .padding(Dimens.spacingMd)
         ) {
             Text(
                 text = "Distribution Complete",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = theme.textPrimary
             )
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
@@ -323,28 +378,29 @@ internal fun DistributeResultModal(
             Text(
                 text = "Copied $totalFiles BIOS files to ${results.size} emulators",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier.heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
-                items(results.size) { index ->
+                items(results.size, key = { results[it].emulatorName }) { index ->
                     val emulator = results[index]
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(Dimens.radiusMd))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .background(theme.surfaceElevated)
                             .padding(Dimens.spacingSm)
                     ) {
                         Text(
                             text = emulator.emulatorName,
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = theme.textPrimary
                         )
 
                         emulator.platformResults.forEach { platform ->
@@ -357,12 +413,12 @@ internal fun DistributeResultModal(
                                 Text(
                                     text = platform.platformName,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                    color = theme.textDim
                                 )
                                 Text(
                                     text = "${platform.filesCopied} files",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    color = theme.textMute
                                 )
                             }
                         }
@@ -376,6 +432,7 @@ internal fun DistributeResultModal(
                 label = "OK",
                 onClick = onDismiss,
                 primary = true,
+                focused = true,
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -1,57 +1,121 @@
 package com.nendo.argosy.ui.screens.settings.dialogs
 
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.ModalScaffold
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.util.SystemizeWriteResult
+import kotlinx.coroutines.launch
 
 @Composable
 fun SystemizeResultDialog(result: SystemizeWriteResult, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(Dimens.radiusPanel),
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+    val theme = LocalArgosyTheme.current
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val scrollStepPx = with(LocalDensity.current) { (Dimens.menuRowHeight * 3).toPx() }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    val inputHandler = remember {
+        object : InputHandler {
+            private fun scroll(direction: Int) {
+                scope.launch { scrollState.animateScrollBy(direction * scrollStepPx) }
+            }
+
+            override fun onUp(): InputResult {
+                scroll(-1)
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                scroll(1)
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                currentOnDismiss()
+                return InputResult.HANDLED
+            }
+
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+
+    ModalInputEffect(active = true, handler = inputHandler)
+
+    ModalScaffold(
+        visible = true,
+        onDismiss = onDismiss,
+        maxWidth = Dimens.modalWidthLg
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+            ) {
                 when (result) {
                     is SystemizeWriteResult.Success -> SuccessContent(result)
                     is SystemizeWriteResult.Error -> ErrorContent(result)
                 }
+            }
 
-                HorizontalDivider(modifier = Modifier.alpha(0.5f))
+            HorizontalDivider(color = theme.hairlineLow)
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    ActionButton(
-                        label = "Close",
-                        onClick = onDismiss,
-                        primary = true
-                    )
-                }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
+                horizontalArrangement = Arrangement.End
+            ) {
+                ActionButton(
+                    label = "Close",
+                    onClick = onDismiss,
+                    primary = true,
+                    focused = true
+                )
             }
         }
     }
@@ -59,39 +123,41 @@ fun SystemizeResultDialog(result: SystemizeWriteResult, onDismiss: () -> Unit) {
 
 @Composable
 private fun SuccessContent(result: SystemizeWriteResult.Success) {
+    val theme = LocalArgosyTheme.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 420.dp)
-            .verticalScroll(rememberScrollState())
             .padding(Dimens.spacingLg),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
         Text(
             text = "Script Saved",
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            color = theme.textPrimary
         )
         Text(
             text = "Detected device: ${result.vendor.deviceLabel}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = theme.textDim
         )
         Text(
             text = result.scriptPath,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
+            color = theme.focusAccent
         )
 
         Spacer(Modifier.height(Dimens.spacingXs))
         Text(
             text = "Next steps",
             style = MaterialTheme.typography.titleSmall,
+            color = theme.textPrimary,
             fontWeight = FontWeight.Bold
         )
         result.vendor.steps.forEachIndexed { index, step ->
             Text(
                 text = "${index + 1}. $step",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = theme.textPrimary
             )
         }
 
@@ -99,13 +165,14 @@ private fun SuccessContent(result: SystemizeWriteResult.Success) {
         Text(
             text = "Needs a rooted device. The change is reversible: remove the Magisk module named \"Argosy Systemize\" and reboot. If your menu wording differs, the script file is still correct - just point your run-as-root option at it.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = theme.textDim
         )
     }
 }
 
 @Composable
 private fun ErrorContent(result: SystemizeWriteResult.Error) {
+    val theme = LocalArgosyTheme.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -114,17 +181,18 @@ private fun ErrorContent(result: SystemizeWriteResult.Error) {
     ) {
         Text(
             text = "Couldn't Save Script",
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            color = theme.textPrimary
         )
         Text(
             text = result.message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = theme.textDim
         )
         Text(
             text = "Storage access may be missing. Grant all-files access in setup and try again.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = theme.textDim
         )
     }
 }
