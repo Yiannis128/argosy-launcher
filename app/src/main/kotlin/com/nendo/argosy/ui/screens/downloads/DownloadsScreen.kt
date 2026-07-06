@@ -28,12 +28,9 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +56,7 @@ import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.theme.Dimens
@@ -218,21 +216,23 @@ fun DownloadsScreen(
             )
         }
 
-        if (uiState.showFailedActionDialog) {
-            val failedItem = uiState.focusedItem
-            FailedDownloadDialog(
-                gameTitle = failedItem?.displayTitle ?: "",
-                onRetry = {
-                    failedItem?.let { viewModel.retryDownload(it.id) }
-                    viewModel.dismissFailedActionDialog()
-                },
-                onClear = {
-                    failedItem?.let { viewModel.removeFromCompleted(it.id) }
-                    viewModel.dismissFailedActionDialog()
-                },
-                onDismiss = { viewModel.dismissFailedActionDialog() }
-            )
-        }
+        val failedItem = uiState.focusedItem
+        ArgosyConfirmModalHost(
+            visible = uiState.showFailedActionDialog,
+            title = "Download Failed",
+            message = "\"${failedItem?.displayTitle ?: ""}\" failed to download. What would you like to do?",
+            confirmLabel = "Retry",
+            onConfirm = {
+                failedItem?.let { viewModel.retryDownload(it.id) }
+                viewModel.dismissFailedActionDialog()
+            },
+            onDismiss = { viewModel.dismissFailedActionDialog() },
+            neutralLabel = "Clear",
+            onNeutral = {
+                failedItem?.let { viewModel.removeFromCompleted(it.id) }
+                viewModel.dismissFailedActionDialog()
+            }
+        )
     }
 }
 
@@ -493,37 +493,3 @@ private fun formatSpeed(bytesPerSecond: Long): String {
     return "${formatBytes(bytesPerSecond)}/s"
 }
 
-@Composable
-private fun FailedDownloadDialog(
-    gameTitle: String,
-    onRetry: () -> Unit,
-    onClear: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Download Failed",
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
-            Text(
-                text = "\"$gameTitle\" failed to download. What would you like to do?",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        },
-        confirmButton = {
-            Button(onClick = onRetry) {
-                Text("Retry")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onClear) {
-                Text("Clear")
-            }
-        },
-        shape = RoundedCornerShape(Dimens.radiusXl)
-    )
-}

@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +37,11 @@ import com.nendo.argosy.libretro.touch.ResolvedLayout
 import com.nendo.argosy.libretro.touch.TouchBackdropCache
 import com.nendo.argosy.libretro.touch.TouchLayoutEditor
 import com.nendo.argosy.libretro.touch.TouchLayoutRegistry
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.repository.TouchLayoutRepository
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.primitives.EnumValueControl
 import kotlinx.coroutines.launch
@@ -69,6 +74,34 @@ fun TouchLayoutEditorModal(
     val backdrop = remember(platformSlug, orientation) {
         TouchBackdropCache.load(context, platformSlug, orientation)
     }
+
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onUp(): InputResult = InputResult.HANDLED
+            override fun onDown(): InputResult = InputResult.HANDLED
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onConfirm(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+    ModalInputEffect(active = true, handler = inputHandler)
 
     BackHandler(enabled = true) { onDismiss() }
 

@@ -564,31 +564,15 @@ fun PlatformDetailSection(
             )
         }
 
-        if (detail.showRemoveConfirm) {
-            com.nendo.argosy.ui.components.CenteredModal(
-                title = "Remove Local Files",
-                onDismiss = { viewModel.dismissRemoveConfirm() }
-            ) {
-                Text(
-                    text = "Delete ${detail.downloadedGames} ROM file${if (detail.downloadedGames > 1) "s" else ""} for ${config.platform.name}? Games will remain in your library but must be re-downloaded to play.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacingLg))
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)) {
-                    ActionButton(
-                        label = "Cancel",
-                        onClick = { viewModel.dismissRemoveConfirm() }
-                    )
-                    ActionButton(
-                        label = "Delete",
-                        onClick = { viewModel.confirmRemoveLocalFiles(config.platform.id) },
-                        primary = true,
-                        accentColor = ColorTokens.Domain.difficulty
-                    )
-                }
-            }
-        }
+        com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost(
+            visible = detail.showRemoveConfirm,
+            title = "Remove Local Files",
+            message = "Delete ${detail.downloadedGames} ROM file${if (detail.downloadedGames > 1) "s" else ""} for ${config.platform.name}? Games will remain in your library but must be re-downloaded to play.",
+            confirmLabel = "Delete",
+            onConfirm = { viewModel.confirmRemoveLocalFiles(config.platform.id) },
+            onDismiss = { viewModel.dismissRemoveConfirm() },
+            destructive = true
+        )
 
         // Modals
         if (emulators.showEmulatorPicker && emulators.emulatorPickerInfo != null) {

@@ -12,9 +12,6 @@ internal enum class InputMethod {
 internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
 
     fun intercept(state: SettingsUiState, method: InputMethod): InputResult? {
-        // Pass-through modals: system AlertDialog handles its own input
-        if (state.steam.showAddGameDialog) return null
-        // Pass-through modals: builtin controls sub-InputHandlers handle their own input
         if (state.builtinControls.showControllerOrderModal ||
             state.builtinControls.showInputMappingModal ||
             state.builtinControls.showHotkeysModal

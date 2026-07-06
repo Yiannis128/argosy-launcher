@@ -1082,7 +1082,8 @@ private fun DualCollectionModalContent(
         if (showCreateDialog) {
             CreateCollectionDialog(
                 onDismiss = onCreateDismiss,
-                onCreate = onCreate
+                onCreate = onCreate,
+                gamepadInput = false
             )
         }
     }

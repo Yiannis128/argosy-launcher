@@ -1569,7 +1569,7 @@ class LibraryViewModel @Inject constructor(
             }
             if (_uiState.value.showFilterMenu) {
                 toggleFilterMenu()
-                return InputResult.UNHANDLED
+                return InputResult.HANDLED
             }
             onDrawerToggle()
             return InputResult.HANDLED
@@ -1577,7 +1577,7 @@ class LibraryViewModel @Inject constructor(
 
         override fun onSecondaryAction(): InputResult {
             val game = _uiState.value.focusedGame ?: return InputResult.UNHANDLED
-            if (_uiState.value.showAddToCollectionModal || _uiState.value.showQuickMenu || _uiState.value.showFilterMenu) return InputResult.UNHANDLED
+            if (_uiState.value.showAddToCollectionModal || _uiState.value.showQuickMenu || _uiState.value.showFilterMenu) return InputResult.HANDLED
             if (_uiState.value.activeFilters.source == SourceFilter.HIDDEN) {
                 unhideGame(game.id)
             } else {

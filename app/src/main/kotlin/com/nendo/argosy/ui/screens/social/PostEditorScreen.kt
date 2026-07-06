@@ -952,7 +952,7 @@ private class PostEditorInputHandler(
 
     override fun onSecondaryAction(): InputResult {
         val state = viewModel.uiState.value
-        if (state.showPostConfirm || state.showDiscardDialog || state.showGamePicker) return InputResult.UNHANDLED
+        if (state.showPostConfirm || state.showDiscardDialog || state.showGamePicker) return InputResult.HANDLED
         if (state.currentSection == PostEditorSection.GAME && state.linkedGameTitle != null) {
             viewModel.clearLinkedGame()
             return InputResult.HANDLED

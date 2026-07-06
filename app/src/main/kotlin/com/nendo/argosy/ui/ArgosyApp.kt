@@ -847,7 +847,7 @@ fun ArgosyApp(
         viewModel.gamepadInputHandler.eventFlow().collect { input ->
             val result = inputDispatcher.dispatch(input)
             val event = input.event
-            if (!result.handled) {
+            if (!result.handled && !inputDispatcher.hasActiveModal()) {
                 if (showSwappedInteractive) {
                     when (event) {
                         GamepadEvent.Menu -> {

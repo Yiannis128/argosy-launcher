@@ -711,7 +711,7 @@ class SyncSettingsDelegate @Inject constructor(
     }
 
     fun requestSyncSaves() {
-        _state.update { it.copy(showForceSyncConfirm = true, syncConfirmButtonIndex = 1) }
+        _state.update { it.copy(showForceSyncConfirm = true, syncConfirmButtonIndex = 0) }
     }
 
     fun cancelSyncSaves() {

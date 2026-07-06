@@ -45,8 +45,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
@@ -58,8 +60,12 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -266,6 +272,68 @@ private fun BlockedSyncContent(
     val isAccessDenied = syncProgress is SyncProgress.BlockedReason.AccessDenied
     val isSavePathNotFound = syncProgress is SyncProgress.BlockedReason.SavePathNotFound
 
+    val showGrantPermission = isPermissionIssue && onGrantPermission != null
+    val showOpenSettings = (isSavePathNotFound || (isAccessDenied && onOpenSettings != null)) && onOpenSettings != null
+    val showDisableSync = !showOpenSettings && onDisableSync != null && !isSavePathNotFound
+
+    var nextIndex = 0
+    val grantIndex = if (showGrantPermission) nextIndex++ else -1
+    val settingsIndex = if (showOpenSettings) nextIndex++ else -1
+    val disableIndex = if (showDisableSync) nextIndex++ else -1
+    val skipIndex = if (onSkip != null) nextIndex else -1
+
+    val actions = buildList {
+        if (showGrantPermission && onGrantPermission != null) add(onGrantPermission)
+        if (showOpenSettings && onOpenSettings != null) add(onOpenSettings)
+        if (showDisableSync && onDisableSync != null) add(onDisableSync)
+        if (onSkip != null) add(onSkip)
+    }
+
+    var focusedIndex by remember { mutableIntStateOf(0) }
+    val currentActions by rememberUpdatedState(actions)
+    val currentOnSkip by rememberUpdatedState(onSkip)
+
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onUp(): InputResult {
+                focusedIndex = (focusedIndex - 1).coerceAtLeast(0)
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                focusedIndex = (focusedIndex + 1).coerceAtMost(currentActions.lastIndex.coerceAtLeast(0))
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                currentActions.getOrNull(focusedIndex)?.invoke()
+                return InputResult.HANDLED
+            }
+
+            override fun onBack(): InputResult {
+                val skip = currentOnSkip ?: return InputResult.HANDLED
+                skip()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+
+    ModalInputEffect(active = true, handler = inputHandler)
+
     val icon = when {
         isPermissionIssue -> Icons.Default.Lock
         isAccessDenied -> Icons.Default.Block
@@ -317,26 +385,29 @@ private fun BlockedSyncContent(
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
             modifier = Modifier.fillMaxWidth(0.8f)
         ) {
-            if (isPermissionIssue && onGrantPermission != null) {
+            if (showGrantPermission && onGrantPermission != null) {
                 ActionButton(
                     label = "Grant Permission",
                     onClick = onGrantPermission,
+                    focused = focusedIndex == grantIndex,
                     primary = true,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            if ((isSavePathNotFound || (isAccessDenied && onOpenSettings != null)) && onOpenSettings != null) {
+            if (showOpenSettings && onOpenSettings != null) {
                 ActionButton(
                     label = "Configure Save Path",
                     onClick = onOpenSettings,
+                    focused = focusedIndex == settingsIndex,
                     primary = true,
                     modifier = Modifier.weight(1f)
                 )
-            } else if (onDisableSync != null && !isSavePathNotFound) {
+            } else if (showDisableSync && onDisableSync != null) {
                 ActionButton(
                     label = "Disable Sync",
                     onClick = onDisableSync,
+                    focused = focusedIndex == disableIndex,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -346,7 +417,8 @@ private fun BlockedSyncContent(
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
             ActionButton(
                 label = "Skip for Now",
-                onClick = onSkip
+                onClick = onSkip,
+                focused = focusedIndex == skipIndex
             )
         }
     }

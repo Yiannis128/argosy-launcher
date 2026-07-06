@@ -1622,6 +1622,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showPermissionModal -> InputResult.UNHANDLED
                 state.showStatusPicker -> { changeStatusValue(-1); InputResult.HANDLED }
                 state.showMissingDiscPrompt -> InputResult.UNHANDLED
+                state.showExtractionFailedPrompt -> InputResult.HANDLED
                 pickerState.showCorePicker -> { moveCorePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(-1); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(-1); InputResult.HANDLED }
@@ -1651,6 +1652,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showPermissionModal -> InputResult.UNHANDLED
                 state.showStatusPicker -> { changeStatusValue(1); InputResult.HANDLED }
                 state.showMissingDiscPrompt -> InputResult.UNHANDLED
+                state.showExtractionFailedPrompt -> InputResult.HANDLED
                 pickerState.showCorePicker -> { moveCorePickerFocus(1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(1); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(1); InputResult.HANDLED }
@@ -1671,7 +1673,7 @@ class GameDetailViewModel @Inject constructor(
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
             when {
-                saveState.showRestoreConfirmation || saveState.showDeleteConfirmation || saveState.showRenameDialog || saveState.showMigrateConfirmation || saveState.showDeleteLegacyConfirmation -> return InputResult.UNHANDLED
+                saveState.showRestoreConfirmation || saveState.showDeleteConfirmation || saveState.showRenameDialog || saveState.showMigrateConfirmation || saveState.showDeleteLegacyConfirmation -> return InputResult.HANDLED
                 saveState.isVisible -> {
                     when (saveState.selectedTab) {
                         com.nendo.argosy.ui.common.savechannel.SaveTab.SAVES -> focusSlotsColumn()
@@ -1681,8 +1683,11 @@ class GameDetailViewModel @Inject constructor(
                 }
                 state.showScreenshotViewer -> { moveViewerIndex(-1); return InputResult.HANDLED }
                 state.showRatingPicker -> { changeRatingValue(-1); return InputResult.HANDLED }
+                state.showPermissionModal -> return InputResult.HANDLED
+                state.showStatusPicker -> return InputResult.HANDLED
+                state.showAchievementList -> return InputResult.HANDLED
                 state.showExtractionFailedPrompt -> { moveExtractionPromptFocus(-1); return InputResult.HANDLED }
-                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.UNHANDLED
+                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
                 else -> { onSectionLeft(); return InputResult.HANDLED }
             }
         }
@@ -1692,7 +1697,7 @@ class GameDetailViewModel @Inject constructor(
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
             when {
-                saveState.showRestoreConfirmation || saveState.showDeleteConfirmation || saveState.showRenameDialog || saveState.showMigrateConfirmation || saveState.showDeleteLegacyConfirmation -> return InputResult.UNHANDLED
+                saveState.showRestoreConfirmation || saveState.showDeleteConfirmation || saveState.showRenameDialog || saveState.showMigrateConfirmation || saveState.showDeleteLegacyConfirmation -> return InputResult.HANDLED
                 saveState.isVisible -> {
                     when (saveState.selectedTab) {
                         com.nendo.argosy.ui.common.savechannel.SaveTab.SAVES -> focusHistoryColumn()
@@ -1702,8 +1707,11 @@ class GameDetailViewModel @Inject constructor(
                 }
                 state.showScreenshotViewer -> { moveViewerIndex(1); return InputResult.HANDLED }
                 state.showRatingPicker -> { changeRatingValue(1); return InputResult.HANDLED }
+                state.showPermissionModal -> return InputResult.HANDLED
+                state.showStatusPicker -> return InputResult.HANDLED
+                state.showAchievementList -> return InputResult.HANDLED
                 state.showExtractionFailedPrompt -> { moveExtractionPromptFocus(1); return InputResult.HANDLED }
-                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.UNHANDLED
+                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
                 else -> { onSectionRight(); return InputResult.HANDLED }
             }
         }
@@ -1721,7 +1729,8 @@ class GameDetailViewModel @Inject constructor(
                 }
                 return InputResult.HANDLED
             }
-            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.UNHANDLED
+            if (state.showPermissionModal || state.showAchievementList) return InputResult.HANDLED
+            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.HANDLED
             onPrevGame(); return InputResult.HANDLED
         }
 
@@ -1740,7 +1749,8 @@ class GameDetailViewModel @Inject constructor(
                 }
                 return InputResult.HANDLED
             }
-            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.UNHANDLED
+            if (state.showPermissionModal || state.showAchievementList) return InputResult.HANDLED
+            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.HANDLED
             onNextGame(); return InputResult.HANDLED
         }
 
@@ -1760,7 +1770,8 @@ class GameDetailViewModel @Inject constructor(
                 saveState.showScreenshotPreview -> dismissScreenshotPreview()
                 saveState.isVisible -> confirmSaveCacheSelection()
                 state.showScreenshotViewer -> closeScreenshotViewer()
-                state.showPermissionModal -> return InputResult.UNHANDLED
+                state.showAchievementList -> {}
+                state.showPermissionModal -> return InputResult.HANDLED
                 state.showRatingPicker -> confirmRating()
                 state.showStatusPicker -> confirmStatus()
                 state.showMissingDiscPrompt -> repairAndPlay()

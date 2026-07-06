@@ -106,6 +106,7 @@ fun CheatsScreen(
     var candidateCount by remember { mutableIntStateOf(scanner.getCandidateCount()) }
 
     val scope = rememberCoroutineScope()
+    val dialogInputHandler = remember { mutableStateOf<InputHandler?>(null) }
     var showSearchDialog by remember { mutableStateOf(false) }
     var showVariantModal by remember { mutableStateOf(false) }
     var variantFocusIndex by remember { mutableIntStateOf(0) }
@@ -382,6 +383,7 @@ fun CheatsScreen(
     val inputHandler = remember {
         object : InputHandler {
             override fun onUp(): InputResult {
+                dialogInputHandler.value?.let { return it.onUp() }
                 if (isLoading) return InputResult.HANDLED
                 if (showVariantModal) {
                     variantFocusIndex = (variantFocusIndex - 1).coerceAtLeast(0)
@@ -395,6 +397,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
+                dialogInputHandler.value?.let { return it.onDown() }
                 if (isLoading) return InputResult.HANDLED
                 if (showVariantModal) {
                     variantFocusIndex = (variantFocusIndex + 1).coerceAtMost(currentVariants.lastIndex)
@@ -408,6 +411,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onLeft(): InputResult {
+                dialogInputHandler.value?.let { return it.onLeft() }
                 if (isLoading) return InputResult.HANDLED
                 val showActions = !hasSnapshot || (canCompare && scanResults.isEmpty())
                 val inResultsView = currentTab == CheatsTab.DISCOVER &&
@@ -419,6 +423,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onRight(): InputResult {
+                dialogInputHandler.value?.let { return it.onRight() }
                 if (isLoading) return InputResult.HANDLED
                 val showActions = !hasSnapshot || (canCompare && scanResults.isEmpty())
                 val inResultsView = currentTab == CheatsTab.DISCOVER &&
@@ -430,6 +435,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onConfirm(): InputResult {
+                dialogInputHandler.value?.let { return it.onConfirm() }
                 if (isLoading) return InputResult.HANDLED
                 if (showVariantModal) {
                     currentVariants.getOrNull(variantFocusIndex)?.let { v ->
@@ -457,6 +463,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onBack(): InputResult {
+                dialogInputHandler.value?.let { return it.onBack() }
                 if (isLoading) return InputResult.HANDLED
                 if (showVariantModal) {
                     showVariantModal = false
@@ -471,6 +478,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onSecondaryAction(): InputResult {
+                dialogInputHandler.value?.let { return it.onSecondaryAction() }
                 if (isLoading) return InputResult.HANDLED
                 when (currentTab) {
                     CheatsTab.CHEATS -> {
@@ -496,6 +504,7 @@ fun CheatsScreen(
                 return InputResult.HANDLED
             }
             override fun onContextMenu(): InputResult {
+                dialogInputHandler.value?.let { return it.onContextMenu() }
                 if (isLoading) return InputResult.HANDLED
                 if (currentTab == CheatsTab.CHEATS && currentHasMultipleVariants && !currentNeedsVariantSelection) {
                     variantFocusIndex = currentVariants.indexOfFirst {
@@ -507,11 +516,13 @@ fun CheatsScreen(
                 return InputResult.UNHANDLED
             }
             override fun onPrevSection(): InputResult {
+                dialogInputHandler.value?.let { return it.onPrevSection() }
                 if (isLoading) return InputResult.HANDLED
                 handleTabChange(-1)
                 return InputResult.HANDLED
             }
             override fun onNextSection(): InputResult {
+                dialogInputHandler.value?.let { return it.onNextSection() }
                 if (isLoading) return InputResult.HANDLED
                 handleTabChange(1)
                 return InputResult.HANDLED
@@ -641,55 +652,57 @@ fun CheatsScreen(
         }
     }
 
-    editingCheat?.let { cheat ->
-        CheatEditDialog(
-            cheatId = cheat.id,
-            currentName = cheat.description,
-            currentCode = cheat.code,
-            onDismiss = { editingCheat = null },
-            onSave = { name, code ->
-                onUpdateCheat(cheat.id, name, code)
-                editingCheat = null
-            },
-            onDelete = {
-                val maxIndex = when (currentTab) {
-                    CheatsTab.CHEATS -> filteredCheats.size - 1
-                    CheatsTab.DISCOVER -> contentFocusIndex
+    dialogInputHandler.value = when {
+        editingCheat != null -> {
+            val cheat = editingCheat!!
+            CheatEditDialog(
+                cheatId = cheat.id,
+                currentName = cheat.description,
+                currentCode = cheat.code,
+                onDismiss = { editingCheat = null },
+                onSave = { name, code ->
+                    onUpdateCheat(cheat.id, name, code)
+                    editingCheat = null
+                },
+                onDelete = {
+                    val maxIndex = when (currentTab) {
+                        CheatsTab.CHEATS -> filteredCheats.size - 1
+                        CheatsTab.DISCOVER -> contentFocusIndex
+                    }
+                    if (contentFocusIndex > maxIndex) {
+                        contentFocusIndex = maxIndex
+                    }
+                    onDeleteCheat(cheat.id)
+                    editingCheat = null
                 }
-                if (contentFocusIndex > maxIndex) {
-                    contentFocusIndex = maxIndex
+            )
+        }
+        creatingCheatAddress != null && creatingCheatValue != null -> {
+            CheatCreateDialog(
+                address = creatingCheatAddress!!,
+                currentValue = creatingCheatValue!!,
+                onDismiss = {
+                    creatingCheatAddress = null
+                    creatingCheatValue = null
+                },
+                onCreate = { name, value ->
+                    onCreateCheat(creatingCheatAddress!!, value, name)
+                    creatingCheatAddress = null
+                    creatingCheatValue = null
                 }
-                onDeleteCheat(cheat.id)
-                editingCheat = null
-            }
-        )
-    }
-
-    if (creatingCheatAddress != null && creatingCheatValue != null) {
-        CheatCreateDialog(
-            address = creatingCheatAddress!!,
-            currentValue = creatingCheatValue!!,
-            onDismiss = {
-                creatingCheatAddress = null
-                creatingCheatValue = null
-            },
-            onCreate = { name, value ->
-                onCreateCheat(creatingCheatAddress!!, value, name)
-                creatingCheatAddress = null
-                creatingCheatValue = null
-            }
-        )
-    }
-
-    if (showSearchDialog) {
-        SearchDialog(
-            currentQuery = searchQuery,
-            onDismiss = { showSearchDialog = false },
-            onSearch = { query ->
-                searchQuery = query
-                showSearchDialog = false
-            }
-        )
+            )
+        }
+        showSearchDialog -> {
+            SearchDialog(
+                currentQuery = searchQuery,
+                onDismiss = { showSearchDialog = false },
+                onSearch = { query ->
+                    searchQuery = query
+                    showSearchDialog = false
+                }
+            )
+        }
+        else -> null
     }
 
     if (showVariantModal) {
