@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.screens.gamedetail.UpdateFileType
 import com.nendo.argosy.ui.screens.gamedetail.UpdateFileUi
@@ -109,7 +109,7 @@ fun UpdatesPickerModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-            FooterBar(
+            FooterHints(
                 hints = listOfNotNull(
                     InputButton.DPAD_VERTICAL to "Navigate",
                     if (focusedNeedsDownload) InputButton.A to "Download" else null,

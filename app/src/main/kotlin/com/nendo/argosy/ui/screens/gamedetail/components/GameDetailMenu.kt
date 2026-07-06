@@ -29,9 +29,13 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,11 +50,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.screens.gamedetail.GameDownloadStatus
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.util.clickableNoFocus
@@ -93,9 +99,7 @@ val menuLayout = SettingsLayout<MenuItem, MenuLayoutState>(
 
 data class GameDetailMenuState(
     val focusedIndex: Int = 0,
-    val isDownloaded: Boolean = false,
-    val isDownloading: Boolean = false,
-    val isExtracting: Boolean = false,
+    val downloadStatus: GameDownloadStatus = GameDownloadStatus.NOT_DOWNLOADED,
     val downloadProgress: Float = 0f,
     val isFavorite: Boolean = false,
     val saveStatus: SaveStatusInfo? = null,
@@ -145,9 +149,7 @@ fun GameDetailMenu(
             when (item) {
                 MenuItem.Play -> {
                     PlayMenuItem(
-                        isDownloaded = displayState.isDownloaded,
-                        isDownloading = displayState.isDownloading,
-                        isExtracting = displayState.isExtracting,
+                        downloadStatus = displayState.downloadStatus,
                         downloadProgress = displayState.downloadProgress,
                         isFocused = isFocused,
                         downloadSizeBytes = displayState.downloadSizeBytes,
@@ -254,42 +256,60 @@ fun GameDetailMenu(
 
 @Composable
 private fun PlayMenuItem(
-    isDownloaded: Boolean,
-    isDownloading: Boolean,
-    isExtracting: Boolean,
+    downloadStatus: GameDownloadStatus,
     downloadProgress: Float,
     isFocused: Boolean,
     downloadSizeBytes: Long?,
     isCompact: Boolean,
     onClick: () -> Unit
 ) {
-    val label = when {
-        isExtracting -> "Extracting..."
-        isDownloading -> "${(downloadProgress * 100).toInt()}%"
-        isDownloaded -> "Play"
-        else -> "Download"
+    val label = when (downloadStatus) {
+        GameDownloadStatus.EXTRACTING -> "Extracting..."
+        GameDownloadStatus.DOWNLOADING -> "${(downloadProgress * 100).toInt()}%"
+        GameDownloadStatus.QUEUED -> "Queued"
+        GameDownloadStatus.WAITING_FOR_STORAGE -> "No Space"
+        GameDownloadStatus.PAUSED -> "Resume"
+        GameDownloadStatus.FAILED -> "Retry"
+        GameDownloadStatus.DOWNLOADED -> "Play"
+        GameDownloadStatus.NEEDS_INSTALL -> "Install"
+        GameDownloadStatus.NOT_DOWNLOADED -> "Download"
     }
 
+    val isFailed = downloadStatus == GameDownloadStatus.FAILED
+    val baseContainerColor = if (isFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val baseContentColor = if (isFailed) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
+
     val containerColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
+        baseContainerColor
     } else {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        baseContainerColor.copy(alpha = 0.5f)
     }
 
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimary
+        baseContentColor
     } else {
-        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+        baseContentColor.copy(alpha = 0.7f)
     }
 
-    val icon = when {
-        isExtracting || isDownloading -> Icons.Default.Download
-        isDownloaded -> Icons.Default.PlayArrow
+    val icon = when (downloadStatus) {
+        GameDownloadStatus.DOWNLOADED -> Icons.Default.PlayArrow
+        GameDownloadStatus.NEEDS_INSTALL -> Icons.Default.InstallMobile
+        GameDownloadStatus.QUEUED -> Icons.Default.Schedule
+        GameDownloadStatus.PAUSED -> Icons.Default.Pause
+        GameDownloadStatus.WAITING_FOR_STORAGE -> Icons.Default.Warning
         else -> Icons.Default.Download
     }
 
-    val isInProgress = isDownloading || isExtracting
-    val showDownloadSize = !isDownloaded && !isInProgress && downloadSizeBytes != null
+    val isInProgress = downloadStatus in listOf(
+        GameDownloadStatus.QUEUED,
+        GameDownloadStatus.WAITING_FOR_STORAGE,
+        GameDownloadStatus.DOWNLOADING,
+        GameDownloadStatus.EXTRACTING,
+        GameDownloadStatus.PAUSED
+    )
+    val isProgressActionable = downloadStatus == GameDownloadStatus.PAUSED ||
+        downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE
+    val showDownloadSize = downloadStatus == GameDownloadStatus.NOT_DOWNLOADED && downloadSizeBytes != null
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (isInProgress) {
@@ -300,7 +320,11 @@ private fun PlayMenuItem(
             )
             val trackColor = MaterialTheme.colorScheme.surfaceVariant
             val fillColor = containerColor
-            val progressContentColor = MaterialTheme.colorScheme.onPrimary
+            val progressContentColor = if (downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onPrimary
+            }
 
             Box(
                 modifier = (if (isCompact) Modifier else Modifier.fillMaxWidth())
@@ -309,7 +333,11 @@ private fun PlayMenuItem(
                     .drawBehind {
                         drawRect(trackColor)
                         drawRect(fillColor, size = size.copy(width = size.width * animatedProgress))
-                    },
+                    }
+                    .then(
+                        if (isProgressActionable) Modifier.clickableNoFocus(onClick = onClick)
+                        else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -348,7 +376,7 @@ private fun PlayMenuItem(
                 } else {
                     ButtonDefaults.ContentPadding
                 },
-                modifier = if (isCompact) Modifier else Modifier.fillMaxWidth()
+                modifier = (if (isCompact) Modifier else Modifier.fillMaxWidth()).focusProperties { canFocus = false }
             ) {
                 Icon(
                     imageVector = icon,

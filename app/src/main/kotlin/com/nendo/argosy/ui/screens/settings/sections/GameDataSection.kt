@@ -297,6 +297,7 @@ private fun GameDataContent(
         focusToListIndex = { layout.focusToListIndex(it, Unit) },
         itemKey = { it.key },
         isNavItem = { false },
+        isHeader = { it is GameDataItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

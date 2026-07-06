@@ -53,7 +53,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.domain.model.SyncProgress
@@ -491,13 +491,7 @@ private fun GameDetailContent(
 
     val menuDisplayState = GameDetailMenuState(
         focusedIndex = uiState.menuFocusIndex,
-        isDownloaded = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED,
-        isDownloading = uiState.downloadStatus in listOf(
-            GameDownloadStatus.QUEUED,
-            GameDownloadStatus.DOWNLOADING,
-            GameDownloadStatus.WAITING_FOR_STORAGE
-        ),
-        isExtracting = uiState.downloadStatus == GameDownloadStatus.EXTRACTING,
+        downloadStatus = uiState.downloadStatus,
         downloadProgress = uiState.downloadProgress,
         isFavorite = game.isFavorite,
         saveStatus = uiState.saveStatusInfo,
@@ -764,7 +758,7 @@ private fun GameDetailContent(
             ) {
                 val canShowPlayOptions = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED &&
                     game.isBuiltInEmulator
-                FooterBar(
+                FooterHints(
                     hints = buildList {
                         add(InputButton.LB_RB to "Prev/Next Game")
                         if (focusedItem == MenuItem.Screenshots || focusedItem == MenuItem.Achievements || focusedItem == MenuItem.RelatedGames) {
@@ -777,10 +771,11 @@ private fun GameDetailContent(
                                 uiState.downloadStatus == GameDownloadStatus.NEEDS_INSTALL -> "Install"
                                 uiState.downloadStatus == GameDownloadStatus.NOT_DOWNLOADED -> "Download"
                                 uiState.downloadStatus == GameDownloadStatus.QUEUED -> "Queued"
-                                uiState.downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE -> "No Space"
+                                uiState.downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE -> "Retry"
                                 uiState.downloadStatus == GameDownloadStatus.DOWNLOADING -> "Downloading"
                                 uiState.downloadStatus == GameDownloadStatus.EXTRACTING -> "Extracting"
-                                uiState.downloadStatus == GameDownloadStatus.PAUSED -> "Paused"
+                                uiState.downloadStatus == GameDownloadStatus.PAUSED -> "Resume"
+                                uiState.downloadStatus == GameDownloadStatus.FAILED -> "Retry"
                                 else -> "Play"
                             })
                             MenuItem.Saves -> add(InputButton.A to if (uiState.isSyncingSaves) "Syncing..." else "Sync")
@@ -821,6 +816,7 @@ private fun GameDetailContent(
                         }
                     }
                 )
+                Spacer(modifier = Modifier.height(Dimens.footerHeight))
             }
         }
 

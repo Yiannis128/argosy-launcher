@@ -811,7 +811,7 @@ class GameDetailViewModel @Inject constructor(
         when (state.downloadStatus) {
             GameDownloadStatus.DOWNLOADED -> playGame()
             GameDownloadStatus.NEEDS_INSTALL -> downloadDelegate.installApk(viewModelScope, currentGameId)
-            GameDownloadStatus.NOT_DOWNLOADED -> {
+            GameDownloadStatus.NOT_DOWNLOADED, GameDownloadStatus.FAILED -> {
                 val game = state.game
                 if (game != null && game.isSteamGame) {
                     downloadSteamGame()
@@ -819,9 +819,10 @@ class GameDetailViewModel @Inject constructor(
                     downloadGame()
                 }
             }
-            GameDownloadStatus.QUEUED, GameDownloadStatus.WAITING_FOR_STORAGE,
-            GameDownloadStatus.DOWNLOADING, GameDownloadStatus.EXTRACTING,
-            GameDownloadStatus.PAUSED -> { }
+            GameDownloadStatus.PAUSED, GameDownloadStatus.WAITING_FOR_STORAGE ->
+                downloadDelegate.resumeDownload(viewModelScope, currentGameId)
+            GameDownloadStatus.QUEUED, GameDownloadStatus.DOWNLOADING,
+            GameDownloadStatus.EXTRACTING -> { }
         }
     }
 

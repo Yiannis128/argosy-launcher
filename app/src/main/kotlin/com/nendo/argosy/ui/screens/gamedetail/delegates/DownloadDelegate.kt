@@ -47,6 +47,15 @@ data class DownloadUiState(
     val missingDiscNumbers: List<Int> = emptyList()
 )
 
+private val RESETTABLE_STATUSES = setOf(
+    GameDownloadStatus.QUEUED,
+    GameDownloadStatus.WAITING_FOR_STORAGE,
+    GameDownloadStatus.DOWNLOADING,
+    GameDownloadStatus.EXTRACTING,
+    GameDownloadStatus.PAUSED,
+    GameDownloadStatus.FAILED
+)
+
 class DownloadDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadManager: DownloadManager,
@@ -66,7 +75,10 @@ class DownloadDelegate @Inject constructor(
     private val _launchEvents = MutableSharedFlow<LaunchEvent>()
     val launchEvents: SharedFlow<LaunchEvent> = _launchEvents.asSharedFlow()
 
+    private var trackedDownloadGameId: Long = 0L
+
     fun reset() {
+        trackedDownloadGameId = 0L
         _state.value = DownloadUiState()
     }
 
@@ -87,7 +99,7 @@ class DownloadDelegate @Inject constructor(
 
                 val activeDownload = queueState.activeDownloads.find { it.gameId == gameId }
                 val queued = queueState.queue.find { it.gameId == gameId }
-                val completed = queueState.completed.find { it.gameId == gameId }
+                val completed = queueState.completed.filter { it.gameId == gameId }.maxByOrNull { it.id }
 
                 val result: Pair<GameDownloadStatus, Float>? = when {
                     activeDownload?.state == DownloadState.EXTRACTING -> {
@@ -103,7 +115,7 @@ class DownloadDelegate @Inject constructor(
                         GameDownloadStatus.PAUSED to queued.progressPercent
                     }
                     queued?.state == DownloadState.WAITING_FOR_STORAGE -> {
-                        GameDownloadStatus.WAITING_FOR_STORAGE to 0f
+                        GameDownloadStatus.WAITING_FOR_STORAGE to queued.progressPercent
                     }
                     queued != null -> {
                         GameDownloadStatus.QUEUED to 0f
@@ -113,17 +125,25 @@ class DownloadDelegate @Inject constructor(
                         GameDownloadStatus.DOWNLOADED to 1f
                     }
                     completed?.state == DownloadState.FAILED -> {
-                        GameDownloadStatus.NOT_DOWNLOADED to 0f
+                        GameDownloadStatus.FAILED to 0f
                     }
                     else -> {
                         val currentStatus = _state.value.downloadStatus
-                        if (currentStatus != GameDownloadStatus.NOT_DOWNLOADED) {
-                            currentStatus to _state.value.downloadProgress
-                        } else {
-                            null
+                        when {
+                            trackedDownloadGameId == gameId && currentStatus in RESETTABLE_STATUSES -> {
+                                GameDownloadStatus.NOT_DOWNLOADED to 0f
+                            }
+                            currentStatus != GameDownloadStatus.NOT_DOWNLOADED -> {
+                                currentStatus to _state.value.downloadProgress
+                            }
+                            else -> null
                         }
                     }
                 }
+
+                trackedDownloadGameId = if (
+                    activeDownload != null || queued != null || completed?.state == DownloadState.FAILED
+                ) gameId else 0L
 
                 if (result != null) {
                     val (status, progress) = result
@@ -182,6 +202,18 @@ class DownloadDelegate @Inject constructor(
                     }
                     soundManager.play(SoundType.OPEN_MODAL)
                 }
+            }
+        }
+    }
+
+    fun resumeDownload(scope: CoroutineScope, gameId: Long) {
+        scope.launch {
+            val game = gameRepository.getById(gameId)
+            val steamAppId = game?.steamAppId
+            if (game != null && steamAppId != null && steamContentManager.activeDownload.value?.appId == steamAppId) {
+                steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.coverPath)
+            } else {
+                downloadManager.resumeDownload(gameId)
             }
         }
     }

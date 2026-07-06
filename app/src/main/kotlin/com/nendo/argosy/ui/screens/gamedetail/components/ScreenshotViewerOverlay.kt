@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.screens.gamedetail.ScreenshotPair
@@ -96,21 +96,19 @@ fun ScreenshotViewerOverlay(
                 .padding(bottom = 64.dp)  // Keep as interaction threshold
         )
 
-        Column(modifier = Modifier.align(Alignment.BottomCenter)) {
-            FooterBar(
-                hints = listOf(
-                    InputButton.DPAD_HORIZONTAL to "Navigate",
-                    InputButton.B to "Close",
-                    InputButton.X to "Set Background"
-                ),
-                onHintClick = { button ->
-                    when (button) {
-                        InputButton.B -> onDismiss()
-                        InputButton.X -> onSetBackground()
-                        else -> {}
-                    }
+        FooterHints(
+            hints = listOf(
+                InputButton.DPAD_HORIZONTAL to "Navigate",
+                InputButton.B to "Close",
+                InputButton.X to "Set Background"
+            ),
+            onHintClick = { button ->
+                when (button) {
+                    InputButton.B -> onDismiss()
+                    InputButton.X -> onSetBackground()
+                    else -> {}
                 }
-            )
-        }
+            }
+        )
     }
 }

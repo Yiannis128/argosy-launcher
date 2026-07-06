@@ -53,6 +53,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -217,11 +218,11 @@ fun ActionButtons(
 ) {
     val isButtonDisabled = uiState.downloadStatus in listOf(
         GameDownloadStatus.QUEUED,
-        GameDownloadStatus.WAITING_FOR_STORAGE,
         GameDownloadStatus.DOWNLOADING,
-        GameDownloadStatus.EXTRACTING,
-        GameDownloadStatus.PAUSED
+        GameDownloadStatus.EXTRACTING
     )
+    val isDestructive = uiState.downloadStatus == GameDownloadStatus.FAILED ||
+        uiState.downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE
 
     val isExtracting = uiState.downloadStatus == GameDownloadStatus.EXTRACTING
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -289,8 +290,10 @@ fun ActionButtons(
             Button(
                 onClick = { viewModel.primaryAction() },
                 enabled = !isButtonDisabled,
+                modifier = Modifier.focusProperties { canFocus = false },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    contentColor = if (isDestructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -351,12 +354,13 @@ fun ActionButtons(
                     GameDownloadStatus.WAITING_FOR_STORAGE -> Text("NO SPACE")
                     GameDownloadStatus.DOWNLOADING -> Text("${(uiState.downloadProgress * 100).toInt()}%")
                     GameDownloadStatus.EXTRACTING -> Text("EXTRACTING...")
-                    GameDownloadStatus.PAUSED -> Text("PAUSED ${(uiState.downloadProgress * 100).toInt()}%")
+                    GameDownloadStatus.PAUSED -> Text("RESUME ${(uiState.downloadProgress * 100).toInt()}%")
+                    GameDownloadStatus.FAILED -> Text("RETRY")
                 }
             }
         }
 
-        IconButton(onClick = { viewModel.toggleFavorite() }) {
+        IconButton(onClick = { viewModel.toggleFavorite() }, modifier = Modifier.focusProperties { canFocus = false }) {
             Icon(
                 imageVector = if (game.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = if (game.isFavorite) "Unfavorite" else "Favorite",
@@ -366,7 +370,7 @@ fun ActionButtons(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        IconButton(onClick = { viewModel.toggleMoreOptions() }) {
+        IconButton(onClick = { viewModel.toggleMoreOptions() }, modifier = Modifier.focusProperties { canFocus = false }) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = "More options",

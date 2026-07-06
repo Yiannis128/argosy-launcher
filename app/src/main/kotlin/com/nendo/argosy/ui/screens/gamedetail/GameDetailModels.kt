@@ -116,6 +116,7 @@ enum class GameDownloadStatus {
     DOWNLOADING,
     EXTRACTING,
     PAUSED,
+    FAILED,
     DOWNLOADED,
     NEEDS_INSTALL
 }
