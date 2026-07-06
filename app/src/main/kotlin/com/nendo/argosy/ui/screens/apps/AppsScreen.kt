@@ -70,6 +70,7 @@ import com.nendo.argosy.ui.coil.AppIconData
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
@@ -294,7 +295,7 @@ fun AppsScreen(
                     }
                 }
             )
-            Spacer(modifier = Modifier.height(Dimens.footerHeight))
+            FooterSpacer()
         }
 
         if (uiState.showContextMenu) {

@@ -87,6 +87,7 @@ import com.nendo.argosy.ui.screens.doodle.CanvasSize
 import com.nendo.argosy.ui.screens.doodle.DoodleEncoder
 import com.nendo.argosy.ui.screens.doodle.DoodlePreview
 import com.nendo.argosy.ui.components.FooterHintsWithState
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
@@ -384,7 +385,7 @@ fun SocialScreen(
                     }
                 }
             )
-            Spacer(modifier = Modifier.height(Dimens.footerHeight))
+            FooterSpacer()
         }
 
         if (optionsState.showOptionsModal) {

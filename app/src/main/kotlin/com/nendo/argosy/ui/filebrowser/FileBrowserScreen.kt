@@ -71,6 +71,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.input.InputHandler
@@ -316,7 +317,7 @@ private fun FileBrowserPermissionFooter(
             }
         }
     )
-    Spacer(modifier = Modifier.height(Dimens.footerHeight))
+    FooterSpacer()
 }
 
 @Composable
@@ -696,7 +697,7 @@ private fun FileBrowserFooter(
             }
         }
     )
-    Spacer(modifier = Modifier.height(Dimens.footerHeight))
+    FooterSpacer()
 }
 
 private const val FOLDER_ROW_FIELD = 0

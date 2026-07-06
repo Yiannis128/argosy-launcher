@@ -360,7 +360,7 @@ fun QuickSettingsPanel(
                 }
 
                 FooterHints(hints = footerHints)
-                Spacer(modifier = Modifier.height(Dimens.footerHeight))
+                FooterSpacer()
             }
         }
     }

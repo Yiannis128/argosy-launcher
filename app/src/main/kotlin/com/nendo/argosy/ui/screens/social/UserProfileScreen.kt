@@ -35,6 +35,7 @@ import com.nendo.argosy.data.social.UserProfileData
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import com.nendo.argosy.ui.components.FooterHintsWithState
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
@@ -326,6 +327,6 @@ fun UserProfileScreen(
                 add(FooterHintItem(InputButton.B, "Back"))
             }
         )
-        Spacer(modifier = Modifier.height(Dimens.footerHeight))
+        FooterSpacer()
     }
 }

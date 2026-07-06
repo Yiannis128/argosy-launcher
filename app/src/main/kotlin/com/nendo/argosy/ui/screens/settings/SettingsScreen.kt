@@ -45,6 +45,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
@@ -1060,6 +1061,6 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
     }
 
     FooterHints(hints = hints)
-    Spacer(modifier = Modifier.height(Dimens.footerHeight))
+    FooterSpacer()
 }
 

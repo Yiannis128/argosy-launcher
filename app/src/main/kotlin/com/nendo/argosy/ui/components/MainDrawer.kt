@@ -129,7 +129,7 @@ fun MainDrawer(
             }
 
             if (drawerState.currentTab == DrawerTab.FRIENDS) {
-                Spacer(modifier = Modifier.height(Dimens.footerHeight))
+                FooterSpacer()
             }
         }
     }

@@ -123,6 +123,7 @@ import com.nendo.argosy.ui.components.GameCard
 import com.nendo.argosy.ui.components.GameCardWithNewBadge
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.FooterVariant
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
@@ -709,7 +710,7 @@ fun HomeScreen(
                             }
                         )
                     }
-                    Spacer(modifier = Modifier.height(Dimens.footerHeight))
+                    FooterSpacer()
                 } else {
                     Spacer(modifier = Modifier.height(Dimens.spacingXl))
                 }

@@ -7,7 +7,15 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.Motion
 
 enum class FooterVariant { STANDARD, SUBTLE }
 
@@ -96,4 +104,19 @@ fun FooterHost(
             )
         }
     }
+}
+
+val FooterHostController.isBarVisible: Boolean
+    get() = top?.hints?.any { !isObviousHint(it.button, it.action) } == true
+
+/** Reserves footer space only while the singleton bar is actually showing. */
+@Composable
+fun FooterSpacer() {
+    val controller = LocalFooterHost.current
+    val height by animateDpAsState(
+        targetValue = if (controller.isBarVisible) Dimens.footerHeight else 0.dp,
+        animationSpec = tween(Motion.durationContent, easing = Motion.argosyEase),
+        label = "footer-spacer",
+    )
+    Spacer(Modifier.height(height))
 }

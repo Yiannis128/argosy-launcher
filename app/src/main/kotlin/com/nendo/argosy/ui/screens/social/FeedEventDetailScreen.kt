@@ -73,6 +73,7 @@ import com.nendo.argosy.data.social.FeedEventDto
 import com.nendo.argosy.data.social.FeedEventType
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
@@ -380,7 +381,7 @@ fun FeedEventDetailScreen(
                 }
             }
         )
-        Spacer(modifier = Modifier.height(Dimens.footerHeight))
+        FooterSpacer()
     }
 }
 

@@ -54,6 +54,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.domain.model.SyncProgress
@@ -816,7 +817,7 @@ private fun GameDetailContent(
                         }
                     }
                 )
-                Spacer(modifier = Modifier.height(Dimens.footerHeight))
+                FooterSpacer()
             }
         }
 

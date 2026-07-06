@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -342,6 +343,6 @@ private fun SearchFooter(resultCount: Int) {
             }
         } else null
     )
-    Spacer(modifier = Modifier.height(Dimens.footerHeight))
+    FooterSpacer()
 }
 

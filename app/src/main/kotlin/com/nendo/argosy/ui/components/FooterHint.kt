@@ -253,7 +253,7 @@ private fun InputButton.hidePriority(): Int = when (this) {
     else -> 0
 }
 
-private fun isObviousHint(button: InputButton, label: String): Boolean =
+internal fun isObviousHint(button: InputButton, label: String): Boolean =
     button == InputButton.A || button == InputButton.B || button.isDpadButton() ||
         label == "Back" || label == "Select" || label == "Close"
 

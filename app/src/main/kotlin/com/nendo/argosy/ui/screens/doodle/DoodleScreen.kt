@@ -59,6 +59,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
@@ -702,7 +703,7 @@ private fun DoodleFooter(
     }
 
     FooterHints(hints = hints)
-    Spacer(modifier = Modifier.height(Dimens.footerHeight))
+    FooterSpacer()
 }
 
 @Composable
