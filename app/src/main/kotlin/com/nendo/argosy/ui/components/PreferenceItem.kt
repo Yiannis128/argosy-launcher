@@ -242,6 +242,8 @@ fun CyclePreference(
                     focused = isFocused,
                     onPrev = onPrev ?: onClick,
                     onNext = onClick,
+                    selectedIndex = options?.indexOf(value)?.takeIf { it >= 0 },
+                    optionCount = options?.size,
                     onOpen = if (hasPicker) ({ pickerVisible = true }) else onClick,
                     valueColor = if (isFocused) null else valueColor
                 )
@@ -291,6 +293,7 @@ fun SliderPreference(
         StepperControl(
             display = "$value${suffix.orEmpty()}",
             focused = isFocused,
+            numericValue = value,
             onDecrement = { onAdjust?.invoke(-step) },
             onIncrement = { onAdjust?.invoke(step) ?: onClick?.invoke() }
         )

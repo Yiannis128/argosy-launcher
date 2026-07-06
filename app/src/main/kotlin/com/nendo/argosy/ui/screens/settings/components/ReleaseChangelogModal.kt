@@ -50,6 +50,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.verticalEdgeFade
 import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -218,6 +219,7 @@ fun ReleaseChangelogModal(
             ) {
                 LazyColumn(
                     state = listState,
+                    modifier = Modifier.verticalEdgeFade(fadeHeight = Dimens.spacingMd),
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
                 ) {
                     itemsIndexed(state.releases, key = { _, release -> release.tag }) { index, release ->
@@ -254,6 +256,7 @@ fun ReleaseChangelogModal(
                         shape = paneShape
                     )
                     .clickableNoFocus { pane = ChangelogPane.LOG }
+                    .verticalEdgeFade(fadeHeight = Dimens.spacingMd)
                     .padding(Dimens.spacingMd)
                     .verticalScroll(logScroll)
             ) {

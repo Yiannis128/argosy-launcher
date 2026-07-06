@@ -1,7 +1,20 @@
 package com.nendo.argosy.ui.primitives
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +33,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +54,8 @@ import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalUiScale
 import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
+import com.nendo.argosy.ui.theme.trackGradientEnd
+import androidx.compose.ui.graphics.Brush
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 /** V2 boxy toggle: rounded-square track + narrow vertical knob, knob right = on. */
@@ -70,6 +89,8 @@ fun ArgosyToggle(
         animationSpec = Motion.focusSpringDp,
         label = "toggle-knob",
     )
+    val travel = ((knobX - inset) / (trackWidth - knobWidth - inset * 2)).coerceIn(0f, 1f)
+    val squash = (kotlin.math.sin(travel * Math.PI).toFloat() * 2 * s).dp
     Box(
         modifier = modifier
             .size(width = trackWidth, height = trackHeight)
@@ -84,8 +105,8 @@ fun ArgosyToggle(
     ) {
         Box(
             modifier = Modifier
-                .offset(x = knobX, y = inset)
-                .size(width = knobWidth, height = knobHeight)
+                .offset(x = knobX - squash / 2, y = inset)
+                .size(width = knobWidth + squash, height = knobHeight)
                 .clip(RoundedCornerShape((ComponentDefaults.Toggle.knobRadius * s).dp))
                 .background(if (checked) Color.White else theme.textDim),
         )
@@ -130,10 +151,33 @@ fun EnumValueControl(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
     valueColor: Color? = null,
+    selectedIndex: Int? = null,
+    optionCount: Int? = null,
 ) {
     val theme = LocalArgosyTheme.current
     val triangleTint = if (focused) theme.focusAccent else theme.textMute
+    val flashTint = lerp(theme.focusAccent, Color.White, 0.5f)
     val s = LocalUiScale.current.scale
+    val leftFlash = remember { Animatable(0f) }
+    val rightFlash = remember { Animatable(0f) }
+    var direction by remember { mutableIntStateOf(0) }
+    var lastIndex by remember { mutableIntStateOf(selectedIndex ?: -1) }
+    LaunchedEffect(selectedIndex) {
+        val current = selectedIndex ?: return@LaunchedEffect
+        val previous = lastIndex
+        lastIndex = current
+        if (previous < 0 || previous == current) return@LaunchedEffect
+        val count = optionCount ?: 0
+        val rawDelta = current - previous
+        direction = when {
+            count > 1 && rawDelta == count - 1 -> -1
+            count > 1 && rawDelta == -(count - 1) -> 1
+            else -> if (rawDelta > 0) 1 else -1
+        }
+        val flash = if (direction < 0) leftFlash else rightFlash
+        flash.snapTo(1f)
+        flash.animateTo(0f, tween(Motion.durationContent, easing = Motion.argosyEase))
+    }
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -141,19 +185,35 @@ fun EnumValueControl(
     ) {
         FilledTriangle(
             direction = TriangleDirection.Left,
-            tint = triangleTint,
+            tint = lerp(triangleTint, flashTint, leftFlash.value),
             size = (10 * s).dp,
             modifier = Modifier.clickableNoFocus(onClick = onPrev),
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = valueColor ?: (if (focused) lerp(theme.focusAccent, Color.White, 0.45f) else theme.focusAccent),
-            modifier = Modifier.clickableNoFocus(onClick = onOpen),
-        )
+        AnimatedContent(
+            targetState = value,
+            transitionSpec = {
+                if (direction == 0) {
+                    fadeIn(tween(Motion.durationMicro, easing = Motion.argosyEase)) togetherWith
+                        fadeOut(tween(Motion.durationMicro, easing = Motion.argosyEase))
+                } else {
+                    (slideInHorizontally(tween(Motion.durationMicro, easing = Motion.argosyEase)) { it / 3 * direction } +
+                        fadeIn(tween(Motion.durationMicro, easing = Motion.argosyEase))) togetherWith
+                        (slideOutHorizontally(tween(Motion.durationMicro, easing = Motion.argosyEase)) { -it / 3 * direction } +
+                            fadeOut(tween(Motion.durationMicro, easing = Motion.argosyEase)))
+                }
+            },
+            label = "enum-value",
+        ) { shown ->
+            Text(
+                text = shown,
+                style = MaterialTheme.typography.bodyMedium,
+                color = valueColor ?: (if (focused) lerp(theme.focusAccent, Color.White, 0.45f) else theme.focusAccent),
+                modifier = Modifier.clickableNoFocus(onClick = onOpen),
+            )
+        }
         FilledTriangle(
             direction = TriangleDirection.Right,
-            tint = triangleTint,
+            tint = lerp(triangleTint, flashTint, rightFlash.value),
             size = (10 * s).dp,
             modifier = Modifier.clickableNoFocus(onClick = onNext),
         )
@@ -168,9 +228,25 @@ fun StepperControl(
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
     modifier: Modifier = Modifier,
+    numericValue: Int? = null,
 ) {
     val theme = LocalArgosyTheme.current
     val signTint = if (focused) theme.focusAccent else theme.textMute
+    val flashTint = lerp(theme.focusAccent, Color.White, 0.5f)
+    val minusFlash = remember { Animatable(0f) }
+    val plusFlash = remember { Animatable(0f) }
+    var direction by remember { mutableIntStateOf(0) }
+    var lastValue by remember { mutableIntStateOf(numericValue ?: Int.MIN_VALUE) }
+    LaunchedEffect(numericValue) {
+        val current = numericValue ?: return@LaunchedEffect
+        val previous = lastValue
+        lastValue = current
+        if (previous == Int.MIN_VALUE || previous == current) return@LaunchedEffect
+        direction = if (current > previous) 1 else -1
+        val flash = if (direction < 0) minusFlash else plusFlash
+        flash.snapTo(1f)
+        flash.animateTo(0f, tween(Motion.durationContent, easing = Motion.argosyEase))
+    }
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -179,18 +255,34 @@ fun StepperControl(
         Text(
             text = "-",
             style = MaterialTheme.typography.titleMedium,
-            color = signTint,
+            color = lerp(signTint, flashTint, minusFlash.value),
             modifier = Modifier.clickableNoFocus(onClick = onDecrement).padding(horizontal = Dimens.spacingXs),
         )
-        Text(
-            text = display,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (focused) lerp(theme.focusAccent, Color.White, 0.45f) else theme.textPrimary,
-        )
+        AnimatedContent(
+            targetState = display,
+            transitionSpec = {
+                if (direction == 0) {
+                    fadeIn(tween(Motion.durationMicro, easing = Motion.argosyEase)) togetherWith
+                        fadeOut(tween(Motion.durationMicro, easing = Motion.argosyEase))
+                } else {
+                    (slideInHorizontally(tween(Motion.durationMicro, easing = Motion.argosyEase)) { it / 3 * direction } +
+                        fadeIn(tween(Motion.durationMicro, easing = Motion.argosyEase))) togetherWith
+                        (slideOutHorizontally(tween(Motion.durationMicro, easing = Motion.argosyEase)) { -it / 3 * direction } +
+                            fadeOut(tween(Motion.durationMicro, easing = Motion.argosyEase)))
+                }
+            },
+            label = "stepper-value",
+        ) { shown ->
+            Text(
+                text = shown,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (focused) lerp(theme.focusAccent, Color.White, 0.45f) else theme.textPrimary,
+            )
+        }
         Text(
             text = "+",
             style = MaterialTheme.typography.titleMedium,
-            color = signTint,
+            color = lerp(signTint, flashTint, plusFlash.value),
             modifier = Modifier.clickableNoFocus(onClick = onIncrement).padding(horizontal = Dimens.spacingXs),
         )
     }
@@ -241,7 +333,14 @@ fun ArgosyTrackSlider(
         )
         val fillWidth = this.size.width * fraction
         drawRoundRect(
-            color = fillColor,
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    fillColor,
+                    trackGradientEnd(fillColor, theme.isDark, ComponentDefaults.TrackSlider.gradientShiftRatio)
+                ),
+                startX = 0f,
+                endX = fillWidth.coerceAtLeast(1f),
+            ),
             topLeft = Offset(0f, centerY - trackPx / 2f),
             size = Size(fillWidth, trackPx),
             cornerRadius = radius,

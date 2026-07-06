@@ -84,12 +84,14 @@ object ComponentDefaults {
         const val trackHeight = 6
         const val trackRadius = 2
         const val thumbSize = 10
+        const val gradientShiftRatio = 0.1f
     }
 
     object ProgressBar {
         const val height = 6
         const val stripeWidth = 7
         const val stripeGap = 5
+        const val gradientShiftRatio = 0.1f
     }
 
     object DownloadItem {

@@ -50,6 +50,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.verticalEdgeFade
 
 /** V2 enum option picker: self-contained full-list modal, current value pre-focused + marked. */
 @Composable
@@ -151,7 +152,7 @@ fun EnumPickerModal(
                             FocusedScroll(listState = listState, focusedIndex = focusedIndex)
                             LazyColumn(
                                 state = listState,
-                                modifier = Modifier.weight(1f, fill = false),
+                                modifier = Modifier.weight(1f, fill = false).verticalEdgeFade(fadeHeight = Dimens.spacingMd),
                                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
                             ) {
                                 itemsIndexed(options, key = { index, _ -> index }) { index, option ->
