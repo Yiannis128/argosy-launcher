@@ -202,10 +202,12 @@ Two families already exist as primitives (`PillButton`, `RowButton`); formalize 
     - disabled: 60% fill + 30% desaturation (dim the label too)
     Accent defaults to theme focus accent but takes an override (e.g. Continue Playing in the game's
     art tint). One ACCENT primary per context; coloration is theme-biased per mode (see Color usage).
-  - `secondary` - the SAME wrapped fill in a NEUTRAL color (surface/raised fill + rim), not accent.
-    Filled, never outline-only. Focus solidifies identically. Color is the only primary/secondary
-    difference, so the accent button is unmistakably THE primary; several neutral secondaries are
-    fine, one accent primary per context.
+  - `secondary` - the SAME wrapped fill in a NEUTRAL color, not accent. SOLID surfaceElevated
+    fill at rest (amended 2026-07-06: the translucent treatment read as an outline button on
+    device - actionable content is always visibly FILLED, no outline-look anywhere). Focus is
+    accent PRESENCE: accent wash over the fill + accent rim + accent-white label. Primary focus
+    is a brightness jump instead (fill and rim lerp toward white) since accent is already its
+    resting color. Several neutral secondaries are fine, one accent primary per context.
   - Padding 16h / 10v, 44 tall (density pass; was 22h/14v); `pressScale` press feedback (touch + gamepad).
   - `PillButton` primitive swaps its shape `radiusPill` -> `radiusControl` (then mis-named; rename
     is a later cleanup). Full pills are reserved for capsule tokens, never commands.
@@ -226,10 +228,11 @@ foreign focus model, over-rounded, and
 the destructive button uses Material dark `colorScheme.error`, a pale red that is a hard read on
 near-black. Replace with an Argosy modal that splits the two signals Material conflates:
 
-- SYMMETRIC base states: both actions rest at the SAME weight (both fill-less / text), so focus is
-  one consistent signal that reads identically on either. The current bug is the dramatic base
-  asymmetry - flat-text Cancel vs solid-fill Delete - which makes the focus cursor illegible on top
-  of two different baselines.
+- SYMMETRIC base states: both actions rest at the SAME weight - both FILLED neutral
+  (surfaceElevated + hairline rim; amended 2026-07-06 from "fill-less/text", which read as
+  outline buttons on device). Focus is one consistent signal that reads identically on either.
+  The original bug was dramatic base asymmetry - flat-text Cancel vs solid-fill Delete - which
+  made the focus cursor illegible on top of two different baselines.
 - FOCUS is the standard fill, like everywhere else, applied identically to whichever button is
   focused (neutral/cyan on Cancel, red on Delete). Default focus = the SAFE action (Cancel), never
   the destructive one.

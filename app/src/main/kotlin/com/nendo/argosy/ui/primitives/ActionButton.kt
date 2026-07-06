@@ -1,6 +1,6 @@
 package com.nendo.argosy.ui.primitives
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
@@ -42,24 +44,27 @@ fun ActionButton(
     val accent = accentColor ?: theme.focusAccent
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(Dimens.radiusControl)
-    val fillBase = if (primary) accent else theme.surfaceElevated
-    val rimBase = if (primary) accent else theme.hairlineHigh
-    val fillAlpha by animateFloatAsState(
+    val restFill = if (primary) accent.copy(alpha = ComponentDefaults.ActionButton.restFillAlpha) else theme.surfaceElevated
+    val focusedFill = if (primary) lerp(accent, Color.White, 0.18f)
+        else accent.copy(alpha = 0.2f).compositeOver(theme.surfaceElevated)
+    val restRim = if (primary) accent.copy(alpha = ComponentDefaults.ActionButton.restRimAlpha) else theme.hairlineHigh
+    val focusedRim = if (primary) lerp(accent, Color.White, 0.6f) else accent
+    val fill by animateColorAsState(
         targetValue = when {
-            !enabled -> ComponentDefaults.ActionButton.disabledFillAlpha
-            focused -> 1f
-            else -> ComponentDefaults.ActionButton.restFillAlpha
+            !enabled -> restFill.copy(alpha = restFill.alpha * ComponentDefaults.ActionButton.disabledFillAlpha)
+            focused -> focusedFill
+            else -> restFill
         },
-        animationSpec = Motion.focusSpring,
+        animationSpec = Motion.focusColorSpec,
         label = "action-fill",
     )
-    val rimAlpha by animateFloatAsState(
+    val rim by animateColorAsState(
         targetValue = when {
-            !enabled -> ComponentDefaults.ActionButton.disabledFillAlpha * 0.5f
-            focused -> 1f
-            else -> ComponentDefaults.ActionButton.restRimAlpha
+            !enabled -> restRim.copy(alpha = restRim.alpha * ComponentDefaults.ActionButton.disabledFillAlpha)
+            focused -> focusedRim
+            else -> restRim
         },
-        animationSpec = Motion.focusSpring,
+        animationSpec = Motion.focusColorSpec,
         label = "action-rim",
     )
     Box(
@@ -67,8 +72,8 @@ fun ActionButton(
             .pressScale(interaction)
             .heightIn(min = Dimens.buttonHeight)
             .clip(shape)
-            .background(fillBase.copy(alpha = fillAlpha), shape)
-            .border(width = Dimens.borderThin, color = rimBase.copy(alpha = rimAlpha), shape = shape)
+            .background(fill, shape)
+            .border(width = Dimens.borderThin, color = rim, shape = shape)
             .clickableNoFocus(interactionSource = interaction, enabled = enabled, onClick = onClick)
             .padding(horizontal = Dimens.buttonPaddingH, vertical = Dimens.buttonPaddingV),
         contentAlignment = Alignment.Center,
@@ -95,6 +100,7 @@ fun ActionButton(
     val labelColor = when {
         !enabled -> theme.textMute
         primary -> Color.White
+        focused -> lerp(accentColor ?: theme.focusAccent, Color.White, 0.45f)
         else -> theme.textPrimary
     }
     ActionButton(
