@@ -108,7 +108,7 @@ fun <Item> SectionPaneLayout(
                     .weight(0.75f)
                     .fillMaxHeight()
                     .padding(start = Dimens.spacingMd)
-                    .verticalEdgeFade(fadeHeight = Dimens.spacingMd),
+                    .verticalEdgeFade(contentListState, fadeHeight = Dimens.spacingMd),
                 verticalArrangement = verticalArrangement
             ) {
                 items(filteredItems, key = { itemKey(it) }) { item ->
@@ -128,7 +128,7 @@ fun <Item> SectionPaneLayout(
 
         LazyColumn(
             state = listState,
-            modifier = modifier.verticalEdgeFade(fadeHeight = Dimens.spacingMd, top = false),
+            modifier = modifier.verticalEdgeFade(listState, fadeHeight = Dimens.spacingMd, top = false),
             verticalArrangement = verticalArrangement
         ) {
             items.forEach { item ->

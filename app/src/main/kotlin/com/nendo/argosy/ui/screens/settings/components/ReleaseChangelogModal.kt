@@ -219,7 +219,7 @@ fun ReleaseChangelogModal(
             ) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.verticalEdgeFade(fadeHeight = Dimens.spacingMd),
+                    modifier = Modifier.verticalEdgeFade(listState, fadeHeight = Dimens.spacingMd),
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
                 ) {
                     itemsIndexed(state.releases, key = { _, release -> release.tag }) { index, release ->
@@ -256,7 +256,7 @@ fun ReleaseChangelogModal(
                         shape = paneShape
                     )
                     .clickableNoFocus { pane = ChangelogPane.LOG }
-                    .verticalEdgeFade(fadeHeight = Dimens.spacingMd)
+                    .verticalEdgeFade(logScroll, fadeHeight = Dimens.spacingMd)
                     .padding(Dimens.spacingMd)
                     .verticalScroll(logScroll)
             ) {

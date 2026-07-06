@@ -152,7 +152,7 @@ fun EnumPickerModal(
                             FocusedScroll(listState = listState, focusedIndex = focusedIndex)
                             LazyColumn(
                                 state = listState,
-                                modifier = Modifier.weight(1f, fill = false).verticalEdgeFade(fadeHeight = Dimens.spacingMd),
+                                modifier = Modifier.weight(1f, fill = false).verticalEdgeFade(listState, fadeHeight = Dimens.spacingMd),
                                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
                             ) {
                                 itemsIndexed(options, key = { index, _ -> index }) { index, option ->
