@@ -246,7 +246,7 @@ data class SoundState(
     val soundPickerType: SoundType? = null,
     val soundPickerFocusIndex: Int = 0
 ) {
-    val presets: List<SoundPreset> get() = SoundPreset.entries.toList()
+    val presets: List<SoundPreset> get() = SoundPreset.selectable
 
     fun getCurrentPresetForType(type: SoundType): SoundPreset? {
         val config = soundConfigs[type] ?: return null

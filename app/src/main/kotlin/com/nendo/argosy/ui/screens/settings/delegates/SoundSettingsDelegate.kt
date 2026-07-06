@@ -55,7 +55,7 @@ class SoundSettingsDelegate @Inject constructor(
     fun showSoundPicker(type: SoundType) {
         val currentConfig = _state.value.soundConfigs[type]
         val initialIndex = if (currentConfig?.presetName != null) {
-            SoundPreset.entries.indexOfFirst { it.name == currentConfig.presetName }.takeIf { it >= 0 } ?: 0
+            SoundPreset.selectable.indexOfFirst { it.name == currentConfig.presetName }.takeIf { it >= 0 } ?: 0
         } else {
             0
         }
@@ -82,7 +82,7 @@ class SoundSettingsDelegate @Inject constructor(
 
     fun moveSoundPickerFocus(delta: Int) {
         _state.update { state ->
-            val maxIndex = SoundPreset.entries.size - 1
+            val maxIndex = SoundPreset.selectable.size - 1
             val newIndex = (state.soundPickerFocusIndex + delta).coerceIn(0, maxIndex)
             state.copy(soundPickerFocusIndex = newIndex)
         }
@@ -90,7 +90,7 @@ class SoundSettingsDelegate @Inject constructor(
 
     fun previewSoundPickerSelection() {
         val focusIndex = _state.value.soundPickerFocusIndex
-        val preset = SoundPreset.entries.getOrNull(focusIndex) ?: return
+        val preset = SoundPreset.selectable.getOrNull(focusIndex) ?: return
         if (preset != SoundPreset.SILENT && preset != SoundPreset.CUSTOM) {
             soundManager.playPreset(preset)
         }
@@ -100,7 +100,7 @@ class SoundSettingsDelegate @Inject constructor(
         val state = _state.value
         val type = state.soundPickerType ?: return
         val focusIndex = state.soundPickerFocusIndex
-        val preset = SoundPreset.entries.getOrNull(focusIndex) ?: return
+        val preset = SoundPreset.selectable.getOrNull(focusIndex) ?: return
 
         if (preset == SoundPreset.CUSTOM) {
             scope.launch {

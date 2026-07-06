@@ -8,8 +8,13 @@ import com.nendo.argosy.R
 import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.core.input.SoundType
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 private const val TAG = "SoundFeedback"
 
@@ -30,24 +35,33 @@ enum class SoundPreset(val resourceId: Int?, val displayName: String) {
     COLLECT(R.raw.collect, "Collect"),
     DISMISS_FAIL(R.raw.dismiss_fail, "Dismiss Fail"),
     SILENT(null, "Silent"),
-    CUSTOM(null, "Custom...")
+    CUSTOM(null, "Custom...");
+
+    companion object {
+        val selectable: List<SoundPreset> = entries.filter { it != CUSTOM }
+    }
 }
 
 @Singleton
 class SoundFeedbackManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private var enabled = false
-    private var volume = 0.4f
-    private var soundPool: SoundPool? = null
-    private val soundIds = mutableMapOf<SoundPreset, Int>()
-    private val lastPlayTime = mutableMapOf<SoundPreset, Long>()
-    private var soundsLoaded = false
-    private var soundConfigs: Map<SoundType, SoundConfig> = emptyMap()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val initLock = Any()
 
-    companion object {
-        private const val DEBOUNCE_MS = 50L
-    }
+    @Volatile
+    private var enabled = false
+
+    @Volatile
+    private var volume = 0.4f
+
+    @Volatile
+    private var soundPool: SoundPool? = null
+    private val soundIds = ConcurrentHashMap<SoundPreset, Int>()
+    private val loadedSampleIds: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+    @Volatile
+    private var soundConfigs: Map<SoundType, SoundConfig> = emptyMap()
 
     private val defaultPresetMap = mapOf(
         SoundType.NAVIGATE to SoundPreset.TAP_LIGHT,
@@ -68,8 +82,34 @@ class SoundFeedbackManager @Inject constructor(
         SoundType.LAUNCH_GAME to SoundPreset.COLLECT
     )
 
-    init {
-        // SoundPool is initialized lazily on first play to avoid audio focus side effects
+    private val presetPriorities = mapOf(
+        SoundPreset.TAP_LIGHT to PRIORITY_LOW,
+        SoundPreset.HOVER_SOFT to PRIORITY_LOW,
+        SoundPreset.CLICK_SOFT to PRIORITY_LOW,
+        SoundPreset.CHIME_SUCCESS to PRIORITY_HIGH,
+        SoundPreset.COLLECT to PRIORITY_HIGH,
+        SoundPreset.BUZZ_ERROR to PRIORITY_HIGH,
+        SoundPreset.NOTIFY_START to PRIORITY_HIGH
+    )
+
+    companion object {
+        private const val PRIORITY_LOW = 1
+        private const val PRIORITY_DEFAULT = 2
+        private const val PRIORITY_HIGH = 3
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        this.enabled = enabled
+        if (enabled) preload() else releaseSoundPool()
+    }
+
+    private fun preload() {
+        scope.launch {
+            synchronized(initLock) {
+                if (!enabled || soundPool != null) return@launch
+                initSoundPool()
+            }
+        }
     }
 
     private fun initSoundPool() {
@@ -78,26 +118,20 @@ class SoundFeedbackManager @Inject constructor(
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
 
-        soundPool = SoundPool.Builder()
-            .setMaxStreams(6)
+        val pool = SoundPool.Builder()
+            .setMaxStreams(10)
             .setAudioAttributes(audioAttributes)
             .build().apply {
-                setOnLoadCompleteListener { _, _, status ->
-                    if (status == 0) {
-                        val loadedCount = soundIds.count { it.value > 0 }
-                        val totalCount = SoundPreset.entries.count { it.resourceId != null }
-                        if (loadedCount >= totalCount) {
-                            soundsLoaded = true
-                        }
-                    }
+                setOnLoadCompleteListener { _, sampleId, status ->
+                    if (status == 0) loadedSampleIds.add(sampleId)
                 }
             }
+        soundPool = pool
 
         SoundPreset.entries.forEach { preset ->
             preset.resourceId?.let { resId ->
                 try {
-                    val id = soundPool?.load(context, resId, 1) ?: 0
-                    soundIds[preset] = id
+                    soundIds[preset] = pool.load(context, resId, 1)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to load ${preset.name}", e)
                 }
@@ -105,25 +139,13 @@ class SoundFeedbackManager @Inject constructor(
         }
     }
 
-    fun setEnabled(enabled: Boolean) {
-        this.enabled = enabled
-        if (!enabled) {
-            releaseSoundPool()
-        }
-    }
-
-    private fun ensureSoundPoolInitialized() {
-        if (soundPool == null && enabled) {
-            initSoundPool()
-        }
-    }
-
     private fun releaseSoundPool() {
-        soundPool?.release()
-        soundPool = null
-        soundIds.clear()
-        lastPlayTime.clear()
-        soundsLoaded = false
+        synchronized(initLock) {
+            soundPool?.release()
+            soundPool = null
+            soundIds.clear()
+            loadedSampleIds.clear()
+        }
     }
 
     private fun shouldPlaySound(type: SoundType): Boolean {
@@ -152,19 +174,17 @@ class SoundFeedbackManager @Inject constructor(
         if (!enabled) return
         if (preset == SoundPreset.SILENT || preset == SoundPreset.CUSTOM) return
 
-        ensureSoundPoolInitialized()
-        val soundId = soundIds[preset] ?: return
-        if (soundId == 0) return
-
-        val now = System.currentTimeMillis()
-        val lastTime = lastPlayTime[preset] ?: 0L
-        if (now - lastTime < DEBOUNCE_MS) {
+        val pool = soundPool
+        if (pool == null) {
+            preload()
             return
         }
-        lastPlayTime[preset] = now
+        val soundId = soundIds[preset] ?: return
+        if (soundId !in loadedSampleIds) return
 
         try {
-            soundPool?.play(soundId, volume, volume, 1, 0, 1f)
+            val priority = presetPriorities[preset] ?: PRIORITY_DEFAULT
+            pool.play(soundId, volume, volume, priority, 0, 1f)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to play preset ${preset.name}", e)
         }
@@ -174,27 +194,12 @@ class SoundFeedbackManager @Inject constructor(
         if (!shouldPlaySound(type)) return
 
         val config = soundConfigs[type]
-        when {
-            config?.customFilePath != null -> {
-                playCustomFile(config.customFilePath)
-                return
-            }
-            config?.presetName != null -> {
-                val preset = SoundPreset.entries.find { it.name == config.presetName }
-                if (preset != null && preset.resourceId != null) {
-                    playPreset(preset)
-                    return
-                }
-            }
-        }
-
-        val preset = defaultPresetMap[type] ?: return
+        val preset = config?.presetName
+            ?.let { name -> SoundPreset.entries.find { it.name == name } }
+            ?.takeIf { it.resourceId != null }
+            ?: defaultPresetMap[type]
+            ?: return
         playPreset(preset)
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    private fun playCustomFile(path: String) {
-        // Custom file playback not yet implemented
     }
 
     fun release() {
