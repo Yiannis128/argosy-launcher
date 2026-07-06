@@ -772,6 +772,7 @@ class SettingsViewModel @Inject constructor(
     fun adjustAmbientLedCustomColorHue(delta: Int) = displayDelegate.adjustAmbientLedCustomColorHue(viewModelScope, delta)
     fun cycleAmbientLedTransitionMs(direction: Int) = displayDelegate.cycleAmbientLedTransitionMs(viewModelScope, direction)
     fun cycleAmbientLedTransitionMsWrap() = displayDelegate.cycleAmbientLedTransitionMsWrap(viewModelScope)
+    fun setAmbientLedTransitionMs(ms: Int) = displayDelegate.setAmbientLedTransitionMs(viewModelScope, ms)
     fun setAmbientLedScreenEnabled(enabled: Boolean) = displayDelegate.setAmbientLedScreenEnabled(viewModelScope, enabled)
     fun setInstalledOnlyHome(enabled: Boolean) = displayDelegate.setInstalledOnlyHome(viewModelScope, enabled)
 
@@ -893,7 +894,8 @@ class SettingsViewModel @Inject constructor(
 
     fun enableSaveSync() = syncDelegate.enableSaveSync(viewModelScope)
     fun toggleSaveSync() = syncDelegate.toggleSaveSync(viewModelScope)
-    fun cycleSaveCacheLimit() = syncDelegate.cycleSaveCacheLimit(viewModelScope)
+    fun cycleSaveCacheLimit(direction: Int = 1) = syncDelegate.cycleSaveCacheLimit(viewModelScope, direction)
+    fun setSaveCacheLimit(limit: Int) = syncDelegate.setSaveCacheLimit(viewModelScope, limit)
 
     fun onStoragePermissionResult(granted: Boolean) = routeOnStoragePermissionResult(this, granted)
 

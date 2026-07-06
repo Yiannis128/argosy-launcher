@@ -91,6 +91,10 @@ enum class RomMAuthMethod {
     PASSWORD
 }
 
+internal const val ROMM_AUTH_METHOD_PICKER_KEY = "rommAuthMethod"
+
+internal const val SYNC_REGION_MODE_PICKER_KEY = "syncRegionMode"
+
 data class PlatformEmulatorConfig(
     val platform: PlatformEntity,
     val selectedEmulator: String?,

@@ -256,10 +256,10 @@ fun PlatformDetailSection(
                         config.effectiveEmulatorId in emulators.emulatorUpdateVersions
                     val hasInstallableKnown = config.availableEmulators.isNotEmpty() ||
                         config.downloadableEmulators.isNotEmpty()
-                    CyclePreference(
+                    ActionPreference(
                         title = if (hasInstallableKnown) "Change Emulator" else "Select App",
-                        value = config.effectiveEmulatorName ?: "Not installed",
-                        subtitle = if (hasUpdate) "Update available" else null,
+                        subtitle = config.effectiveEmulatorName ?: "Not installed",
+                        trailingText = if (hasUpdate) "Update available" else null,
                         isFocused = isFocused(item),
                         onClick = {
                             if (hasInstallableKnown) {

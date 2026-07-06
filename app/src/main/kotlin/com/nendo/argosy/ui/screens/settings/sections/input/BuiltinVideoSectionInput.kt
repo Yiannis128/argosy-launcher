@@ -105,24 +105,31 @@ internal class BuiltinVideoSectionInput(
         setting: LibretroSettingDef,
         videoState: com.nendo.argosy.ui.screens.settings.BuiltinVideoState
     ): InputResult = when (setting) {
-        LibretroSettingDef.Shader -> { viewModel.cycleBuiltinShader(1); InputResult.HANDLED }
-        LibretroSettingDef.Filter -> {
-            if (videoState.shader == "Custom") viewModel.openShaderChainConfig()
-            else viewModel.cycleBuiltinFilter(1)
-            InputResult.HANDLED
+        LibretroSettingDef.Shader,
+        LibretroSettingDef.AspectRatio,
+        LibretroSettingDef.PortraitPosition,
+        LibretroSettingDef.Rotation,
+        LibretroSettingDef.OverscanCrop,
+        LibretroSettingDef.FastForwardSpeed,
+        LibretroSettingDef.AudioVolume,
+        LibretroSettingDef.RewindSpeed,
+        LibretroSettingDef.RewindBufferDuration -> {
+            viewModel.requestEnumPicker(setting.key)
+            InputResult.handled(SoundType.OPEN_MODAL)
         }
-        LibretroSettingDef.AspectRatio -> { viewModel.cycleBuiltinAspectRatio(1); InputResult.HANDLED }
-        LibretroSettingDef.PortraitPosition -> { viewModel.cycleBuiltinPortraitPosition(1); InputResult.HANDLED }
-        LibretroSettingDef.Rotation -> { viewModel.cycleBuiltinRotation(1); InputResult.HANDLED }
-        LibretroSettingDef.OverscanCrop -> { viewModel.cycleBuiltinOverscanCrop(1); InputResult.HANDLED }
+        LibretroSettingDef.Filter -> {
+            if (videoState.shader == "Custom") {
+                viewModel.openShaderChainConfig()
+                InputResult.HANDLED
+            } else {
+                viewModel.requestEnumPicker(setting.key)
+                InputResult.handled(SoundType.OPEN_MODAL)
+            }
+        }
         LibretroSettingDef.FastForwardEnabled -> {
             viewModel.setBuiltinFastForwardEnabled(!videoState.fastForwardEnabled)
             InputResult.handled(SoundType.TOGGLE)
         }
-        LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(1); InputResult.HANDLED }
-        LibretroSettingDef.AudioVolume -> { viewModel.cycleBuiltinAudioVolume(1); InputResult.HANDLED }
-        LibretroSettingDef.RewindSpeed -> { viewModel.cycleBuiltinRewindSpeed(1); InputResult.HANDLED }
-        LibretroSettingDef.RewindBufferDuration -> { viewModel.cycleBuiltinRewindBufferDuration(1); InputResult.HANDLED }
         LibretroSettingDef.BlackFrameInsertion -> {
             viewModel.setBuiltinBlackFrameInsertion(!videoState.blackFrameInsertion)
             InputResult.handled(SoundType.TOGGLE)
@@ -183,7 +190,10 @@ internal class BuiltinVideoSectionInput(
             return InputResult.HANDLED
         }
         return when (setting.type) {
-            is LibretroSettingDef.SettingType.Cycle -> { accessor.cycle(setting, 1); InputResult.HANDLED }
+            is LibretroSettingDef.SettingType.Cycle -> {
+                viewModel.requestEnumPicker(setting.key)
+                InputResult.handled(SoundType.OPEN_MODAL)
+            }
             LibretroSettingDef.SettingType.Switch -> { accessor.toggle(setting); InputResult.handled(SoundType.TOGGLE) }
         }
     }
@@ -251,6 +261,8 @@ internal class BuiltinVideoSectionInput(
         LibretroSettingDef.OverscanCrop -> { viewModel.cycleBuiltinOverscanCrop(direction); InputResult.HANDLED }
         LibretroSettingDef.FastForwardSpeed -> { viewModel.cycleBuiltinFastForwardSpeed(direction); InputResult.HANDLED }
         LibretroSettingDef.AudioVolume -> { viewModel.cycleBuiltinAudioVolume(direction); InputResult.HANDLED }
+        LibretroSettingDef.RewindSpeed -> { viewModel.cycleBuiltinRewindSpeed(direction); InputResult.HANDLED }
+        LibretroSettingDef.RewindBufferDuration -> { viewModel.cycleBuiltinRewindBufferDuration(direction); InputResult.HANDLED }
         else -> InputResult.UNHANDLED
     }
 

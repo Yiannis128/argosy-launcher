@@ -223,7 +223,10 @@ private fun routeServerConfirm(vm: SettingsViewModel, state: SettingsUiState): I
         }
         val indices = rommConfigIndices(state.server)
         when (state.focusedIndex) {
-            1 -> vm.setRommAuthMethod(nextRommAuthMethod(state.server.rommAuthMethod))
+            1 -> {
+                vm.requestEnumPicker(ROMM_AUTH_METHOD_PICKER_KEY)
+                return InputResult.handled(SoundType.OPEN_MODAL)
+            }
             indices.connectIndex -> vm.connectToRomm()
             indices.scanIndex -> vm.showRommScanner()
             indices.cancelIndex -> vm.cancelRommConfig()
@@ -250,7 +253,10 @@ private fun routeServerConfirm(vm: SettingsViewModel, state: SettingsUiState): I
             vm.toggleSaveSync()
             return InputResult.handled(SoundType.TOGGLE)
         }
-        GameDataItem.SaveCacheLimit -> vm.cycleSaveCacheLimit()
+        GameDataItem.SaveCacheLimit -> {
+            vm.requestEnumPicker(GameDataItem.SaveCacheLimit.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         GameDataItem.SyncSaves -> if (isOnline) vm.requestSyncSaves()
         GameDataItem.ClearPathCache -> vm.requestClearPathCache()
         GameDataItem.ResetSaveCache -> vm.requestResetSaveCache()
@@ -277,7 +283,10 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
     val info = createStorageLayoutInfo()
     when (val item = storageItemAtFocusIndex(state.focusedIndex, info)) {
         StorageItem.MaxDownloads -> vm.cycleMaxConcurrentDownloads()
-        StorageItem.Threshold -> vm.cycleInstantDownloadThreshold()
+        StorageItem.Threshold -> {
+            vm.requestEnumPicker(StorageItem.Threshold.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         StorageItem.GlobalRomPath -> vm.openFolderPicker()
         StorageItem.ImageCache -> vm.openImageCachePicker()
         StorageItem.ValidateCache -> vm.validateImageCache()
@@ -386,18 +395,17 @@ private fun routeBoxArtConfirm(vm: SettingsViewModel, state: SettingsUiState): I
         BoxArtItem.GlassTint, BoxArtItem.GradientPresetItem, BoxArtItem.IndicatorStyle,
         BoxArtItem.IndicatorContent, BoxArtItem.IconPos, BoxArtItem.IconPad, BoxArtItem.OuterEffect,
         BoxArtItem.OuterThickness, BoxArtItem.GlowIntensity, BoxArtItem.GlowColor,
-        BoxArtItem.InnerEffect, BoxArtItem.InnerThickness -> {
+        BoxArtItem.InnerEffect, BoxArtItem.InnerThickness,
+        BoxArtItem.SampleGrid, BoxArtItem.SampleRadius, BoxArtItem.MinSaturation,
+        BoxArtItem.MinBrightness, BoxArtItem.HueDistance, BoxArtItem.SaturationBoost,
+        BoxArtItem.BrightnessClamp -> {
             vm.requestEnumPicker(item.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
-        BoxArtItem.GradientAdvanced -> vm.toggleGradientAdvancedMode()
-        BoxArtItem.SampleGrid -> vm.cycleGradientSampleGrid(1)
-        BoxArtItem.SampleRadius -> vm.cycleGradientRadius(1)
-        BoxArtItem.MinSaturation -> vm.cycleGradientMinSaturation(1)
-        BoxArtItem.MinBrightness -> vm.cycleGradientMinValue(1)
-        BoxArtItem.HueDistance -> vm.cycleGradientHueDistance(1)
-        BoxArtItem.SaturationBoost -> vm.cycleGradientSaturationBump(1)
-        BoxArtItem.BrightnessClamp -> vm.cycleGradientValueClamp(1)
+        BoxArtItem.GradientAdvanced -> {
+            vm.toggleGradientAdvancedMode()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         else -> {}
     }
     return InputResult.HANDLED
@@ -408,7 +416,10 @@ private fun routeAmbientLedConfirm(vm: SettingsViewModel, state: SettingsUiState
         AmbientLedItem.Enable -> vm.setAmbientLedEnabled(!state.display.ambientLedEnabled)
         AmbientLedItem.CustomColor -> vm.setAmbientLedCustomColor(!state.display.ambientLedCustomColor)
         AmbientLedItem.CoverArtColors -> vm.setAmbientLedCoverArtEnabled(!state.display.ambientLedCoverArtEnabled)
-        AmbientLedItem.TransitionSpeed -> vm.cycleAmbientLedTransitionMsWrap()
+        AmbientLedItem.TransitionSpeed -> {
+            vm.requestEnumPicker(AmbientLedItem.TransitionSpeed.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         AmbientLedItem.AudioBrightness -> vm.setAmbientLedAudioBrightness(!state.display.ambientLedAudioBrightness)
         AmbientLedItem.AudioColors -> vm.setAmbientLedAudioColors(!state.display.ambientLedAudioColors)
         AmbientLedItem.ScreenColors -> {
@@ -856,7 +867,10 @@ private fun routeBuiltinEmulatorConfirm(vm: SettingsViewModel, state: SettingsUi
     val builtinEnabled = state.emulators.builtinLibretroEnabled
     when (state.focusedIndex) {
         0 -> vm.setBuiltinLibretroEnabled(!builtinEnabled)
-        1 -> if (builtinEnabled) vm.cycleBuiltinArchitecture(1)
+        1 -> if (builtinEnabled) {
+            vm.requestEnumPicker(BUILTIN_ARCHITECTURE_PICKER_KEY)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         2 -> if (builtinEnabled) vm.navigateToBuiltinVideo()
         3 -> if (builtinEnabled) vm.navigateToBuiltinControls()
         4 -> if (builtinEnabled) vm.navigateToCoreManagement()

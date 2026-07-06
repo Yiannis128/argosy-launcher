@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -51,7 +52,8 @@ fun SyncFiltersModal(
     onToggleDeleteOrphans: (Boolean) -> Unit,
     onShowRegionPicker: () -> Unit,
     onDismissRegionPicker: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    regionModePickerToken: Int = 0
 ) {
     val listState = rememberLazyListState()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
@@ -117,15 +119,16 @@ fun SyncFiltersModal(
                     )
                 }
                 item {
-                    val modeText = when (syncFilters.regionMode) {
-                        RegionFilterMode.INCLUDE -> "Include selected"
-                        RegionFilterMode.EXCLUDE -> "Exclude selected"
-                    }
+                    val modeText = regionModeLabel(syncFilters.regionMode)
                     CyclePreference(
                         title = "Region Mode",
                         value = modeText,
                         isFocused = focusIndex == 1,
-                        onClick = onToggleRegionMode
+                        onClick = onToggleRegionMode,
+                        onPrev = onToggleRegionMode,
+                        options = remember { RegionFilterMode.entries.map { regionModeLabel(it) } },
+                        onSelect = { if (RegionFilterMode.entries[it] != syncFilters.regionMode) onToggleRegionMode() },
+                        pickerRequestToken = regionModePickerToken
                     )
                 }
                 item {
@@ -191,4 +194,9 @@ fun SyncFiltersModal(
             )
         }
     }
+}
+
+private fun regionModeLabel(mode: RegionFilterMode): String = when (mode) {
+    RegionFilterMode.INCLUDE -> "Include selected"
+    RegionFilterMode.EXCLUDE -> "Exclude selected"
 }

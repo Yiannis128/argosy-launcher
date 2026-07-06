@@ -15,6 +15,8 @@ fun LibretroSettingItem(
     accessor: LibretroSettingsAccessor,
     isFocused: Boolean,
     isPerPlatform: Boolean = false,
+    enablePicker: Boolean = true,
+    pickerRequestToken: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val value = accessor.getDisplayValue(setting)
@@ -53,6 +55,9 @@ fun LibretroSettingItem(
             onReset = { accessor.reset(setting) }
         )
     } else {
+        val cycleOptions = (setting.type as? LibretroSettingDef.SettingType.Cycle)
+            ?.options
+            ?.takeIf { enablePicker && it.size > 1 }
         CyclePreference(
             title = setting.title,
             subtitle = subtitle,
@@ -61,7 +66,16 @@ fun LibretroSettingItem(
             isCustom = isPerPlatform && hasOverride,
             showResetButton = isPerPlatform && hasOverride && isFocused,
             onClick = { accessor.cycle(setting, 1) },
-            onReset = { accessor.reset(setting) }
+            onPrev = { accessor.cycle(setting, -1) },
+            onReset = { accessor.reset(setting) },
+            options = cycleOptions,
+            onSelect = cycleOptions?.let { opts ->
+                { index: Int ->
+                    val current = opts.indexOf(accessor.getDisplayValue(setting)).coerceAtLeast(0)
+                    accessor.cycle(setting, index - current)
+                }
+            },
+            pickerRequestToken = pickerRequestToken
         )
     }
 }

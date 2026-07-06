@@ -68,6 +68,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.RomMConfigForm
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
+import com.nendo.argosy.ui.screens.settings.delegates.SyncSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.components.SteamLauncherPreference
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -386,12 +387,19 @@ private fun GameDataContent(
                     onToggle = { viewModel.toggleSaveSync() }
                 )
 
-                GameDataItem.SaveCacheLimit -> CyclePreference(
-                    title = "Local Save Cache",
-                    value = "${uiState.syncSettings.saveCacheLimit} saves per game",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleSaveCacheLimit() }
-                )
+                GameDataItem.SaveCacheLimit -> {
+                    val limits = SyncSettingsDelegate.SAVE_CACHE_LIMIT_VALUES
+                    CyclePreference(
+                        title = "Local Save Cache",
+                        value = "${uiState.syncSettings.saveCacheLimit} saves per game",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.cycleSaveCacheLimit(1) },
+                        onPrev = { viewModel.cycleSaveCacheLimit(-1) },
+                        options = remember { limits.map { "$it saves per game" } },
+                        onSelect = { viewModel.setSaveCacheLimit(limits[it]) },
+                        pickerRequestToken = if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+                    )
+                }
 
                 GameDataItem.SyncSaves -> {
                     val pendingText = if (uiState.syncSettings.pendingUploadsCount > 0) {

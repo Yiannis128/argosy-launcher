@@ -8,7 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 import com.nendo.argosy.ui.screens.settings.BuiltinVideoState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -61,6 +61,8 @@ fun BuiltinVideoSection(
                         LibretroSettingDef.OverscanCrop -> viewModel.cycleBuiltinOverscanCrop(direction)
                         LibretroSettingDef.FastForwardSpeed -> viewModel.cycleBuiltinFastForwardSpeed(direction)
                         LibretroSettingDef.AudioVolume -> viewModel.cycleBuiltinAudioVolume(direction)
+                        LibretroSettingDef.RewindSpeed -> viewModel.cycleBuiltinRewindSpeed(direction)
+                        LibretroSettingDef.RewindBufferDuration -> viewModel.cycleBuiltinRewindBufferDuration(direction)
                         else -> {}
                     }
                 },
@@ -116,6 +118,9 @@ fun BuiltinVideoSection(
         platformSlug = platformContext?.platformSlug,
         canEnableBFI = videoState.canEnableBlackFrameInsertion,
         listState = listState,
+        pickerTokenFor = { setting ->
+            if (uiState.enumPickerKey == setting.key) uiState.enumPickerToken else 0
+        },
         trailingContent = if (showResetAll) {
             {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -131,10 +136,10 @@ fun BuiltinVideoSection(
         trailingItems = if (showPathItems) {
             {
                 item(key = "save_path") {
-                    CyclePreference(
+                    ActionPreference(
                         title = "Save File Path",
-                        value = formatStoragePath(effectiveSavePath),
-                        subtitle = when {
+                        subtitle = formatStoragePath(effectiveSavePath),
+                        trailingText = when {
                             isGlobal && videoState.isCustomSavePath -> "(custom)"
                             !isGlobal && hasPlatformSaveOverride -> "(custom for this platform)"
                             !isGlobal -> "(from global)"
@@ -153,10 +158,10 @@ fun BuiltinVideoSection(
                     )
                 }
                 item(key = "state_path") {
-                    CyclePreference(
+                    ActionPreference(
                         title = "State Path",
-                        value = formatStoragePath(effectiveStatePath),
-                        subtitle = when {
+                        subtitle = formatStoragePath(effectiveStatePath),
+                        trailingText = when {
                             isGlobal && videoState.isCustomStatePath -> "(custom)"
                             !isGlobal && hasPlatformStateOverride -> "(custom for this platform)"
                             !isGlobal -> "(from global)"

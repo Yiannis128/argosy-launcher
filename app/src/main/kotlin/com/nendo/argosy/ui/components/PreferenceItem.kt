@@ -182,9 +182,11 @@ fun CyclePreference(
     var pickerVisible by remember { mutableStateOf(false) }
     var consumedPickerToken by remember { mutableIntStateOf(pickerRequestToken) }
     LaunchedEffect(pickerRequestToken) {
-        if (hasPicker && pickerRequestToken != consumedPickerToken) {
+        if (hasPicker && pickerRequestToken > consumedPickerToken) {
             consumedPickerToken = pickerRequestToken
             pickerVisible = true
+        } else if (pickerRequestToken < consumedPickerToken) {
+            consumedPickerToken = pickerRequestToken
         }
     }
 

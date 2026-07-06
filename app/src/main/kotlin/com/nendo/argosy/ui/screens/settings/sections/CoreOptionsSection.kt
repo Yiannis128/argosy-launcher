@@ -39,8 +39,11 @@ internal sealed class CoreOptionItem(val key: String) {
         val values: List<String>,
         val currentValue: String,
         val isOverridden: Boolean,
-        val displayValue: String = currentValue
-    ) : CoreOptionItem(optionKey)
+        val displayValue: String = currentValue,
+        val valueLabels: Map<String, String> = emptyMap()
+    ) : CoreOptionItem(optionKey) {
+        fun displayValueFor(value: String): String = valueLabels[value] ?: value
+    }
 
     data object ResetAll : CoreOptionItem("reset_all")
 }
@@ -60,7 +63,8 @@ internal fun buildCoreOptionItems(state: CoreOptionsState): List<CoreOptionItem>
                     values = option.values,
                     currentValue = option.currentValue,
                     isOverridden = option.isOverridden,
-                    displayValue = option.displayValue
+                    displayValue = option.displayValue,
+                    valueLabels = option.valueLabels
                 )
             )
         }
@@ -130,6 +134,15 @@ fun CoreOptionsSection(
     } else {
         "No cores available"
     }
+    val coreSelectorOptions = remember(coreState.coresForCurrentPlatform) {
+        coreState.coresForCurrentPlatform.map { core ->
+            val status = if (core.isInstalled) "Installed" else "Not Downloaded"
+            "${core.displayName} ($status)"
+        }
+    }
+
+    fun pickerToken(key: String): Int =
+        if (uiState.enumPickerKey == key) uiState.enumPickerToken else 0
 
     LazyColumn(
         state = listState,
@@ -149,7 +162,11 @@ fun CoreOptionsSection(
                         title = "Core",
                         value = coreSelectorValue,
                         isFocused = isFocused,
-                        onClick = { viewModel.cycleCoreSelector(1) }
+                        onClick = { viewModel.cycleCoreSelector(1) },
+                        onPrev = { viewModel.cycleCoreSelector(-1) },
+                        options = coreSelectorOptions.takeIf { it.isNotEmpty() },
+                        onSelect = { viewModel.cycleCoreSelector(it - coreState.selectedCoreIndex) },
+                        pickerRequestToken = pickerToken(item.key)
                     )
                 }
 
@@ -176,6 +193,7 @@ fun CoreOptionsSection(
 
                 is CoreOptionItem.Option -> {
                     val isLocked = !isInstalled
+                    val currentValueIndex = item.values.indexOf(item.currentValue).coerceAtLeast(0)
                     CyclePreference(
                         title = item.displayName,
                         value = item.displayValue,
@@ -183,10 +201,16 @@ fun CoreOptionsSection(
                         onClick = {
                             if (!isLocked) viewModel.cycleCoreOptionValue(item.optionKey, 1)
                         },
+                        onPrev = {
+                            if (!isLocked) viewModel.cycleCoreOptionValue(item.optionKey, -1)
+                        },
                         subtitle = item.description,
                         isCustom = item.isOverridden,
                         showResetButton = item.isOverridden && isFocused,
-                        onReset = { viewModel.resetCoreOption(item.optionKey) }
+                        onReset = { viewModel.resetCoreOption(item.optionKey) },
+                        options = if (!isLocked && item.values.size > 1) item.values.map { item.displayValueFor(it) } else null,
+                        onSelect = { viewModel.cycleCoreOptionValue(item.optionKey, it - currentValueIndex) },
+                        pickerRequestToken = pickerToken(item.optionKey)
                     )
                 }
 

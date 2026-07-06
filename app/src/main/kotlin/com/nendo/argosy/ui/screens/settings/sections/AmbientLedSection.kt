@@ -200,12 +200,20 @@ fun AmbientLedSection(
                     onToggle = { viewModel.setAmbientLedCoverArtEnabled(!display.ambientLedCoverArtEnabled) }
                 )
 
-                AmbientLedItem.TransitionSpeed -> CyclePreference(
-                    title = "Transition Speed",
-                    value = transitionLabels[display.ambientLedTransitionMs] ?: "${display.ambientLedTransitionMs}ms",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleAmbientLedTransitionMsWrap() }
-                )
+                AmbientLedItem.TransitionSpeed -> {
+                    val steps = remember { transitionLabels.keys.toList() }
+                    val currentStep = steps.indexOf(display.ambientLedTransitionMs).coerceAtLeast(0)
+                    CyclePreference(
+                        title = "Transition Speed",
+                        value = transitionLabels[display.ambientLedTransitionMs] ?: "${display.ambientLedTransitionMs}ms",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.setAmbientLedTransitionMs(steps[(currentStep + 1).mod(steps.size)]) },
+                        onPrev = { viewModel.setAmbientLedTransitionMs(steps[(currentStep - 1).mod(steps.size)]) },
+                        options = remember { transitionLabels.values.toList() },
+                        onSelect = { viewModel.setAmbientLedTransitionMs(steps[it]) },
+                        pickerRequestToken = pickerToken(item)
+                    )
+                }
 
                 AmbientLedItem.AudioBrightness -> SwitchPreference(
                     title = "Audio Brightness",

@@ -34,6 +34,7 @@ import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.ImageCachePreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
+import com.nendo.argosy.ui.screens.settings.SYNC_REGION_MODE_PICKER_KEY
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.PlatformFiltersModal
@@ -249,7 +250,8 @@ fun SyncSettingsSection(
                 onToggleDeleteOrphans = { viewModel.setDeleteOrphans(it) },
                 onShowRegionPicker = { viewModel.showRegionPicker() },
                 onDismissRegionPicker = { viewModel.dismissRegionPicker() },
-                onDismiss = { viewModel.dismissSyncFiltersModal() }
+                onDismiss = { viewModel.dismissSyncFiltersModal() },
+                regionModePickerToken = if (uiState.enumPickerKey == SYNC_REGION_MODE_PICKER_KEY) uiState.enumPickerToken else 0
             )
         }
     }

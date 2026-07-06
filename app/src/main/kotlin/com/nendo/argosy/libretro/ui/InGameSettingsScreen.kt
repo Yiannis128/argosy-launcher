@@ -474,7 +474,8 @@ fun InGameSettingsScreen(
                                 platformSlug = platformSlug,
                                 canEnableBFI = canEnableBFI,
                                 showSavingSection = false,
-                                listState = videoListState
+                                listState = videoListState,
+                                enablePicker = false
                             )
                         }
 

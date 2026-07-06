@@ -233,10 +233,23 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
 
     private fun interceptSyncFiltersModal(state: SettingsUiState, method: InputMethod): InputResult? {
         if (!state.syncSettings.showSyncFiltersModal) return null
+        val onRegionModeRow = state.syncSettings.syncFiltersModalFocusIndex == 1
         return when (method) {
             InputMethod.UP -> { viewModel.moveSyncFiltersModalFocus(-1); InputResult.HANDLED }
             InputMethod.DOWN -> { viewModel.moveSyncFiltersModalFocus(1); InputResult.HANDLED }
-            InputMethod.CONFIRM -> { viewModel.confirmSyncFiltersModalSelection(); InputResult.handled(SoundType.TOGGLE) }
+            InputMethod.LEFT, InputMethod.RIGHT -> {
+                if (onRegionModeRow) viewModel.toggleRegionMode()
+                InputResult.HANDLED
+            }
+            InputMethod.CONFIRM -> {
+                if (onRegionModeRow) {
+                    viewModel.requestEnumPicker(SYNC_REGION_MODE_PICKER_KEY)
+                    InputResult.handled(SoundType.OPEN_MODAL)
+                } else {
+                    viewModel.confirmSyncFiltersModalSelection()
+                    InputResult.handled(SoundType.TOGGLE)
+                }
+            }
             InputMethod.BACK -> { viewModel.dismissSyncFiltersModal(); InputResult.HANDLED }
             else -> InputResult.HANDLED
         }

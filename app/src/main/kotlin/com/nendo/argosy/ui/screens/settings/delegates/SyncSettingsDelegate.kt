@@ -324,12 +324,22 @@ class SyncSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleSaveCacheLimit(scope: CoroutineScope) {
+    companion object {
+        val SAVE_CACHE_LIMIT_VALUES = listOf(5, 7, 10, 15, 20)
+    }
+
+    fun cycleSaveCacheLimit(scope: CoroutineScope, direction: Int = 1) {
         scope.launch {
-            val values = listOf(5, 7, 10, 15, 20)
-            val newLimit = cycleInList(_state.value.saveCacheLimit, values)
+            val newLimit = cycleInList(_state.value.saveCacheLimit, SAVE_CACHE_LIMIT_VALUES, direction)
             preferencesRepository.setSaveCacheLimit(newLimit)
             _state.update { it.copy(saveCacheLimit = newLimit) }
+        }
+    }
+
+    fun setSaveCacheLimit(scope: CoroutineScope, limit: Int) {
+        scope.launch {
+            preferencesRepository.setSaveCacheLimit(limit)
+            _state.update { it.copy(saveCacheLimit = limit) }
         }
     }
 

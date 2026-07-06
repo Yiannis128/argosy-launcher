@@ -36,6 +36,7 @@ import com.nendo.argosy.data.preferences.SystemIconPosition
 import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.GameCard
+import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.home.HomeGameUi
 import com.nendo.argosy.ui.screens.settings.DisplayState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -327,11 +328,11 @@ fun BoxArtSection(
                         onSelect = { viewModel.setGradientPreset(GRADIENT_PRESET_CHOICES[it]) },
                         pickerRequestToken = pickerToken(item)
                     )
-                    BoxArtItem.GradientAdvanced -> CyclePreference(
+                    BoxArtItem.GradientAdvanced -> SwitchPreference(
                         title = "Advanced",
-                        value = if (display.gradientAdvancedMode) "On" else "Off",
+                        isEnabled = display.gradientAdvancedMode,
                         isFocused = isFocused(item),
-                        onClick = { viewModel.toggleGradientAdvancedMode() }
+                        onToggle = { viewModel.toggleGradientAdvancedMode() }
                     )
 
                     BoxArtItem.IndicatorStyle -> CyclePreference(
@@ -445,47 +446,61 @@ fun BoxArtSection(
                         pickerRequestToken = pickerToken(item)
                     )
 
-                    BoxArtItem.SampleGrid -> CyclePreference(
+                    BoxArtItem.SampleGrid -> GradientTuningCycle(
                         title = "Sample Grid",
                         value = "${gradientConfig.samplesX}x${gradientConfig.samplesY}",
+                        options = remember { listOf("8x12", "10x15", "12x18", "16x24") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientSampleGrid(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientSampleGrid(it) }
                     )
-                    BoxArtItem.SampleRadius -> CyclePreference(
+                    BoxArtItem.SampleRadius -> GradientTuningCycle(
                         title = "Sample Radius",
                         value = gradientConfig.radius.toString(),
+                        options = remember { listOf("1", "2", "3", "4") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientRadius(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientRadius(it) }
                     )
-                    BoxArtItem.MinSaturation -> CyclePreference(
+                    BoxArtItem.MinSaturation -> GradientTuningCycle(
                         title = "Min Saturation",
                         value = "%.0f%%".format(gradientConfig.minSaturation * 100),
+                        options = remember { listOf("20%", "25%", "30%", "35%", "40%", "45%", "50%") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientMinSaturation(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientMinSaturation(it) }
                     )
-                    BoxArtItem.MinBrightness -> CyclePreference(
+                    BoxArtItem.MinBrightness -> GradientTuningCycle(
                         title = "Min Brightness",
                         value = "%.0f%%".format(gradientConfig.minValue * 100),
+                        options = remember { listOf("10%", "15%", "20%", "25%") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientMinValue(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientMinValue(it) }
                     )
-                    BoxArtItem.HueDistance -> CyclePreference(
+                    BoxArtItem.HueDistance -> GradientTuningCycle(
                         title = "Hue Distance",
                         value = "${gradientConfig.minHueDistance}deg",
+                        options = remember { listOf("20deg", "30deg", "40deg", "50deg", "60deg") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientHueDistance(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientHueDistance(it) }
                     )
-                    BoxArtItem.SaturationBoost -> CyclePreference(
+                    BoxArtItem.SaturationBoost -> GradientTuningCycle(
                         title = "Saturation Boost",
                         value = "+%.0f%%".format(gradientConfig.saturationBump * 100),
+                        options = remember { listOf("+30%", "+35%", "+40%", "+45%", "+50%", "+55%") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientSaturationBump(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientSaturationBump(it) }
                     )
-                    BoxArtItem.BrightnessClamp -> CyclePreference(
+                    BoxArtItem.BrightnessClamp -> GradientTuningCycle(
                         title = "Brightness Clamp",
                         value = ">=%.0f%%".format(gradientConfig.valueClamp * 100),
+                        options = remember { listOf(">=70%", ">=75%", ">=80%", ">=85%", ">=90%") },
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientValueClamp(1) }
+                        pickerRequestToken = pickerToken(item),
+                        onCycle = { viewModel.cycleGradientValueClamp(it) }
                     )
                 }
         }
@@ -688,4 +703,26 @@ private fun BoxArtInnerEffectThickness.displayName(): String = when (this) {
     BoxArtInnerEffectThickness.THIN -> "Thin"
     BoxArtInnerEffectThickness.MEDIUM -> "Medium"
     BoxArtInnerEffectThickness.THICK -> "Thick"
+}
+
+@Composable
+private fun GradientTuningCycle(
+    title: String,
+    value: String,
+    options: List<String>,
+    isFocused: Boolean,
+    pickerRequestToken: Int,
+    onCycle: (Int) -> Unit
+) {
+    val currentIndex = options.indexOf(value).coerceAtLeast(0)
+    CyclePreference(
+        title = title,
+        value = value,
+        isFocused = isFocused,
+        onClick = { onCycle(1) },
+        onPrev = { onCycle(-1) },
+        options = options,
+        onSelect = { onCycle(it - currentIndex) },
+        pickerRequestToken = pickerRequestToken
+    )
 }

@@ -97,6 +97,12 @@ internal class LightSectionsInput(
     private fun handleServerLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         if (state.server.rommConfiguring) {
+            if (!state.server.rommDevicePairing && state.focusedIndex == 1) {
+                val methods = com.nendo.argosy.ui.screens.settings.RomMAuthMethod.entries
+                val next = methods[(methods.indexOf(state.server.rommAuthMethod) + direction).mod(methods.size)]
+                viewModel.setRommAuthMethod(next)
+                return InputResult.HANDLED
+            }
             val isPassword = state.server.rommAuthMethod == com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PASSWORD
             if (isPassword && !state.server.rommDevicePairing && (state.focusedIndex == 2 || state.focusedIndex == 3)) {
                 val targetIndex = if (direction < 0) 2 else 3
@@ -108,10 +114,16 @@ internal class LightSectionsInput(
             return InputResult.UNHANDLED
         }
         val items = buildGameDataItemsFromState(state)
-        val item = gameDataItemAtFocusIndex(state.focusedIndex, items)
-        if (item is GameDataItem.InstalledLauncher) {
-            viewModel.moveLauncherActionFocus(direction)
-            return InputResult.HANDLED
+        when (gameDataItemAtFocusIndex(state.focusedIndex, items)) {
+            is GameDataItem.InstalledLauncher -> {
+                viewModel.moveLauncherActionFocus(direction)
+                return InputResult.HANDLED
+            }
+            GameDataItem.SaveCacheLimit -> {
+                viewModel.cycleSaveCacheLimit(direction)
+                return InputResult.HANDLED
+            }
+            else -> {}
         }
         return InputResult.UNHANDLED
     }
