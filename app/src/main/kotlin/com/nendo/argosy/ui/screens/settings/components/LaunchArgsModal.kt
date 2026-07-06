@@ -70,7 +70,7 @@ fun LaunchArgsModal(
         baseWidth = Dimens.modalWidthXl,
         onDismiss = onDismiss,
         footerHints = buildList {
-            add(com.nendo.argosy.ui.components.InputButton.A to "Cycle")
+            add(com.nendo.argosy.ui.components.InputButton.A to "Change")
             add(com.nendo.argosy.ui.components.InputButton.Y to "Reset Field")
             if (hasOverride) {
                 add(com.nendo.argosy.ui.components.InputButton.X to "Reset All")

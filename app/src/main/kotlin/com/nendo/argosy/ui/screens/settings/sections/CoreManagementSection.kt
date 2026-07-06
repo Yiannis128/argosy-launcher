@@ -1,13 +1,12 @@
 package com.nendo.argosy.ui.screens.settings.sections
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,15 +22,14 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +42,8 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.generated.ColorTokens
+import com.nendo.argosy.ui.util.clickableNoFocus
 
 internal sealed class CoreManagementItem(val key: String) {
     val isFocusable: Boolean get() = this is Platform
@@ -226,12 +226,14 @@ private fun CoreChip(
     isDownloading: Boolean,
     onClick: () -> Unit
 ) {
-    val focusedContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
+    val theme = LocalArgosyTheme.current
+    val semanticColors = LocalLauncherTheme.current.semanticColors
+    val focusedContent = lerp(theme.focusAccent, Color.White, 0.45f)
     val statusColor = when {
-        core.isActive -> Color(0xFF4CAF50)
-        core.isInstalled -> Color(0xFF2196F3)
-        isOnline -> Color(0xFFE57373)
-        else -> Color.Gray
+        core.isActive -> semanticColors.success
+        core.isInstalled -> semanticColors.info
+        isOnline -> LocalArgosyTheme.current.destructive
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val textColor = when {
@@ -240,35 +242,29 @@ private fun CoreChip(
         else -> statusColor.copy(alpha = 0.6f)
     }
 
-    val buttonHeight = Dimens.iconLg - Dimens.spacingXs
+    val chipShape = RoundedCornerShape(Dimens.radiusPill)
+    val background = when {
+        isFocused -> theme.focusAccent.copy(alpha = 0.15f).compositeOver(theme.surfaceElevated)
+        core.isActive -> theme.focusAccent.copy(alpha = 0.108f).compositeOver(theme.surfaceElevated)
+        else -> theme.surfaceElevated
+    }
 
-    if (isFocused) {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = Modifier.height(buttonHeight),
-            contentPadding = PaddingValues(horizontal = Dimens.spacingSm, vertical = Dimens.elevationNone),
-            border = BorderStroke(Dimens.borderThin, focusedContent)
-        ) {
-            CoreChipContent(
-                core = core,
-                isDownloading = isDownloading,
-                textColor = focusedContent,
-                statusColor = statusColor
-            )
-        }
-    } else {
-        TextButton(
-            onClick = onClick,
-            modifier = Modifier.height(buttonHeight),
-            contentPadding = PaddingValues(horizontal = Dimens.spacingSm, vertical = Dimens.elevationNone)
-        ) {
-            CoreChipContent(
-                core = core,
-                isDownloading = isDownloading,
-                textColor = textColor,
-                statusColor = statusColor
-            )
-        }
+    Box(
+        modifier = Modifier
+            .height(Dimens.iconLg - Dimens.spacingXs)
+            .clip(chipShape)
+            .background(background)
+            .border(Dimens.borderThin, if (isFocused) focusedContent else Color.Transparent, chipShape)
+            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingSm),
+        contentAlignment = Alignment.Center
+    ) {
+        CoreChipContent(
+            core = core,
+            isDownloading = isDownloading,
+            textColor = textColor,
+            statusColor = statusColor
+        )
     }
 }
 

@@ -417,7 +417,10 @@ private fun routeAmbientLedConfirm(vm: SettingsViewModel, state: SettingsUiState
             }
             vm.setAmbientLedScreenEnabled(!state.display.ambientLedScreenEnabled)
         }
-        AmbientLedItem.ScreenColorMode -> vm.cycleAmbientLedColorMode()
+        AmbientLedItem.ScreenColorMode -> {
+            vm.requestEnumPicker(AmbientLedItem.ScreenColorMode.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         else -> {}
     }
     return InputResult.HANDLED
@@ -551,7 +554,10 @@ private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             }
             return InputResult.handled(SoundType.TOGGLE)
         }
-        AboutItem.LogLevel -> vm.cycleFileLogLevel()
+        AboutItem.LogLevel -> {
+            vm.requestEnumPicker(AboutItem.LogLevel.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         AboutItem.SaveDebugLogging -> {
             vm.setSaveDebugLoggingEnabled(!state.saveDebugLoggingEnabled)
             return InputResult.handled(SoundType.TOGGLE)
@@ -807,9 +813,18 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
                 vm.openAppPickerModal(config.platform.id)
             }
         }
-        PlatformDetailItem.Core -> vm.cycleCoreForPlatform(config, 1)
-        PlatformDetailItem.Extension -> vm.cycleExtensionForPlatform(config, 1)
-        PlatformDetailItem.DisplayTarget -> vm.cycleDisplayTarget(config, 1)
+        PlatformDetailItem.Core -> {
+            vm.requestEnumPicker(PlatformDetailItem.Core.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        PlatformDetailItem.Extension -> {
+            vm.requestEnumPicker(PlatformDetailItem.Extension.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        PlatformDetailItem.DisplayTarget -> {
+            vm.requestEnumPicker(PlatformDetailItem.DisplayTarget.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         PlatformDetailItem.LegacyMode -> vm.toggleLegacyMode(config)
         PlatformDetailItem.LaunchArgs -> vm.openLaunchArgsModal(config.platform.id)
         PlatformDetailItem.BuiltinVideo -> vm.navigateToBuiltinVideoForPlatform(state.platformDetail.platformIndex)

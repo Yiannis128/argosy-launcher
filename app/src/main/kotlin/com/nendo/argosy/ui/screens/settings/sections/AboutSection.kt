@@ -48,6 +48,7 @@ import com.nendo.argosy.ui.screens.settings.dialogs.LicensesDialog
 import com.nendo.argosy.ui.screens.settings.dialogs.SystemizeResultDialog
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.util.LogLevel
 
 internal data class AboutLayoutState(val hasLogPath: Boolean, val hasChangelog: Boolean)
 
@@ -148,6 +149,9 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
 
     fun isFocused(item: AboutItem): Boolean =
         uiState.focusedIndex == aboutLayout.focusIndexOf(item, layoutState)
+
+    fun pickerToken(item: AboutItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
 
     if (showLicensesDialog) {
         LicensesDialog(onDismiss = { showLicensesDialog = false })
@@ -263,7 +267,11 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     title = "Log Level",
                     value = uiState.fileLogLevel.name,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleFileLogLevel() }
+                    onClick = { viewModel.cycleFileLogLevel() },
+                    onPrev = { viewModel.cycleFileLogLevel(-1) },
+                    options = remember { LogLevel.entries.map { it.name } },
+                    onSelect = { viewModel.setFileLogLevel(LogLevel.entries[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 AboutItem.SaveDebugLogging -> SwitchPreference(

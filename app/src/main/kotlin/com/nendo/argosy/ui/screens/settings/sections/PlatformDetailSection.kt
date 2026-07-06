@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import com.nendo.argosy.data.local.entity.getDisplayName
+import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -224,6 +225,9 @@ fun PlatformDetailSection(
     fun isFocused(item: PlatformDetailItem): Boolean =
         uiState.focusedIndex == layout.focusIndexOf(item, visibility)
 
+    fun pickerToken(item: PlatformDetailItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     val modalBlur by animateDpAsState(
         targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker || emulators.updateModal != null || emulators.showLaunchArgsModal || emulators.showAppPickerModal || emulators.showMemcardPicker) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
@@ -275,11 +279,18 @@ fun PlatformDetailSection(
                         activeCoreId != null &&
                         LibretroCoreRegistry.getCoreById(activeCoreId)?.netplaySupport == NetplaySupportLevel.SUPPORTED
 
+                    val currentCoreIndex = config.availableCores
+                        .indexOfFirst { it.id == config.selectedCore }
+                        .takeIf { it >= 0 } ?: 0
                     CyclePreference(
                         title = "Core",
                         value = config.selectedCore ?: "Default",
                         isFocused = isFocused(item),
                         onClick = { viewModel.cycleCoreForPlatform(config, 1) },
+                        onPrev = { viewModel.cycleCoreForPlatform(config, -1) },
+                        options = remember(config.availableCores) { config.availableCores.map { it.id } },
+                        onSelect = { viewModel.cycleCoreForPlatform(config, it - currentCoreIndex) },
+                        pickerRequestToken = pickerToken(item),
                         valueFooter = if (platformHasNetplay) {
                             {
                                 CoreTag(
@@ -296,20 +307,25 @@ fun PlatformDetailSection(
                 }
                 PlatformDetailItem.Extension -> CyclePreference(
                     title = "File Extension",
-                    value = config.selectedExtension ?: "Default",
+                    value = config.extensionOptions
+                        .firstOrNull { it.extension == config.selectedExtension }?.label
+                        ?: config.selectedExtension ?: "Default",
                     isFocused = isFocused(item),
-                    onClick = {
-                        val options = config.extensionOptions
-                        val currentIdx = options.indexOfFirst { it.extension == config.selectedExtension }
-                        val nextIdx = (currentIdx + 1).mod(options.size)
-                        viewModel.changeExtensionForPlatform(config, options[nextIdx].extension)
-                    }
+                    onClick = { viewModel.cycleExtensionForPlatform(config, 1) },
+                    onPrev = { viewModel.cycleExtensionForPlatform(config, -1) },
+                    options = remember(config.extensionOptions) { config.extensionOptions.map { it.label } },
+                    onSelect = { viewModel.changeExtensionForPlatform(config, config.extensionOptions[it].extension) },
+                    pickerRequestToken = pickerToken(item)
                 )
                 PlatformDetailItem.DisplayTarget -> CyclePreference(
                     title = "Display Target",
                     value = config.displayTarget.name,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleDisplayTarget(config, 1) }
+                    onClick = { viewModel.cycleDisplayTarget(config, 1) },
+                    onPrev = { viewModel.cycleDisplayTarget(config, -1) },
+                    options = remember { EmulatorDisplayTarget.entries.map { it.name } },
+                    onSelect = { viewModel.cycleDisplayTarget(config, it - config.displayTarget.ordinal) },
+                    pickerRequestToken = pickerToken(item)
                 )
                 PlatformDetailItem.LegacyMode -> SwitchPreference(
                     title = "Legacy Mode",

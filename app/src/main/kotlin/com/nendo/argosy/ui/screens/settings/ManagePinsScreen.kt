@@ -194,10 +194,6 @@ private fun PinRow(
     isBeingMoved: Boolean,
     onClick: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
-        label = "scale"
-    )
     val alpha by animateFloatAsState(
         targetValue = if (isBeingMoved) 0.7f else 1f,
         label = "alpha"
@@ -218,11 +214,7 @@ private fun PinRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-            }
+            .graphicsLayer { this.alpha = alpha }
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 if (isFocused) focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface)
