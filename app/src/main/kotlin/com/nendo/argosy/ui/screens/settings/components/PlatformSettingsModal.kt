@@ -231,7 +231,7 @@ private fun PathConfigItem(
                     if (onReset != null) {
                         Button(
                             onClick = onReset,
-                            modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs),
+                            modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs).focusProperties { canFocus = false },
                             contentPadding = PaddingValues(horizontal = Dimens.spacingMd, vertical = 0.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (resetFocused) {
@@ -251,7 +251,7 @@ private fun PathConfigItem(
                     }
                     Button(
                         onClick = onChange,
-                        modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs),
+                        modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs).focusProperties { canFocus = false },
                         contentPadding = PaddingValues(horizontal = Dimens.spacingMd, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (changeFocused) {

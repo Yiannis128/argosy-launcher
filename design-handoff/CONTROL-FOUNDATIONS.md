@@ -75,6 +75,9 @@ applied the cut by eye at 40-46px rows before it was written down):
 Supersedes the ui-redesign branch's `cc959405` (0.7 global uiScale) - a global scale shrinks
 type and the anchors too; container metrics are the chosen mechanism.
 
+VERDICT (2026-07-06, on-device): the container-metric density at the default 100 uiScale is
+final - no handheld default-scale multiplier. The parked ~0.85 proposal is dropped.
+
 ## States
 
 One canonical set, reused by every interactive primitive: `neutral / focused / active(selected) /
@@ -264,9 +267,19 @@ you get the dual-focus ghost - a hidden native cursor that travels to a boundary
 - Material components that own focus (`Button`, `Switch`, `AlertDialog`) - they draw and traverse
   native focus. Use the Argosy primitives instead.
 
-Known offenders to migrate, not copy: the root `.focusable()` sink + resume-`requestFocus` hack in
-`ArgosyApp` (the only live offender on `ui-redesign-beta`), the 20 Material `AlertDialog`s, and
-`MainActivity.dispatchKeyEvent`'s `super` fallthrough. (`ControllerColumn` / `ControllerRow` exist
+STATUS (2026-07-06 investigation): the offender list below is RESOLVED. The AlertDialogs are
+gone; no onPreviewKeyEvent exists anywhere; the 28 text fields already implement the
+hidden-slave pattern (requestFocus on index entry, clearFocus on exit; d-pad never reaches a
+field, typing keys do). The root sink is KEPT DELIBERATELY as the parking spot - key delivery
+never depended on it (dispatchKeyEvent intercepts before the view hierarchy). Mapped nav keys
+now consume ACTION_UP too, so native focus search is fully starved, and the last un-neutralized
+Material buttons carry canFocus=false. Remaining known gap: three androidx Dialog-window
+surfaces (Licenses, SystemizeResult, BIOS distribute-result) run in their own windows outside
+the input system - back/touch only, convert to Argosy modals someday.
+
+Historical offender list (kept for context): the root `.focusable()` sink + resume-`requestFocus`
+in `ArgosyApp`, the 20 Material `AlertDialog`s, and `MainActivity.dispatchKeyEvent`'s `super`
+fallthrough. (`ControllerColumn` / `ControllerRow` exist
 only on the old `ui-redesign` branch - do not port them.) If native focus is kept for a11y/IME, it must be a hidden slave mirrored to
 the custom index - never self-navigating. The durable fix is a primitive that owns this wiring so
 menus declare items instead of re-authoring input; until then, this list is the manual guard.
