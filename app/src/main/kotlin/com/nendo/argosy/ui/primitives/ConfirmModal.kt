@@ -92,8 +92,8 @@ fun ArgosyConfirmModal(
                 }
                 ModalActionButton(
                     label = confirmLabel,
-                    tint = if (destructive) ColorTokens.Domain.difficulty else theme.focusAccent,
-                    restLabelColor = if (destructive) ColorTokens.Domain.difficulty else theme.textPrimary,
+                    tint = if (destructive) LocalArgosyTheme.current.destructive else theme.focusAccent,
+                    restLabelColor = if (destructive) LocalArgosyTheme.current.destructive else theme.textPrimary,
                     focused = focusedIndex == confirmIndex,
                     onClick = onConfirm,
                 )

@@ -27,6 +27,9 @@ decision record and the annotation text for that page. Token VALUES live in `tok
   lifts off near-black); LIGHT mode biases toward the raw saturated color (a whitened accent washes
   out on near-white). Same token, biased per mode - applies to fills, outline rims, and focus
   washes, not just the base swatch. The existing variants already lean this way; formalize it.
+  This INCLUDES the destructive red (2026-07-06, on-device): raw `#E53935` labels read harsh at
+  rest on near-black; `theme.destructive` = the token lerped 0.25 toward white in dark, raw in
+  light. All danger coloration resolves through it.
 - No outline-only buttons. Action buttons are always filled (accent = primary, neutral = secondary);
   a hollow outline with no fill is not a button style we use.
 - `accentPrimary` (default cyan `#00ACC1`) + `accentSecondary` (user-pick, default
@@ -300,6 +303,18 @@ Concrete treatments settled while building the control specimen sheet (default +
   live on the `ui-redesign` branch (26 commits, 402 behind beta). Decision: PORT the primitives
   + theme substrate (`LocalArgosyTheme`, `pressScale`, motion tier springs, `clickableNoFocus`
   interactionSource overload) onto beta; redo screen conversions fresh. Do not merge the branch.
+
+## In-game suite vs V2 boards (verified 2026-07-06)
+
+The in-game menu suite is IMPLEMENTED and matches the V2 boards in anatomy (pause menu
+stack + quick-load history affordance, Manage States split view + carousel fallback,
+frame selection, shader chain). Two deviations are ACCEPTED as built, code wins over
+canvas:
+- Cheats is its own screen with CHEATS/DISCOVER tabs, NOT a fourth in-game Settings tab
+  (user-confirmed 2026-07-06; it outgrew the board).
+- Quick Load Timeline is a preview + vertical list split, not the board's horizontal strip.
+Styling note: these surfaces predate the V2 primitives (bespoke MenuButton/SlotCard);
+anatomy is locked, a token-alignment restyle is optional future polish.
 
 ## Open items
 

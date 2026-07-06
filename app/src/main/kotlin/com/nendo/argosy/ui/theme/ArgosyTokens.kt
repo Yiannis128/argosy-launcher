@@ -3,12 +3,14 @@ package com.nendo.argosy.ui.theme
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 
 /** Resolved V2 surface/text ramp; every field is user-theme value falling back to token. */
 data class ArgosyThemeTokens(
     val isDark: Boolean,
     val focusAccent: Color,
+    val destructive: Color,
     val surfaceBase: Color,
     val surfaceRaised: Color,
     val surfaceElevated: Color,
@@ -23,6 +25,7 @@ fun argosyThemeTokens(isDark: Boolean, focusAccent: Color? = null): ArgosyThemeT
     return if (isDark) ArgosyThemeTokens(
         isDark = true,
         focusAccent = focusAccent ?: ColorTokens.Scheme.Dark.primary,
+        destructive = lerp(ColorTokens.Domain.difficulty, Color.White, 0.25f),
         surfaceBase = ColorTokens.Scheme.Dark.surface,
         surfaceRaised = ColorTokens.Scheme.Dark.surfaceVariant,
         surfaceElevated = ColorTokens.Scheme.Dark.surfaceElevated,
@@ -34,6 +37,7 @@ fun argosyThemeTokens(isDark: Boolean, focusAccent: Color? = null): ArgosyThemeT
     ) else ArgosyThemeTokens(
         isDark = false,
         focusAccent = focusAccent ?: ColorTokens.Scheme.Light.primary,
+        destructive = ColorTokens.Domain.difficulty,
         surfaceBase = ColorTokens.Scheme.Light.surface,
         surfaceRaised = ColorTokens.Scheme.Light.surfaceVariant,
         surfaceElevated = ColorTokens.Scheme.Light.surfaceElevated,

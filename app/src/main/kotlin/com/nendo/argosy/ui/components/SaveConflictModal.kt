@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 import java.time.Duration
 import java.time.Instant
@@ -118,7 +119,7 @@ fun SaveConflictModal(
                 onClick = onOverwrite,
                 focused = focusedButton == 1,
                 primary = true,
-                accentColor = ColorTokens.Domain.difficulty,
+                accentColor = LocalArgosyTheme.current.destructive,
                 modifier = Modifier.weight(1f)
             )
         }

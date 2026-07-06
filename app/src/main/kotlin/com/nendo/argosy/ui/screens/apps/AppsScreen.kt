@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalConfiguration
@@ -379,22 +380,22 @@ private fun ContextMenuItem(
     val isDangerous = item == AppContextMenuItem.UNINSTALL
 
     val backgroundColor = when {
-        isFocused && isDangerous -> MaterialTheme.colorScheme.errorContainer
+        isFocused && isDangerous -> LocalArgosyTheme.current.destructive.copy(alpha = 0.15f)
         isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 
     val contentColor = when {
-        isFocused && isDangerous -> MaterialTheme.colorScheme.onErrorContainer
+        isFocused && isDangerous -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
         isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
-        isDangerous -> MaterialTheme.colorScheme.error
+        isDangerous -> LocalArgosyTheme.current.destructive
         else -> MaterialTheme.colorScheme.onSurface
     }
 
     val iconColor = when {
-        isFocused && isDangerous -> MaterialTheme.colorScheme.onErrorContainer
+        isFocused && isDangerous -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
         isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
-        isDangerous -> MaterialTheme.colorScheme.error
+        isDangerous -> LocalArgosyTheme.current.destructive
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 

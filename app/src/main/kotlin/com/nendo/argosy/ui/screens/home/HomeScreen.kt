@@ -139,6 +139,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import kotlinx.coroutines.launch
 
 private const val SCROLL_OFFSET = -25
@@ -1631,13 +1632,13 @@ private fun MenuOption(
     onClick: () -> Unit
 ) {
     val contentColor = when {
-        isDangerous && isFocused -> MaterialTheme.colorScheme.onErrorContainer
-        isDangerous -> MaterialTheme.colorScheme.error
+        isDangerous && isFocused -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
+        isDangerous -> LocalArgosyTheme.current.destructive
         isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = when {
-        isDangerous && isFocused -> MaterialTheme.colorScheme.errorContainer
+        isDangerous && isFocused -> LocalArgosyTheme.current.destructive.copy(alpha = 0.15f)
         isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }

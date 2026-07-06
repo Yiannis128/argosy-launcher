@@ -67,7 +67,7 @@ import com.nendo.argosy.ui.theme.generated.ColorTokens
 
 @Composable
 private fun preferenceAccent(isDangerous: Boolean = false): Color =
-    if (isDangerous) ColorTokens.Domain.difficulty else LocalArgosyTheme.current.focusAccent
+    if (isDangerous) LocalArgosyTheme.current.destructive else LocalArgosyTheme.current.focusAccent
 
 @Composable
 internal fun preferenceModifier(
@@ -102,7 +102,7 @@ internal fun preferenceModifier(
 @Composable
 internal fun preferenceContentColor(isFocused: Boolean, isDangerous: Boolean = false): Color {
     return when {
-        isDangerous -> ColorTokens.Domain.difficulty
+        isDangerous -> LocalArgosyTheme.current.destructive
         isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }

@@ -107,6 +107,7 @@ import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.components.GameCard
 import com.nendo.argosy.ui.components.SourceBadge
 import com.nendo.argosy.ui.screens.home.HomeGameUi
@@ -1569,13 +1570,13 @@ private fun QuickMenuItem(
     onClick: () -> Unit
 ) {
     val contentColor = when {
-        isDangerous && isFocused -> MaterialTheme.colorScheme.onErrorContainer
-        isDangerous -> MaterialTheme.colorScheme.error
+        isDangerous && isFocused -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
+        isDangerous -> LocalArgosyTheme.current.destructive
         isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = when {
-        isDangerous && isFocused -> MaterialTheme.colorScheme.errorContainer
+        isDangerous && isFocused -> LocalArgosyTheme.current.destructive.copy(alpha = 0.15f)
         isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }

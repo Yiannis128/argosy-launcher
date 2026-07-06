@@ -326,8 +326,8 @@ private fun DownloadItem(
         isExtracting -> Icons.Filled.FolderZip to workingColor
         isActiveDownload -> Icons.Default.Download to theme.focusAccent
         download.state == DownloadState.PAUSED -> Icons.Default.Pause to theme.textMute
-        download.state == DownloadState.WAITING_FOR_STORAGE -> Icons.Default.Warning to ColorTokens.Domain.difficulty
-        download.state == DownloadState.FAILED -> Icons.Default.Error to ColorTokens.Domain.difficulty
+        download.state == DownloadState.WAITING_FOR_STORAGE -> Icons.Default.Warning to LocalArgosyTheme.current.destructive
+        download.state == DownloadState.FAILED -> Icons.Default.Error to LocalArgosyTheme.current.destructive
         else -> Icons.Default.Schedule to theme.textMute
     }
 
@@ -385,14 +385,14 @@ private fun DownloadItem(
                 download.state == DownloadState.WAITING_FOR_STORAGE -> Text(
                     text = "Need ${formatBytes(download.totalBytes - download.bytesDownloaded)}, Available ${formatBytes(availableStorage)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = ColorTokens.Domain.difficulty,
+                    color = LocalArgosyTheme.current.destructive,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 download.state == DownloadState.FAILED -> Text(
                     text = download.errorReason ?: "Download failed",
                     style = MaterialTheme.typography.bodySmall,
-                    color = ColorTokens.Domain.difficulty,
+                    color = LocalArgosyTheme.current.destructive,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -423,7 +423,7 @@ private fun CompletedDownloadItem(
     val theme = LocalArgosyTheme.current
     val (icon, iconColor) = when (download.state) {
         DownloadState.COMPLETED -> Icons.Default.CheckCircle to theme.focusAccent
-        DownloadState.FAILED -> Icons.Default.Error to ColorTokens.Domain.difficulty
+        DownloadState.FAILED -> Icons.Default.Error to LocalArgosyTheme.current.destructive
         else -> Icons.Default.CheckCircle to theme.textMute
     }
 
@@ -439,7 +439,7 @@ private fun CompletedDownloadItem(
                 download.state == DownloadState.FAILED -> Text(
                     text = download.errorReason ?: "Download failed",
                     style = MaterialTheme.typography.bodySmall,
-                    color = ColorTokens.Domain.difficulty,
+                    color = LocalArgosyTheme.current.destructive,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
