@@ -23,6 +23,7 @@ import com.nendo.argosy.data.social.NetplaySession
 import com.nendo.argosy.data.social.PresenceStatus
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
+import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
 import com.nendo.argosy.libretro.LibretroActivity
 import com.nendo.argosy.core.notification.NotificationDuration
@@ -97,6 +98,7 @@ enum class DrawerTab { NAVIGATION, FRIENDS }
 sealed class DrawerModal {
     data object None : DrawerModal()
     data object FriendsOptions : DrawerModal()
+    data class FriendOptions(val friendId: String) : DrawerModal()
     data object FriendCode : DrawerModal()
     data object AddFriend : DrawerModal()
 }
@@ -105,6 +107,7 @@ data class DrawerState(
     val rommConnected: Boolean = false,
     val rommConnecting: Boolean = false,
     val socialConnected: Boolean = false,
+    val localUser: SocialUser? = null,
     val downloadCount: Int = 0,
     val saveSyncAttentionCount: Int = 0,
     val emulatorUpdatesAvailable: Int = 0,
@@ -495,6 +498,7 @@ class ArgosyViewModel @Inject constructor(
             rommConnected = connection is ConnectionState.Connected,
             rommConnecting = connection is ConnectionState.Connecting,
             socialConnected = socialConnection is SocialConnectionState.Connected,
+            localUser = (socialConnection as? SocialConnectionState.Connected)?.user,
             downloadCount = downloadCount,
             saveSyncAttentionCount = saveSyncAttentionCount,
             emulatorUpdatesAvailable = emulatorUpdateCount,
@@ -590,6 +594,10 @@ class ArgosyViewModel @Inject constructor(
 
     fun showFriendsOptionsModal() {
         _drawerModal.value = DrawerModal.FriendsOptions
+    }
+
+    fun showFriendOptionsModal(friendId: String) {
+        _drawerModal.value = DrawerModal.FriendOptions(friendId)
     }
 
     fun showFriendCodeModal() {
@@ -705,7 +713,12 @@ class ArgosyViewModel @Inject constructor(
 
         override fun onContextMenu(): InputResult {
             if (_drawerTab.value == DrawerTab.FRIENDS) {
-                showFriendsOptionsModal()
+                val friend = drawerUiState.value.friends.getOrNull(_friendsFocusIndex.value)
+                if (friend != null) {
+                    showFriendOptionsModal(friend.id)
+                } else {
+                    showFriendsOptionsModal()
+                }
                 return InputResult.HANDLED
             }
             return InputResult.UNHANDLED

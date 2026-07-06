@@ -998,6 +998,12 @@ fun ArgosyApp(
                             viewModel.setDrawerOpen(false)
                             scope.launch { drawerState.close() }
                             viewModel.joinFriendNetplaySession(friend)
+                        },
+                        onSelectTab = { tab ->
+                            when (tab) {
+                                DrawerTab.NAVIGATION -> viewModel.switchToNavTab()
+                                DrawerTab.FRIENDS -> viewModel.switchToFriendsTab()
+                            }
                         }
                     )
                 }
