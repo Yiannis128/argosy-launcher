@@ -402,6 +402,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             primaryColor = prefs.primaryColor,
             secondaryColor = prefs.secondaryColor,
             surfaceTintBleed = prefs.surfaceTintBleed,
+            displayFontName = prefs.displayFontName,
+            bodyFontName = prefs.bodyFontName,
             gridDensity = prefs.gridDensity,
             backgroundBlur = prefs.backgroundBlur,
             backgroundSaturation = prefs.backgroundSaturation,

@@ -24,9 +24,14 @@ import com.nendo.argosy.ui.screens.settings.sections.InterfaceItem
 import com.nendo.argosy.ui.screens.settings.sections.InterfaceLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.MainSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.StorageItem
+import com.nendo.argosy.data.preferences.FontSlot
+import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsLayoutState
+import com.nendo.argosy.ui.screens.settings.sections.themeFontsItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeFontsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeFocusIndexOf
 import com.nendo.argosy.ui.screens.settings.sections.themeItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeMaxFocusIndex
@@ -200,6 +205,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
         SettingsSection.STORAGE -> routeStorageConfirm(vm, state)
         SettingsSection.THEME -> routeThemeConfirm(vm, state)
         SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
+        SettingsSection.THEME_FONTS -> routeThemeFontsConfirm(vm, state)
         SettingsSection.INTERFACE -> routeInterfaceConfirm(vm, state)
         SettingsSection.HOME_SCREEN -> routeHomeScreenConfirm(vm, state)
         SettingsSection.BOX_ART -> routeBoxArtConfirm(vm, state)
@@ -353,6 +359,7 @@ private fun routeThemeConfirm(vm: SettingsViewModel, state: SettingsUiState): In
         }
         ThemeItem.TintBleed -> vm.cycleSurfaceTintBleed()
         ThemeItem.BoxArt -> vm.navigateToBoxArt()
+        ThemeItem.Fonts -> vm.navigateToThemeFonts()
         ThemeItem.Sounds -> vm.navigateToThemeSounds()
         else -> {}
     }
@@ -373,6 +380,24 @@ private fun routeThemeSoundsConfirm(vm: SettingsViewModel, state: SettingsUiStat
         }
         ThemeSoundsItem.UiSoundsVolume -> vm.cycleSoundVolume()
         is ThemeSoundsItem.SoundTypeItem -> vm.showSoundPicker(item.soundType)
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeThemeFontsConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val layoutState = ThemeFontsLayoutState.from(state)
+    when (themeFontsItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        ThemeFontsItem.DisplaySlot -> {
+            vm.openFontPicker(FontSlot.DISPLAY)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeFontsItem.DisplayRevert -> vm.revertFont(FontSlot.DISPLAY)
+        ThemeFontsItem.BodySlot -> {
+            vm.openFontPicker(FontSlot.BODY)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeFontsItem.BodyRevert -> vm.revertFont(FontSlot.BODY)
         else -> {}
     }
     return InputResult.HANDLED
@@ -671,6 +696,10 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             val focusIdx = themeFocusIndexOf(ThemeItem.Sounds)
             vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
         }
+        state.currentSection == SettingsSection.THEME_FONTS -> {
+            val focusIdx = themeFocusIndexOf(ThemeItem.Fonts)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
         state.currentSection == SettingsSection.AMBIENT_LED -> {
             val layoutState = InterfaceLayoutState.from(state)
             val focusIdx = interfaceFocusIndexOf(InterfaceItem.AmbientLedSettings, layoutState)
@@ -820,6 +849,7 @@ private fun computeMaxFocusIndex(
     ).let { it.layout.maxFocusIndex(it.state) }
     SettingsSection.THEME -> themeMaxFocusIndex()
     SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))
+    SettingsSection.THEME_FONTS -> themeFontsMaxFocusIndex(ThemeFontsLayoutState.from(state))
     SettingsSection.INTERFACE -> interfaceMaxFocusIndex(InterfaceLayoutState.from(state))
     SettingsSection.HOME_SCREEN -> homeScreenMaxFocusIndex(state.display)
     SettingsSection.BOX_ART -> boxArtMaxFocusIndex(state.display)

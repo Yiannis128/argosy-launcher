@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +43,7 @@ internal sealed class ThemeItem(val key: String, val section: String) {
     data object TintBleed : ThemeItem("tintBleed", "appearance")
 
     data object BoxArt : ThemeItem("boxArt", "identity")
+    data object Fonts : ThemeItem("fonts", "identity")
     data object Sounds : ThemeItem("sounds", "identity")
 
     companion object {
@@ -53,7 +55,7 @@ internal sealed class ThemeItem(val key: String, val section: String) {
             AppearanceHeader,
             Mode, AccentColor, SecondaryColor, TintBleed,
             IdentitySpacer, IdentityHeader,
-            BoxArt, Sounds
+            BoxArt, Fonts, Sounds
         )
     }
 }
@@ -170,6 +172,14 @@ fun ThemeSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 onClick = { viewModel.navigateToBoxArt() }
             )
 
+            ThemeItem.Fonts -> NavigationPreference(
+                icon = Icons.Outlined.TextFields,
+                title = "Fonts",
+                subtitle = fontsSubtitle(display.displayFontName, display.bodyFontName),
+                isFocused = isFocused(item),
+                onClick = { viewModel.navigateToThemeFonts() }
+            )
+
             ThemeItem.Sounds -> NavigationPreference(
                 icon = Icons.Outlined.MusicNote,
                 title = "Sounds",
@@ -179,6 +189,11 @@ fun ThemeSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             )
         }
     }
+}
+
+private fun fontsSubtitle(displayFont: String?, bodyFont: String?): String = when {
+    displayFont == null && bodyFont == null -> "Default"
+    else -> listOf(displayFont ?: "Default", bodyFont ?: "Default").distinct().joinToString(" / ")
 }
 
 @Composable

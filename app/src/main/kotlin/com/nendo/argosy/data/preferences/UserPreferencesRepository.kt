@@ -58,6 +58,10 @@ class UserPreferencesRepository @Inject constructor(
             secondaryColor = display.secondaryColor,
             tertiaryColor = display.tertiaryColor,
             surfaceTintBleed = display.surfaceTintBleed,
+            displayFontPath = display.displayFontPath,
+            displayFontName = display.displayFontName,
+            bodyFontPath = display.bodyFontPath,
+            bodyFontName = display.bodyFontName,
             hapticEnabled = controls.hapticEnabled,
             soundEnabled = controls.soundEnabled,
             soundVolume = controls.soundVolume,
@@ -179,6 +183,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setCustomColors(primary: Int?, secondary: Int?, tertiary: Int?) = displayPrefs.setCustomColors(primary, secondary, tertiary)
     suspend fun setSecondaryColor(color: Int?) = displayPrefs.setSecondaryColor(color)
     suspend fun setSurfaceTintBleed(bleed: Int) = displayPrefs.setSurfaceTintBleed(bleed)
+    suspend fun setCustomFont(slot: FontSlot, path: String?, name: String?) = displayPrefs.setCustomFont(slot, path, name)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
     suspend fun setUiScale(scale: Int) = displayPrefs.setUiScale(scale)
     suspend fun setBackgroundBlur(blur: Int) = displayPrefs.setBackgroundBlur(blur)
@@ -513,6 +518,10 @@ data class UserPreferences(
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
     val surfaceTintBleed: Int = 0,
+    val displayFontPath: String? = null,
+    val displayFontName: String? = null,
+    val bodyFontPath: String? = null,
+    val bodyFontName: String? = null,
     val hapticEnabled: Boolean = true,
     val soundEnabled: Boolean = false,
     val soundVolume: Int = 40,

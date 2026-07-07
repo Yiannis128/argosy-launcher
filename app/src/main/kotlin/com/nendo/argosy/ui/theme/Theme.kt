@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -298,12 +299,14 @@ fun ALauncherTheme(
     content: @Composable () -> Unit
 ) {
     val themeState by viewModel.themeState.collectAsState()
+    val customFonts by viewModel.customFonts.collectAsState()
     val palette = rememberArgosyPalette(themeState)
+    val typography = remember(customFonts) { argosyTypography(customFonts) }
 
     ProvideArgosyThemeLocals(themeState = themeState, palette = palette) {
         MaterialTheme(
             colorScheme = argosyColorScheme(palette),
-            typography = Typography,
+            typography = typography,
             content = content
         )
     }

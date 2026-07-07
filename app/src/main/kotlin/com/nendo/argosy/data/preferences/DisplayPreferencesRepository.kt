@@ -21,6 +21,10 @@ data class DisplayPreferences(
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
     val surfaceTintBleed: Int = 0,
+    val displayFontPath: String? = null,
+    val displayFontName: String? = null,
+    val bodyFontPath: String? = null,
+    val bodyFontName: String? = null,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val uiScale: Int = 100,
     val backgroundBlur: Int = 0,
@@ -79,6 +83,10 @@ class DisplayPreferencesRepository @Inject constructor(
         val SECONDARY_COLOR = intPreferencesKey("secondary_color")
         val TERTIARY_COLOR = intPreferencesKey("tertiary_color")
         val SURFACE_TINT_BLEED = intPreferencesKey("surface_tint_bleed")
+        val FONT_DISPLAY_PATH = stringPreferencesKey("font_display_path")
+        val FONT_DISPLAY_NAME = stringPreferencesKey("font_display_name")
+        val FONT_BODY_PATH = stringPreferencesKey("font_body_path")
+        val FONT_BODY_NAME = stringPreferencesKey("font_body_name")
         val UI_DENSITY = stringPreferencesKey("ui_density")
         val UI_SCALE = intPreferencesKey("ui_scale")
         val BACKGROUND_BLUR = intPreferencesKey("background_blur")
@@ -134,6 +142,10 @@ class DisplayPreferencesRepository @Inject constructor(
             secondaryColor = prefs[Keys.SECONDARY_COLOR],
             tertiaryColor = prefs[Keys.TERTIARY_COLOR],
             surfaceTintBleed = prefs[Keys.SURFACE_TINT_BLEED] ?: 0,
+            displayFontPath = prefs[Keys.FONT_DISPLAY_PATH],
+            displayFontName = prefs[Keys.FONT_DISPLAY_NAME],
+            bodyFontPath = prefs[Keys.FONT_BODY_PATH],
+            bodyFontName = prefs[Keys.FONT_BODY_NAME],
             gridDensity = GridDensity.fromString(prefs[Keys.UI_DENSITY]),
             uiScale = prefs[Keys.UI_SCALE] ?: 100,
             backgroundBlur = prefs[Keys.BACKGROUND_BLUR] ?: 40,
@@ -209,6 +221,17 @@ class DisplayPreferencesRepository @Inject constructor(
 
     suspend fun setSurfaceTintBleed(bleed: Int) {
         dataStore.edit { it[Keys.SURFACE_TINT_BLEED] = bleed.coerceIn(0, 100) }
+    }
+
+    suspend fun setCustomFont(slot: FontSlot, path: String?, name: String?) {
+        val (pathKey, nameKey) = when (slot) {
+            FontSlot.DISPLAY -> Keys.FONT_DISPLAY_PATH to Keys.FONT_DISPLAY_NAME
+            FontSlot.BODY -> Keys.FONT_BODY_PATH to Keys.FONT_BODY_NAME
+        }
+        dataStore.edit { prefs ->
+            if (path != null) prefs[pathKey] = path else prefs.remove(pathKey)
+            if (name != null) prefs[nameKey] = name else prefs.remove(nameKey)
+        }
     }
 
     suspend fun setGridDensity(density: GridDensity) {

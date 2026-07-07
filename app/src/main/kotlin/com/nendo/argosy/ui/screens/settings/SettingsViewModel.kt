@@ -13,7 +13,9 @@ import com.nendo.argosy.data.repository.CoreOptionsRepository
 import com.nendo.argosy.data.repository.EmulatorConfigRepository
 import com.nendo.argosy.data.repository.LibretroSettingsRepository
 import com.nendo.argosy.data.repository.PlatformRepository
+import android.net.Uri
 import com.nendo.argosy.data.local.dao.SaveCacheDao
+import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.github.UpdateRepository
@@ -169,6 +171,9 @@ class SettingsViewModel @Inject constructor(
     val openImageCachePickerEvent: SharedFlow<Unit> = syncDelegate.openImageCachePickerEvent
     val launchBiosFolderPicker: SharedFlow<Unit> = biosDelegate.launchFolderPicker
     val launchGpuDriverFilePicker: SharedFlow<Unit> = biosDelegate.launchGpuDriverFilePicker
+
+    internal val _openFontPickerEvent = MutableSharedFlow<FontSlot>()
+    val openFontPickerEvent: SharedFlow<FontSlot> = _openFontPickerEvent.asSharedFlow()
 
     internal val _openLogFolderPickerEvent = MutableSharedFlow<Unit>()
     val openLogFolderPickerEvent: SharedFlow<Unit> = _openLogFolderPickerEvent.asSharedFlow()
@@ -737,6 +742,22 @@ class SettingsViewModel @Inject constructor(
     fun navigateToHomeScreen() = routeNavigateToHomeScreen(this)
     fun navigateToAmbientLed() = routeNavigateToAmbientLed(this)
     fun navigateToThemeSounds() = routeNavigateToThemeSounds(this)
+    fun navigateToThemeFonts() = routeNavigateToThemeFonts(this)
+
+    fun openFontPicker(slot: FontSlot) {
+        viewModelScope.launch { _openFontPickerEvent.emit(slot) }
+    }
+
+    fun importFont(slot: FontSlot, uri: Uri) = routeImportFont(this, slot, uri)
+    fun revertFont(slot: FontSlot) = routeRevertFont(this, slot)
+
+    internal fun updateFontNameState(slot: FontSlot, name: String?) {
+        val display = _uiState.value.display
+        displayDelegate.updateState(when (slot) {
+            FontSlot.DISPLAY -> display.copy(displayFontName = name)
+            FontSlot.BODY -> display.copy(bodyFontName = name)
+        })
+    }
 
     fun cycleBoxArtShape(direction: Int = 1) = displayDelegate.cycleBoxArtShape(viewModelScope, direction)
     fun cycleBoxArtCornerRadius(direction: Int = 1) = displayDelegate.cycleBoxArtCornerRadius(viewModelScope, direction)

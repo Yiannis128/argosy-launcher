@@ -88,6 +88,8 @@ import com.nendo.argosy.ui.screens.settings.sections.SocialSection
 import com.nendo.argosy.ui.screens.settings.sections.SteamSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
+import com.nendo.argosy.data.preferences.FontSlot
+import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsSection
 import com.nendo.argosy.ui.screens.settings.sections.formatFileSize
@@ -153,6 +155,24 @@ fun SettingsScreen(
                 // Ignore if permission can't be persisted
             }
             viewModel.setAmbientAudioUri(it.toString())
+        }
+    }
+
+    var pendingFontSlot by remember { mutableStateOf<FontSlot?>(null) }
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        val slot = pendingFontSlot
+        pendingFontSlot = null
+        if (uri != null && slot != null) {
+            viewModel.importFont(slot, uri)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.openFontPickerEvent.collect { slot ->
+            pendingFontSlot = slot
+            fontPickerLauncher.launch(FONT_PICKER_MIME_TYPES)
         }
     }
 
@@ -430,6 +450,7 @@ fun SettingsScreen(
                         SettingsSection.STORAGE -> "STORAGE"
                         SettingsSection.THEME -> "THEME"
                         SettingsSection.THEME_SOUNDS -> "SOUNDS"
+                        SettingsSection.THEME_FONTS -> "FONTS"
                         SettingsSection.INTERFACE -> "INTERFACE"
                         SettingsSection.BOX_ART -> "BOX ART"
                         SettingsSection.HOME_SCREEN -> "HOME SCREEN"
@@ -492,6 +513,7 @@ fun SettingsScreen(
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
                     SettingsSection.THEME -> ThemeSection(uiState, viewModel)
                     SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
+                    SettingsSection.THEME_FONTS -> ThemeFontsSection(uiState, viewModel)
                     SettingsSection.INTERFACE -> InterfaceSection(uiState, viewModel)
                     SettingsSection.BOX_ART -> BoxArtSection(uiState, viewModel)
                     SettingsSection.HOME_SCREEN -> HomeScreenSection(uiState, viewModel)
