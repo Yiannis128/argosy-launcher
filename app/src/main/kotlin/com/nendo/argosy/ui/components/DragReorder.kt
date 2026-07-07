@@ -35,11 +35,19 @@ class DragReorderState internal constructor(
 ) {
     var draggingKey by mutableStateOf<Any?>(null)
         private set
-    var dragDelta by mutableFloatStateOf(0f)
-        private set
 
+    private var liftedTop = 0f
+    private var totalDrag by mutableFloatStateOf(0f)
+    private var expectedIndex = -1
     private var autoscrollJob: Job? = null
     private var autoscrollSpeed = 0f
+
+    /** Viewport-relative translation pinning the dragged item to the pointer; 0 for other keys. */
+    fun itemTranslation(key: Any): Float {
+        if (draggingKey != key) return 0f
+        val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key } ?: return 0f
+        return liftedTop + totalDrag - item.offset
+    }
 
     internal fun startDrag(position: Offset) {
         val item = listState.layoutInfo.visibleItemsInfo.firstOrNull {
@@ -47,13 +55,15 @@ class DragReorderState internal constructor(
         } ?: return
         if (!canDrag(item.key)) return
         draggingKey = item.key
-        dragDelta = 0f
+        liftedTop = item.offset.toFloat()
+        totalDrag = 0f
+        expectedIndex = item.index
         onLift(item.key)
     }
 
     internal fun drag(deltaY: Float) {
         if (draggingKey == null) return
-        dragDelta += deltaY
+        totalDrag += deltaY
         resolveMove()
         updateAutoscroll()
     }
@@ -63,7 +73,7 @@ class DragReorderState internal constructor(
         autoscrollJob = null
         if (draggingKey == null) return
         draggingKey = null
-        dragDelta = 0f
+        totalDrag = 0f
         onDrop()
     }
 
@@ -74,12 +84,13 @@ class DragReorderState internal constructor(
     private fun resolveMove() {
         val key = draggingKey ?: return
         val item = draggedItem() ?: return
-        val draggedCenter = item.offset + dragDelta + item.size / 2f
+        val draggedCenter = liftedTop + totalDrag + item.size / 2f
         val target = listState.layoutInfo.visibleItemsInfo.firstOrNull {
             it.key != key && canDrag(it.key) &&
                 draggedCenter >= it.offset && draggedCenter < it.offset + it.size
         } ?: return
-        dragDelta += item.offset - target.offset
+        if (target.index == expectedIndex) return
+        expectedIndex = target.index
         onMove(key, target.index)
     }
 
@@ -87,7 +98,7 @@ class DragReorderState internal constructor(
         val item = draggedItem() ?: return
         val info = listState.layoutInfo
         val edge = item.size * 0.75f
-        val top = item.offset + dragDelta
+        val top = liftedTop + totalDrag
         val bottom = top + item.size
         autoscrollSpeed = when {
             top < info.viewportStartOffset + edge -> -(info.viewportStartOffset + edge - top) / edge * MAX_SCROLL_STEP
@@ -104,7 +115,6 @@ class DragReorderState internal constructor(
             while (isActive && draggingKey != null && autoscrollSpeed != 0f) {
                 val consumed = listState.scrollBy(autoscrollSpeed)
                 if (consumed == 0f) break
-                dragDelta += consumed
                 resolveMove()
                 delay(FRAME_MILLIS)
             }
@@ -161,7 +171,7 @@ fun Modifier.dragReorderItem(state: DragReorderState, key: Any): Modifier =
     if (state.draggingKey == key) {
         this
             .zIndex(1f)
-            .graphicsLayer { translationY = state.dragDelta }
+            .graphicsLayer { translationY = state.itemTranslation(key) }
     } else {
         this
     }

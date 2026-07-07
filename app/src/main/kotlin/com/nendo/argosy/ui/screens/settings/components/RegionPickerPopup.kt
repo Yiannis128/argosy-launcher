@@ -71,10 +71,12 @@ fun RegionPickerPopup(
         onDrop = onDrop
     )
 
-    FocusedScroll(
-        listState = listState,
-        focusedIndex = focusIndex
-    )
+    if (dragState.draggingKey == null) {
+        FocusedScroll(
+            listState = listState,
+            focusedIndex = focusIndex
+        )
+    }
 
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
@@ -121,6 +123,7 @@ fun RegionPickerPopup(
             ) {
                 itemsIndexed(regions, key = { _, region -> region }) { index, region ->
                     val rank = if (orderingEnabled) enabledRegions.indexOf(region) else -1
+                    val touchDragActive = dragState.draggingKey != null
                     RegionPickerItem(
                         name = region,
                         rank = rank,
@@ -129,7 +132,7 @@ fun RegionPickerPopup(
                         isSelected = region in enabledRegions,
                         isHeld = heldRegion == region,
                         dragState = dragState,
-                        modifier = if (dragState.draggingKey == region) Modifier else Modifier.animateItem(),
+                        modifier = if (touchDragActive && dragState.draggingKey != region) Modifier.animateItem() else Modifier,
                         onClick = { if (heldRegion == null) onToggle(region) }
                     )
                 }
@@ -138,10 +141,11 @@ fun RegionPickerPopup(
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
             FooterHints(
+                forced = heldRegion != null,
                 hints = if (heldRegion != null) {
                     listOf(
                         InputButton.DPAD_VERTICAL to "Move",
-                        InputButton.A to "Drop",
+                        InputButton.A to "Accept",
                         InputButton.B to "Cancel"
                     )
                 } else if (orderingEnabled) {

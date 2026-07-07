@@ -344,7 +344,8 @@ fun FooterBarWithState(
     hints: List<FooterHintItem>,
     modifier: Modifier = Modifier,
     onHintClick: ((InputButton) -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null
+    trailingContent: @Composable (() -> Unit)? = null,
+    forceVisible: Boolean = false
 ) {
     val footerStyle = LocalFooterStyle.current
     val backgroundColor = if (footerStyle.useAccentColor) {
@@ -353,7 +354,7 @@ fun FooterBarWithState(
         MaterialTheme.colorScheme.surfaceVariant
     }
 
-    val quiet = hints.all { isObviousHint(it.button, it.action) }
+    val quiet = !forceVisible && hints.all { isObviousHint(it.button, it.action) }
     var displayHints by remember { mutableStateOf(hints) }
     if (!quiet) displayHints = hints
     val collapseProgress = footerCollapseProgress(quiet)
