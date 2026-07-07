@@ -679,6 +679,8 @@ data class SyncSettingsState(
     val syncFiltersModalFocusIndex: Int = 0,
     val showRegionPicker: Boolean = false,
     val regionPickerFocusIndex: Int = 0,
+    val regionPickerHeldRegion: String? = null,
+    val regionPickerOrderBackup: List<String>? = null,
     val showPlatformFiltersModal: Boolean = false,
     val platformFiltersModalFocusIndex: Int = 0,
     val platformFiltersList: List<PlatformFilterItem> = emptyList(),

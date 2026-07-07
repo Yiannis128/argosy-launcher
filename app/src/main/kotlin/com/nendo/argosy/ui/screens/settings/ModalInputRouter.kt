@@ -214,6 +214,7 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             InputMethod.DOWN -> { viewModel.moveRegionPickerFocus(1); InputResult.HANDLED }
             InputMethod.CONFIRM -> { viewModel.confirmRegionPickerSelection(); InputResult.handled(SoundType.TOGGLE) }
             InputMethod.BACK -> { viewModel.dismissRegionPicker(); InputResult.HANDLED }
+            InputMethod.CONTEXT_MENU -> { viewModel.liftRegion(); InputResult.HANDLED }
             else -> InputResult.HANDLED
         }
     }

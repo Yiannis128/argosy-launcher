@@ -110,6 +110,9 @@ data class RomMRom(
             sibling.fileNameNoExt.contains(DISC_TAG_REGEX)
         })
 
+    val hasNonDiscSiblings: Boolean
+        get() = effectiveSiblings.any { !it.isDiscVariant }
+
     companion object {
         private val DISC_TAG_REGEX = Regex("Disc \\d+", RegexOption.IGNORE_CASE)
         private val DISC_NUMBER_REGEX = Regex("\\d+")

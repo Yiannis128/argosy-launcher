@@ -142,7 +142,7 @@ class SyncPreferencesRepository @Inject constructor(
                 enabledRegions = prefs[Keys.SYNC_FILTER_REGIONS]
                     ?.split(",")
                     ?.filter { it.isNotBlank() }
-                    ?.toSet()
+                    ?.distinct()
                     ?: SyncFilterPreferences.DEFAULT_REGIONS,
                 regionMode = prefs[Keys.SYNC_FILTER_REGION_MODE]
                     ?.let { RegionFilterMode.valueOf(it) }
@@ -263,7 +263,7 @@ class SyncPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.LAST_FAVORITES_CHECK] = time.toString() }
     }
 
-    suspend fun setSyncFilterRegions(regions: Set<String>) {
+    suspend fun setSyncFilterRegions(regions: List<String>) {
         dataStore.edit { it[Keys.SYNC_FILTER_REGIONS] = regions.joinToString(",") }
     }
 

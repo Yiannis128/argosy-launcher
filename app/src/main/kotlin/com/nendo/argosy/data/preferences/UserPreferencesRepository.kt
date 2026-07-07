@@ -237,7 +237,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setLastRommSyncTime(time: Instant) = syncPrefs.setLastRommSyncTime(time)
     suspend fun setLastFavoritesSyncTime(time: Instant) = syncPrefs.setLastFavoritesSyncTime(time)
     suspend fun setLastFavoritesCheckTime(time: Instant) = syncPrefs.setLastFavoritesCheckTime(time)
-    suspend fun setSyncFilterRegions(regions: Set<String>) = syncPrefs.setSyncFilterRegions(regions)
+    suspend fun setSyncFilterRegions(regions: List<String>) = syncPrefs.setSyncFilterRegions(regions)
     suspend fun setSyncFilterRegionMode(mode: RegionFilterMode) = syncPrefs.setSyncFilterRegionMode(mode)
     suspend fun setSyncFilterExcludeBeta(exclude: Boolean) = syncPrefs.setSyncFilterExcludeBeta(exclude)
     suspend fun setSyncFilterExcludePrototype(exclude: Boolean) = syncPrefs.setSyncFilterExcludePrototype(exclude)

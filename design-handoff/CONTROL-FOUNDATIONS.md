@@ -166,6 +166,31 @@ Each mode has a deliberately distinct silhouette - no two readable as the same t
 - Slider knob is flush with the track (no Material lollipop). Knob distinguishes it from a
   progress bar; continuous fill distinguishes it from a stepper.
 
+### List reorder (sortable list)
+
+THE idiom for ordering items in a vertical list (first use: region priority picker).
+One lift/move/drop state machine drives both modalities; the lifted item is the same
+object either way.
+
+| Phase | Controller | Touch |
+|---|---|---|
+| Lift | X on focused sortable row | long-press row (haptic) |
+| Move | d-pad up/down, one slot per press | drag; list autoscrolls at viewport edges |
+| Drop (commit) | A | release |
+| Cancel (revert) | B | - (release commits) |
+
+- A keeps its meaning: commit. X lifts because A on these rows already toggles.
+- Lifted row: accent fill + thin accent border, translates with the finger (touch) or slot
+  (controller); displaced rows animate out of the way. No scale, no shadow theatrics.
+- Rank is shown as a number on each sortable row (position = rank); rows that cannot be
+  sorted (disabled block, ordering mode off) show no number and refuse the lift.
+- Footer while held: `dpad Move / A Drop / B Cancel`. Idle: X earns its hint (non-obvious).
+- Back/B while held cancels the hold FIRST; the surface closes on the next press.
+- Reorder within one contiguous block only - drag/move clamps at the block boundary.
+- Implementation: `ui/components/DragReorder.kt` (`rememberDragReorderState`,
+  `Modifier.dragReorderContainer`, `Modifier.dragReorderItem`); grid reorder (ManagePins)
+  and shoulder-nudge (shader stack) predate this idiom and stay as-is.
+
 ## Interaction principles
 
 - A/Confirm means enter / commit / toggle - NEVER adjust. Sliders, steppers, and inline enums
