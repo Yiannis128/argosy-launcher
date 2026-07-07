@@ -709,6 +709,8 @@ class SettingsViewModel @Inject constructor(
     fun setSecondaryColor(color: Int?) = displayDelegate.setSecondaryColor(viewModelScope, color)
     fun adjustSecondaryHue(delta: Float) = displayDelegate.adjustSecondaryHue(viewModelScope, delta)
     fun resetToDefaultSecondaryColor() = displayDelegate.resetToDefaultSecondaryColor(viewModelScope)
+    fun adjustSurfaceTintBleed(delta: Int) = displayDelegate.adjustSurfaceTintBleed(viewModelScope, delta)
+    fun cycleSurfaceTintBleed() = displayDelegate.cycleSurfaceTintBleed(viewModelScope)
     fun setGridDensity(density: GridDensity) = displayDelegate.setGridDensity(viewModelScope, density)
 
     fun cycleGridDensity(direction: Int = 1) = routeCycleGridDensity(this, direction)

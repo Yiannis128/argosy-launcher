@@ -158,6 +158,27 @@ class DisplaySettingsDelegate @Inject constructor(
         setSecondaryColor(scope, null)
     }
 
+    fun setSurfaceTintBleed(scope: CoroutineScope, bleed: Int) {
+        val clamped = bleed.coerceIn(0, 100)
+        scope.launch {
+            preferencesRepository.setSurfaceTintBleed(clamped)
+            _state.update { it.copy(surfaceTintBleed = clamped) }
+        }
+    }
+
+    fun adjustSurfaceTintBleed(scope: CoroutineScope, delta: Int) {
+        val current = _state.value.surfaceTintBleed
+        val newValue = (current + delta).coerceIn(0, 100)
+        if (newValue != current) {
+            setSurfaceTintBleed(scope, newValue)
+        }
+    }
+
+    fun cycleSurfaceTintBleed(scope: CoroutineScope) {
+        val next = (_state.value.surfaceTintBleed + 10) % 110
+        setSurfaceTintBleed(scope, next)
+    }
+
     fun adjustSecondaryHue(scope: CoroutineScope, delta: Float) {
         val currentColor = _state.value.secondaryColor
         val currentHue = if (currentColor != null) {

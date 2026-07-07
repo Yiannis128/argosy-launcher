@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nendo.argosy.data.cache.GradientPreset
@@ -13,11 +14,13 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+
 data class DisplayPreferences(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val primaryColor: Int? = null,
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
+    val surfaceTintBleed: Int = 0,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val uiScale: Int = 100,
     val backgroundBlur: Int = 0,
@@ -75,6 +78,7 @@ class DisplayPreferencesRepository @Inject constructor(
         val PRIMARY_COLOR = intPreferencesKey("primary_color")
         val SECONDARY_COLOR = intPreferencesKey("secondary_color")
         val TERTIARY_COLOR = intPreferencesKey("tertiary_color")
+        val SURFACE_TINT_BLEED = intPreferencesKey("surface_tint_bleed")
         val UI_DENSITY = stringPreferencesKey("ui_density")
         val UI_SCALE = intPreferencesKey("ui_scale")
         val BACKGROUND_BLUR = intPreferencesKey("background_blur")
@@ -129,6 +133,7 @@ class DisplayPreferencesRepository @Inject constructor(
             primaryColor = prefs[Keys.PRIMARY_COLOR],
             secondaryColor = prefs[Keys.SECONDARY_COLOR],
             tertiaryColor = prefs[Keys.TERTIARY_COLOR],
+            surfaceTintBleed = prefs[Keys.SURFACE_TINT_BLEED] ?: 0,
             gridDensity = GridDensity.fromString(prefs[Keys.UI_DENSITY]),
             uiScale = prefs[Keys.UI_SCALE] ?: 100,
             backgroundBlur = prefs[Keys.BACKGROUND_BLUR] ?: 40,
@@ -200,6 +205,10 @@ class DisplayPreferencesRepository @Inject constructor(
             if (color != null) prefs[Keys.SECONDARY_COLOR] = color
             else prefs.remove(Keys.SECONDARY_COLOR)
         }
+    }
+
+    suspend fun setSurfaceTintBleed(bleed: Int) {
+        dataStore.edit { it[Keys.SURFACE_TINT_BLEED] = bleed.coerceIn(0, 100) }
     }
 
     suspend fun setGridDensity(density: GridDensity) {

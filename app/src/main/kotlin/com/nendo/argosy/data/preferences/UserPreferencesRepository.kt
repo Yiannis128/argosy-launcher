@@ -57,6 +57,7 @@ class UserPreferencesRepository @Inject constructor(
             primaryColor = display.primaryColor,
             secondaryColor = display.secondaryColor,
             tertiaryColor = display.tertiaryColor,
+            surfaceTintBleed = display.surfaceTintBleed,
             hapticEnabled = controls.hapticEnabled,
             soundEnabled = controls.soundEnabled,
             soundVolume = controls.soundVolume,
@@ -177,6 +178,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setThemeMode(mode: ThemeMode) = displayPrefs.setThemeMode(mode)
     suspend fun setCustomColors(primary: Int?, secondary: Int?, tertiary: Int?) = displayPrefs.setCustomColors(primary, secondary, tertiary)
     suspend fun setSecondaryColor(color: Int?) = displayPrefs.setSecondaryColor(color)
+    suspend fun setSurfaceTintBleed(bleed: Int) = displayPrefs.setSurfaceTintBleed(bleed)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
     suspend fun setUiScale(scale: Int) = displayPrefs.setUiScale(scale)
     suspend fun setBackgroundBlur(blur: Int) = displayPrefs.setBackgroundBlur(blur)
@@ -510,6 +512,7 @@ data class UserPreferences(
     val primaryColor: Int? = null,
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
+    val surfaceTintBleed: Int = 0,
     val hapticEnabled: Boolean = true,
     val soundEnabled: Boolean = false,
     val soundVolume: Int = 40,

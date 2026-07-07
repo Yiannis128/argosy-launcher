@@ -21,16 +21,21 @@ data class ArgosyThemeTokens(
     val textMute: Color,
 )
 
-fun argosyThemeTokens(isDark: Boolean, focusAccent: Color? = null): ArgosyThemeTokens {
+fun argosyThemeTokens(
+    isDark: Boolean,
+    focusAccent: Color? = null,
+    tintHue: Float = 0f,
+    tintBleed: Int = 0
+): ArgosyThemeTokens {
     return if (isDark) ArgosyThemeTokens(
         isDark = true,
         focusAccent = focusAccent ?: ColorTokens.Scheme.Dark.primary,
         destructive = lerp(ColorTokens.Domain.difficulty, Color.White, 0.25f),
-        surfaceBase = ColorTokens.Scheme.Dark.surface,
-        surfaceRaised = ColorTokens.Scheme.Dark.surfaceVariant,
-        surfaceElevated = ColorTokens.Scheme.Dark.surfaceElevated,
-        hairlineLow = ColorTokens.Scheme.Dark.outlineVariant,
-        hairlineHigh = ColorTokens.Scheme.Dark.outline,
+        surfaceBase = tintSurface(ColorTokens.Scheme.Dark.surface, tintHue, tintBleed),
+        surfaceRaised = tintSurface(ColorTokens.Scheme.Dark.surfaceVariant, tintHue, tintBleed),
+        surfaceElevated = tintSurface(ColorTokens.Scheme.Dark.surfaceElevated, tintHue, tintBleed),
+        hairlineLow = tintSurface(ColorTokens.Scheme.Dark.outlineVariant, tintHue, tintBleed),
+        hairlineHigh = tintSurface(ColorTokens.Scheme.Dark.outline, tintHue, tintBleed),
         textPrimary = ColorTokens.Scheme.Dark.onSurface,
         textDim = ColorTokens.Scheme.Dark.onSurface.copy(alpha = 0.7f),
         textMute = ColorTokens.Scheme.Dark.onSurface.copy(alpha = 0.45f),
@@ -38,11 +43,11 @@ fun argosyThemeTokens(isDark: Boolean, focusAccent: Color? = null): ArgosyThemeT
         isDark = false,
         focusAccent = focusAccent ?: ColorTokens.Scheme.Light.primary,
         destructive = ColorTokens.Domain.difficulty,
-        surfaceBase = ColorTokens.Scheme.Light.surface,
-        surfaceRaised = ColorTokens.Scheme.Light.surfaceVariant,
-        surfaceElevated = ColorTokens.Scheme.Light.surfaceElevated,
-        hairlineLow = ColorTokens.Scheme.Light.outlineVariant,
-        hairlineHigh = ColorTokens.Scheme.Light.outline,
+        surfaceBase = tintSurface(ColorTokens.Scheme.Light.surface, tintHue, tintBleed),
+        surfaceRaised = tintSurface(ColorTokens.Scheme.Light.surfaceVariant, tintHue, tintBleed),
+        surfaceElevated = tintSurface(ColorTokens.Scheme.Light.surfaceElevated, tintHue, tintBleed),
+        hairlineLow = tintSurface(ColorTokens.Scheme.Light.outlineVariant, tintHue, tintBleed),
+        hairlineHigh = tintSurface(ColorTokens.Scheme.Light.outline, tintHue, tintBleed),
         textPrimary = ColorTokens.Scheme.Light.onSurface,
         textDim = ColorTokens.Scheme.Light.onSurface.copy(alpha = 0.7f),
         textMute = ColorTokens.Scheme.Light.onSurface.copy(alpha = 0.55f),
@@ -50,7 +55,12 @@ fun argosyThemeTokens(isDark: Boolean, focusAccent: Color? = null): ArgosyThemeT
 }
 
 fun argosyThemeTokens(palette: ArgosyPalette): ArgosyThemeTokens =
-    argosyThemeTokens(isDark = palette.isDarkTheme, focusAccent = palette.effectivePrimary)
+    argosyThemeTokens(
+        isDark = palette.isDarkTheme,
+        focusAccent = palette.effectivePrimary,
+        tintHue = palette.surfaceTintHue,
+        tintBleed = palette.surfaceTintBleed
+    )
 
 val LocalArgosyTheme = staticCompositionLocalOf { argosyThemeTokens(isDark = true) }
 

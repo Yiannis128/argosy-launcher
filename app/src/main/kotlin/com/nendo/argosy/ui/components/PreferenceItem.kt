@@ -736,7 +736,8 @@ fun HueSliderPreference(
     isFocused: Boolean,
     onHueChange: (Float?) -> Unit,
     saturation: Float = 0.7f,
-    lightness: Float = 0.5f
+    lightness: Float = 0.5f,
+    defaultLabel: String = "Default"
 ) {
     val hueSteps = 36
     val hueColors = (0..hueSteps).map { step ->
@@ -771,7 +772,7 @@ fun HueSliderPreference(
                 )
             } else {
                 Text(
-                    text = "Default",
+                    text = defaultLabel,
                     style = MaterialTheme.typography.bodyMedium,
                     color = preferenceSecondaryColor(isFocused)
                 )

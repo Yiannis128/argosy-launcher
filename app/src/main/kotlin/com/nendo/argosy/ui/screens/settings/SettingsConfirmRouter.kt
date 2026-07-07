@@ -351,6 +351,7 @@ private fun routeThemeConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             vm.requestEnumPicker(ThemeItem.Mode.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        ThemeItem.TintBleed -> vm.cycleSurfaceTintBleed()
         ThemeItem.BoxArt -> vm.navigateToBoxArt()
         ThemeItem.Sounds -> vm.navigateToThemeSounds()
         else -> {}

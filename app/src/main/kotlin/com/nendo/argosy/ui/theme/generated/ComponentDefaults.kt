@@ -130,4 +130,9 @@ object ComponentDefaults {
         val dualScreenInputFocus = DualScreenInputFocus.AUTO
     }
 
+    object SurfaceTint {
+        const val maxSaturationRatio = 0.3f
+        const val valueLiftRatio = 0.12f
+    }
+
 }

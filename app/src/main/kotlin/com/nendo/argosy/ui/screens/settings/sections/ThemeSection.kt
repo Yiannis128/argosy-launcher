@@ -17,6 +17,7 @@ import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.HueSliderPreference
 import com.nendo.argosy.ui.components.NavigationPreference
+import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
@@ -38,6 +39,7 @@ internal sealed class ThemeItem(val key: String, val section: String) {
     data object Mode : ThemeItem("theme", "appearance")
     data object AccentColor : ThemeItem("accentColor", "appearance")
     data object SecondaryColor : ThemeItem("secondaryColor", "appearance")
+    data object TintBleed : ThemeItem("tintBleed", "appearance")
 
     data object BoxArt : ThemeItem("boxArt", "identity")
     data object Sounds : ThemeItem("sounds", "identity")
@@ -49,7 +51,7 @@ internal sealed class ThemeItem(val key: String, val section: String) {
 
         val ALL: List<ThemeItem> = listOf(
             AppearanceHeader,
-            Mode, AccentColor, SecondaryColor,
+            Mode, AccentColor, SecondaryColor, TintBleed,
             IdentitySpacer, IdentityHeader,
             BoxArt, Sounds
         )
@@ -146,6 +148,18 @@ fun ThemeSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         viewModel.resetToDefaultSecondaryColor()
                     }
                 }
+            )
+
+            ThemeItem.TintBleed -> SliderPreference(
+                title = "Surface Tint",
+                value = display.surfaceTintBleed,
+                minValue = 0,
+                maxValue = 100,
+                step = 10,
+                suffix = "%",
+                isFocused = isFocused(item),
+                onClick = { viewModel.cycleSurfaceTintBleed() },
+                onAdjust = { viewModel.adjustSurfaceTintBleed(it) }
             )
 
             ThemeItem.BoxArt -> NavigationPreference(

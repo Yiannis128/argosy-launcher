@@ -140,3 +140,19 @@ The backdrop tile/doodle drawing tool paints in GREYSCALE ONLY, exactly 5 steps 
 black to white (black, dark, mid, light, white). Tiles are luminance masks: the theme
 tint ramp colors them at render time, so every tile works under every accent and both
 modes by construction. No per-tile color data is ever stored.
+
+## Surface tint: single knob + value lift (2026-07-07, supersedes the two-slider cut)
+
+Shipped and revised on device:
+- ONE control: "Surface Tint" (0-100%), tinting chrome toward the ACCENT hue. The
+  separate hue slider is removed - at bleed 0 it visibly did nothing (hue x zero
+  saturation), and chrome-hue-differs-from-accent is a niche served later, if ever,
+  by a small preset row (Chrome: Accent/Warm/Cool/Neutral), never a raw hue slider.
+- The "lightness never moves" rule is amended: saturation on a V=0.03 near-black is
+  a rounding error, so the tint applies a dark-weighted VALUE LIFT:
+  v' = v + fraction * valueLiftRatio * (1 - v), valueLiftRatio = 0.12 (tokens.json,
+  components.surfaceTint). Real deep-navy chrome is V~0.12-0.16 WITH saturation, not
+  black plus saturation. Light surfaces (V~0.95) are barely lifted and tint via pure
+  pastel saturation. Step ORDER and approximate spacing are preserved; contrast against
+  V~0.9 text remains enormous at any setting. Saturation stays capped
+  (maxSaturationRatio 0.3). Tint 0 remains byte-identical to the neutral ramp.

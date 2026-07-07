@@ -56,6 +56,7 @@ internal class ThemeSectionInput(
             ThemeItem.Mode -> { viewModel.cycleThemeMode(direction); return InputResult.HANDLED }
             ThemeItem.AccentColor -> { viewModel.adjustHue(direction * hueStep); return InputResult.HANDLED }
             ThemeItem.SecondaryColor -> { viewModel.adjustSecondaryHue(direction * hueStep); return InputResult.HANDLED }
+            ThemeItem.TintBleed -> { viewModel.adjustSurfaceTintBleed(direction * SettingsInputHandler.SLIDER_STEP); return InputResult.HANDLED }
             else -> {}
         }
         return InputResult.UNHANDLED
