@@ -734,6 +734,7 @@ class SettingsViewModel @Inject constructor(
     fun navigateToBoxArt() = routeNavigateToBoxArt(this)
     fun navigateToHomeScreen() = routeNavigateToHomeScreen(this)
     fun navigateToAmbientLed() = routeNavigateToAmbientLed(this)
+    fun navigateToThemeSounds() = routeNavigateToThemeSounds(this)
 
     fun cycleBoxArtShape(direction: Int = 1) = displayDelegate.cycleBoxArtShape(viewModelScope, direction)
     fun cycleBoxArtCornerRadius(direction: Int = 1) = displayDelegate.cycleBoxArtCornerRadius(viewModelScope, direction)

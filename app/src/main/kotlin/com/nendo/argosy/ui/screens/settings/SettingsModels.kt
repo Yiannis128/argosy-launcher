@@ -58,6 +58,8 @@ enum class SettingsSection {
     RETRO_ACHIEVEMENTS,
     STORAGE,
     BIOS,
+    THEME,
+    THEME_SOUNDS,
     INTERFACE,
     BOX_ART,
     HOME_SCREEN,

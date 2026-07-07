@@ -157,7 +157,8 @@ class SoundFeedbackManager @Inject constructor(
     }
 
     fun setVolume(volume: Int) {
-        this.volume = (volume / 100f).coerceIn(0f, 1f)
+        val linear = (volume / 100f).coerceIn(0f, 1f)
+        this.volume = linear * linear
     }
 
     fun setSoundConfigs(configs: Map<SoundType, SoundConfig>) {

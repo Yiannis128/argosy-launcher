@@ -14,6 +14,8 @@ import com.nendo.argosy.ui.screens.settings.sections.input.InterfaceSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.LightSectionsInput
 import com.nendo.argosy.ui.screens.settings.sections.input.ShaderStackSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.StorageSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.ThemeSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.ThemeSoundsSectionInput
 
 class SettingsInputHandler(
     private val viewModel: SettingsViewModel,
@@ -28,6 +30,7 @@ class SettingsInputHandler(
             SettingsSection.PLATFORMS,
             SettingsSection.BUILTIN_EMULATOR,
             SettingsSection.STORAGE,
+            SettingsSection.THEME,
             SettingsSection.INTERFACE,
             SettingsSection.CONTROLS,
             SettingsSection.SERVER,
@@ -49,6 +52,8 @@ class SettingsInputHandler(
         put(SettingsSection.BUILTIN_CONTROLS, BuiltinControlsSectionInput(viewModel))
         put(SettingsSection.BOX_ART, BoxArtSectionInput(viewModel))
         put(SettingsSection.INTERFACE, InterfaceSectionInput(viewModel))
+        put(SettingsSection.THEME, ThemeSectionInput(viewModel))
+        put(SettingsSection.THEME_SOUNDS, ThemeSoundsSectionInput(viewModel))
         put(SettingsSection.AMBIENT_LED, AmbientLedSectionInput(viewModel))
         put(SettingsSection.SHADER_STACK, ShaderStackSectionInput(viewModel))
         put(SettingsSection.CORE_OPTIONS, CoreOptionsSectionInput(viewModel))

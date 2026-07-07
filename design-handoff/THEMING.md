@@ -110,3 +110,33 @@ examples, not as the ceiling.
   backdrop engine).
 - Issue #60 fields: glow intensity steps, border palette modes
   (complementary/triadic/analogous), per-view grid spacing.
+
+## Settings IA restructure (2026-07-07)
+
+Interface was one flat section holding four concerns; the theming roadmap does not fit
+in it. Decision: split identity from activity, and embrace sub-menus wherever a concern
+has depth.
+
+**Theme (new top-level section)** - the identity layer, future home of packs:
+- Mode (dark/light/auto); colors: accent, secondary, tint ramp + bleed sliders inline
+- Surface Backdrop -> subsection (phase 1 presets; phase 2 builder + tile creator)
+- Fonts -> subsection (user TTF/OTF import, validated, preview + revert)
+- Sounds -> subsection (UI sounds toggle/volume/per-sound customize; sound sets later)
+- Box Art -> moves here (visual identity)
+- Packs (future): Save-as-pack / Apply-pack rows at section top when tiers land
+
+**Interface (remaining, compartmentalized by activity):**
+- Layout: grid density, UI scale, Home Screen behavior
+- Screen safety: dimmer trio
+- Ambience: BGM group (content you listen to, not identity - stays apart from theme sounds)
+- Displays: dual-screen, display roles, Ambient LED (hardware behavior; palette-fed but not identity)
+
+Mechanics: nav-row-to-subsection pattern already exists (Box Art, Ambient LED); Theme is
+a new SettingsSection entry plus row redistribution, not new machinery.
+
+## Tile creator (2026-07-07)
+
+The backdrop tile/doodle drawing tool paints in GREYSCALE ONLY, exactly 5 steps from
+black to white (black, dark, mid, light, white). Tiles are luminance masks: the theme
+tint ramp colors them at render time, so every tile works under every accent and both
+modes by construction. No per-tile color data is ever stored.

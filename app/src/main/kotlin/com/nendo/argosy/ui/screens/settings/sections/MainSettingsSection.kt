@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
@@ -53,7 +54,8 @@ internal sealed class MainSettingsItem(
         "RetroAchievements"
     )
     data object Storage : MainSettingsItem("storage", Icons.Default.Storage, "Storage")
-    data object Interface : MainSettingsItem("interface", Icons.Default.Palette, "Interface")
+    data object Theme : MainSettingsItem("theme", Icons.Default.Palette, "Theme")
+    data object Interface : MainSettingsItem("interface", Icons.Default.Dashboard, "Interface")
     data object Controls : MainSettingsItem("controls", Icons.Default.TouchApp, "Controls")
     data object Platforms : MainSettingsItem("platforms", Icons.Default.Gamepad, "Platforms")
     data object BuiltinEmulator : MainSettingsItem("builtin_emulator", Icons.Default.Build, "Built-in Emulator")
@@ -66,7 +68,7 @@ internal sealed class MainSettingsItem(
 
     companion object {
         val ALL: List<MainSettingsItem> = listOf(
-            DeviceSettings, Platforms, BuiltinEmulator, Storage, Interface, Controls,
+            DeviceSettings, Platforms, BuiltinEmulator, Storage, Theme, Interface, Controls,
             GameData, Bios, Drivers, RetroAchievements, Steam, Social, Permissions, About
         )
     }
@@ -119,7 +121,8 @@ fun MainSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
         } else {
             "No downloads"
         }
-        MainSettingsItem.Interface -> "Theme, colors, sounds"
+        MainSettingsItem.Theme -> "Colors, backdrop, fonts"
+        MainSettingsItem.Interface -> "Layout, dimmer, ambience"
         MainSettingsItem.Controls -> "Button layout, haptic feedback"
         MainSettingsItem.Platforms -> "${uiState.emulators.platforms.size} platforms"
         MainSettingsItem.BuiltinEmulator -> if (uiState.emulators.builtinLibretroEnabled) "Enabled" else "Disabled"
@@ -149,6 +152,7 @@ fun MainSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
             MainSettingsItem.GameData -> viewModel.navigateToSection(SettingsSection.SERVER)
             MainSettingsItem.RetroAchievements -> viewModel.navigateToSection(SettingsSection.RETRO_ACHIEVEMENTS)
             MainSettingsItem.Storage -> viewModel.navigateToSection(SettingsSection.STORAGE)
+            MainSettingsItem.Theme -> viewModel.navigateToSection(SettingsSection.THEME)
             MainSettingsItem.Interface -> viewModel.navigateToSection(SettingsSection.INTERFACE)
             MainSettingsItem.Controls -> viewModel.navigateToSection(SettingsSection.CONTROLS)
             MainSettingsItem.Platforms -> viewModel.navigateToSection(SettingsSection.PLATFORMS)

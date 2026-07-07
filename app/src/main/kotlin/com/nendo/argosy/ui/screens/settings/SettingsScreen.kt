@@ -88,6 +88,8 @@ import com.nendo.argosy.ui.screens.settings.sections.SocialSection
 import com.nendo.argosy.ui.screens.settings.sections.SteamSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsSection
 import com.nendo.argosy.ui.screens.settings.sections.formatFileSize
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsMaxFocusIndex
 import com.nendo.argosy.ui.icons.InputIcons
@@ -426,6 +428,8 @@ fun SettingsScreen(
                         SettingsSection.STEAM_SETTINGS -> "STEAM (EXPERIMENTAL)"
                         SettingsSection.RETRO_ACHIEVEMENTS -> "RETROACHIEVEMENTS"
                         SettingsSection.STORAGE -> "STORAGE"
+                        SettingsSection.THEME -> "THEME"
+                        SettingsSection.THEME_SOUNDS -> "SOUNDS"
                         SettingsSection.INTERFACE -> "INTERFACE"
                         SettingsSection.BOX_ART -> "BOX ART"
                         SettingsSection.HOME_SCREEN -> "HOME SCREEN"
@@ -486,6 +490,8 @@ fun SettingsScreen(
                     SettingsSection.STEAM_SETTINGS -> SteamSection(uiState, viewModel)
                     SettingsSection.RETRO_ACHIEVEMENTS -> RASettingsSection(uiState, viewModel)
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
+                    SettingsSection.THEME -> ThemeSection(uiState, viewModel)
+                    SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
                     SettingsSection.INTERFACE -> InterfaceSection(uiState, viewModel)
                     SettingsSection.BOX_ART -> BoxArtSection(uiState, viewModel)
                     SettingsSection.HOME_SCREEN -> HomeScreenSection(uiState, viewModel)

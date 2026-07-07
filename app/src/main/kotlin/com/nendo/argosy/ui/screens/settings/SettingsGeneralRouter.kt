@@ -59,6 +59,10 @@ internal fun routeNavigateToAmbientLed(vm: SettingsViewModel) {
     vm._uiState.update { it.copy(currentSection = SettingsSection.AMBIENT_LED, focusedIndex = 0) }
 }
 
+internal fun routeNavigateToThemeSounds(vm: SettingsViewModel) {
+    vm._uiState.update { it.copy(currentSection = SettingsSection.THEME_SOUNDS, focusedIndex = 0) }
+}
+
 // --- Emulator methods ---
 
 internal fun routeShowEmulatorPicker(vm: SettingsViewModel, config: PlatformEmulatorConfig) {
