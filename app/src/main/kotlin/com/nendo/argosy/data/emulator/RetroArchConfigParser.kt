@@ -294,15 +294,15 @@ class RetroArchConfigParser @Inject constructor(
         }
     }
 
-    // RA sorts saves into a per-core folder named after the libretro corename.
-    // Our slug->corename map is incomplete, and the slug only matches RA's folder
-    // on a case-insensitive filesystem, so reuse the real folder name when it
-    // already exists.
+    /** Resolves a per-core folder to RetroArch's real on-disk name, ignoring case and separators. */
     private fun matchExistingFolder(parent: String, name: String): String =
         File(parent).listFiles()
-            ?.firstOrNull { it.name.equals(name, ignoreCase = true) && it.isDirectory }
+            ?.firstOrNull { it.isDirectory && normalizeFolderKey(it.name) == normalizeFolderKey(name) }
             ?.name
             ?: name
+
+    private fun normalizeFolderKey(name: String): String =
+        name.lowercase().replace(Regex("[ _-]"), "")
 
     private fun getBasePathAlternatives(path: String): List<String> {
         val alternatives = mutableListOf(path)

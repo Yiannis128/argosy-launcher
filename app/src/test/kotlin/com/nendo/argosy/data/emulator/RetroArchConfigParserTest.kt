@@ -443,6 +443,27 @@ class RetroArchConfigParserTest {
     }
 
     @Test
+    fun `save path snaps underscored slug to on-disk folder with spaces`() {
+        val base = tempFolder.newFolder("saves-slug")
+        File(base, "Genesis Plus GX").mkdirs()
+        val config = RetroArchSaveConfig(
+            savefileDirectory = base.absolutePath,
+            savefilesInContentDir = false,
+            sortByContentDirectory = false,
+            sortByCore = true
+        )
+        val paths = parser.resolveSavePathsWithConfig(
+            config = config,
+            contentDirName = null,
+            coreName = "genesis_plus_gx"
+        )
+        assertTrue(
+            "unlisted-core slug should snap to the real 'Genesis Plus GX' folder; got $paths",
+            paths.contains("${base.absolutePath}/Genesis Plus GX")
+        )
+    }
+
+    @Test
     fun `save path leaves core name untouched when no folder exists yet`() {
         val base = tempFolder.newFolder("saves-fresh")
         val config = RetroArchSaveConfig(
