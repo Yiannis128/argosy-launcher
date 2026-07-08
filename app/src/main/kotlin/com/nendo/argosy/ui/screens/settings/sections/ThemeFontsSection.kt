@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
@@ -60,8 +61,10 @@ internal sealed class ThemeFontsItem(
     class SectionSpacer(key: String, section: String) : ThemeFontsItem(key, section)
 
     data object DisplaySlot : ThemeFontsItem("displayFont", "display")
+    data object DisplayScale : ThemeFontsItem("displayScale", "display")
     data object DisplayRevert : ThemeFontsItem("displayRevert", "display", { it.displayCustom })
     data object BodySlot : ThemeFontsItem("bodyFont", "body")
+    data object BodyScale : ThemeFontsItem("bodyScale", "body")
     data object BodyRevert : ThemeFontsItem("bodyRevert", "body", { it.bodyCustom })
     data object Guidelines : ThemeFontsItem("fontGuidelines", "preview")
     data object Preview : ThemeFontsItem("fontPreview", "preview")
@@ -74,8 +77,8 @@ internal sealed class ThemeFontsItem(
         private val PreviewHeader = Header("previewHeader", "preview", "Preview")
 
         val ALL: List<ThemeFontsItem> = listOf(
-            DisplayHeader, DisplaySlot, DisplayRevert,
-            BodySpacer, BodyHeader, BodySlot, BodyRevert,
+            DisplayHeader, DisplaySlot, DisplayScale, DisplayRevert,
+            BodySpacer, BodyHeader, BodySlot, BodyScale, BodyRevert,
             PreviewSpacer, PreviewHeader, Guidelines, Preview
         )
     }
@@ -146,6 +149,18 @@ fun ThemeFontsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 onClick = { viewModel.openFontPicker(FontSlot.DISPLAY) }
             )
 
+            ThemeFontsItem.DisplayScale -> SliderPreference(
+                title = "Display Scale",
+                value = display.displayFontScale,
+                minValue = 50,
+                maxValue = 150,
+                step = 5,
+                suffix = "%",
+                isFocused = isFocused(item),
+                onClick = { viewModel.cycleFontScale(FontSlot.DISPLAY) },
+                onAdjust = { viewModel.adjustFontScale(FontSlot.DISPLAY, it) }
+            )
+
             ThemeFontsItem.DisplayRevert -> ActionPreference(
                 title = "Revert to Default",
                 subtitle = "Remove the imported display font",
@@ -161,6 +176,18 @@ fun ThemeFontsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 trailingText = display.bodyFontName ?: "Default",
                 isFocused = isFocused(item),
                 onClick = { viewModel.openFontPicker(FontSlot.BODY) }
+            )
+
+            ThemeFontsItem.BodyScale -> SliderPreference(
+                title = "Body Scale",
+                value = display.bodyFontScale,
+                minValue = 50,
+                maxValue = 150,
+                step = 5,
+                suffix = "%",
+                isFocused = isFocused(item),
+                onClick = { viewModel.cycleFontScale(FontSlot.BODY) },
+                onAdjust = { viewModel.adjustFontScale(FontSlot.BODY, it) }
             )
 
             ThemeFontsItem.BodyRevert -> ActionPreference(

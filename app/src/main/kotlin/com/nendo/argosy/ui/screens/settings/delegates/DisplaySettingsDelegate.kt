@@ -13,6 +13,7 @@ import com.nendo.argosy.data.preferences.BoxArtInnerEffectThickness
 import com.nendo.argosy.data.preferences.BoxArtOuterEffect
 import com.nendo.argosy.data.preferences.BoxArtOuterEffectThickness
 import com.nendo.argosy.data.preferences.DefaultView
+import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.preferences.SystemIconPadding
 import com.nendo.argosy.data.preferences.SystemIconPosition
@@ -177,6 +178,37 @@ class DisplaySettingsDelegate @Inject constructor(
     fun cycleSurfaceTintBleed(scope: CoroutineScope) {
         val next = (_state.value.surfaceTintBleed + 10) % 110
         setSurfaceTintBleed(scope, next)
+    }
+
+    private fun fontScaleOf(slot: FontSlot): Int = when (slot) {
+        FontSlot.DISPLAY -> _state.value.displayFontScale
+        FontSlot.BODY -> _state.value.bodyFontScale
+    }
+
+    fun setFontScale(scope: CoroutineScope, slot: FontSlot, scale: Int) {
+        val clamped = scale.coerceIn(50, 150)
+        scope.launch {
+            preferencesRepository.setFontScale(slot, clamped)
+            _state.update {
+                when (slot) {
+                    FontSlot.DISPLAY -> it.copy(displayFontScale = clamped)
+                    FontSlot.BODY -> it.copy(bodyFontScale = clamped)
+                }
+            }
+        }
+    }
+
+    fun adjustFontScale(scope: CoroutineScope, slot: FontSlot, delta: Int) {
+        val current = fontScaleOf(slot)
+        val newValue = (current + delta).coerceIn(50, 150)
+        if (newValue != current) {
+            setFontScale(scope, slot, newValue)
+        }
+    }
+
+    fun cycleFontScale(scope: CoroutineScope, slot: FontSlot) {
+        val next = (fontScaleOf(slot) - 50 + 5).mod(105) + 50
+        setFontScale(scope, slot, next)
     }
 
     fun adjustSecondaryHue(scope: CoroutineScope, delta: Float) {

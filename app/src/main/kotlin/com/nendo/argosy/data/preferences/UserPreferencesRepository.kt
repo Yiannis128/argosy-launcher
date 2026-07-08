@@ -62,6 +62,8 @@ class UserPreferencesRepository @Inject constructor(
             displayFontName = display.displayFontName,
             bodyFontPath = display.bodyFontPath,
             bodyFontName = display.bodyFontName,
+            displayFontScale = display.displayFontScale,
+            bodyFontScale = display.bodyFontScale,
             hapticEnabled = controls.hapticEnabled,
             soundEnabled = controls.soundEnabled,
             soundVolume = controls.soundVolume,
@@ -184,6 +186,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setSecondaryColor(color: Int?) = displayPrefs.setSecondaryColor(color)
     suspend fun setSurfaceTintBleed(bleed: Int) = displayPrefs.setSurfaceTintBleed(bleed)
     suspend fun setCustomFont(slot: FontSlot, path: String?, name: String?) = displayPrefs.setCustomFont(slot, path, name)
+    suspend fun setFontScale(slot: FontSlot, scale: Int) = displayPrefs.setFontScale(slot, scale)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
     suspend fun setUiScale(scale: Int) = displayPrefs.setUiScale(scale)
     suspend fun setBackgroundBlur(blur: Int) = displayPrefs.setBackgroundBlur(blur)
@@ -522,6 +525,8 @@ data class UserPreferences(
     val displayFontName: String? = null,
     val bodyFontPath: String? = null,
     val bodyFontName: String? = null,
+    val displayFontScale: Int = 100,
+    val bodyFontScale: Int = 100,
     val hapticEnabled: Boolean = true,
     val soundEnabled: Boolean = false,
     val soundVolume: Int = 40,

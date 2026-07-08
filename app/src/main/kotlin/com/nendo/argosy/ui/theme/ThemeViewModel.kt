@@ -62,7 +62,9 @@ data class ThemeState(
     val platformIndicatorStyle: PlatformIndicatorStyle = PlatformIndicatorStyle.TAB,
     val platformIndicatorContent: PlatformIndicatorContent = PlatformIndicatorContent.NAME,
     val useAccentColorFooter: Boolean = false,
-    val uiScale: Int = 100
+    val uiScale: Int = 100,
+    val displayFontScale: Int = 100,
+    val bodyFontScale: Int = 100
 )
 
 @HiltViewModel
@@ -174,5 +176,7 @@ fun UserPreferences.toThemeState(): ThemeState = ThemeState(
     platformIndicatorStyle = platformIndicatorStyle,
     platformIndicatorContent = platformIndicatorContent,
     useAccentColorFooter = useAccentColorFooter,
-    uiScale = uiScale
+    uiScale = uiScale,
+    displayFontScale = displayFontScale,
+    bodyFontScale = bodyFontScale
 )

@@ -392,11 +392,13 @@ private fun routeThemeFontsConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.openFontPicker(FontSlot.DISPLAY)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        ThemeFontsItem.DisplayScale -> vm.cycleFontScale(FontSlot.DISPLAY)
         ThemeFontsItem.DisplayRevert -> vm.revertFont(FontSlot.DISPLAY)
         ThemeFontsItem.BodySlot -> {
             vm.openFontPicker(FontSlot.BODY)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        ThemeFontsItem.BodyScale -> vm.cycleFontScale(FontSlot.BODY)
         ThemeFontsItem.BodyRevert -> vm.revertFont(FontSlot.BODY)
         else -> {}
     }

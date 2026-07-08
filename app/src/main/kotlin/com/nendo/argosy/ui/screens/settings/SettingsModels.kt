@@ -178,6 +178,8 @@ data class DisplayState(
     val surfaceTintBleed: Int = 0,
     val displayFontName: String? = null,
     val bodyFontName: String? = null,
+    val displayFontScale: Int = 100,
+    val bodyFontScale: Int = 100,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val backgroundBlur: Int = 0,
     val backgroundSaturation: Int = 100,

@@ -25,6 +25,8 @@ data class DisplayPreferences(
     val displayFontName: String? = null,
     val bodyFontPath: String? = null,
     val bodyFontName: String? = null,
+    val displayFontScale: Int = 100,
+    val bodyFontScale: Int = 100,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val uiScale: Int = 100,
     val backgroundBlur: Int = 0,
@@ -87,6 +89,8 @@ class DisplayPreferencesRepository @Inject constructor(
         val FONT_DISPLAY_NAME = stringPreferencesKey("font_display_name")
         val FONT_BODY_PATH = stringPreferencesKey("font_body_path")
         val FONT_BODY_NAME = stringPreferencesKey("font_body_name")
+        val FONT_DISPLAY_SCALE = intPreferencesKey("font_display_scale")
+        val FONT_BODY_SCALE = intPreferencesKey("font_body_scale")
         val UI_DENSITY = stringPreferencesKey("ui_density")
         val UI_SCALE = intPreferencesKey("ui_scale")
         val BACKGROUND_BLUR = intPreferencesKey("background_blur")
@@ -146,6 +150,8 @@ class DisplayPreferencesRepository @Inject constructor(
             displayFontName = prefs[Keys.FONT_DISPLAY_NAME],
             bodyFontPath = prefs[Keys.FONT_BODY_PATH],
             bodyFontName = prefs[Keys.FONT_BODY_NAME],
+            displayFontScale = prefs[Keys.FONT_DISPLAY_SCALE] ?: 100,
+            bodyFontScale = prefs[Keys.FONT_BODY_SCALE] ?: 100,
             gridDensity = GridDensity.fromString(prefs[Keys.UI_DENSITY]),
             uiScale = prefs[Keys.UI_SCALE] ?: 100,
             backgroundBlur = prefs[Keys.BACKGROUND_BLUR] ?: 40,
@@ -232,6 +238,14 @@ class DisplayPreferencesRepository @Inject constructor(
             if (path != null) prefs[pathKey] = path else prefs.remove(pathKey)
             if (name != null) prefs[nameKey] = name else prefs.remove(nameKey)
         }
+    }
+
+    suspend fun setFontScale(slot: FontSlot, scale: Int) {
+        val key = when (slot) {
+            FontSlot.DISPLAY -> Keys.FONT_DISPLAY_SCALE
+            FontSlot.BODY -> Keys.FONT_BODY_SCALE
+        }
+        dataStore.edit { it[key] = scale.coerceIn(50, 150) }
     }
 
     suspend fun setGridDensity(density: GridDensity) {

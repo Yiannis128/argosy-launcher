@@ -301,7 +301,9 @@ fun ALauncherTheme(
     val themeState by viewModel.themeState.collectAsState()
     val customFonts by viewModel.customFonts.collectAsState()
     val palette = rememberArgosyPalette(themeState)
-    val typography = remember(customFonts) { argosyTypography(customFonts) }
+    val typography = remember(customFonts, themeState.displayFontScale, themeState.bodyFontScale) {
+        argosyTypography(customFonts, themeState.displayFontScale, themeState.bodyFontScale)
+    }
 
     ProvideArgosyThemeLocals(themeState = themeState, palette = palette) {
         MaterialTheme(
