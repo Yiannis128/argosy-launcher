@@ -6,8 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nendo.argosy.data.cache.GradientPreset
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.util.DisplayAffinityHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,18 @@ data class DisplayPreferences(
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
     val surfaceTintBleed: Int = 0,
+    val backdropEnabled: Boolean = false,
+    val backdropPreset: BackdropPreset = BackdropPreset.PLATFORMS,
+    val backdropCellSize: Int = ComponentDefaults.SurfaceBackdrop.cellSizeDefaultDp,
+    val backdropScatter: Int = 200,
+    val backdropScaleJitter: Int = 100,
+    val backdropStrength: Int = 20,
+    val backdropEdgeStyle: BackdropEdgeStyle = BackdropEdgeStyle.CONNECTIONS,
+    val backdropVertexIcons: BackdropVertexIcon = BackdropVertexIcon.NONE,
+    val backdropSeed: Long = 0L,
+    val backdropMotion: BackdropMotion = BackdropMotion.SWAY,
+    val backdropMotionSpeed: Int = 75,
+    val backdropDriftAngle: Float = 45f,
     val displayFontPath: String? = null,
     val displayFontName: String? = null,
     val bodyFontPath: String? = null,
@@ -34,6 +48,7 @@ data class DisplayPreferences(
     val backgroundOpacity: Int = 100,
     val useGameBackground: Boolean = true,
     val customBackgroundPath: String? = null,
+    val homeBackgroundMode: HomeBackgroundMode = HomeBackgroundMode.GAME_ART,
     val useAccentColorFooter: Boolean = false,
     val boxArtShape: BoxArtShape = BoxArtShape.STANDARD,
     val boxArtCornerRadius: BoxArtCornerRadius = BoxArtCornerRadius.MEDIUM,
@@ -85,6 +100,18 @@ class DisplayPreferencesRepository @Inject constructor(
         val SECONDARY_COLOR = intPreferencesKey("secondary_color")
         val TERTIARY_COLOR = intPreferencesKey("tertiary_color")
         val SURFACE_TINT_BLEED = intPreferencesKey("surface_tint_bleed")
+        val BACKDROP_ENABLED = booleanPreferencesKey("backdrop_enabled")
+        val BACKDROP_PRESET = stringPreferencesKey("backdrop_preset")
+        val BACKDROP_CELL_SIZE = intPreferencesKey("backdrop_cell_size")
+        val BACKDROP_SCATTER = intPreferencesKey("backdrop_scatter")
+        val BACKDROP_SCALE_JITTER = intPreferencesKey("backdrop_scale_jitter")
+        val BACKDROP_STRENGTH = intPreferencesKey("backdrop_strength")
+        val BACKDROP_EDGE_STYLE = stringPreferencesKey("backdrop_edge_style")
+        val BACKDROP_VERTEX_ICONS = stringPreferencesKey("backdrop_vertex_icons")
+        val BACKDROP_SEED = longPreferencesKey("backdrop_seed")
+        val BACKDROP_MOTION = stringPreferencesKey("backdrop_motion")
+        val BACKDROP_MOTION_SPEED = intPreferencesKey("backdrop_motion_speed")
+        val BACKDROP_DRIFT_ANGLE = floatPreferencesKey("backdrop_drift_angle")
         val FONT_DISPLAY_PATH = stringPreferencesKey("font_display_path")
         val FONT_DISPLAY_NAME = stringPreferencesKey("font_display_name")
         val FONT_BODY_PATH = stringPreferencesKey("font_body_path")
@@ -98,6 +125,7 @@ class DisplayPreferencesRepository @Inject constructor(
         val BACKGROUND_OPACITY = intPreferencesKey("background_opacity")
         val USE_GAME_BACKGROUND = booleanPreferencesKey("use_game_background")
         val CUSTOM_BACKGROUND_PATH = stringPreferencesKey("custom_background_path")
+        val HOME_BACKGROUND_MODE = stringPreferencesKey("home_background_mode")
         val USE_ACCENT_COLOR_FOOTER = booleanPreferencesKey("use_accent_color_footer")
         val BOX_ART_SHAPE = stringPreferencesKey("box_art_shape")
         val BOX_ART_CORNER_RADIUS = stringPreferencesKey("box_art_corner_radius")
@@ -146,6 +174,18 @@ class DisplayPreferencesRepository @Inject constructor(
             secondaryColor = prefs[Keys.SECONDARY_COLOR],
             tertiaryColor = prefs[Keys.TERTIARY_COLOR],
             surfaceTintBleed = prefs[Keys.SURFACE_TINT_BLEED] ?: 0,
+            backdropEnabled = prefs[Keys.BACKDROP_ENABLED] ?: false,
+            backdropPreset = BackdropPreset.fromString(prefs[Keys.BACKDROP_PRESET]),
+            backdropCellSize = prefs[Keys.BACKDROP_CELL_SIZE] ?: ComponentDefaults.SurfaceBackdrop.cellSizeDefaultDp,
+            backdropScatter = prefs[Keys.BACKDROP_SCATTER] ?: 200,
+            backdropScaleJitter = prefs[Keys.BACKDROP_SCALE_JITTER] ?: 100,
+            backdropStrength = prefs[Keys.BACKDROP_STRENGTH] ?: 20,
+            backdropEdgeStyle = BackdropEdgeStyle.fromString(prefs[Keys.BACKDROP_EDGE_STYLE]),
+            backdropVertexIcons = BackdropVertexIcon.fromString(prefs[Keys.BACKDROP_VERTEX_ICONS]),
+            backdropSeed = prefs[Keys.BACKDROP_SEED] ?: 0L,
+            backdropMotion = BackdropMotion.fromString(prefs[Keys.BACKDROP_MOTION]),
+            backdropMotionSpeed = prefs[Keys.BACKDROP_MOTION_SPEED] ?: 75,
+            backdropDriftAngle = prefs[Keys.BACKDROP_DRIFT_ANGLE] ?: 45f,
             displayFontPath = prefs[Keys.FONT_DISPLAY_PATH],
             displayFontName = prefs[Keys.FONT_DISPLAY_NAME],
             bodyFontPath = prefs[Keys.FONT_BODY_PATH],
@@ -159,6 +199,7 @@ class DisplayPreferencesRepository @Inject constructor(
             backgroundOpacity = prefs[Keys.BACKGROUND_OPACITY] ?: 100,
             useGameBackground = prefs[Keys.USE_GAME_BACKGROUND] ?: true,
             customBackgroundPath = prefs[Keys.CUSTOM_BACKGROUND_PATH],
+            homeBackgroundMode = HomeBackgroundMode.fromString(prefs[Keys.HOME_BACKGROUND_MODE]),
             useAccentColorFooter = prefs[Keys.USE_ACCENT_COLOR_FOOTER] ?: false,
             boxArtShape = BoxArtShape.fromString(prefs[Keys.BOX_ART_SHAPE]),
             boxArtCornerRadius = BoxArtCornerRadius.fromString(prefs[Keys.BOX_ART_CORNER_RADIUS]),
@@ -229,6 +270,64 @@ class DisplayPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.SURFACE_TINT_BLEED] = bleed.coerceIn(0, 100) }
     }
 
+    suspend fun setBackdropEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.BACKDROP_ENABLED] = enabled }
+    }
+
+    /** Applies a preset as a saved layer config: writes the preset plus its default edge and vertex layers. */
+    suspend fun setBackdropPreset(preset: BackdropPreset, edgeStyle: BackdropEdgeStyle, vertexIcons: BackdropVertexIcon) {
+        dataStore.edit {
+            it[Keys.BACKDROP_PRESET] = preset.name
+            it[Keys.BACKDROP_EDGE_STYLE] = edgeStyle.name
+            it[Keys.BACKDROP_VERTEX_ICONS] = vertexIcons.name
+        }
+    }
+
+    suspend fun setBackdropCellSize(sizeDp: Int) {
+        dataStore.edit {
+            it[Keys.BACKDROP_CELL_SIZE] = sizeDp.coerceIn(
+                ComponentDefaults.SurfaceBackdrop.cellSizeMinDp,
+                ComponentDefaults.SurfaceBackdrop.cellSizeMaxDp
+            )
+        }
+    }
+
+    suspend fun setBackdropScatter(scatter: Int) {
+        dataStore.edit { it[Keys.BACKDROP_SCATTER] = scatter.coerceIn(0, 200) }
+    }
+
+    suspend fun setBackdropScaleJitter(jitter: Int) {
+        dataStore.edit { it[Keys.BACKDROP_SCALE_JITTER] = jitter.coerceIn(0, 200) }
+    }
+
+    suspend fun setBackdropStrength(strength: Int) {
+        dataStore.edit { it[Keys.BACKDROP_STRENGTH] = strength.coerceIn(10, 100) }
+    }
+
+    suspend fun setBackdropEdgeStyle(style: BackdropEdgeStyle) {
+        dataStore.edit { it[Keys.BACKDROP_EDGE_STYLE] = style.name }
+    }
+
+    suspend fun setBackdropVertexIcons(icons: BackdropVertexIcon) {
+        dataStore.edit { it[Keys.BACKDROP_VERTEX_ICONS] = icons.name }
+    }
+
+    suspend fun setBackdropSeed(seed: Long) {
+        dataStore.edit { it[Keys.BACKDROP_SEED] = seed }
+    }
+
+    suspend fun setBackdropMotion(motion: BackdropMotion) {
+        dataStore.edit { it[Keys.BACKDROP_MOTION] = motion.name }
+    }
+
+    suspend fun setBackdropMotionSpeed(speed: Int) {
+        dataStore.edit { it[Keys.BACKDROP_MOTION_SPEED] = speed.coerceIn(25, 200) }
+    }
+
+    suspend fun setBackdropDriftAngle(angle: Float) {
+        dataStore.edit { it[Keys.BACKDROP_DRIFT_ANGLE] = angle.mod(360f) }
+    }
+
     suspend fun setCustomFont(slot: FontSlot, path: String?, name: String?) {
         val (pathKey, nameKey) = when (slot) {
             FontSlot.DISPLAY -> Keys.FONT_DISPLAY_PATH to Keys.FONT_DISPLAY_NAME
@@ -277,6 +376,10 @@ class DisplayPreferencesRepository @Inject constructor(
             if (path != null) prefs[Keys.CUSTOM_BACKGROUND_PATH] = path
             else prefs.remove(Keys.CUSTOM_BACKGROUND_PATH)
         }
+    }
+
+    suspend fun setHomeBackgroundMode(mode: HomeBackgroundMode) {
+        dataStore.edit { it[Keys.HOME_BACKGROUND_MODE] = mode.name }
     }
 
     suspend fun setUseAccentColorFooter(use: Boolean) {

@@ -135,4 +135,21 @@ object ComponentDefaults {
         const val valueLiftRatio = 0.12f
     }
 
+    object SurfaceBackdrop {
+        const val contentMaxAlpha = 0.25f
+        const val wallpaperMaxAlpha = 0.5f
+        const val driftCellsPerSecondRatio = 0.08f
+        const val swayAmplitudeCellRatio = 0.35f
+        const val swayPeriodSeconds = 24
+        const val directionRingDiameter = 168
+        const val cellSizeMinDp = 16
+        const val cellSizeMaxDp = 120
+        const val cellSizeStepDp = 8
+        const val cellSizeDefaultDp = 104
+        const val scatterMaxCellRatio = 0.35f
+        const val jitterMaxScaleDropRatio = 0.5f
+        const val jitterMaxRotationDegrees = 60
+        const val stampCellRatio = 0.6f
+    }
+
 }

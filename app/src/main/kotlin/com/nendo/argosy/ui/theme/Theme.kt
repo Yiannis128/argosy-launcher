@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,6 +30,9 @@ import com.nendo.argosy.data.preferences.SystemIconPosition
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.FooterStyleConfig
 import com.nendo.argosy.ui.components.LocalFooterStyle
+import com.nendo.argosy.ui.theme.backdrop.LocalBackdropStamps
+import com.nendo.argosy.ui.theme.backdrop.LocalSurfaceBackdrop
+import com.nendo.argosy.ui.theme.backdrop.backdropStampProvider
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 
@@ -380,10 +384,17 @@ fun ProvideArgosyThemeLocals(
         aspectRatioClass = aspectRatioClass
     )
 
+    val context = LocalContext.current
+    val stampProvider = remember(context) {
+        runCatching { backdropStampProvider(context) }.getOrNull()
+    }
+
     CompositionLocalProvider(
         LocalUiScale provides uiScaleConfig,
         LocalLauncherTheme provides launcherConfig,
         LocalArgosyTheme provides argosyThemeTokens(palette),
+        LocalSurfaceBackdrop provides themeState.surfaceBackdrop,
+        LocalBackdropStamps provides stampProvider,
         LocalBoxArtStyle provides boxArtStyle,
         LocalFooterStyle provides footerStyle,
         content = content

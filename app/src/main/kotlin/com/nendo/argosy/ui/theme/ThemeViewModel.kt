@@ -26,6 +26,7 @@ import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.hardware.AmbientLedContext
 import com.nendo.argosy.hardware.AmbientLedManager
+import com.nendo.argosy.ui.theme.backdrop.BackdropConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,6 +46,7 @@ data class ThemeState(
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
     val surfaceTintBleed: Int = 0,
+    val surfaceBackdrop: BackdropConfig = BackdropConfig(),
     val boxArtShape: BoxArtShape = BoxArtShape.STANDARD,
     val boxArtCornerRadius: BoxArtCornerRadius = BoxArtCornerRadius.MEDIUM,
     val boxArtBorderThickness: BoxArtBorderThickness = BoxArtBorderThickness.MEDIUM,
@@ -159,6 +161,20 @@ fun UserPreferences.toThemeState(): ThemeState = ThemeState(
     secondaryColor = secondaryColor,
     tertiaryColor = tertiaryColor,
     surfaceTintBleed = surfaceTintBleed,
+    surfaceBackdrop = BackdropConfig(
+        enabled = backdropEnabled,
+        preset = backdropPreset,
+        cellSize = backdropCellSize,
+        scatter = backdropScatter,
+        scaleJitter = backdropScaleJitter,
+        strength = backdropStrength,
+        edgeStyle = backdropEdgeStyle,
+        vertexIcons = backdropVertexIcons,
+        seed = backdropSeed,
+        motion = backdropMotion,
+        motionSpeed = backdropMotionSpeed,
+        driftAngle = backdropDriftAngle
+    ),
     boxArtShape = boxArtShape,
     boxArtCornerRadius = boxArtCornerRadius,
     boxArtBorderThickness = boxArtBorderThickness,

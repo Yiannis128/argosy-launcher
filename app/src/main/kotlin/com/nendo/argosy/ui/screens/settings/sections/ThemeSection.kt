@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +44,7 @@ internal sealed class ThemeItem(val key: String, val section: String) {
     data object TintBleed : ThemeItem("tintBleed", "appearance")
 
     data object BoxArt : ThemeItem("boxArt", "identity")
+    data object Backdrop : ThemeItem("backdrop", "identity")
     data object Fonts : ThemeItem("fonts", "identity")
     data object Sounds : ThemeItem("sounds", "identity")
 
@@ -55,7 +57,7 @@ internal sealed class ThemeItem(val key: String, val section: String) {
             AppearanceHeader,
             Mode, AccentColor, SecondaryColor, TintBleed,
             IdentitySpacer, IdentityHeader,
-            BoxArt, Fonts, Sounds
+            BoxArt, Backdrop, Fonts, Sounds
         )
     }
 }
@@ -170,6 +172,14 @@ fun ThemeSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 subtitle = "Customize card appearance",
                 isFocused = isFocused(item),
                 onClick = { viewModel.navigateToBoxArt() }
+            )
+
+            ThemeItem.Backdrop -> NavigationPreference(
+                icon = Icons.Outlined.Texture,
+                title = "Surface Backdrop",
+                subtitle = if (display.surfaceBackdrop.enabled) display.surfaceBackdrop.preset.displayName else "Off",
+                isFocused = isFocused(item),
+                onClick = { viewModel.navigateToThemeBackdrop() }
             )
 
             ThemeItem.Fonts -> NavigationPreference(

@@ -2,6 +2,7 @@ package com.nendo.argosy.data.preferences
 
 import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.core.input.SoundConfig
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import kotlinx.coroutines.flow.Flow
@@ -58,6 +59,18 @@ class UserPreferencesRepository @Inject constructor(
             secondaryColor = display.secondaryColor,
             tertiaryColor = display.tertiaryColor,
             surfaceTintBleed = display.surfaceTintBleed,
+            backdropEnabled = display.backdropEnabled,
+            backdropPreset = display.backdropPreset,
+            backdropCellSize = display.backdropCellSize,
+            backdropScatter = display.backdropScatter,
+            backdropScaleJitter = display.backdropScaleJitter,
+            backdropStrength = display.backdropStrength,
+            backdropEdgeStyle = display.backdropEdgeStyle,
+            backdropVertexIcons = display.backdropVertexIcons,
+            backdropSeed = display.backdropSeed,
+            backdropMotion = display.backdropMotion,
+            backdropMotionSpeed = display.backdropMotionSpeed,
+            backdropDriftAngle = display.backdropDriftAngle,
             displayFontPath = display.displayFontPath,
             displayFontName = display.displayFontName,
             bodyFontPath = display.bodyFontPath,
@@ -85,6 +98,7 @@ class UserPreferencesRepository @Inject constructor(
             backgroundOpacity = display.backgroundOpacity,
             useGameBackground = display.useGameBackground,
             customBackgroundPath = display.customBackgroundPath,
+            homeBackgroundMode = display.homeBackgroundMode,
             useAccentColorFooter = display.useAccentColorFooter,
             hiddenApps = app.hiddenApps,
             secondaryHomeApps = app.secondaryHomeApps,
@@ -185,6 +199,19 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setCustomColors(primary: Int?, secondary: Int?, tertiary: Int?) = displayPrefs.setCustomColors(primary, secondary, tertiary)
     suspend fun setSecondaryColor(color: Int?) = displayPrefs.setSecondaryColor(color)
     suspend fun setSurfaceTintBleed(bleed: Int) = displayPrefs.setSurfaceTintBleed(bleed)
+    suspend fun setBackdropEnabled(enabled: Boolean) = displayPrefs.setBackdropEnabled(enabled)
+    suspend fun setBackdropPreset(preset: BackdropPreset, edgeStyle: BackdropEdgeStyle, vertexIcons: BackdropVertexIcon) =
+        displayPrefs.setBackdropPreset(preset, edgeStyle, vertexIcons)
+    suspend fun setBackdropCellSize(sizeDp: Int) = displayPrefs.setBackdropCellSize(sizeDp)
+    suspend fun setBackdropScatter(scatter: Int) = displayPrefs.setBackdropScatter(scatter)
+    suspend fun setBackdropScaleJitter(jitter: Int) = displayPrefs.setBackdropScaleJitter(jitter)
+    suspend fun setBackdropStrength(strength: Int) = displayPrefs.setBackdropStrength(strength)
+    suspend fun setBackdropEdgeStyle(style: BackdropEdgeStyle) = displayPrefs.setBackdropEdgeStyle(style)
+    suspend fun setBackdropVertexIcons(icons: BackdropVertexIcon) = displayPrefs.setBackdropVertexIcons(icons)
+    suspend fun setBackdropSeed(seed: Long) = displayPrefs.setBackdropSeed(seed)
+    suspend fun setBackdropMotion(motion: BackdropMotion) = displayPrefs.setBackdropMotion(motion)
+    suspend fun setBackdropMotionSpeed(speed: Int) = displayPrefs.setBackdropMotionSpeed(speed)
+    suspend fun setBackdropDriftAngle(angle: Float) = displayPrefs.setBackdropDriftAngle(angle)
     suspend fun setCustomFont(slot: FontSlot, path: String?, name: String?) = displayPrefs.setCustomFont(slot, path, name)
     suspend fun setFontScale(slot: FontSlot, scale: Int) = displayPrefs.setFontScale(slot, scale)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
@@ -194,6 +221,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBackgroundOpacity(opacity: Int) = displayPrefs.setBackgroundOpacity(opacity)
     suspend fun setUseGameBackground(use: Boolean) = displayPrefs.setUseGameBackground(use)
     suspend fun setCustomBackgroundPath(path: String?) = displayPrefs.setCustomBackgroundPath(path)
+    suspend fun setHomeBackgroundMode(mode: HomeBackgroundMode) = displayPrefs.setHomeBackgroundMode(mode)
     suspend fun setUseAccentColorFooter(use: Boolean) = displayPrefs.setUseAccentColorFooter(use)
     suspend fun setBoxArtShape(shape: BoxArtShape) = displayPrefs.setBoxArtShape(shape)
     suspend fun setBoxArtCornerRadius(radius: BoxArtCornerRadius) = displayPrefs.setBoxArtCornerRadius(radius)
@@ -521,6 +549,18 @@ data class UserPreferences(
     val secondaryColor: Int? = null,
     val tertiaryColor: Int? = null,
     val surfaceTintBleed: Int = 0,
+    val backdropEnabled: Boolean = false,
+    val backdropPreset: BackdropPreset = BackdropPreset.PLATFORMS,
+    val backdropCellSize: Int = ComponentDefaults.SurfaceBackdrop.cellSizeDefaultDp,
+    val backdropScatter: Int = 200,
+    val backdropScaleJitter: Int = 100,
+    val backdropStrength: Int = 20,
+    val backdropEdgeStyle: BackdropEdgeStyle = BackdropEdgeStyle.CONNECTIONS,
+    val backdropVertexIcons: BackdropVertexIcon = BackdropVertexIcon.NONE,
+    val backdropSeed: Long = 0L,
+    val backdropMotion: BackdropMotion = BackdropMotion.SWAY,
+    val backdropMotionSpeed: Int = 75,
+    val backdropDriftAngle: Float = 45f,
     val displayFontPath: String? = null,
     val displayFontName: String? = null,
     val bodyFontPath: String? = null,
@@ -560,6 +600,7 @@ data class UserPreferences(
     val backgroundOpacity: Int = 100,
     val useGameBackground: Boolean = true,
     val customBackgroundPath: String? = null,
+    val homeBackgroundMode: HomeBackgroundMode = HomeBackgroundMode.GAME_ART,
     val useAccentColorFooter: Boolean = false,
     val fileLoggingEnabled: Boolean = false,
     val fileLoggingPath: String? = null,

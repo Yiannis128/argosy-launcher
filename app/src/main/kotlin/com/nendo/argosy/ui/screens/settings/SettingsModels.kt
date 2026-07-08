@@ -24,6 +24,7 @@ import com.nendo.argosy.data.preferences.BoxArtOuterEffectThickness
 import com.nendo.argosy.data.preferences.GlowColorMode
 import com.nendo.argosy.data.preferences.DefaultView
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.data.preferences.PlatformIndicatorContent
 import com.nendo.argosy.data.preferences.PlatformIndicatorStyle
@@ -35,6 +36,7 @@ import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.ui.input.SoundPreset
+import com.nendo.argosy.ui.theme.backdrop.BackdropConfig
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import com.nendo.argosy.util.PlatformFilterLogic
@@ -61,6 +63,7 @@ enum class SettingsSection {
     THEME,
     THEME_SOUNDS,
     THEME_FONTS,
+    THEME_BACKDROP,
     INTERFACE,
     BOX_ART,
     HOME_SCREEN,
@@ -176,6 +179,7 @@ data class DisplayState(
     val primaryColor: Int? = null,
     val secondaryColor: Int? = null,
     val surfaceTintBleed: Int = 0,
+    val surfaceBackdrop: BackdropConfig = BackdropConfig(),
     val displayFontName: String? = null,
     val bodyFontName: String? = null,
     val displayFontScale: Int = 100,
@@ -186,6 +190,7 @@ data class DisplayState(
     val backgroundOpacity: Int = 100,
     val useGameBackground: Boolean = true,
     val customBackgroundPath: String? = null,
+    val homeBackgroundMode: HomeBackgroundMode = HomeBackgroundMode.GAME_ART,
     val useAccentColorFooter: Boolean = false,
     val boxArtShape: BoxArtShape = BoxArtShape.STANDARD,
     val boxArtCornerRadius: BoxArtCornerRadius = BoxArtCornerRadius.MEDIUM,

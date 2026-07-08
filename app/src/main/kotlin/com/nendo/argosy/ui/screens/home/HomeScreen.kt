@@ -93,8 +93,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.LocalSurfaceBackdrop
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -486,6 +490,9 @@ fun HomeScreen(
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayBaseColor = if (isDarkTheme) Color.Black else Color.White
 
+    val backdropEnabled = LocalSurfaceBackdrop.current.enabled
+    val showArtLayer = !backdropEnabled || uiState.homeBackgroundMode == HomeBackgroundMode.GAME_ART
+
     val effectiveBackgroundPath = if (uiState.useGameBackground) {
         uiState.focusedGame?.let { game ->
             when {
@@ -510,46 +517,51 @@ fun HomeScreen(
         } else {
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = backgroundAlpha }
-            ) {
-                if (effectiveBackgroundPath != null) {
-                    val backgroundContext = LocalContext.current
-                    val backgroundModel = rememberFileImageModel(effectiveBackgroundPath)
-                    val backgroundRequest = remember(backgroundModel) {
-                        ImageRequest.Builder(backgroundContext)
-                            .data(backgroundModel)
-                            .size(640, 360)
-                            .transitionFactory(AlwaysCrossfadeFactory(380))
-                            .build()
-                    }
-                    AsyncImage(
-                        model = backgroundRequest,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        colorFilter = ColorFilter.colorMatrix(saturationMatrix),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .let {
-                                val totalBlur = backgroundBlurDp + combinedBlur
-                                if (totalBlur > 0.dp) it.blur(totalBlur) else it
-                            }
-                    )
-                }
+            if (backdropEnabled) {
+                Box(modifier = Modifier.fillMaxSize().surfaceBackdrop(BackdropRole.CONTENT))
+            }
+            if (showArtLayer) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    overlayBaseColor.copy(alpha = overlayAlphaTop),
-                                    overlayBaseColor.copy(alpha = overlayAlphaBottom)
+                        .graphicsLayer { alpha = backgroundAlpha }
+                ) {
+                    if (effectiveBackgroundPath != null) {
+                        val backgroundContext = LocalContext.current
+                        val backgroundModel = rememberFileImageModel(effectiveBackgroundPath)
+                        val backgroundRequest = remember(backgroundModel) {
+                            ImageRequest.Builder(backgroundContext)
+                                .data(backgroundModel)
+                                .size(640, 360)
+                                .transitionFactory(AlwaysCrossfadeFactory(380))
+                                .build()
+                        }
+                        AsyncImage(
+                            model = backgroundRequest,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            colorFilter = ColorFilter.colorMatrix(saturationMatrix),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .let {
+                                    val totalBlur = backgroundBlurDp + combinedBlur
+                                    if (totalBlur > 0.dp) it.blur(totalBlur) else it
+                                }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        overlayBaseColor.copy(alpha = overlayAlphaTop),
+                                        overlayBaseColor.copy(alpha = overlayAlphaBottom)
+                                    )
                                 )
                             )
-                        )
-                )
+                    )
+                }
             }
 
             if (uiState.isVideoPreviewLoading || uiState.isVideoPreviewActive) {

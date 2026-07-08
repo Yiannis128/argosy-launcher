@@ -25,11 +25,15 @@ import com.nendo.argosy.ui.screens.settings.sections.InterfaceLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.MainSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.StorageItem
 import com.nendo.argosy.data.preferences.FontSlot
+import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsLayoutState
+import com.nendo.argosy.ui.screens.settings.sections.themeBackdropItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeBackdropMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeFontsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeFontsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeFocusIndexOf
@@ -206,6 +210,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
         SettingsSection.THEME -> routeThemeConfirm(vm, state)
         SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
         SettingsSection.THEME_FONTS -> routeThemeFontsConfirm(vm, state)
+        SettingsSection.THEME_BACKDROP -> routeThemeBackdropConfirm(vm, state)
         SettingsSection.INTERFACE -> routeInterfaceConfirm(vm, state)
         SettingsSection.HOME_SCREEN -> routeHomeScreenConfirm(vm, state)
         SettingsSection.BOX_ART -> routeBoxArtConfirm(vm, state)
@@ -359,6 +364,7 @@ private fun routeThemeConfirm(vm: SettingsViewModel, state: SettingsUiState): In
         }
         ThemeItem.TintBleed -> vm.cycleSurfaceTintBleed()
         ThemeItem.BoxArt -> vm.navigateToBoxArt()
+        ThemeItem.Backdrop -> vm.navigateToThemeBackdrop()
         ThemeItem.Fonts -> vm.navigateToThemeFonts()
         ThemeItem.Sounds -> vm.navigateToThemeSounds()
         else -> {}
@@ -405,8 +411,50 @@ private fun routeThemeFontsConfirm(vm: SettingsViewModel, state: SettingsUiState
     return InputResult.HANDLED
 }
 
+private fun routeThemeBackdropConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val layoutState = ThemeBackdropLayoutState.from(state)
+    when (themeBackdropItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        ThemeBackdropItem.Enabled -> {
+            vm.setBackdropEnabled(!state.display.surfaceBackdrop.enabled)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        ThemeBackdropItem.Preset -> {
+            vm.requestEnumPicker(ThemeBackdropItem.Preset.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.EdgeLines -> {
+            vm.requestEnumPicker(ThemeBackdropItem.EdgeLines.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.CornerIcons -> {
+            vm.requestEnumPicker(ThemeBackdropItem.CornerIcons.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.Motion -> {
+            vm.requestEnumPicker(ThemeBackdropItem.Motion.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.Direction -> {
+            vm.requestEnumPicker(ThemeBackdropItem.Direction.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.Density -> vm.cycleBackdropCellSize()
+        ThemeBackdropItem.Scatter -> vm.cycleBackdropScatter()
+        ThemeBackdropItem.ScaleJitter -> vm.cycleBackdropScaleJitter()
+        ThemeBackdropItem.Strength -> vm.cycleBackdropStrength()
+        ThemeBackdropItem.Speed -> vm.cycleBackdropMotionSpeed()
+        ThemeBackdropItem.Reshuffle -> vm.reshuffleBackdropSeed()
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
 private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     when (homeScreenItemAtFocusIndex(state.focusedIndex, state.display)) {
+        HomeScreenItem.Background -> {
+            vm.requestEnumPicker(HomeScreenItem.Background.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         HomeScreenItem.GameArtwork -> {
             vm.setUseGameBackground(!state.display.useGameBackground)
             return InputResult.handled(SoundType.TOGGLE)
@@ -702,6 +750,10 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             val focusIdx = themeFocusIndexOf(ThemeItem.Fonts)
             vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
         }
+        state.currentSection == SettingsSection.THEME_BACKDROP -> {
+            val focusIdx = themeFocusIndexOf(ThemeItem.Backdrop)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
         state.currentSection == SettingsSection.AMBIENT_LED -> {
             val layoutState = InterfaceLayoutState.from(state)
             val focusIdx = interfaceFocusIndexOf(InterfaceItem.AmbientLedSettings, layoutState)
@@ -852,6 +904,7 @@ private fun computeMaxFocusIndex(
     SettingsSection.THEME -> themeMaxFocusIndex()
     SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))
     SettingsSection.THEME_FONTS -> themeFontsMaxFocusIndex(ThemeFontsLayoutState.from(state))
+    SettingsSection.THEME_BACKDROP -> themeBackdropMaxFocusIndex(ThemeBackdropLayoutState.from(state))
     SettingsSection.INTERFACE -> interfaceMaxFocusIndex(InterfaceLayoutState.from(state))
     SettingsSection.HOME_SCREEN -> homeScreenMaxFocusIndex(state.display)
     SettingsSection.BOX_ART -> boxArtMaxFocusIndex(state.display)

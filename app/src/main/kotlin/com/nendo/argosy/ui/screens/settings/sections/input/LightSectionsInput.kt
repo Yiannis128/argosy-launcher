@@ -133,6 +133,7 @@ internal class LightSectionsInput(
         val display = state.display
         val step = SettingsInputHandler.SLIDER_STEP
         when (homeScreenItemAtFocusIndex(state.focusedIndex, display)) {
+            HomeScreenItem.Background -> { viewModel.cycleHomeBackgroundMode(direction); return InputResult.HANDLED }
             HomeScreenItem.Blur -> { viewModel.adjustBackgroundBlur(direction * step); return InputResult.HANDLED }
             HomeScreenItem.Saturation -> { viewModel.adjustBackgroundSaturation(direction * step); return InputResult.HANDLED }
             HomeScreenItem.Opacity -> { viewModel.adjustBackgroundOpacity(direction * step); return InputResult.HANDLED }

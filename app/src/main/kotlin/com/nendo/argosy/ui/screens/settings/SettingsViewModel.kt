@@ -17,6 +17,7 @@ import android.net.Uri
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.github.UpdateRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
@@ -716,6 +717,28 @@ class SettingsViewModel @Inject constructor(
     fun resetToDefaultSecondaryColor() = displayDelegate.resetToDefaultSecondaryColor(viewModelScope)
     fun adjustSurfaceTintBleed(delta: Int) = displayDelegate.adjustSurfaceTintBleed(viewModelScope, delta)
     fun cycleSurfaceTintBleed() = displayDelegate.cycleSurfaceTintBleed(viewModelScope)
+    fun setBackdropEnabled(enabled: Boolean) = displayDelegate.setBackdropEnabled(viewModelScope, enabled)
+    fun setBackdropPreset(preset: com.nendo.argosy.data.preferences.BackdropPreset) = displayDelegate.setBackdropPreset(viewModelScope, preset)
+    fun cycleBackdropPreset(direction: Int = 1) = displayDelegate.cycleBackdropPreset(viewModelScope, direction)
+    fun adjustBackdropCellSize(delta: Int) = displayDelegate.adjustBackdropCellSize(viewModelScope, delta)
+    fun cycleBackdropCellSize() = displayDelegate.cycleBackdropCellSize(viewModelScope)
+    fun adjustBackdropScatter(delta: Int) = displayDelegate.adjustBackdropScatter(viewModelScope, delta)
+    fun cycleBackdropScatter() = displayDelegate.cycleBackdropScatter(viewModelScope)
+    fun adjustBackdropScaleJitter(delta: Int) = displayDelegate.adjustBackdropScaleJitter(viewModelScope, delta)
+    fun cycleBackdropScaleJitter() = displayDelegate.cycleBackdropScaleJitter(viewModelScope)
+    fun adjustBackdropStrength(delta: Int) = displayDelegate.adjustBackdropStrength(viewModelScope, delta)
+    fun cycleBackdropStrength() = displayDelegate.cycleBackdropStrength(viewModelScope)
+    fun setBackdropEdgeStyle(style: com.nendo.argosy.data.preferences.BackdropEdgeStyle) = displayDelegate.setBackdropEdgeStyle(viewModelScope, style)
+    fun cycleBackdropEdgeStyle(direction: Int = 1) = displayDelegate.cycleBackdropEdgeStyle(viewModelScope, direction)
+    fun setBackdropVertexIcons(icons: com.nendo.argosy.data.preferences.BackdropVertexIcon) = displayDelegate.setBackdropVertexIcons(viewModelScope, icons)
+    fun cycleBackdropVertexIcons(direction: Int = 1) = displayDelegate.cycleBackdropVertexIcons(viewModelScope, direction)
+    fun setBackdropMotion(motion: com.nendo.argosy.data.preferences.BackdropMotion) = displayDelegate.setBackdropMotion(viewModelScope, motion)
+    fun cycleBackdropMotion(direction: Int = 1) = displayDelegate.cycleBackdropMotion(viewModelScope, direction)
+    fun adjustBackdropMotionSpeed(delta: Int) = displayDelegate.adjustBackdropMotionSpeed(viewModelScope, delta)
+    fun cycleBackdropMotionSpeed() = displayDelegate.cycleBackdropMotionSpeed(viewModelScope)
+    fun setBackdropDriftAngle(angle: Float) = displayDelegate.setBackdropDriftAngle(viewModelScope, angle)
+    fun adjustBackdropDriftAngle(deltaDegrees: Float) = displayDelegate.adjustBackdropDriftAngle(viewModelScope, deltaDegrees)
+    fun reshuffleBackdropSeed() = displayDelegate.reshuffleBackdropSeed(viewModelScope)
     fun adjustFontScale(slot: FontSlot, delta: Int) = displayDelegate.adjustFontScale(viewModelScope, slot, delta)
     fun cycleFontScale(slot: FontSlot) = displayDelegate.cycleFontScale(viewModelScope, slot)
     fun setGridDensity(density: GridDensity) = displayDelegate.setGridDensity(viewModelScope, density)
@@ -736,6 +759,8 @@ class SettingsViewModel @Inject constructor(
     fun cycleBackgroundOpacity() = routeCycleBackgroundOpacity(this)
 
     fun setUseGameBackground(use: Boolean) = displayDelegate.setUseGameBackground(viewModelScope, use)
+    fun setHomeBackgroundMode(mode: HomeBackgroundMode) = displayDelegate.setHomeBackgroundMode(viewModelScope, mode)
+    fun cycleHomeBackgroundMode(direction: Int = 1) = displayDelegate.cycleHomeBackgroundMode(viewModelScope, direction)
     fun setUseAccentColorFooter(use: Boolean) = displayDelegate.setUseAccentColorFooter(viewModelScope, use)
     fun setCustomBackgroundPath(path: String?) = displayDelegate.setCustomBackgroundPath(viewModelScope, path)
     fun openBackgroundPicker() = displayDelegate.openBackgroundPicker(viewModelScope)
@@ -745,6 +770,7 @@ class SettingsViewModel @Inject constructor(
     fun navigateToAmbientLed() = routeNavigateToAmbientLed(this)
     fun navigateToThemeSounds() = routeNavigateToThemeSounds(this)
     fun navigateToThemeFonts() = routeNavigateToThemeFonts(this)
+    fun navigateToThemeBackdrop() = routeNavigateToThemeBackdrop(this)
 
     fun openFontPicker(slot: FontSlot) {
         viewModelScope.launch { _openFontPickerEvent.emit(slot) }

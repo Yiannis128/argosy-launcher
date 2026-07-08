@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.SliderPreference
@@ -31,6 +32,7 @@ internal sealed class HomeScreenItem(
 
     class Header(key: String, section: String, val title: String) : HomeScreenItem(key, section)
 
+    data object Background : HomeScreenItem("homeBackgroundMode", "background")
     data object GameArtwork : HomeScreenItem("gameArtwork", "background")
     data object CustomImage : HomeScreenItem(
         key = "customImage",
@@ -67,7 +69,7 @@ internal sealed class HomeScreenItem(
             ContentHeader,
             InstalledOnly,
             BackgroundHeader,
-            GameArtwork, CustomImage, Blur, Saturation, Opacity,
+            Background, GameArtwork, CustomImage, Blur, Saturation, Opacity,
             VideoHeader,
             VideoWallpaper, VideoDelay, VideoMuted,
             FooterHeader,
@@ -130,6 +132,18 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     ) { item ->
             when (item) {
                 is HomeScreenItem.Header -> HomeScreenSectionHeader(item.title)
+
+                HomeScreenItem.Background -> CyclePreference(
+                    title = "Background",
+                    subtitle = "Game art or the backdrop pattern",
+                    value = display.homeBackgroundMode.displayName,
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.cycleHomeBackgroundMode() },
+                    onPrev = { viewModel.cycleHomeBackgroundMode(-1) },
+                    options = remember { HomeBackgroundMode.entries.map { it.displayName } },
+                    onSelect = { index -> viewModel.setHomeBackgroundMode(HomeBackgroundMode.entries[index]) },
+                    pickerRequestToken = pickerToken(item)
+                )
 
                 HomeScreenItem.GameArtwork -> SwitchPreference(
                     title = "Game Artwork",

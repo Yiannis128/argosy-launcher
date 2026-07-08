@@ -156,3 +156,46 @@ Shipped and revised on device:
   pastel saturation. Step ORDER and approximate spacing are preserved; contrast against
   V~0.9 text remains enormous at any setting. Saturation stays capped
   (maxSaturationRatio 0.3). Tint 0 remains byte-identical to the neutral ramp.
+
+## Backdrop on Home (2026-07-08)
+
+The allowlist grows to the HOME screen, as a user-chosen background mode:
+- "Game Art" (current behavior) vs "Pattern" (the backdrop grid as the Home background).
+- In Game Art mode the pattern ALSO renders as the permanent underlayer beneath the
+  screenshot/art layer: art fades in over the pattern instead of a black flash while
+  loading, and games without art inherit a designed background for free.
+- Home uses the content-role alpha cap (it sits under real content, not wallpaper).
+- Mode row lives with the Home Screen settings (Interface > Layout > Home Screen).
+
+## Backdrop motion (2026-07-08, supersedes "Static; no pattern animation")
+
+Optional, deliberately subtle motion on the backdrop pattern:
+- Motion knob: Off (default) / Drift / Sway.
+- Drift: slow directional scroll. Direction is a free angle (0-360 degrees, 0 = up,
+  clockwise, default 45) picked on a compass-ring modal: d-pad steps 15/45 degrees,
+  analog stick and touch drag set the dot directly, A commits, B cancels.
+- Speed: percent slider (25-200, step 25, default 100) multiplying the designed
+  token base; drift speed scales up, sway period scales down.
+- Sway: gentle Lissajous wander (two out-of-phase sinusoids at incommensurate
+  frequencies) - reads as slightly random, amplitude well under one cell.
+- Implementation: translate the cached tile shader's local matrix per frame; the
+  tile bitmap is never regenerated. Drift animates each axis as its own loop of
+  exactly one tile length so wraps land on the lattice at any angle.
+- Gated on the motion tier: Reduced renders static regardless of the knob.
+- Base speeds/amplitudes live in tokens.json components.surfaceBackdrop.
+
+## Backdrop scatter + scale jitter + density spread (2026-07-08)
+
+The perfect lattice is too uniform; texture knobs:
+- Density becomes a STEPPER (Int level), replacing the 3-value enum: cell size maps
+  across a wide range (~16dp dense micro-texture to ~120dp sparse), min/max/step as
+  token values. The enum is unreleased - delete it, no migration.
+- Scatter (0-100%): seeded per-shape position offset from the grid, up to ~0.35 cell
+  at full. Applies to cell shapes and vertex icons.
+- Scale Jitter (0-100%): per-shape size variance (0 = uniform); rotation jitter rides
+  the same intensity (jitter% of +/-30 deg). Replaces the fixed internal constants.
+- Speed/scatter/jitter magnitudes are token ratios (components.surfaceBackdrop).
+- TILING RULE: per-shape randomness derives from WRAPPED lattice coordinates (hash of
+  i.mod(cells), j.mod(cells), seed) so overflow-ring copies match exactly; the cell
+  layer gains the same inclusive ring the vertex layer has. Sequential Random draws
+  are forbidden - they break seam continuity.

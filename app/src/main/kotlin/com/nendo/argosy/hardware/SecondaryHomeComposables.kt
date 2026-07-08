@@ -15,7 +15,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +45,8 @@ import com.nendo.argosy.ui.dualscreen.home.DualHomeViewModel
 import com.nendo.argosy.ui.screens.secondaryhome.SecondaryHomeScreen
 import com.nendo.argosy.ui.screens.secondaryhome.SecondaryHomeViewModel
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import kotlinx.coroutines.flow.StateFlow
 
 enum class CompanionScreen { HOME, GAME_DETAIL }
@@ -90,7 +91,7 @@ fun SecondaryHomeContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .surfaceBackdrop(BackdropRole.WALLPAPER)
     ) {
         AnimatedVisibility(
             visible = showSplash,
@@ -227,7 +228,7 @@ fun ShowcaseRoleContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .surfaceBackdrop(BackdropRole.WALLPAPER)
     ) {
         AnimatedVisibility(
             visible = showSplash,
@@ -443,7 +444,7 @@ private fun SplashContent() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .surfaceBackdrop(BackdropRole.WALLPAPER),
         contentAlignment = Alignment.Center
     ) {
         Image(

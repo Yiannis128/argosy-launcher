@@ -42,6 +42,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.ui.components.FooterHints
@@ -89,6 +91,7 @@ import com.nendo.argosy.ui.screens.settings.sections.SteamSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
 import com.nendo.argosy.data.preferences.FontSlot
+import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsSection
@@ -436,7 +439,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .blur(soundPickerBlur)
-                .background(MaterialTheme.colorScheme.background)
+                .surfaceBackdrop(BackdropRole.CONTENT)
         ) {
             if (uiState.currentSection != SettingsSection.SHADER_STACK &&
                 uiState.currentSection != SettingsSection.FRAME_PICKER) {
@@ -451,6 +454,7 @@ fun SettingsScreen(
                         SettingsSection.THEME -> "THEME"
                         SettingsSection.THEME_SOUNDS -> "SOUNDS"
                         SettingsSection.THEME_FONTS -> "FONTS"
+                        SettingsSection.THEME_BACKDROP -> "SURFACE BACKDROP"
                         SettingsSection.INTERFACE -> "INTERFACE"
                         SettingsSection.BOX_ART -> "BOX ART"
                         SettingsSection.HOME_SCREEN -> "HOME SCREEN"
@@ -514,6 +518,7 @@ fun SettingsScreen(
                     SettingsSection.THEME -> ThemeSection(uiState, viewModel)
                     SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
                     SettingsSection.THEME_FONTS -> ThemeFontsSection(uiState, viewModel)
+                    SettingsSection.THEME_BACKDROP -> ThemeBackdropSection(uiState, viewModel)
                     SettingsSection.INTERFACE -> InterfaceSection(uiState, viewModel)
                     SettingsSection.BOX_ART -> BoxArtSection(uiState, viewModel)
                     SettingsSection.HOME_SCREEN -> HomeScreenSection(uiState, viewModel)

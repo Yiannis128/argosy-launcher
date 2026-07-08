@@ -2,6 +2,15 @@ package com.nendo.argosy.ui.screens.settings.delegates
 
 import androidx.core.graphics.ColorUtils
 import com.nendo.argosy.data.cache.GradientPreset
+import com.nendo.argosy.data.preferences.BackdropEdgeStyle
+import com.nendo.argosy.data.preferences.BackdropMotion
+import com.nendo.argosy.data.preferences.BackdropPreset
+import com.nendo.argosy.data.preferences.BackdropVertexIcon
+import com.nendo.argosy.ui.theme.backdrop.BackdropConfig
+import com.nendo.argosy.ui.theme.backdrop.defaultEdgeStyle
+import com.nendo.argosy.ui.theme.backdrop.defaultVertexIcons
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
+import java.security.SecureRandom
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.BoxArtBorderThickness
 import com.nendo.argosy.data.preferences.BoxArtCornerRadius
@@ -15,6 +24,7 @@ import com.nendo.argosy.data.preferences.BoxArtOuterEffectThickness
 import com.nendo.argosy.data.preferences.DefaultView
 import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.data.preferences.SystemIconPadding
 import com.nendo.argosy.data.preferences.SystemIconPosition
 import com.nendo.argosy.data.preferences.ThemeMode
@@ -180,6 +190,141 @@ class DisplaySettingsDelegate @Inject constructor(
         setSurfaceTintBleed(scope, next)
     }
 
+    private fun updateBackdrop(scope: CoroutineScope, write: suspend () -> Unit, transform: (BackdropConfig) -> BackdropConfig) {
+        scope.launch {
+            write()
+            _state.update { it.copy(surfaceBackdrop = transform(it.surfaceBackdrop)) }
+        }
+    }
+
+    fun setBackdropEnabled(scope: CoroutineScope, enabled: Boolean) =
+        updateBackdrop(scope, { preferencesRepository.setBackdropEnabled(enabled) }) { it.copy(enabled = enabled) }
+
+    fun setBackdropPreset(scope: CoroutineScope, preset: BackdropPreset) {
+        val edge = preset.defaultEdgeStyle
+        val vertex = preset.defaultVertexIcons
+        updateBackdrop(scope, { preferencesRepository.setBackdropPreset(preset, edge, vertex) }) {
+            it.copy(preset = preset, edgeStyle = edge, vertexIcons = vertex)
+        }
+    }
+
+    fun cycleBackdropPreset(scope: CoroutineScope, direction: Int = 1) =
+        setBackdropPreset(scope, cycleEnum(_state.value.surfaceBackdrop.preset, direction))
+
+    fun setBackdropCellSize(scope: CoroutineScope, sizeDp: Int) {
+        val clamped = sizeDp.coerceIn(CELL_SIZE_MIN, CELL_SIZE_MAX)
+        updateBackdrop(scope, { preferencesRepository.setBackdropCellSize(clamped) }) { it.copy(cellSize = clamped) }
+    }
+
+    fun adjustBackdropCellSize(scope: CoroutineScope, delta: Int) {
+        val current = _state.value.surfaceBackdrop.cellSize
+        val newValue = (current + delta).coerceIn(CELL_SIZE_MIN, CELL_SIZE_MAX)
+        if (newValue != current) setBackdropCellSize(scope, newValue)
+    }
+
+    fun cycleBackdropCellSize(scope: CoroutineScope) {
+        val current = _state.value.surfaceBackdrop.cellSize
+        setBackdropCellSize(scope, if (current >= CELL_SIZE_MAX) CELL_SIZE_MIN else current + CELL_SIZE_STEP)
+    }
+
+    fun setBackdropScatter(scope: CoroutineScope, scatter: Int) {
+        val clamped = scatter.coerceIn(0, 200)
+        updateBackdrop(scope, { preferencesRepository.setBackdropScatter(clamped) }) { it.copy(scatter = clamped) }
+    }
+
+    fun adjustBackdropScatter(scope: CoroutineScope, delta: Int) {
+        val current = _state.value.surfaceBackdrop.scatter
+        val newValue = (current + delta).coerceIn(0, 200)
+        if (newValue != current) setBackdropScatter(scope, newValue)
+    }
+
+    fun cycleBackdropScatter(scope: CoroutineScope) {
+        val current = _state.value.surfaceBackdrop.scatter
+        setBackdropScatter(scope, if (current >= 200) 0 else current + 10)
+    }
+
+    fun setBackdropScaleJitter(scope: CoroutineScope, jitter: Int) {
+        val clamped = jitter.coerceIn(0, 200)
+        updateBackdrop(scope, { preferencesRepository.setBackdropScaleJitter(clamped) }) { it.copy(scaleJitter = clamped) }
+    }
+
+    fun adjustBackdropScaleJitter(scope: CoroutineScope, delta: Int) {
+        val current = _state.value.surfaceBackdrop.scaleJitter
+        val newValue = (current + delta).coerceIn(0, 200)
+        if (newValue != current) setBackdropScaleJitter(scope, newValue)
+    }
+
+    fun cycleBackdropScaleJitter(scope: CoroutineScope) {
+        val current = _state.value.surfaceBackdrop.scaleJitter
+        setBackdropScaleJitter(scope, if (current >= 200) 0 else current + 10)
+    }
+
+    fun setBackdropStrength(scope: CoroutineScope, strength: Int) {
+        val clamped = strength.coerceIn(10, 100)
+        updateBackdrop(scope, { preferencesRepository.setBackdropStrength(clamped) }) { it.copy(strength = clamped) }
+    }
+
+    fun adjustBackdropStrength(scope: CoroutineScope, delta: Int) {
+        val current = _state.value.surfaceBackdrop.strength
+        val newValue = (current + delta).coerceIn(10, 100)
+        if (newValue != current) setBackdropStrength(scope, newValue)
+    }
+
+    fun cycleBackdropStrength(scope: CoroutineScope) {
+        val current = _state.value.surfaceBackdrop.strength
+        setBackdropStrength(scope, if (current >= 100) 10 else current + 10)
+    }
+
+    fun setBackdropEdgeStyle(scope: CoroutineScope, style: BackdropEdgeStyle) =
+        updateBackdrop(scope, { preferencesRepository.setBackdropEdgeStyle(style) }) { it.copy(edgeStyle = style) }
+
+    fun cycleBackdropEdgeStyle(scope: CoroutineScope, direction: Int = 1) =
+        setBackdropEdgeStyle(scope, cycleEnum(_state.value.surfaceBackdrop.edgeStyle, direction))
+
+    fun setBackdropVertexIcons(scope: CoroutineScope, icons: BackdropVertexIcon) =
+        updateBackdrop(scope, { preferencesRepository.setBackdropVertexIcons(icons) }) { it.copy(vertexIcons = icons) }
+
+    fun cycleBackdropVertexIcons(scope: CoroutineScope, direction: Int = 1) =
+        setBackdropVertexIcons(scope, cycleEnum(_state.value.surfaceBackdrop.vertexIcons, direction))
+
+    fun setBackdropMotion(scope: CoroutineScope, motion: BackdropMotion) =
+        updateBackdrop(scope, { preferencesRepository.setBackdropMotion(motion) }) { it.copy(motion = motion) }
+
+    fun cycleBackdropMotion(scope: CoroutineScope, direction: Int = 1) =
+        setBackdropMotion(scope, cycleEnum(_state.value.surfaceBackdrop.motion, direction))
+
+    fun setBackdropMotionSpeed(scope: CoroutineScope, speed: Int) {
+        val clamped = speed.coerceIn(MOTION_SPEED_MIN, MOTION_SPEED_MAX)
+        updateBackdrop(scope, { preferencesRepository.setBackdropMotionSpeed(clamped) }) { it.copy(motionSpeed = clamped) }
+    }
+
+    fun adjustBackdropMotionSpeed(scope: CoroutineScope, delta: Int) {
+        val current = _state.value.surfaceBackdrop.motionSpeed
+        val newValue = (current + delta).coerceIn(MOTION_SPEED_MIN, MOTION_SPEED_MAX)
+        if (newValue != current) setBackdropMotionSpeed(scope, newValue)
+    }
+
+    fun cycleBackdropMotionSpeed(scope: CoroutineScope) {
+        val current = _state.value.surfaceBackdrop.motionSpeed
+        setBackdropMotionSpeed(
+            scope,
+            if (current >= MOTION_SPEED_MAX) MOTION_SPEED_MIN else current + MOTION_SPEED_STEP
+        )
+    }
+
+    fun setBackdropDriftAngle(scope: CoroutineScope, angle: Float) {
+        val wrapped = angle.mod(360f)
+        updateBackdrop(scope, { preferencesRepository.setBackdropDriftAngle(wrapped) }) { it.copy(driftAngle = wrapped) }
+    }
+
+    fun adjustBackdropDriftAngle(scope: CoroutineScope, deltaDegrees: Float) =
+        setBackdropDriftAngle(scope, _state.value.surfaceBackdrop.driftAngle + deltaDegrees)
+
+    fun reshuffleBackdropSeed(scope: CoroutineScope) {
+        val seed = SecureRandom().nextLong()
+        updateBackdrop(scope, { preferencesRepository.setBackdropSeed(seed) }) { it.copy(seed = seed) }
+    }
+
     private fun fontScaleOf(slot: FontSlot): Int = when (slot) {
         FontSlot.DISPLAY -> _state.value.displayFontScale
         FontSlot.BODY -> _state.value.bodyFontScale
@@ -309,6 +454,16 @@ class DisplaySettingsDelegate @Inject constructor(
             _state.update { it.copy(useGameBackground = use) }
         }
     }
+
+    fun setHomeBackgroundMode(scope: CoroutineScope, mode: HomeBackgroundMode) {
+        scope.launch {
+            preferencesRepository.setHomeBackgroundMode(mode)
+            _state.update { it.copy(homeBackgroundMode = mode) }
+        }
+    }
+
+    fun cycleHomeBackgroundMode(scope: CoroutineScope, direction: Int = 1) =
+        setHomeBackgroundMode(scope, cycleEnum(_state.value.homeBackgroundMode, direction))
 
     fun setUseAccentColorFooter(scope: CoroutineScope, use: Boolean) {
         scope.launch {
@@ -497,6 +652,12 @@ class DisplaySettingsDelegate @Inject constructor(
 
     companion object {
         val VIDEO_DELAY_SECONDS = listOf(0, 1, 3, 5, 10)
+        const val MOTION_SPEED_MIN = 25
+        const val MOTION_SPEED_MAX = 200
+        const val MOTION_SPEED_STEP = 25
+        const val CELL_SIZE_MIN = ComponentDefaults.SurfaceBackdrop.cellSizeMinDp
+        const val CELL_SIZE_MAX = ComponentDefaults.SurfaceBackdrop.cellSizeMaxDp
+        const val CELL_SIZE_STEP = ComponentDefaults.SurfaceBackdrop.cellSizeStepDp
     }
 
     fun setVideoWallpaperMuted(scope: CoroutineScope, muted: Boolean) {
