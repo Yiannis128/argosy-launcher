@@ -16,8 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontFamily
+import com.nendo.argosy.ui.theme.CustomFontFamilies
+import com.nendo.argosy.ui.theme.CustomFontLoader
 import com.nendo.argosy.ui.theme.ThemeState
 import com.nendo.argosy.ui.theme.toThemeState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.lifecycleScope
 import com.nendo.argosy.DualScreenManager
 import com.nendo.argosy.DualScreenManagerHolder
@@ -159,13 +164,15 @@ class SecondaryHomeActivity :
             // the LaunchedEffect key, live theme updates from the primary
             // screen would never reach the secondary.
             val themeState = remember { mutableStateOf(ThemeState()) }
+            val customFonts = remember { mutableStateOf(CustomFontFamilies()) }
             LaunchedEffect(isInitialized) {
                 if (!isInitialized) return@LaunchedEffect
                 dsm.preferencesRepository.userPreferences.collect { prefs ->
                     themeState.value = prefs.toThemeState()
+                    customFonts.value = resolveCustomFonts(prefs.displayFontPath, prefs.bodyFontPath)
                 }
             }
-            SecondaryHomeTheme(themeState = themeState.value) {
+            SecondaryHomeTheme(themeState = themeState.value, fonts = customFonts.value) {
                 if (!isInitialized) return@SecondaryHomeTheme
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalABIconsSwapped provides abIconsSwapped,
@@ -588,6 +595,24 @@ class SecondaryHomeActivity :
         broadcasts.broadcastGameDetailClosed()
         broadcasts.broadcastCurrentGameSelection()
         dualHomeViewModel.refresh()
+    }
+
+    private val fontFamilyCache = mutableMapOf<String, FontFamily>()
+
+    private suspend fun resolveCustomFonts(displayPath: String?, bodyPath: String?): CustomFontFamilies =
+        withContext(Dispatchers.IO) {
+            CustomFontFamilies(
+                display = resolveFontFamily(displayPath),
+                body = resolveFontFamily(bodyPath)
+            )
+        }
+
+    private fun resolveFontFamily(path: String?): FontFamily? {
+        if (path == null) return null
+        fontFamilyCache[path]?.let { return it }
+        val family = CustomFontLoader.loadFamily(path)
+        if (family != null) fontFamilyCache[path] = family
+        return family
     }
 
     private fun initializeCompanion() {
