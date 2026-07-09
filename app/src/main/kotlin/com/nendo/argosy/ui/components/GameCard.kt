@@ -100,6 +100,7 @@ fun GameCard(
     scaleFromBottom: Boolean = false,
     downloadIndicator: GameDownloadIndicator = GameDownloadIndicator.NONE,
     showPlatformBadge: Boolean = true,
+    showStatusOverlays: Boolean = true,
     coverPathOverride: String? = null,
     onCoverLoadFailed: ((gameId: Long, failedPath: String) -> Unit)? = null,
     onCoverLoaded: ((gameId: Long, bitmap: Bitmap) -> Unit)? = null,
@@ -422,10 +423,12 @@ fun GameCard(
             ) { _ ->
                 Box(modifier = Modifier.fillMaxSize()) {
                     coverBody()
-                    StatusIndicators(
-                        isFavorite = game.isFavorite,
-                        isDownloaded = game.isDownloaded
-                    )
+                    if (showStatusOverlays) {
+                        StatusIndicators(
+                            isFavorite = game.isFavorite,
+                            isDownloaded = game.isDownloaded
+                        )
+                    }
                 }
             }
         } else {
@@ -461,7 +464,7 @@ fun GameCard(
             )
         }
 
-        if (!spineActive) {
+        if (!spineActive && showStatusOverlays) {
             val tabAtBottom = boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.TAB &&
                 (boxArtStyle.systemIconPosition == SystemIconPosition.BOTTOM_LEFT ||
                  boxArtStyle.systemIconPosition == SystemIconPosition.BOTTOM_RIGHT)

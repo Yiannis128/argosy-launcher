@@ -116,6 +116,8 @@ data class DualGameDetailUpperState(
     val title: String = "",
     val coverPath: String? = null,
     val backgroundPath: String? = null,
+    val boxBackPath: String? = null,
+    val boxSpinePath: String? = null,
     val platformName: String = "",
     val developer: String? = null,
     val releaseYear: Int? = null,

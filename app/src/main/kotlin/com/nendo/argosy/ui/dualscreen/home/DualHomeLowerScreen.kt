@@ -80,14 +80,17 @@ import com.nendo.argosy.ui.components.AlphabetSidebar
 import com.nendo.argosy.ui.components.GameCard
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.screens.home.HomeGameUi
+import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import com.nendo.argosy.ui.util.touchOnly
 import kotlin.math.abs
 
-private val CARD_WIDTH = 100.dp
-private val FOCUSED_CARD_WIDTH = 140.dp
-private val CARD_SPACING = 12.dp
+private val CARD_WIDTH = 140.dp
+private val FOCUSED_CARD_WIDTH = 200.dp
+private val CARD_SPACING = 16.dp
 
 @Composable
 fun DualHomeLowerScreen(
@@ -177,14 +180,15 @@ fun DualHomeLowerScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(LocalArgosyTheme.current.surfaceBase)
+            .surfaceBackdrop(BackdropRole.CONTENT)
     ) {
         if (viewMode == DualHomeViewMode.CAROUSEL) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(horizontal = 24.dp, vertical = 6.dp),
+                    .background(LocalArgosyTheme.current.surfaceRaised.copy(alpha = 0.4f))
+                    .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingXs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -206,7 +210,7 @@ fun DualHomeLowerScreen(
                     Icon(
                         Icons.Default.GridView,
                         contentDescription = "Library Grid",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = LocalArgosyTheme.current.textDim
                     )
                 }
             }
@@ -217,10 +221,10 @@ fun DualHomeLowerScreen(
         Text(
             text = "$platformName ($totalCount)",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = LocalArgosyTheme.current.textDim,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 4.dp),
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingXs),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
 
@@ -336,9 +340,10 @@ fun DualHomeCollectionList(
         state = listState,
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(vertical = 24.dp, horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .background(LocalArgosyTheme.current.surfaceBase)
+            .surfaceBackdrop(BackdropRole.CONTENT),
+        contentPadding = PaddingValues(vertical = Dimens.spacingLg, horizontal = Dimens.spacingMd),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
         itemsIndexed(items) { index, item ->
             when (item) {
@@ -346,10 +351,10 @@ fun DualHomeCollectionList(
                     Text(
                         text = item.title,
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = LocalArgosyTheme.current.focusAccent,
                         modifier = Modifier.padding(
-                            top = if (index > 0) 16.dp else 0.dp,
-                            bottom = 4.dp
+                            top = if (index > 0) Dimens.spacingMd else 0.dp,
+                            bottom = Dimens.spacingXs
                         )
                     )
                 }
@@ -372,6 +377,7 @@ private fun DualCollectionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -379,26 +385,26 @@ private fun DualCollectionRow(
                 if (isSelected) {
                     Modifier
                         .background(
-                            LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-                                .compositeOver(MaterialTheme.colorScheme.surface),
-                            RoundedCornerShape(8.dp)
+                            theme.focusAccent.copy(alpha = 0.15f)
+                                .compositeOver(theme.surfaceRaised),
+                            RoundedCornerShape(Dimens.radiusControl)
                         )
                         .border(
-                            2.dp,
-                            MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(8.dp)
+                            Dimens.borderMedium,
+                            theme.focusAccent,
+                            RoundedCornerShape(Dimens.radiusControl)
                         )
                 } else {
                     Modifier.background(
-                        MaterialTheme.colorScheme.surface,
-                        RoundedCornerShape(8.dp)
+                        theme.surfaceRaised,
+                        RoundedCornerShape(Dimens.radiusControl)
                     )
                 }
             )
             .touchOnly(onClick)
-            .padding(12.dp),
+            .padding(Dimens.spacingMd),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
     ) {
         CollectionCoverMosaic(
             coverPaths = item.coverPaths,
@@ -410,7 +416,7 @@ private fun DualCollectionRow(
                 text = item.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = theme.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -418,7 +424,7 @@ private fun DualCollectionRow(
                 Text(
                     text = item.platformSummary,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = theme.textDim,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -428,7 +434,7 @@ private fun DualCollectionRow(
         Text(
             text = "${item.gameCount} games",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = theme.textDim
         )
     }
 }
@@ -440,15 +446,15 @@ private fun CollectionCoverMosaic(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clip(RoundedCornerShape(Dimens.radiusSm))
+            .background(LocalArgosyTheme.current.surfaceElevated)
     ) {
         when {
             coverPaths.isEmpty() -> {
                 Icon(
                     Icons.Default.Folder,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = LocalArgosyTheme.current.textDim,
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(24.dp)
@@ -568,15 +574,16 @@ fun DualHomeLibraryGrid(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(LocalArgosyTheme.current.surfaceBase)
+                .surfaceBackdrop(BackdropRole.CONTENT)
         ) {
             Text(
                 text = "$platformLabel ($gameCount)",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalArgosyTheme.current.textDim,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 6.dp),
+                    .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingXs),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
@@ -709,12 +716,12 @@ private fun DualSectionDivider(label: String, modifier: Modifier = Modifier) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
+            color = LocalArgosyTheme.current.focusAccent,
             fontWeight = FontWeight.Bold
         )
         HorizontalDivider(
             modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            color = LocalArgosyTheme.current.hairlineLow
         )
     }
 }
@@ -739,7 +746,7 @@ private fun LetterJumpOverlay(
                 text = letter,
                 style = MaterialTheme.typography.displayLarge,
                 fontSize = 120.sp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                color = LocalArgosyTheme.current.focusAccent.copy(alpha = 0.7f),
                 fontWeight = FontWeight.Bold
             )
         }
@@ -780,17 +787,19 @@ fun DualFilterOverlay(
         }
     }
 
+    val theme = LocalArgosyTheme.current
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(theme.surfaceBase)
+            .surfaceBackdrop(BackdropRole.CONTENT)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .background(theme.surfaceRaised)
+                .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             DualFilterCategory.entries.forEach { cat ->
                 val isActive = cat == category
@@ -799,10 +808,7 @@ fun DualFilterOverlay(
                         text = cat.label,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isActive)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (isActive) theme.focusAccent else theme.textDim
                     )
                 }
             }
@@ -829,38 +835,38 @@ fun DualFilterOverlay(
                                 if (index == focusedIndex) {
                                     Modifier
                                         .background(
-                                            LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-                                                .compositeOver(MaterialTheme.colorScheme.surface),
-                                            RoundedCornerShape(6.dp)
+                                            theme.focusAccent.copy(alpha = 0.15f)
+                                                .compositeOver(theme.surfaceRaised),
+                                            RoundedCornerShape(Dimens.radiusSm)
                                         )
                                         .border(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.primary,
-                                            RoundedCornerShape(6.dp)
+                                            Dimens.borderThin,
+                                            theme.focusAccent,
+                                            RoundedCornerShape(Dimens.radiusSm)
                                         )
                                 } else {
                                     Modifier.background(
-                                        MaterialTheme.colorScheme.surface,
-                                        RoundedCornerShape(6.dp)
+                                        theme.surfaceRaised,
+                                        RoundedCornerShape(Dimens.radiusSm)
                                     )
                                 }
                             )
                             .touchOnly { onOptionTapped(index) }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingMd),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = option.label,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = theme.textPrimary
                         )
                         if (option.isSelected) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
+                                    .background(theme.focusAccent)
                             )
                         }
                     }
@@ -893,8 +899,8 @@ private fun DualSearchContent(
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    focusedBorderColor = LocalArgosyTheme.current.focusAccent,
+                    unfocusedBorderColor = LocalArgosyTheme.current.hairlineHigh
                 )
             )
 
@@ -902,7 +908,7 @@ private fun DualSearchContent(
             Text(
                 text = "Filtering by: \"$query\"",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = LocalArgosyTheme.current.textDim
             )
         }
     }
@@ -921,21 +927,22 @@ private fun ViewAllCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     val cardHeight = CARD_WIDTH / LocalBoxArtStyle.current.aspectRatio
     Box(
         modifier = modifier
             .size(width = CARD_WIDTH, height = cardHeight)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .then(
                 if (isFocused) {
                     Modifier.border(
-                        width = 3.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(8.dp)
+                        width = Dimens.borderThick,
+                        color = theme.focusAccent,
+                        shape = RoundedCornerShape(Dimens.radiusControl)
                     )
                 } else Modifier
             )
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(theme.surfaceRaised)
             .touchOnly(onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -943,20 +950,20 @@ private fun ViewAllCard(
             Icon(
                 Icons.Default.GridView,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = theme.focusAccent,
                 modifier = Modifier.size(28.dp)
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacingXs))
             Text(
                 text = "+$remainingCount",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = theme.focusAccent
             )
             Text(
                 text = "View All",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
     }
@@ -981,9 +988,9 @@ private fun PositionIndicator(
                     .clip(CircleShape)
                     .background(
                         if (isActive) {
-                            MaterialTheme.colorScheme.primary
+                            LocalArgosyTheme.current.focusAccent
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            LocalArgosyTheme.current.textDim.copy(alpha = 0.3f)
                         }
                     )
             )
@@ -996,6 +1003,8 @@ fun HomeGameUi.toShowcaseState() = DualHomeShowcaseState(
     title = title,
     coverPath = coverPath,
     backgroundPath = backgroundPath,
+    boxBackPath = boxBackPath,
+    boxSpinePath = boxSpinePath,
     platformName = platformDisplayName,
     platformSlug = platformSlug,
     playTimeMinutes = playTimeMinutes,

@@ -13,11 +13,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Star
@@ -29,16 +34,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.ui.components.Box3dCover
 import com.nendo.argosy.ui.components.GameTitle
+import com.nendo.argosy.ui.dualscreen.ShowcaseAmbience
+import com.nendo.argosy.ui.dualscreen.ShowcaseEyebrow
+import com.nendo.argosy.ui.dualscreen.ShowcaseRatingsCluster
+import com.nendo.argosy.ui.dualscreen.ShowcaseStatsRow
+import com.nendo.argosy.ui.theme.LocalBoxArtStyle
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.util.formatPlayTime
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -66,7 +84,6 @@ private fun splitPlatformName(name: String): List<String> {
     val words = processed.split(" ")
     if (words.size <= 1) return listOf(name)
 
-    // End-weighted: make bottom row heavier
     var bestSplit = 1
     var bestDiff = Int.MAX_VALUE
 
@@ -94,6 +111,8 @@ data class DualHomeShowcaseState(
     val title: String = "",
     val coverPath: String? = null,
     val backgroundPath: String? = null,
+    val boxBackPath: String? = null,
+    val boxSpinePath: String? = null,
     val platformName: String = "",
     val platformSlug: String = "",
     val playTimeMinutes: Int = 0,
@@ -118,6 +137,7 @@ fun DualHomeUpperScreen(
     footerHints: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     val effectiveBackgroundPath = if (state.useGameBackground) {
         state.backgroundPath ?: state.coverPath
     } else {
@@ -127,267 +147,106 @@ fun DualHomeUpperScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(theme.surfaceBase)
     ) {
-        Crossfade(
-            targetState = effectiveBackgroundPath,
-            animationSpec = tween(300),
-            label = "hero-bg"
-        ) { bgPath ->
-            if (bgPath != null) {
-                AsyncImage(
-                    model = rememberFileImageModel(bgPath),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    onError = { /* Show gradient placeholder instead of blank */ }
-                )
-            }
-        }
+        ShowcaseAmbience(artPath = effectiveBackgroundPath)
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Header bar with semi-transparent background
-            ShowcaseHeader(
-                title = state.title,
-                platformName = state.platformName,
-                developer = state.developer,
-                releaseYear = state.releaseYear,
-                titleId = state.titleId,
-                communityRating = state.communityRating,
-                userRating = state.userRating,
-                userDifficulty = state.userDifficulty
-            )
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
-            )
-
-            // Spacer to push content down
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Stats card (floating in corner)
+        Column(modifier = Modifier.fillMaxSize()) {
             if (state.gameId > 0) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = Dimens.spacingXxl),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXxl)
+                ) {
+                    ShowcaseHeroCard(state)
+                    ShowcaseInfoColumn(
+                        state = state,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.CenterEnd
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    StatsCard(
-                        playTimeMinutes = state.playTimeMinutes,
-                        lastPlayedAt = state.lastPlayedAt,
-                        status = state.status
+                    Text(
+                        text = "Select a game",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = theme.textDim
                     )
                 }
             }
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
-            )
+            HorizontalDivider(color = theme.hairlineLow)
 
-            // Footer hints
             footerHints()
         }
     }
 }
 
 @Composable
-private fun ShowcaseHeader(
-    title: String,
-    platformName: String,
-    developer: String?,
-    releaseYear: Int?,
-    titleId: String?,
-    communityRating: Float?,
-    userRating: Int,
-    userDifficulty: Int
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Title (left)
-        Column(modifier = Modifier.weight(1f)) {
-            if (title.isEmpty()) {
-                Text(
-                    text = "Select a game",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            } else {
-                GameTitle(
-                    title = title,
-                    titleStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    titleColor = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1
-                )
-            }
-            if (titleId != null) {
-                Text(
-                    text = "TitleID: $titleId",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-        }
-
-        // Ratings cluster (center)
-        RatingsCluster(
-            communityRating = communityRating,
-            userRating = userRating,
-            userDifficulty = userDifficulty
+private fun ShowcaseHeroCard(state: DualHomeShowcaseState) {
+    val boxArtStyle = LocalBoxArtStyle.current
+    if (state.coverPath == null) return
+    if (state.boxSpinePath != null && state.coverPath.startsWith("/")) {
+        Box3dCover(
+            frontPath = state.coverPath,
+            spinePath = state.boxSpinePath,
+            backPath = state.boxBackPath,
+            modifier = Modifier.fillMaxHeight(0.72f)
         )
-
-        // Platform and developer/year (right)
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.End
-        ) {
-            val platformLines = splitPlatformName(platformName)
-            platformLines.forEach { line ->
-                Text(
-                    text = line,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            if (developer != null || releaseYear != null) {
-                Text(
-                    text = listOfNotNull(developer, releaseYear?.toString()).joinToString(" - "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RatingsCluster(
-    communityRating: Float?,
-    userRating: Int,
-    userDifficulty: Int
-) {
-    val hasAnyRating = communityRating != null || userRating > 0 || userDifficulty > 0
-    if (!hasAnyRating) return
-
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        communityRating?.let { rating ->
-            RatingItem(
-                icon = Icons.Default.People,
-                value = "${rating.toInt()}",
-                iconColor = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(24.dp))
-        }
-
-        if (userRating > 0) {
-            RatingItem(
-                icon = Icons.Default.Star,
-                value = "$userRating",
-                iconColor = ALauncherColors.StarGold
-            )
-            if (userDifficulty > 0) {
-                Spacer(modifier = Modifier.width(24.dp))
-            }
-        }
-
-        if (userDifficulty > 0) {
-            RatingItem(
-                icon = Icons.Default.Whatshot,
-                value = "$userDifficulty",
-                iconColor = ALauncherColors.DifficultyRed
-            )
-        }
-    }
-}
-
-@Composable
-private fun RatingItem(
-    icon: ImageVector,
-    value: String,
-    iconColor: Color
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
+    } else {
+        AsyncImage(
+            model = rememberFileImageModel(state.coverPath),
             contentDescription = null,
-            tint = iconColor,
-            modifier = Modifier.size(20.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxHeight(0.72f)
+                .aspectRatio(boxArtStyle.aspectRatio)
+                .clip(RoundedCornerShape(Dimens.radiusSm))
         )
     }
 }
 
 @Composable
-private fun StatsCard(
-    playTimeMinutes: Int,
-    lastPlayedAt: Long,
-    status: String?
+private fun ShowcaseInfoColumn(
+    state: DualHomeShowcaseState,
+    modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     Column(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.End
+        modifier = modifier,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Play time
-        Text(
-            text = formatPlayTime(playTimeMinutes),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+        ShowcaseEyebrow(
+            platformName = state.platformName,
+            releaseYear = state.releaseYear,
+            developer = state.developer
         )
-
-        // Last played
-        if (lastPlayedAt > 0) {
-            Text(
-                text = formatLastPlayed(lastPlayedAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Status
-        if (status != null) {
-            Text(
-                text = status.replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+        GameTitle(
+            title = state.title,
+            titleStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+            titleColor = theme.textPrimary,
+            maxLines = 2
+        )
+        Spacer(modifier = Modifier.height(Dimens.spacingMd))
+        ShowcaseRatingsCluster(
+            communityRating = state.communityRating,
+            userRating = state.userRating,
+            userDifficulty = state.userDifficulty
+        )
+        Spacer(modifier = Modifier.height(Dimens.spacingXl))
+        ShowcaseStatsRow(
+            playTimeMinutes = state.playTimeMinutes,
+            lastPlayedAt = state.lastPlayedAt,
+            status = state.status
+        )
     }
 }
 
-private fun formatLastPlayed(timestamp: Long): String {
-    if (timestamp <= 0) return ""
-
-    val now = Instant.now()
-    val lastPlayed = Instant.ofEpochMilli(timestamp)
-    val daysBetween = ChronoUnit.DAYS.between(lastPlayed, now)
-
-    return when {
-        daysBetween == 0L -> "Today"
-        daysBetween == 1L -> "Yesterday"
-        daysBetween < 7 -> "$daysBetween days ago"
-        daysBetween < 30 -> "${daysBetween / 7} weeks ago"
-        else -> "${daysBetween / 30} months ago"
-    }
-}
