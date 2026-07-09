@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +47,8 @@ import com.nendo.argosy.ui.common.longPressGesture
 import com.nendo.argosy.ui.common.longPressGraphicsLayer
 import com.nendo.argosy.ui.common.rememberLongPressAnimationState
 import com.nendo.argosy.ui.components.SystemStatusBar
+import com.nendo.argosy.ui.primitives.FocusIndicators
+import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.screens.secondaryhome.DrawerAppUi
 import com.nendo.argosy.ui.theme.Dimens
 import androidx.compose.ui.Alignment
@@ -64,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.coil.AppIconData
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.touchOnly
 import kotlinx.coroutines.delay
 
@@ -151,36 +153,37 @@ private fun CompanionTabHeader(
     currentPanel: CompanionPanel,
     onTabChanged: (CompanionPanel) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm + Dimens.spacingXs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             CompanionPanel.entries.forEach { panel ->
                 val isSelected = panel == currentPanel
                 val backgroundColor = if (isSelected) {
-                    MaterialTheme.colorScheme.primary
+                    theme.focusAccent
                 } else {
-                    MaterialTheme.colorScheme.surfaceVariant
+                    theme.surfaceRaised
                 }
                 val contentColor = if (isSelected) {
-                    MaterialTheme.colorScheme.onPrimary
+                    Color.White
                 } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                    theme.textDim
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Dimens.radiusControl))
                         .background(backgroundColor)
                         .then(
                             if (!isSelected) Modifier.touchOnly { onTabChanged(panel) }
                             else Modifier
                         )
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
                 ) {
                     Text(
                         text = panel.label,
@@ -216,7 +219,7 @@ private fun DashboardPanel(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = Dimens.spacingMd)
     ) {
         item { HeroGameCard(state) }
         item { SessionTimerCard(sessionMillis) }
@@ -261,7 +264,7 @@ private fun HeroGameCard(state: CompanionInGameState) {
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd)
         ) {
             Text(
                 text = state.title,
@@ -271,7 +274,7 @@ private fun HeroGameCard(state: CompanionInGameState) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacingXs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -331,7 +334,7 @@ private fun SessionTimerCard(activeMillis: Long) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -339,7 +342,7 @@ private fun SessionTimerCard(activeMillis: Long) {
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.6f)
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(Dimens.spacingSm + Dimens.spacingXs))
         Text(
             text = formatted,
             style = MaterialTheme.typography.titleLarge,
@@ -359,8 +362,8 @@ private fun AchievementProgress(state: CompanionInGameState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 16.dp)
+            .padding(horizontal = Dimens.spacingLg)
+            .padding(bottom = Dimens.spacingMd)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -379,13 +382,13 @@ private fun AchievementProgress(state: CompanionInGameState) {
                 color = ALauncherColors.TrophyAmber
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .clip(RoundedCornerShape(3.dp)),
+                .clip(RoundedCornerShape(Dimens.radiusPill)),
             color = ALauncherColors.TrophyAmber,
             trackColor = Color.White.copy(alpha = 0.12f),
             strokeCap = StrokeCap.Round
@@ -398,8 +401,8 @@ private fun PlayStatsCard(state: CompanionInGameState, sessionMillis: Long) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(top = 8.dp)
+            .padding(horizontal = Dimens.spacingLg)
+            .padding(top = Dimens.spacingSm)
     ) {
         val sessionMinutes = (sessionMillis / 60_000).toInt()
         val totalMinutes = state.playTimeMinutes + sessionMinutes
@@ -413,7 +416,7 @@ private fun PlayStatsCard(state: CompanionInGameState, sessionMillis: Long) {
         }
 
         StatRow(label = "Total Play Time", value = timeText)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
         StatRow(label = "Times Played", value = state.playCount.toString())
     }
 }
@@ -445,7 +448,7 @@ private fun SaveStateIndicator(
 ) {
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(Dimens.iconLg)
             .clip(CircleShape)
             .background(
                 if (isDirty) Color(0xFFFF9800) else Color(0xFF4CAF50)
@@ -455,7 +458,7 @@ private fun SaveStateIndicator(
         if (isDirty) {
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(Dimens.spacingSm)
                     .clip(CircleShape)
                     .background(Color.White)
             )
@@ -464,7 +467,7 @@ private fun SaveStateIndicator(
                 imageVector = Icons.Default.Check,
                 contentDescription = "Saved",
                 tint = Color.White,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(Dimens.iconSm)
             )
         }
     }
@@ -496,44 +499,42 @@ internal fun CompanionAppBar(
                     )
                 )
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = Dimens.spacingSm + Dimens.spacingXs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier
                 .width(64.dp)
                 .touchOnly(onOpenDrawer)
-                .padding(4.dp),
+                .padding(Dimens.spacingXs),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.15f))
-                    .then(
-                        if (focusedIndex == -1) Modifier.border(
-                            width = 2.dp,
-                            color = Color.White,
-                            shape = RoundedCornerShape(12.dp)
-                        ) else Modifier
-                    ),
+                    .size(Dimens.iconXl)
+                    .argosyFocusIndicators(
+                        focused = focusedIndex == -1,
+                        indicators = FocusIndicators.Tile,
+                        shape = RoundedCornerShape(Dimens.radiusLg)
+                    )
+                    .clip(RoundedCornerShape(Dimens.radiusLg))
+                    .background(Color.White.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add app",
                     tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(Dimens.iconMd)
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacingXs))
         }
 
         LazyRow(
             state = listState,
-            contentPadding = PaddingValues(end = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(end = Dimens.spacingLg),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
             modifier = Modifier.weight(1f)
         ) {
             items(apps.size, key = { apps[it] }) { index ->
@@ -557,26 +558,24 @@ internal fun CompanionAppItem(
         modifier = Modifier
             .width(64.dp)
             .touchOnly(onClick)
-            .padding(4.dp),
+            .padding(Dimens.spacingXs),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AsyncImage(
             model = AppIconData(packageName),
             contentDescription = null,
             modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .then(
-                    if (isFocused) Modifier.border(
-                        width = 2.dp,
-                        color = Color.White,
-                        shape = RoundedCornerShape(12.dp)
-                    ) else Modifier
-                ),
+                .size(Dimens.iconXl)
+                .argosyFocusIndicators(
+                    focused = isFocused,
+                    indicators = FocusIndicators.Tile,
+                    shape = RoundedCornerShape(Dimens.radiusLg)
+                )
+                .clip(RoundedCornerShape(Dimens.radiusLg)),
             contentScale = ContentScale.Crop
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(Dimens.spacingXs))
     }
 }
 
@@ -586,13 +585,14 @@ private fun CompanionDrawer(
     onPinToggle: (String) -> Unit,
     onAppClick: (String) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.65f)
             .background(
-                Color(0xFF2A2A2A),
-                RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                theme.surfaceElevated,
+                RoundedCornerShape(topStart = Dimens.radiusXl, topEnd = Dimens.radiusXl)
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -603,14 +603,14 @@ private fun CompanionDrawer(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(vertical = Dimens.spacingSm + Dimens.spacingXs),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
                     .width(40.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .height(Dimens.spacingXs)
+                    .clip(RoundedCornerShape(Dimens.radiusPill))
                     .background(Color.White.copy(alpha = 0.3f))
             )
         }
@@ -619,14 +619,14 @@ private fun CompanionDrawer(
             text = "All Apps",
             style = MaterialTheme.typography.titleSmall,
             color = Color.White,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
         )
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
-            contentPadding = PaddingValues(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(Dimens.spacingSm + Dimens.spacingXs),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm + Dimens.spacingXs),
             modifier = Modifier.weight(1f)
         ) {
             itemsIndexed(apps, key = { _, app -> app.packageName }) { _, app ->
@@ -646,6 +646,7 @@ private fun CompanionDrawerAppItem(
     onClick: () -> Unit,
     onPinToggle: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     val longPressState = rememberLongPressAnimationState(
         config = LongPressAnimationConfig(
             targetScale = 1.2f,
@@ -663,7 +664,7 @@ private fun CompanionDrawerAppItem(
                 onClick = onClick,
                 onLongPress = onPinToggle,
             )
-            .padding(4.dp),
+            .padding(Dimens.spacingXs),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box {
@@ -671,8 +672,8 @@ private fun CompanionDrawerAppItem(
                 model = AppIconData(app.packageName),
                 contentDescription = app.label,
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .size(Dimens.iconXl)
+                    .clip(RoundedCornerShape(Dimens.radiusLg)),
                 contentScale = ContentScale.Crop
             )
 
@@ -680,8 +681,8 @@ private fun CompanionDrawerAppItem(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .size(18.dp)
-                        .background(Color(0xFF6750A4), CircleShape),
+                        .size(Dimens.iconSm)
+                        .background(theme.focusAccent, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -694,7 +695,7 @@ private fun CompanionDrawerAppItem(
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(Dimens.spacingXs))
 
         Text(
             text = app.label,

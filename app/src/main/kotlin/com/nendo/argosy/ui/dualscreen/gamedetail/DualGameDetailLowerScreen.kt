@@ -1,12 +1,6 @@
-/**
- * DUAL-SCREEN COMPONENT - Lower display game detail with tabs.
- * Runs in :companion process (SecondaryHomeActivity).
- * Tabs: SAVES | MEDIA | OPTIONS
- */
 package com.nendo.argosy.ui.dualscreen.gamedetail
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -66,8 +60,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
+import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -118,10 +115,11 @@ fun DualGameDetailLowerScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(theme.surfaceBase)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TabHeader(
@@ -130,10 +128,7 @@ fun DualGameDetailLowerScreen(
                 onTabChanged = onTabChanged
             )
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onBackground
-                    .copy(alpha = 0.2f)
-            )
+            HorizontalDivider(color = theme.hairlineHigh)
 
             Box(modifier = Modifier.weight(1f)) {
                 when (state.currentTab) {
@@ -199,19 +194,20 @@ private fun TabHeader(
     availableTabs: List<DualGameDetailTab>,
     onTabChanged: (DualGameDetailTab) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val focusAccent = LocalArgosyTheme.current.focusAccent
+        val focusAccent = theme.focusAccent
         availableTabs.forEach { tab ->
             val isSelected = tab == currentTab
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(Dimens.radiusControl))
                     .background(
                         if (isSelected) {
                             focusAccent.copy(alpha = 0.15f)
@@ -220,7 +216,7 @@ private fun TabHeader(
                         }
                     )
                     .touchOnly { onTabChanged(tab) }
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
             ) {
                 Text(
                     text = tab.name,
@@ -229,7 +225,7 @@ private fun TabHeader(
                     color = if (isSelected) {
                         lerp(focusAccent, Color.White, 0.45f)
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        theme.textDim
                     }
                 )
             }
@@ -250,6 +246,7 @@ private fun SavesTabContent(
     onSlotTapped: (Int) -> Unit,
     onHistoryTapped: (Int) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     if (isLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -258,7 +255,7 @@ private fun SavesTabContent(
             Text(
                 text = "Loading saves...",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
         return
@@ -284,9 +281,7 @@ private fun SavesTabContent(
                         .fillMaxHeight()
                 )
 
-                VerticalDivider(
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
-                )
+                VerticalDivider(color = theme.hairlineLow)
 
                 SaveHistoryColumn(
                     history = history,
@@ -316,7 +311,7 @@ private fun SavesTabContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimens.spacingSm))
                     ArgosyProgressBar(
                         progress = null,
                         style = ProgressBarStyle.Working,
@@ -336,6 +331,7 @@ private fun SaveSlotsColumn(
     onSlotTapped: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     val listState = rememberLazyListState()
 
     LaunchedEffect(selectedIndex) {
@@ -348,14 +344,14 @@ private fun SaveSlotsColumn(
         Text(
             text = "Save Slots",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            color = theme.textDim,
+            modifier = Modifier.padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
         )
 
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(
-                horizontal = 8.dp, vertical = 4.dp
+                horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs
             ),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
@@ -384,37 +380,31 @@ private fun SlotRow(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val accentColor = MaterialTheme.colorScheme.primary
-    val textColor = if (slot.isActive) accentColor
-        else MaterialTheme.colorScheme.onSurface
+    val theme = LocalArgosyTheme.current
+    val accentColor = theme.focusAccent
+    val textColor = if (slot.isActive) accentColor else theme.textPrimary
+    val shape = RoundedCornerShape(Dimens.radiusControl)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-                    .copy(alpha = 0.6f)
-                else Color.Transparent
+            .argosyFocusIndicators(
+                focused = isSelected,
+                indicators = FocusIndicators.ListRow,
+                shape = shape
             )
-            .then(
-                if (isSelected) Modifier.border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.secondary,
-                    shape = RoundedCornerShape(8.dp)
-                ) else Modifier
-            )
+            .clip(shape)
             .touchOnly { onClick() }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
         if (slot.isActive) {
             Icon(
                 imageVector = Icons.Filled.Circle,
                 contentDescription = null,
                 tint = accentColor,
-                modifier = Modifier.size(8.dp)
+                modifier = Modifier.size(Dimens.dotSm)
             )
         }
         Text(
@@ -431,7 +421,7 @@ private fun SlotRow(
             Text(
                 text = "${slot.saveCount}",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
     }
@@ -442,22 +432,17 @@ private fun NewSlotRow(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-                    .copy(alpha = 0.6f)
-                else Color.Transparent
+            .argosyFocusIndicators(
+                focused = isSelected,
+                indicators = FocusIndicators.ListRow,
+                shape = shape
             )
-            .then(
-                if (isSelected) Modifier.border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.secondary,
-                    shape = RoundedCornerShape(8.dp)
-                ) else Modifier
-            )
+            .clip(shape)
             .touchOnly { onClick() }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -466,13 +451,13 @@ private fun NewSlotRow(
         Icon(
             imageVector = Icons.Filled.Add,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp)
+            tint = theme.focusAccent,
+            modifier = Modifier.size(Dimens.iconSm)
         )
         Text(
             text = "New Slot",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = theme.focusAccent
         )
     }
 }
@@ -486,6 +471,7 @@ private fun SaveHistoryColumn(
     onHistoryTapped: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     val listState = rememberLazyListState()
 
     LaunchedEffect(selectedIndex) {
@@ -498,28 +484,28 @@ private fun SaveHistoryColumn(
         Text(
             text = if (slotName != null) "History ($slotName)" else "History",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            color = theme.textDim,
+            modifier = Modifier.padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
         )
 
         if (history.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(Dimens.spacingMd),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "No saves yet",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = theme.textDim
                 )
             }
         } else {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(
-                    horizontal = 8.dp, vertical = 4.dp
+                    horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs
                 ),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
@@ -541,24 +527,19 @@ private fun HistoryRow(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-                    .copy(alpha = 0.6f)
-                else Color.Transparent
+            .argosyFocusIndicators(
+                focused = isSelected,
+                indicators = FocusIndicators.ListRow,
+                shape = shape
             )
-            .then(
-                if (isSelected) Modifier.border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.secondary,
-                    shape = RoundedCornerShape(8.dp)
-                ) else Modifier
-            )
+            .clip(shape)
             .touchOnly { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = Dimens.spacingSm),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -571,34 +552,33 @@ private fun HistoryRow(
                     text = formatSaveTimestamp(item.timestamp),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = theme.textPrimary
                 )
                 if (item.isActiveRestorePoint) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
                         contentDescription = "Active restore point",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
+                        tint = theme.focusAccent,
+                        modifier = Modifier.size(Dimens.iconXs)
                     )
                 }
                 if (item.isLatest) {
                     Text(
                         text = "Latest",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = theme.focusAccent
                     )
                 }
             }
             Text(
                 text = formatSaveSize(item.size),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
 
         val syncTag = if (item.isSynced) "Synced" else "Local"
-        val syncColor = if (item.isSynced) Color(0xFF4CAF50)
-            else MaterialTheme.colorScheme.onSurfaceVariant
+        val syncColor = if (item.isSynced) Color(0xFF4CAF50) else theme.textDim
         Text(
             text = "[$syncTag]",
             style = MaterialTheme.typography.labelSmall,
@@ -613,6 +593,7 @@ private fun StatesTabContent(
     selectedIndex: Int,
     onStateTapped: (Int) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     if (entries.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -621,7 +602,7 @@ private fun StatesTabContent(
             Text(
                 text = "No state slots",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
         return
@@ -637,7 +618,7 @@ private fun StatesTabContent(
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = Dimens.spacingSm, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = Modifier.fillMaxSize()
     ) {
@@ -658,6 +639,7 @@ private fun MediaTabContent(
     selectedIndex: Int,
     onScreenshotSelected: (Int) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     if (screenshots.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -666,7 +648,7 @@ private fun MediaTabContent(
             Text(
                 text = "No screenshots",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
     } else {
@@ -685,9 +667,9 @@ private fun MediaTabContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(MEDIA_GRID_COLUMNS),
             state = gridState,
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(Dimens.spacingMd),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
             modifier = Modifier.fillMaxSize()
         ) {
             itemsIndexed(screenshots) { index, path ->
@@ -707,20 +689,17 @@ private fun ScreenshotThumbnail(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(8.dp))
-            .then(
-                if (isSelected) {
-                    Modifier.border(
-                        width = 3.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                } else Modifier
+            .argosyFocusIndicators(
+                focused = isSelected,
+                indicators = FocusIndicators.Tile,
+                shape = shape
             )
+            .clip(shape)
             .touchOnly { onClick() }
     ) {
         AsyncImage(
@@ -763,6 +742,7 @@ private fun OptionsTabContent(
     selectedIndex: Int,
     onOptionSelected: (GameDetailOption) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     val emulatorText = emulatorName ?: "Platform Default"
     val coreText = coreName ?: "Default"
     val variantText = variantName ?: "Default"
@@ -805,7 +785,7 @@ private fun OptionsTabContent(
                         Icon(
                             imageVector = status.icon,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = theme.textDim,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -851,7 +831,7 @@ private fun OptionsTabContent(
                 if (completionStatus != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
                     ) {
                         Icon(
                             imageVector = completionStatus.icon,
@@ -869,7 +849,7 @@ private fun OptionsTabContent(
                     Text(
                         text = "Not set",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = theme.textDim
                     )
                 }
             }
@@ -904,12 +884,12 @@ private fun OptionsTabContent(
         )
         GameDetailOption.DELETE -> OptionEntry(
             option, Icons.Filled.Delete, "Delete from Library",
-            tint = Color(0xFFE57373)
+            tint = theme.destructive
         )
         GameDetailOption.HIDE -> if (isHidden) {
             OptionEntry(option, Icons.Filled.Visibility, "Unhide Game")
         } else {
-            OptionEntry(option, Icons.Filled.VisibilityOff, "Hide Game", tint = Color(0xFFE57373))
+            OptionEntry(option, Icons.Filled.VisibilityOff, "Hide Game", tint = theme.destructive)
         }
     }
 
@@ -955,8 +935,8 @@ private fun OptionsTabContent(
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        contentPadding = PaddingValues(Dimens.spacingMd),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
     ) {
         groups.forEachIndexed { groupIdx, group ->
             items(group.size, key = { group[it].option }) { i ->
@@ -978,9 +958,8 @@ private fun OptionsTabContent(
             if (groupIdx < groups.lastIndex) {
                 item {
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.onBackground
-                            .copy(alpha = 0.12f)
+                        modifier = Modifier.padding(vertical = Dimens.spacingXs),
+                        color = theme.hairlineLow
                     )
                 }
             }
@@ -1006,7 +985,7 @@ private fun PipDisplay(
                 contentDescription = null,
                 tint = if (i <= filled) activeColor
                     else Color.White.copy(alpha = 0.2f),
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(Dimens.iconXs)
             )
         }
     }
@@ -1024,17 +1003,17 @@ private fun OptionItem(
     visualContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) {
-                    LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-                } else {
-                    Color.Transparent
-                }
+            .argosyFocusIndicators(
+                focused = isSelected,
+                indicators = FocusIndicators.ListRow,
+                shape = shape
             )
+            .clip(shape)
             .touchOnly { onClick() }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1043,9 +1022,9 @@ private fun OptionItem(
             imageVector = icon,
             contentDescription = null,
             tint = tint ?: if (isSelected) {
-                MaterialTheme.colorScheme.primary
+                theme.focusAccent
             } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
+                theme.textDim
             }
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -1053,13 +1032,13 @@ private fun OptionItem(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyLarge,
-                color = tint ?: MaterialTheme.colorScheme.onSurface
+                color = tint ?: theme.textPrimary
             )
             if (subLabel != null) {
                 Text(
                     text = subLabel,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = theme.textDim,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1068,7 +1047,7 @@ private fun OptionItem(
                 Text(
                     text = subLabelSecondary,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = theme.textMute,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1080,9 +1059,8 @@ private fun OptionItem(
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
         }
     }
 }
-

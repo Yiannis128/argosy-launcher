@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import java.io.File
 
@@ -48,10 +50,11 @@ fun DualCollectionShowcase(
     footerHints: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(theme.surfaceBase)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -59,8 +62,8 @@ fun DualCollectionShowcase(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .background(theme.surfaceBase.copy(alpha = 0.7f))
+                    .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm + Dimens.spacingXs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -68,7 +71,7 @@ fun DualCollectionShowcase(
                     text = state.name.ifEmpty { "Collections" },
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = theme.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -78,13 +81,13 @@ fun DualCollectionShowcase(
                     Text(
                         text = "${state.gameCount} games",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+                        color = theme.focusAccent
                     )
                 }
             }
 
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+                color = theme.hairlineLow
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -95,7 +98,7 @@ fun DualCollectionShowcase(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 48.dp),
+                        .padding(horizontal = Dimens.spacingXxl),
                     contentAlignment = Alignment.Center
                 ) {
                     ShowcaseCoverCollage(
@@ -112,27 +115,27 @@ fun DualCollectionShowcase(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                        .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm),
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     Column(
                         modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .background(theme.surfaceRaised.copy(alpha = 0.9f))
+                            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm + Dimens.spacingXs),
                         horizontalAlignment = Alignment.End
                     ) {
                         if (state.platformSummary.isNotBlank()) {
                             Text(
                                 text = state.platformSummary,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = theme.textDim
                             )
                         }
                         if (state.totalPlaytimeMinutes > 0) {
                             Text(
                                 text = formatCollectionPlayTime(state.totalPlaytimeMinutes),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = theme.textPrimary
                             )
                         }
                     }
@@ -140,7 +143,7 @@ fun DualCollectionShowcase(
             }
 
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+                color = theme.hairlineLow
             )
 
             footerHints()
@@ -153,10 +156,11 @@ private fun ShowcaseCoverCollage(
     coverPaths: List<String>,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .background(theme.surfaceRaised)
     ) {
         when {
             coverPaths.size == 1 -> {
