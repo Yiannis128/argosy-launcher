@@ -61,51 +61,6 @@ import com.nendo.argosy.util.formatPlayTime
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-private val PLATFORM_KEEP_TOGETHER = listOf(
-    "Game Boy",
-    "Nintendo 64",
-    "Nintendo DS",
-    "Nintendo 3DS",
-    "Super Nintendo",
-    "Neo Geo",
-    "Master System",
-    "Mega Drive",
-    "PC Engine",
-    "PlayStation Portable",
-    "PlayStation Vita"
-)
-
-private fun splitPlatformName(name: String): List<String> {
-    var processed = name
-    for (phrase in PLATFORM_KEEP_TOGETHER) {
-        processed = processed.replace(phrase, phrase.replace(" ", "\u00A0"))
-    }
-
-    val words = processed.split(" ")
-    if (words.size <= 1) return listOf(name)
-
-    var bestSplit = 1
-    var bestDiff = Int.MAX_VALUE
-
-    for (splitAt in 1 until words.size) {
-        val firstLen = words.subList(0, splitAt).sumOf { it.length } + splitAt - 1
-        val lastLen = words.subList(splitAt, words.size).sumOf { it.length } + (words.size - splitAt - 1)
-
-        if (lastLen >= firstLen) {
-            val diff = lastLen - firstLen
-            if (diff < bestDiff) {
-                bestDiff = diff
-                bestSplit = splitAt
-            }
-        }
-    }
-
-    val firstPart = words.subList(0, bestSplit).joinToString(" ").replace("\u00A0", " ")
-    val lastPart = words.subList(bestSplit, words.size).joinToString(" ").replace("\u00A0", " ")
-
-    return listOf(firstPart, lastPart)
-}
-
 data class DualHomeShowcaseState(
     val gameId: Long = -1,
     val title: String = "",

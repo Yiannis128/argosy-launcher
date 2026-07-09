@@ -490,9 +490,6 @@ class RomMLibrarySyncService @Inject constructor(
         val boxBackUrl = if (boxArtCacheEnabledForSync) {
             rom.ssMetadata?.box2dBackPath?.let { apiClient.buildResourceUrl(it) }
         } else null
-        if (rom.ssMetadata?.box2dSidePath != null || rom.ssMetadata?.box2dBackPath != null) {
-            Logger.debug(TAG, "syncRom: ${rom.name} boxFaces back=${rom.ssMetadata.box2dBackPath} side=${rom.ssMetadata.box2dSidePath} enabled=$boxArtCacheEnabledForSync")
-        }
         val cachedBoxBack = when {
             !contentChanged && existing?.boxBackPath?.startsWith("/") == true -> existing.boxBackPath
             boxBackUrl != null -> {
