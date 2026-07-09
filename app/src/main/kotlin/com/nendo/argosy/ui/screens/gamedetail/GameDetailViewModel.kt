@@ -103,6 +103,7 @@ class GameDetailViewModel @Inject constructor(
     private val ratingsStatus: RatingsStatusDelegate,
     private val playOptionsDelegate: PlayOptionsDelegate,
     private val moreOptionsDelegate: MoreOptionsDelegate,
+    val speedrunSplitsDelegate: com.nendo.argosy.ui.screens.gamedetail.delegates.SpeedrunSplitsDelegate,
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
@@ -983,6 +984,10 @@ class GameDetailViewModel @Inject constructor(
             MoreOptionAction.UpdatesDlc -> showUpdatesPicker()
             MoreOptionAction.RefreshData -> refreshAndroidOrRommData()
             MoreOptionAction.RefreshTitleId -> refreshTitleId()
+            MoreOptionAction.SpeedrunSplits -> {
+                toggleMoreOptions()
+                speedrunSplitsDelegate.open(viewModelScope, currentGameId, _uiState.value.game?.title ?: "")
+            }
             MoreOptionAction.AddToCollection -> showAddToCollectionModal()
             MoreOptionAction.Delete -> {
                 toggleMoreOptions()

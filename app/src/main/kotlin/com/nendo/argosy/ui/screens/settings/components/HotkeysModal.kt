@@ -66,7 +66,11 @@ private val HOTKEY_ACTIONS = listOf(
     HotkeyAction.QUICK_LOAD,
     HotkeyAction.FAST_FORWARD,
     HotkeyAction.REWIND,
-    HotkeyAction.QUICK_SUSPEND
+    HotkeyAction.QUICK_SUSPEND,
+    HotkeyAction.SPEEDRUN_SPLIT,
+    HotkeyAction.SPEEDRUN_UNDO_SPLIT,
+    HotkeyAction.SPEEDRUN_SKIP_SPLIT,
+    HotkeyAction.SPEEDRUN_TOGGLE_TIMER
 )
 
 private val HOLD_DELAY_CYCLE = listOf(0L, 1000L, 2000L, 3000L)
@@ -608,6 +612,10 @@ private fun getActionDisplayName(action: HotkeyAction): String {
         HotkeyAction.QUICK_SUSPEND -> "Quick Suspend"
         HotkeyAction.CYCLE_CORE_OPTION -> "Cycle Core Option"
         HotkeyAction.SEND_CORE_INPUT -> "Core Input"
+        HotkeyAction.SPEEDRUN_SPLIT -> "Split"
+        HotkeyAction.SPEEDRUN_UNDO_SPLIT -> "Undo Split"
+        HotkeyAction.SPEEDRUN_SKIP_SPLIT -> "Skip Split"
+        HotkeyAction.SPEEDRUN_TOGGLE_TIMER -> "Pause Timer"
     }
 }
 

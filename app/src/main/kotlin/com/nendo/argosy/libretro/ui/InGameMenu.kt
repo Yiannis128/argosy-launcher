@@ -54,6 +54,7 @@ sealed class InGameMenuAction {
     data object ClearReservation : InGameMenuAction()
     data object CloseNetplaySession : InGameMenuAction()
     data object CustomizeTouchControls : InGameMenuAction()
+    data object ToggleSpeedrun : InGameMenuAction()
 }
 
 enum class NetplayMenuRole { Host, Guest }
@@ -97,6 +98,8 @@ fun InGameMenu(
     netplaySessionIsReserved: Boolean = false,
     netplayQuality: NetplayQualityInfo? = null,
     touchControlsVisible: Boolean = false,
+    speedrunAvailable: Boolean = false,
+    speedrunArmed: Boolean = false,
     hasQuickSave: Boolean = false,
     quickHistoryFocused: Boolean = false,
     onQuickHistoryFocusChange: (Boolean) -> Unit = {}
@@ -111,6 +114,8 @@ fun InGameMenu(
         netplayRole,
         netplaySessionIsReserved,
         touchControlsVisible,
+        speedrunAvailable,
+        speedrunArmed,
         hasQuickSave
     ) {
         buildList {
@@ -145,6 +150,9 @@ fun InGameMenu(
                 }
             }
             add("Settings" to InGameMenuAction.Settings)
+            if (speedrunAvailable && !isInNetplaySession) {
+                add((if (speedrunArmed) "Stop Speedrun Timer" else "Speedrun Timer") to InGameMenuAction.ToggleSpeedrun)
+            }
             if (touchControlsVisible) {
                 add("Touch Controls" to InGameMenuAction.CustomizeTouchControls)
             }
@@ -324,7 +332,8 @@ fun DiscMenu(
     focusedIndex: Int,
     onFocusChange: (Int) -> Unit,
     onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String = "Swap Disc"
 ): InputHandler {
     val isDarkTheme = isSystemInDarkTheme()
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
@@ -390,7 +399,7 @@ fun DiscMenu(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Swap Disc",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,

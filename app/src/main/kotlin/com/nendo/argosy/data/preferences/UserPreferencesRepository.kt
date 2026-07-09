@@ -475,7 +475,10 @@ data class BuiltinEmulatorSettings(
     val touchControlsMirror180: Boolean = false,
     val touchControlsAllowLongPressEdit: Boolean = false,
     val touchControlsColouredFaceButtons: Boolean = false,
-    val touchControlsGenesis6Button: Boolean = false
+    val touchControlsGenesis6Button: Boolean = false,
+    val speedrunStartOnReset: Boolean = true,
+    val speedrunPanelSide: String = "Right",
+    val speedrunPanelWidthPercent: Int = 30
 ) {
     val shaderConfig: com.swordfish.libretrodroid.ShaderConfig
         get() = when (shader) {

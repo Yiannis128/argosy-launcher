@@ -861,6 +861,15 @@ private fun GameDetailModals(
         )
     }
 
+    val speedrunSplitsState by viewModel.speedrunSplitsDelegate.state.collectAsState()
+    if (speedrunSplitsState.visible) {
+        com.nendo.argosy.ui.screens.gamedetail.modals.SpeedrunSplitsModal(
+            gameTitle = game.title,
+            state = speedrunSplitsState,
+            delegate = viewModel.speedrunSplitsDelegate
+        )
+    }
+
     AnimatedVisibility(
         visible = uiState.showPlayOptions,
         enter = fadeIn(),

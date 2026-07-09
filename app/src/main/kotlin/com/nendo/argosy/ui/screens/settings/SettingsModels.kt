@@ -474,6 +474,9 @@ data class ShaderStackEntry(
 data class BuiltinControlsState(
     val rumbleEnabled: Boolean = true,
     val limitHotkeysToPlayer1: Boolean = true,
+    val speedrunStartOnReset: Boolean = true,
+    val speedrunPanelSide: String = "Right",
+    val speedrunPanelWidthPercent: Int = 30,
     val fastForwardMode: com.nendo.argosy.data.local.entity.FastForwardMode = com.nendo.argosy.data.local.entity.FastForwardMode.HOLD,
     val fastForwardPreservePitch: Boolean = false,
     val analogAsDpad: Boolean = false,

@@ -21,7 +21,11 @@ class HotkeyDispatcher(
     private val onAutoSaveState: () -> Unit,
     private val onCycleCoreOption: (String, Int, List<String>) -> Unit,
     private val onSendCoreInput: (Int, CoreInputMode) -> Unit,
-    private val onQuit: () -> Unit
+    private val onQuit: () -> Unit,
+    private val onSpeedrunSplit: () -> Unit,
+    private val onSpeedrunUndoSplit: () -> Unit,
+    private val onSpeedrunSkipSplit: () -> Unit,
+    private val onSpeedrunToggleTimer: () -> Unit
 ) {
     fun dispatch(config: HotkeyManager.HotkeyConfig): Boolean {
         when (config.action) {
@@ -103,6 +107,26 @@ class HotkeyDispatcher(
             HotkeyAction.SEND_CORE_INPUT -> {
                 val retropadId = config.coreInputRetropadId ?: return true
                 onSendCoreInput(retropadId, config.coreInputMode)
+                hotkeyManager.clearState()
+                return true
+            }
+            HotkeyAction.SPEEDRUN_SPLIT -> {
+                onSpeedrunSplit()
+                hotkeyManager.clearState()
+                return true
+            }
+            HotkeyAction.SPEEDRUN_UNDO_SPLIT -> {
+                onSpeedrunUndoSplit()
+                hotkeyManager.clearState()
+                return true
+            }
+            HotkeyAction.SPEEDRUN_SKIP_SPLIT -> {
+                onSpeedrunSkipSplit()
+                hotkeyManager.clearState()
+                return true
+            }
+            HotkeyAction.SPEEDRUN_TOGGLE_TIMER -> {
+                onSpeedrunToggleTimer()
                 hotkeyManager.clearState()
                 return true
             }

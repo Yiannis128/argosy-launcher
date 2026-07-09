@@ -373,6 +373,29 @@ internal fun routeSetBuiltinLimitHotkeysToPlayer1(vm: SettingsViewModel, enabled
     }
 }
 
+internal fun routeSetSpeedrunStartOnReset(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(speedrunStartOnReset = enabled)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setSpeedrunStartOnReset(enabled)
+    }
+}
+
+internal fun routeSetSpeedrunPanelSide(vm: SettingsViewModel, side: String) {
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(speedrunPanelSide = side)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setSpeedrunPanelSide(side)
+    }
+}
+
+internal fun routeAdjustSpeedrunPanelWidth(vm: SettingsViewModel, delta: Int) {
+    val current = vm._uiState.value.builtinControls.speedrunPanelWidthPercent
+    val next = 20 + (current - 20 + delta).mod(25)
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(speedrunPanelWidthPercent = next)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setSpeedrunPanelWidthPercent(next)
+    }
+}
+
 internal fun routeSetBuiltinFastForwardMode(vm: SettingsViewModel, mode: com.nendo.argosy.data.local.entity.FastForwardMode) {
     vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(fastForwardMode = mode)) }
     vm.viewModelScope.launch {

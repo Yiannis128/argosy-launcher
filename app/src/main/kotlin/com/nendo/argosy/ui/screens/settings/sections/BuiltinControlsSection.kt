@@ -23,6 +23,7 @@ import com.nendo.argosy.data.platform.PlatformWeightRegistry
 import com.nendo.argosy.data.repository.MappingPlatforms
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.coreoptions.CoreControlManifestRegistry
+import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.NavigationPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
@@ -60,6 +61,10 @@ internal sealed class BuiltinControlsItem(
     data object PreserveFastForwardPitch : BuiltinControlsItem("preserveFastForwardPitch", "hotkeys")
     data object ResetAllToGlobal : BuiltinControlsItem("resetAllToGlobal", "hotkeys", { it.showResetAll })
 
+    data object SpeedrunStartOnReset : BuiltinControlsItem("speedrunStartOnReset", "speedrun")
+    data object SpeedrunPanelSide : BuiltinControlsItem("speedrunPanelSide", "speedrun")
+    data object SpeedrunPanelWidth : BuiltinControlsItem("speedrunPanelWidth", "speedrun")
+
     data object TouchEnabled : BuiltinControlsItem("touchEnabled", "touchControls")
     data object TouchOpacityLandscape : BuiltinControlsItem("touchOpacityLandscape", "touchControls", { it.touchEnabled })
     data object TouchOpacityPortrait : BuiltinControlsItem("touchOpacityPortrait", "touchControls", { it.touchEnabled })
@@ -77,6 +82,7 @@ internal sealed class BuiltinControlsItem(
         private val ControllersHeader = Header("controllersHeader", "controllers", "Controllers")
         private val SticksHeader = Header("sticksHeader", "sticks", "Analog Sticks") { it.showStickMappings }
         private val HotkeysHeader = Header("hotkeysHeader", "hotkeys", "Hotkeys")
+        private val SpeedrunHeader = Header("speedrunHeader", "speedrun", "Speedrun Timer")
         private val TouchHeader = Header("touchControlsHeader", "touchControls", "Touch Controls")
 
         val ALL: List<BuiltinControlsItem> = listOf(
@@ -93,6 +99,10 @@ internal sealed class BuiltinControlsItem(
             ToggleFastForward,
             PreserveFastForwardPitch,
             ResetAllToGlobal,
+            SpeedrunHeader,
+            SpeedrunStartOnReset,
+            SpeedrunPanelSide,
+            SpeedrunPanelWidth,
             TouchHeader,
             TouchEnabled,
             TouchOpacityLandscape,
@@ -120,6 +130,7 @@ private val builtinControlsLayout = SettingsLayout<BuiltinControlsItem, BuiltinC
             "controllers" -> "Controllers"
             "sticks" -> "Analog Sticks"
             "hotkeys" -> "Hotkeys"
+            "speedrun" -> "Speedrun Timer"
             "touchControls" -> "Touch Controls"
             else -> null
         }
@@ -308,6 +319,31 @@ fun BuiltinControlsSection(
                         onClick = { viewModel.resetAllPlatformControlSettings() }
                     )
                 }
+
+                BuiltinControlsItem.SpeedrunStartOnReset -> SwitchPreference(
+                    title = "Start timer on reset",
+                    subtitle = "Resetting the game starts a new timed attempt (off = manual start via Split hotkey)",
+                    isEnabled = controlsState.speedrunStartOnReset,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setSpeedrunStartOnReset(it) }
+                )
+
+                BuiltinControlsItem.SpeedrunPanelSide -> SwitchPreference(
+                    title = "Splits panel on left",
+                    subtitle = "Show the splits panel on the left edge (off = right)",
+                    isEnabled = controlsState.speedrunPanelSide == "Left",
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setSpeedrunPanelSide(if (it) "Left" else "Right") }
+                )
+
+                BuiltinControlsItem.SpeedrunPanelWidth -> CyclePreference(
+                    title = "Splits panel width",
+                    subtitle = "Panel text scales to fit",
+                    value = "${controlsState.speedrunPanelWidthPercent}%",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.adjustSpeedrunPanelWidth(5) },
+                    onPrev = { viewModel.adjustSpeedrunPanelWidth(-5) }
+                )
 
                 BuiltinControlsItem.TouchEnabled -> SwitchPreference(
                     title = "Show touch controls when no gamepad",

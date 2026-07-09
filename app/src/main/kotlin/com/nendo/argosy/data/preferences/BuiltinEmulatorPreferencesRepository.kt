@@ -64,6 +64,9 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val TOUCH_ALLOW_LONG_PRESS_EDIT = booleanPreferencesKey("builtin_touch_allow_long_press_edit")
         val TOUCH_COLOURED_FACE_BUTTONS = booleanPreferencesKey("builtin_touch_coloured_face_buttons")
         val TOUCH_GENESIS_6_BUTTON = booleanPreferencesKey("builtin_touch_genesis_6_button")
+        val BUILTIN_SPEEDRUN_START_ON_RESET = booleanPreferencesKey("builtin_speedrun_start_on_reset")
+        val BUILTIN_SPEEDRUN_PANEL_SIDE = stringPreferencesKey("builtin_speedrun_panel_side")
+        val BUILTIN_SPEEDRUN_PANEL_WIDTH = intPreferencesKey("builtin_speedrun_panel_width")
     }
 
     fun isBuiltinLibretroEnabled(): Flow<Boolean> = dataStore.data.map { prefs ->
@@ -115,7 +118,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             touchControlsMirror180 = prefs[Keys.TOUCH_MIRROR_180] ?: false,
             touchControlsAllowLongPressEdit = prefs[Keys.TOUCH_ALLOW_LONG_PRESS_EDIT] ?: false,
             touchControlsColouredFaceButtons = prefs[Keys.TOUCH_COLOURED_FACE_BUTTONS] ?: false,
-            touchControlsGenesis6Button = prefs[Keys.TOUCH_GENESIS_6_BUTTON] ?: false
+            touchControlsGenesis6Button = prefs[Keys.TOUCH_GENESIS_6_BUTTON] ?: false,
+            speedrunStartOnReset = prefs[Keys.BUILTIN_SPEEDRUN_START_ON_RESET] ?: true,
+            speedrunPanelSide = prefs[Keys.BUILTIN_SPEEDRUN_PANEL_SIDE] ?: "Right",
+            speedrunPanelWidthPercent = prefs[Keys.BUILTIN_SPEEDRUN_PANEL_WIDTH] ?: 30
         )
     }
 
@@ -345,6 +351,18 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setTouchControlsGenesis6Button(enabled: Boolean) {
         dataStore.edit { it[Keys.TOUCH_GENESIS_6_BUTTON] = enabled }
+    }
+
+    suspend fun setSpeedrunStartOnReset(enabled: Boolean) {
+        dataStore.edit { it[Keys.BUILTIN_SPEEDRUN_START_ON_RESET] = enabled }
+    }
+
+    suspend fun setSpeedrunPanelSide(side: String) {
+        dataStore.edit { it[Keys.BUILTIN_SPEEDRUN_PANEL_SIDE] = side }
+    }
+
+    suspend fun setSpeedrunPanelWidthPercent(percent: Int) {
+        dataStore.edit { it[Keys.BUILTIN_SPEEDRUN_PANEL_WIDTH] = percent.coerceIn(20, 40) }
     }
 
     fun getArchitectureOverride(): Flow<String?> = dataStore.data.map { prefs ->

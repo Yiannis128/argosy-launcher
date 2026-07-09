@@ -1922,3 +1922,44 @@ object Migration_132_133 : Migration(132, 133) {
         db.execSQL("ALTER TABLE games ADD COLUMN boxSpinePath TEXT DEFAULT NULL")
     }
 }
+
+object Migration_133_134 : Migration(133, 134) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `speedrun_categories` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`gameId` INTEGER NOT NULL, " +
+                "`name` TEXT NOT NULL, " +
+                "`sourceLabel` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_speedrun_categories_gameId` ON `speedrun_categories` (`gameId`)"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `speedrun_segments` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`categoryId` INTEGER NOT NULL, " +
+                "`orderIndex` INTEGER NOT NULL, " +
+                "`name` TEXT NOT NULL, " +
+                "FOREIGN KEY(`categoryId`) REFERENCES `speedrun_categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_speedrun_segments_categoryId` ON `speedrun_segments` (`categoryId`)"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `speedrun_attempts` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`categoryId` INTEGER NOT NULL, " +
+                "`startedAt` INTEGER NOT NULL, " +
+                "`completed` INTEGER NOT NULL, " +
+                "`finalTimeMs` INTEGER, " +
+                "`splitTimesJson` TEXT NOT NULL, " +
+                "FOREIGN KEY(`categoryId`) REFERENCES `speedrun_categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_speedrun_attempts_categoryId` ON `speedrun_attempts` (`categoryId`)"
+        )
+    }
+}

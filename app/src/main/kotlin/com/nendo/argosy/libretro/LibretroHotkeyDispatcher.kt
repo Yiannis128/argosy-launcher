@@ -28,7 +28,12 @@ class LibretroHotkeyDispatcher(
     private val onAutoSaveState: () -> Unit,
     private val onCycleCoreOption: (String, Int, List<String>) -> Unit,
     private val onSendCoreInput: (Int, CoreInputMode) -> Unit,
-    private val onQuit: () -> Unit
+    private val onQuit: () -> Unit,
+    private val onGameReset: () -> Unit,
+    private val onSpeedrunSplit: () -> Unit,
+    private val onSpeedrunUndoSplit: () -> Unit,
+    private val onSpeedrunSkipSplit: () -> Unit,
+    private val onSpeedrunToggleTimer: () -> Unit
 ) {
     var isFastForwarding: Boolean = false
         private set
@@ -51,7 +56,11 @@ class LibretroHotkeyDispatcher(
         onAutoSaveState = onAutoSaveState,
         onCycleCoreOption = onCycleCoreOption,
         onSendCoreInput = onSendCoreInput,
-        onQuit = onQuit
+        onQuit = onQuit,
+        onSpeedrunSplit = onSpeedrunSplit,
+        onSpeedrunUndoSplit = onSpeedrunUndoSplit,
+        onSpeedrunSkipSplit = onSpeedrunSkipSplit,
+        onSpeedrunToggleTimer = onSpeedrunToggleTimer
     )
 
     init {
@@ -109,6 +118,7 @@ class LibretroHotkeyDispatcher(
     private fun handleResetRequest() {
         if (isNetplayInSession()) return
         getRetroView().reset()
+        onGameReset()
         showToast("Game reset")
     }
 }

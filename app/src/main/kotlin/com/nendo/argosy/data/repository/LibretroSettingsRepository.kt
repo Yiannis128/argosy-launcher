@@ -137,6 +137,15 @@ class LibretroSettingsRepository @Inject constructor(
     suspend fun setBuiltinLimitHotkeysToPlayer1(enabled: Boolean) =
         builtinPrefs.setBuiltinLimitHotkeysToPlayer1(enabled)
 
+    suspend fun setSpeedrunStartOnReset(enabled: Boolean) =
+        builtinPrefs.setSpeedrunStartOnReset(enabled)
+
+    suspend fun setSpeedrunPanelSide(side: String) =
+        builtinPrefs.setSpeedrunPanelSide(side)
+
+    suspend fun setSpeedrunPanelWidthPercent(percent: Int) =
+        builtinPrefs.setSpeedrunPanelWidthPercent(percent)
+
     suspend fun setBuiltinAnalogAsDpad(enabled: Boolean) =
         builtinPrefs.setBuiltinAnalogAsDpad(enabled)
 
