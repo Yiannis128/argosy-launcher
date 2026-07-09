@@ -175,14 +175,14 @@ fun InGameMenu(
             override fun onUp(): InputResult {
                 if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx - 1).coerceAtLeast(0)
+                val newIndex = if (idx <= 0) menuItems.lastIndex else idx - 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
                 if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx + 1).coerceAtMost(menuItems.lastIndex)
+                val newIndex = if (idx >= menuItems.lastIndex) 0 else idx + 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
@@ -338,13 +338,13 @@ fun DiscMenu(
         object : InputHandler {
             override fun onUp(): InputResult {
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx - 1).coerceAtLeast(0)
+                val newIndex = if (idx <= 0) labels.lastIndex else idx - 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx + 1).coerceAtMost(labels.lastIndex)
+                val newIndex = if (idx >= labels.lastIndex) 0 else idx + 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
