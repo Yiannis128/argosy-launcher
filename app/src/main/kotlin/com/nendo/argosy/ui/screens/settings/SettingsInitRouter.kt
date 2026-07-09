@@ -566,6 +566,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             lastRommSync = prefs.lastRommSync,
             syncScreenshotsEnabled = prefs.syncScreenshotsEnabled,
             uploadScreenshotsEnabled = prefs.uploadScreenshotsEnabled,
+            boxArtCacheEnabled = prefs.boxArtCacheEnabled,
             screenshotUploadSupported = (connectionState as? ConnectionState.Connected)
                 ?.capabilities?.supportsScreenshotUpload == true
         ))

@@ -188,6 +188,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 SyncSettingsItem.PlatformFilters -> vm.showPlatformFiltersModal()
                 SyncSettingsItem.MetadataFilters -> vm.showSyncFiltersModal()
                 SyncSettingsItem.CacheScreenshots -> { vm.toggleSyncScreenshots(); return InputResult.handled(SoundType.TOGGLE) }
+                SyncSettingsItem.CacheBoxArt -> { vm.toggleBoxArtCache(); return InputResult.handled(SoundType.TOGGLE) }
                 SyncSettingsItem.UploadScreenshots -> {
                     if (!state.server.screenshotUploadSupported) return InputResult.HANDLED
                     vm.toggleUploadScreenshots()

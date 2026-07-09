@@ -646,6 +646,9 @@ class MainActivity : ComponentActivity() {
 
             imageCacheManager.resumePendingCache()
             imageCacheManager.resumePendingCoverCache()
+            if (preferencesRepository.preferences.first().boxArtCacheEnabled) {
+                imageCacheManager.resumePendingBoxFaceCache()
+            }
             imageCacheManager.recoverMissingCovers()
             imageCacheManager.resumePendingLogoCache()
             imageCacheManager.resumePendingBadgeCache()

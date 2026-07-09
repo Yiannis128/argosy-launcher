@@ -38,6 +38,8 @@ fun GameEntity.toGameDetailUi(
         platformName = platformName,
         coverPath = coverPath,
         backgroundPath = effectiveBackground,
+        boxBackPath = boxBackPath?.takeIf { it.startsWith("/") },
+        boxSpinePath = boxSpinePath?.takeIf { it.startsWith("/") },
         developer = developer,
         publisher = publisher,
         releaseYear = releaseYear,

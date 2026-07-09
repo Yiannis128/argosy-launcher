@@ -54,6 +54,7 @@ internal sealed class SyncSettingsItem(val key: String, val section: String) {
     data object MetadataFilters : SyncSettingsItem("metadataFilters", "filters")
     data object MediaHeader : SyncSettingsItem("mediaHeader", "media")
     data object CacheScreenshots : SyncSettingsItem("cacheScreenshots", "media")
+    data object CacheBoxArt : SyncSettingsItem("cacheBoxArt", "media")
     data object UploadScreenshots : SyncSettingsItem("uploadScreenshots", "media")
     data object ImageCacheLocation : SyncSettingsItem("imageCacheLocation", "media")
     data object ImageCacheProgressIndicator : SyncSettingsItem("imageCacheProgress", "media")
@@ -65,6 +66,7 @@ private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Boolean>(
         SyncSettingsItem.MetadataFilters,
         SyncSettingsItem.MediaHeader,
         SyncSettingsItem.CacheScreenshots,
+        SyncSettingsItem.CacheBoxArt,
         SyncSettingsItem.UploadScreenshots,
         SyncSettingsItem.ImageCacheLocation,
         SyncSettingsItem.ImageCacheProgressIndicator
@@ -162,6 +164,15 @@ fun SyncSettingsSection(
                             isEnabled = uiState.server.syncScreenshotsEnabled,
                             isFocused = isFocused(item),
                             onToggle = { viewModel.toggleSyncScreenshots() }
+                        )
+                    }
+                    SyncSettingsItem.CacheBoxArt -> {
+                        SwitchPreference(
+                            title = "Cache 3D Box Art",
+                            subtitle = "Download box back and spine scans for 3D box displays",
+                            isEnabled = uiState.server.boxArtCacheEnabled,
+                            isFocused = isFocused(item),
+                            onToggle = { viewModel.toggleBoxArtCache() }
                         )
                     }
                     SyncSettingsItem.UploadScreenshots -> {

@@ -675,6 +675,7 @@ data class ServerState(
     val rommDeviceVerificationUrl: String? = null,
     val syncScreenshotsEnabled: Boolean = false,
     val uploadScreenshotsEnabled: Boolean = true,
+    val boxArtCacheEnabled: Boolean = true,
     val screenshotUploadSupported: Boolean = false
 )
 

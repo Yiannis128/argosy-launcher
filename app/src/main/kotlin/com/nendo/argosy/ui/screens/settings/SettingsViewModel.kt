@@ -948,6 +948,7 @@ class SettingsViewModel @Inject constructor(
 
     fun toggleSyncScreenshots() = routeToggleSyncScreenshots(this)
     fun toggleUploadScreenshots() = routeToggleUploadScreenshots(this)
+    fun toggleBoxArtCache() = routeToggleBoxArtCache(this)
 
     fun enableSaveSync() = syncDelegate.enableSaveSync(viewModelScope)
     fun toggleSaveSync() = syncDelegate.toggleSaveSync(viewModelScope)

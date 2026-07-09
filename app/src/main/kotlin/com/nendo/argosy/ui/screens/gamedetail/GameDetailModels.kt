@@ -65,6 +65,8 @@ data class GameDetailUi(
     val platformName: String,
     val coverPath: String?,
     val backgroundPath: String?,
+    val boxBackPath: String? = null,
+    val boxSpinePath: String? = null,
     val developer: String?,
     val publisher: String?,
     val releaseYear: Int?,

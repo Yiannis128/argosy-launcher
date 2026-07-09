@@ -60,6 +60,8 @@ data class GameEntity(
     val backgroundPath: String? = null,
     val screenshotPaths: String? = null,
     val cachedScreenshotPaths: String? = null,
+    val boxBackPath: String? = null,
+    val boxSpinePath: String? = null,
 
     val developer: String? = null,
     val publisher: String? = null,

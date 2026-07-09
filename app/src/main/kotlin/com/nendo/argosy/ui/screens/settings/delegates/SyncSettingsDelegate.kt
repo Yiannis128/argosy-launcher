@@ -343,6 +343,16 @@ class SyncSettingsDelegate @Inject constructor(
         }
     }
 
+    fun toggleBoxArtCache(scope: CoroutineScope, currentValue: Boolean) {
+        scope.launch {
+            val newValue = !currentValue
+            preferencesRepository.setBoxArtCacheEnabled(newValue)
+            if (newValue) {
+                imageCacheManager.resumePendingBoxFaceCache()
+            }
+        }
+    }
+
     fun toggleUploadScreenshots(scope: CoroutineScope, currentValue: Boolean, onChanged: (Boolean) -> Unit) {
         scope.launch {
             val newValue = !currentValue

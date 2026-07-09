@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.ui.components.Box3dCover
 import com.nendo.argosy.ui.components.GameTitle
 import com.nendo.argosy.ui.screens.gamedetail.GameDetailUi
 import com.nendo.argosy.ui.theme.ALauncherColors
@@ -141,13 +142,22 @@ private fun LandscapeExpandedHeader(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXl)
     ) {
-        CoverArtImage(
-            coverPath = game.coverPath,
-            contentDescription = game.title,
-            modifier = Modifier
-                .width(EXPANDED_COVER_WIDTH)
-                .height(coverHeight)
-        )
+        if (game.boxSpinePath != null && game.coverPath?.startsWith("/") == true) {
+            Box3dCover(
+                frontPath = game.coverPath,
+                spinePath = game.boxSpinePath,
+                backPath = game.boxBackPath,
+                modifier = Modifier.height(coverHeight)
+            )
+        } else {
+            CoverArtImage(
+                coverPath = game.coverPath,
+                contentDescription = game.title,
+                modifier = Modifier
+                    .width(EXPANDED_COVER_WIDTH)
+                    .height(coverHeight)
+            )
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             TitleSection(game = game)
@@ -184,13 +194,22 @@ private fun PortraitExpandedHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            CoverArtImage(
-                coverPath = game.coverPath,
-                contentDescription = game.title,
-                modifier = Modifier
-                    .widthIn(max = coverWidth)
-                    .height(coverHeight)
-            )
+            if (game.boxSpinePath != null && game.coverPath?.startsWith("/") == true) {
+                Box3dCover(
+                    frontPath = game.coverPath,
+                    spinePath = game.boxSpinePath,
+                    backPath = game.boxBackPath,
+                    modifier = Modifier.height(coverHeight)
+                )
+            } else {
+                CoverArtImage(
+                    coverPath = game.coverPath,
+                    contentDescription = game.title,
+                    modifier = Modifier
+                        .widthIn(max = coverWidth)
+                        .height(coverHeight)
+                )
+            }
 
             Column(
                 modifier = Modifier.weight(1f),

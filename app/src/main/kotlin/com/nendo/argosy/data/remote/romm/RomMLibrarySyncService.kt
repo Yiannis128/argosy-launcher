@@ -68,6 +68,7 @@ class RomMLibrarySyncService @Inject constructor(
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
     private val syncMutex = Mutex()
+    private var boxArtCacheEnabledForSync = true
 
     private val _syncProgress = MutableStateFlow(SyncProgress())
     val syncProgress: StateFlow<SyncProgress> = _syncProgress.asStateFlow()
@@ -142,6 +143,7 @@ class RomMLibrarySyncService @Inject constructor(
 
         val prefs = userPreferencesRepository.preferences.first()
         val filters = prefs.syncFilters
+        boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
 
         _syncProgress.value = SyncProgress(isSyncing = true, platformsTotal = 1)
 
@@ -237,6 +239,7 @@ class RomMLibrarySyncService @Inject constructor(
 
         val prefs = userPreferencesRepository.preferences.first()
         val filters = prefs.syncFilters
+        boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
 
         _syncProgress.value = SyncProgress(isSyncing = true)
 
@@ -484,6 +487,32 @@ class RomMLibrarySyncService @Inject constructor(
             else -> null
         }
 
+        val boxBackUrl = if (boxArtCacheEnabledForSync) {
+            rom.ssMetadata?.box2dBackPath?.let { apiClient.buildResourceUrl(it) }
+        } else null
+        if (rom.ssMetadata?.box2dSidePath != null || rom.ssMetadata?.box2dBackPath != null) {
+            Logger.debug(TAG, "syncRom: ${rom.name} boxFaces back=${rom.ssMetadata.box2dBackPath} side=${rom.ssMetadata.box2dSidePath} enabled=$boxArtCacheEnabledForSync")
+        }
+        val cachedBoxBack = when {
+            !contentChanged && existing?.boxBackPath?.startsWith("/") == true -> existing.boxBackPath
+            boxBackUrl != null -> {
+                imageCacheManager.queueBoxFaceCache(boxBackUrl, rom.id, rom.name, ImageCacheManager.BoxFace.BACK)
+                boxBackUrl
+            }
+            else -> null
+        }
+        val boxSpineUrl = if (boxArtCacheEnabledForSync) {
+            rom.ssMetadata?.box2dSidePath?.let { apiClient.buildResourceUrl(it) }
+        } else null
+        val cachedBoxSpine = when {
+            !contentChanged && existing?.boxSpinePath?.startsWith("/") == true -> existing.boxSpinePath
+            boxSpineUrl != null -> {
+                imageCacheManager.queueBoxFaceCache(boxSpineUrl, rom.id, rom.name, ImageCacheManager.BoxFace.SPINE)
+                boxSpineUrl
+            }
+            else -> null
+        }
+
         val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
         val shouldBeMultiDisc = isSiblingBasedMultiDisc
 
@@ -519,6 +548,8 @@ class RomMLibrarySyncService @Inject constructor(
             },
             coverPath = cachedCover,
             backgroundPath = cachedBackground,
+            boxBackPath = cachedBoxBack,
+            boxSpinePath = cachedBoxSpine,
             screenshotPaths = screenshotUrls.joinToString(","),
             description = rom.summary,
             releaseYear = rom.firstReleaseDateMillis?.let {

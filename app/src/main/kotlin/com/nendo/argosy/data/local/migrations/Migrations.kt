@@ -1915,3 +1915,10 @@ object Migration_131_132 : Migration(131, 132) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_games_collections ON games(collections)")
     }
 }
+
+object Migration_132_133 : Migration(132, 133) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE games ADD COLUMN boxBackPath TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE games ADD COLUMN boxSpinePath TEXT DEFAULT NULL")
+    }
+}

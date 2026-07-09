@@ -407,6 +407,15 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE coverPath LIKE 'http%'")
     suspend fun getGamesWithUncachedCovers(): List<GameEntity>
 
+    @Query("UPDATE games SET boxBackPath = :path WHERE id = :gameId")
+    suspend fun updateBoxBackPath(gameId: Long, path: String)
+
+    @Query("UPDATE games SET boxSpinePath = :path WHERE id = :gameId")
+    suspend fun updateBoxSpinePath(gameId: Long, path: String)
+
+    @Query("SELECT * FROM games WHERE boxBackPath LIKE 'http%' OR boxSpinePath LIKE 'http%'")
+    suspend fun getGamesWithUncachedBoxFaces(): List<GameEntity>
+
     @Query("SELECT * FROM games WHERE coverPath IS NULL OR coverPath = ''")
     suspend fun getGamesWithMissingCovers(): List<GameEntity>
 

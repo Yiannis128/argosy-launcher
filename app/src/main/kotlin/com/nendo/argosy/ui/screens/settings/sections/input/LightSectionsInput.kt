@@ -187,6 +187,8 @@ internal class LightSectionsInput(
             }
             SyncSettingsItem.CacheScreenshots ->
                 return toggleLeftRight(direction, state.server.syncScreenshotsEnabled) { viewModel.toggleSyncScreenshots() }
+            SyncSettingsItem.CacheBoxArt ->
+                return toggleLeftRight(direction, state.server.boxArtCacheEnabled) { viewModel.toggleBoxArtCache() }
             SyncSettingsItem.UploadScreenshots -> {
                 if (!state.server.screenshotUploadSupported) return InputResult.UNHANDLED
                 return toggleLeftRight(direction, state.server.uploadScreenshotsEnabled) { viewModel.toggleUploadScreenshots() }

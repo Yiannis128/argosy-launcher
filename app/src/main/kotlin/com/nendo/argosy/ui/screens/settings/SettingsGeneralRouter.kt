@@ -479,6 +479,10 @@ internal fun routeToggleSyncScreenshots(vm: SettingsViewModel) {
     vm.syncDelegate.toggleSyncScreenshots(vm.viewModelScope, vm._uiState.value.server.syncScreenshotsEnabled)
 }
 
+internal fun routeToggleBoxArtCache(vm: SettingsViewModel) {
+    vm.syncDelegate.toggleBoxArtCache(vm.viewModelScope, vm._uiState.value.server.boxArtCacheEnabled)
+}
+
 internal fun routeToggleUploadScreenshots(vm: SettingsViewModel) {
     val server = vm._uiState.value.server
     if (!server.screenshotUploadSupported) return
