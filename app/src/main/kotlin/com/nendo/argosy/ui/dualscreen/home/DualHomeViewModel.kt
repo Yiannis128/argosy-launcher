@@ -243,22 +243,10 @@ class DualHomeViewModel(
                 val nonPlatformSections = state.sections.filterNot { it is DualHomeSection.Platform }
                 val updatedSections = nonPlatformSections + newPlatformSections
 
-                val currentSection = state.currentSection
-                val newIndex = if (currentSection != null) {
-                    updatedSections.indexOfFirst { section ->
-                        when {
-                            currentSection is DualHomeSection.Platform && section is DualHomeSection.Platform ->
-                                currentSection.id == section.id
-                            currentSection::class == section::class -> true
-                            else -> false
-                        }
-                    }.takeIf { it >= 0 } ?: 0
-                } else 0
-
                 _uiState.update {
                     it.copy(
                         sections = updatedSections,
-                        currentSectionIndex = newIndex
+                        currentSectionIndex = remapSectionIndex(state.currentSection, updatedSections)
                     )
                 }
             }
@@ -284,15 +272,15 @@ class DualHomeViewModel(
                     if (_uiState.value.viewMode == DualHomeViewMode.LIBRARY_GRID) {
                         val platformId = _uiState.value.activeFilters.platformId
                         if (platformId != null) {
-                            loadLibraryGamesForPlatform(platformId)
+                            loadLibraryGamesForPlatform(platformId, hidden = libraryLoadedHidden, preserveFocus = true)
                         } else {
-                            loadLibraryGames()
+                            loadLibraryGames(hidden = libraryLoadedHidden, preserveFocus = true)
                         }
                     }
                     if (_uiState.value.viewMode == DualHomeViewMode.COLLECTION_GAMES) {
                         val collectionId = selectedCollectionItem()?.id
                         if (collectionId != null) {
-                            enterCollectionGames(collectionId)
+                            enterCollectionGames(collectionId, preserveFocus = true)
                         }
                     }
                 } else {
@@ -478,7 +466,11 @@ class DualHomeViewModel(
         }
 
         _uiState.update {
-            it.copy(games = games, platformTotalCount = realCount)
+            val previousId = it.selectedGame?.id
+            val remapped = games.indexOfFirst { g -> g.id == previousId }
+            val newIndex = if (remapped >= 0) remapped
+            else it.selectedIndex.coerceIn(0, (games.size - 1).coerceAtLeast(0))
+            it.copy(games = games, platformTotalCount = realCount, selectedIndex = newIndex)
         }
     }
 
@@ -536,10 +528,25 @@ class DualHomeViewModel(
     fun refresh() {
         viewModelScope.launch {
             val sections = buildSections()
-            _uiState.update { it.copy(sections = sections) }
+            _uiState.update { state ->
+                state.copy(
+                    sections = sections,
+                    currentSectionIndex = remapSectionIndex(state.currentSection, sections)
+                )
+            }
             loadGamesForCurrentSection()
         }
     }
+
+    private fun remapSectionIndex(current: DualHomeSection?, sections: List<DualHomeSection>): Int =
+        current?.let { c ->
+            sections.indexOfFirst { s ->
+                when {
+                    c is DualHomeSection.Platform && s is DualHomeSection.Platform -> c.id == s.id
+                    else -> c::class == s::class
+                }
+            }.takeIf { it >= 0 }
+        } ?: 0
 
     fun nextSection() {
         val state = _uiState.value
@@ -647,7 +654,11 @@ class DualHomeViewModel(
         )}
     }
 
-    fun enterCollectionGames(collectionId: Long, onLoaded: (() -> Unit)? = null) {
+    fun enterCollectionGames(
+        collectionId: Long,
+        preserveFocus: Boolean = false,
+        onLoaded: (() -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val games = collectionRepository.getGamesInCollection(collectionId)
                 .filter { !it.isHidden }
@@ -658,12 +669,29 @@ class DualHomeViewModel(
             _uiState.update { it.copy(
                 viewMode = DualHomeViewMode.COLLECTION_GAMES,
                 collectionGames = games,
-                collectionGamesFocusedIndex = 0,
+                collectionGamesFocusedIndex = if (preserveFocus) {
+                    remapFocusIndex(it.collectionGames, it.collectionGamesFocusedIndex, games)
+                } else 0,
                 activeCollectionName = item?.name ?: ""
             )}
             onLoaded?.invoke()
         }
     }
+
+    private fun <T> remapFocusIndex(
+        old: List<T>,
+        oldIndex: Int,
+        new: List<T>,
+        idOf: (T) -> Long
+    ): Int {
+        val previousId = old.getOrNull(oldIndex)?.let(idOf) ?: return 0
+        val remapped = new.indexOfFirst { idOf(it) == previousId }
+        return if (remapped >= 0) remapped
+        else oldIndex.coerceIn(0, (new.size - 1).coerceAtLeast(0))
+    }
+
+    private fun remapFocusIndex(old: List<HomeGameUi>, oldIndex: Int, new: List<HomeGameUi>): Int =
+        remapFocusIndex(old, oldIndex, new) { it.id }
 
     fun exitCollectionGames() {
         _uiState.update { it.copy(
@@ -1127,7 +1155,11 @@ class DualHomeViewModel(
         return SortResult(sortedGames, orderedSections, gridItems, labels)
     }
 
-    private fun loadLibraryGames(hidden: Boolean = false, onLoaded: (() -> Unit)? = null) {
+    private fun loadLibraryGames(
+        hidden: Boolean = false,
+        preserveFocus: Boolean = false,
+        onLoaded: (() -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val entities = if (hidden) gameRepository.getHiddenSortedByTitle()
                            else gameRepository.getAllSortedByTitle()
@@ -1137,18 +1169,17 @@ class DualHomeViewModel(
             val filters = _uiState.value.activeFilters
             val filtered = applyFiltersToList(allGames, filters)
             val result = applySort(filtered, filters.sort)
-            _uiState.update { it.copy(
-                libraryGames = result.games.withCurrentDownloadState(),
-                libraryGridItems = result.gridItems,
-                sectionLabels = result.labels,
-                currentSectionLabel = result.labels.firstOrNull() ?: "",
-                libraryFocusedIndex = 0
-            )}
+            updateLibraryState(result, preserveFocus)
             onLoaded?.invoke()
         }
     }
 
-    private fun loadLibraryGamesForPlatform(platformId: Long, hidden: Boolean = false, onLoaded: (() -> Unit)? = null) {
+    private fun loadLibraryGamesForPlatform(
+        platformId: Long,
+        hidden: Boolean = false,
+        preserveFocus: Boolean = false,
+        onLoaded: (() -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val entities = if (hidden) gameRepository.getHiddenByPlatform(platformId)
                            else gameRepository.getByPlatform(platformId)
@@ -1158,15 +1189,21 @@ class DualHomeViewModel(
             val filters = _uiState.value.activeFilters
             val filtered = applyFiltersToList(platformGames, filters)
             val result = applySort(filtered, filters.sort)
-            _uiState.update { it.copy(
-                libraryGames = result.games.withCurrentDownloadState(),
-                libraryGridItems = result.gridItems,
-                sectionLabels = result.labels,
-                currentSectionLabel = result.labels.firstOrNull() ?: "",
-                libraryFocusedIndex = 0
-            )}
+            updateLibraryState(result, preserveFocus)
             onLoaded?.invoke()
         }
+    }
+
+    private fun updateLibraryState(result: SortResult, preserveFocus: Boolean) {
+        _uiState.update { it.copy(
+            libraryGames = result.games.withCurrentDownloadState(),
+            libraryGridItems = result.gridItems,
+            sectionLabels = result.labels,
+            currentSectionLabel = result.labels.firstOrNull() ?: "",
+            libraryFocusedIndex = if (preserveFocus) {
+                remapFocusIndex(it.libraryGames, it.libraryFocusedIndex, result.games)
+            } else 0
+        )}
     }
 
     private fun applyFilters(filters: DualActiveFilters) {

@@ -404,12 +404,18 @@ class DualGameDetailViewModel(
                 isMultiDisc = game.isMultiDisc,
                 isHidden = game.isHidden
             )
+            val sameGame = _uiState.value.gameId == game.id
             _uiState.value = newState
             _visibleOptions.value = newState.visibleOptions()
 
-            _selectedScreenshotIndex.value =
-                if (screenshots.isNotEmpty()) 0 else -1
-            _selectedOptionIndex.value = 0
+            _selectedScreenshotIndex.value = when {
+                screenshots.isEmpty() -> -1
+                sameGame -> _selectedScreenshotIndex.value.coerceIn(0, screenshots.size - 1)
+                else -> 0
+            }
+            _selectedOptionIndex.value = if (sameGame) {
+                _selectedOptionIndex.value.coerceIn(0, (_visibleOptions.value.size - 1).coerceAtLeast(0))
+            } else 0
             observeDownloads(game.id)
             if (game.steamAppId != null) {
                 observeSteamDownloads(game.id, game.steamAppId)
@@ -445,6 +451,8 @@ class DualGameDetailViewModel(
                         )
                     }
                     _visibleOptions.value = _uiState.value.visibleOptions()
+                    _selectedOptionIndex.value = _selectedOptionIndex.value
+                        .coerceIn(0, (_visibleOptions.value.size - 1).coerceAtLeast(0))
                 }
             }
         }
@@ -609,7 +617,6 @@ class DualGameDetailViewModel(
             }.takeIf { it >= 0 }
         } else null
         _selectedSlotIndex.value = restoredIndex ?: 0
-        _selectedHistoryIndex.value = 0
 
         val channelEntries = entries.filter { it.channelName == activeChannel }
         val hasSynced = channelEntries.any { it.source == "BOTH" || it.source == "SERVER" }
@@ -628,19 +635,24 @@ class DualGameDetailViewModel(
                 saveSyncStatusName = statusName
             )
         }
-        updateHistoryForFocusedSlot(activeSaveTimestamp)
+        updateHistoryForFocusedSlot(activeSaveTimestamp, preserveSelection = restoredIndex != null)
         _savesLoading.value = false
         _savesApplying.value = false
     }
 
     private fun updateHistoryForFocusedSlot(
-        activeSaveTimestamp: Long? = _uiState.value.activeSaveTimestamp
+        activeSaveTimestamp: Long? = _uiState.value.activeSaveTimestamp,
+        preserveSelection: Boolean = false
     ) {
         val slot = _saveSlots.value.getOrNull(_selectedSlotIndex.value)
         if (slot == null || slot.isCreateAction) {
             _saveHistory.value = emptyList()
             return
         }
+        val previousSelected = if (preserveSelection) {
+            _saveHistory.value.getOrNull(_selectedHistoryIndex.value)
+                ?.takeIf { it.channelName == slot.channelName }
+        } else null
         val channelName = slot.channelName
         val activeChannel = _uiState.value.activeChannel
         val isActiveChannel = channelName == activeChannel
@@ -666,7 +678,10 @@ class DualGameDetailViewModel(
                 isRollback = entry.isRollback
             )
         }
-        _selectedHistoryIndex.value = 0
+        _selectedHistoryIndex.value = previousSelected?.let { prev ->
+            _saveHistory.value.indexOfFirst { it.timestamp == prev.timestamp }
+                .takeIf { i -> i >= 0 }
+        } ?: 0
     }
 
     fun reloadSaves() {
@@ -704,7 +719,7 @@ class DualGameDetailViewModel(
                 else slot.copy(isActive = slot.channelName == channelName)
             }
         }
-        updateHistoryForFocusedSlot(timestamp)
+        updateHistoryForFocusedSlot(timestamp, preserveSelection = true)
     }
 
     fun focusSlotsColumn() {
@@ -729,8 +744,12 @@ class DualGameDetailViewModel(
     }
 
     fun loadStateEntries(entries: List<UnifiedStateEntry>) {
+        val previous = _stateEntries.value.getOrNull(_selectedStateIndex.value)
         _stateEntries.value = entries
-        _selectedStateIndex.value = 0
+        _selectedStateIndex.value = previous?.let { prev ->
+            entries.indexOfFirst { it.slotNumber == prev.slotNumber && it.timestamp == prev.timestamp }
+                .takeIf { i -> i >= 0 }
+        } ?: _selectedStateIndex.value.coerceIn(0, (entries.size - 1).coerceAtLeast(0))
     }
 
     fun moveStateSelection(delta: Int) {
