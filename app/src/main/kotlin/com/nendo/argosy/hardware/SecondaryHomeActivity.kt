@@ -250,7 +250,10 @@ class SecondaryHomeActivity :
                                 companionInGameState = companionInGameState.copy(
                                     currentPanel = panel
                                 )
-                            }
+                            },
+                            onQuickSave = { dsm.sessionQuickActions?.quickSave() },
+                            onQuickLoad = { dsm.sessionQuickActions?.quickLoad() },
+                            onScreenshot = { dsm.sessionQuickActions?.screenshot() }
                         )
                     }
                 }
@@ -316,7 +319,9 @@ class SecondaryHomeActivity :
     override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
         val result = super.dispatchTouchEvent(event)
         if (event.action == android.view.MotionEvent.ACTION_UP) {
-            if (isShowcaseRole) {
+            if (isGameActive && ::dsm.isInitialized) {
+                window.decorView.post { dsm.refocusSession() }
+            } else if (isShowcaseRole) {
                 window.decorView.post { broadcasts.broadcastRefocusUpper() }
             } else if (
                 dualHomeViewModel.forwardingMode.value ==
@@ -388,6 +393,12 @@ class SecondaryHomeActivity :
 
     override fun onSaveDirtyChanged(isDirty: Boolean) {
         isSaveDirty = isDirty; companionInGameState = companionInGameState.copy(isDirty = isDirty)
+    }
+
+    override fun onSessionActionsChanged(available: Boolean) {
+        runOnUiThread {
+            companionInGameState = companionInGameState.copy(quickActionsAvailable = available)
+        }
     }
 
     override fun onSessionStarted(
@@ -746,7 +757,9 @@ class SecondaryHomeActivity :
 
     private fun loadCompanionGameData(gameId: Long) {
         lifecycleScope.launch {
-            companionInGameState = stateManager.loadCompanionGameData(gameId)
+            companionInGameState = stateManager.loadCompanionGameData(gameId).copy(
+                quickActionsAvailable = dsm.sessionQuickActions != null
+            )
         }
     }
 

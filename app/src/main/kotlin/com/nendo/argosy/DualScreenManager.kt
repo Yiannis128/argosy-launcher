@@ -190,8 +190,23 @@ class DualScreenManager(
         fun onSaveDataReceived(json: String, activeChannel: String?, activeTimestamp: Long?, syncing: Boolean = false)
         fun onSavesSyncDone()
         fun onDownloadCompleted(gameId: Long)
+        fun onSessionActionsChanged(available: Boolean)
         fun finishCompanion()
     }
+
+    interface SessionQuickActions {
+        fun quickSave()
+        fun quickLoad()
+        fun screenshot()
+    }
+
+    var sessionQuickActions: SessionQuickActions? = null
+        set(value) {
+            field = value
+            companionHost?.onSessionActionsChanged(value != null)
+        }
+
+    var sessionRefocus: (() -> Unit)? = null
 
     var companionHost: CompanionHost? = null
     var onEmulatorDispatcherChanged: (() -> Unit)? = null
@@ -1989,6 +2004,11 @@ class DualScreenManager(
         companionLaunchJob?.cancel()
         companionLaunchJob = null
         displayAffinityHelper.unregisterDisplayListener(displayListener)
+    }
+
+    fun refocusSession() {
+        if (!sessionStateStore.hasActiveSession()) return
+        sessionRefocus?.invoke()
     }
 
     private fun refocusMain() {

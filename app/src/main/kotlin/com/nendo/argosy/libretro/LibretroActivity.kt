@@ -283,6 +283,20 @@ class LibretroActivity : ComponentActivity() {
         com.nendo.argosy.DualScreenManagerHolder.instance?.let { dsm ->
             dsm.emulatorKeyDispatcher = { event -> dispatchKeyEvent(event) }
             dsm.emulatorMotionDispatcher = { event -> dispatchGenericMotionEvent(event) }
+            dsm.sessionQuickActions = createSessionQuickActions()
+            dsm.sessionRefocus = {
+                @Suppress("DEPRECATION")
+                val options = android.app.ActivityOptions.makeBasic()
+                    .setLaunchDisplayId(windowManager.defaultDisplay.displayId)
+                startActivity(
+                    Intent(this, LibretroActivity::class.java).addFlags(
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                            Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    ),
+                    options.toBundle()
+                )
+            }
         }
 
         netplay = LibretroNetplayCoordinator(
@@ -2146,15 +2160,82 @@ class LibretroActivity : ComponentActivity() {
         orientationEventListener = null
     }
 
+    private fun createSessionQuickActions() = object : com.nendo.argosy.DualScreenManager.SessionQuickActions {
+        override fun quickSave() {
+            runOnUiThread {
+                if (coreDestroyed || !::retroView.isInitialized) return@runOnUiThread
+                val frame = try { retroView.captureRawFrame() } catch (_: Exception) { null }
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val stateData = try { retroView.serializeState() } catch (_: Exception) { null }
+                    val ok = stateData != null && saveStateManager.performQuickSave(stateData, frame)
+                    notifyQuickAction(ok, "State saved", "Save failed")
+                }
+            }
+        }
+
+        override fun quickLoad() {
+            runOnUiThread {
+                if (coreDestroyed || !::retroView.isInitialized) return@runOnUiThread
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val ok = try { saveStateManager.performQuickLoad(retroView) } catch (_: Exception) { false }
+                    notifyQuickAction(ok, "State loaded", "No quick save yet")
+                }
+            }
+        }
+
+        override fun screenshot() {
+            runOnUiThread {
+                if (coreDestroyed || !::retroView.isInitialized) return@runOnUiThread
+                val frame = try { retroView.captureRawFrame() } catch (_: Exception) { null }
+                if (frame == null) {
+                    notifyQuickAction(false, "", "Capture failed")
+                    return@runOnUiThread
+                }
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val ok = saveFrameToGallery(frame)
+                    notifyQuickAction(ok, "Screenshot saved", "Screenshot failed")
+                }
+            }
+        }
+    }
+
+    private fun notifyQuickAction(ok: Boolean, successTitle: String, failureTitle: String) {
+        com.nendo.argosy.data.social.SocialOverlayService.show(
+            this, if (ok) successTitle else failureTitle
+        )
+    }
+
+    private fun saveFrameToGallery(frame: android.graphics.Bitmap): Boolean {
+        return try {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "argosy_${System.currentTimeMillis()}.png")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Argosy")
+            }
+            val uri = contentResolver.insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+            ) ?: return false
+            contentResolver.openOutputStream(uri)?.use { out ->
+                frame.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+            } ?: return false
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "saveFrameToGallery failed", e)
+            false
+        }
+    }
+
     override fun onDestroy() {
         Log.d(TAG, "onDestroy: isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations")
         coreDestroyed = true
         unregisterGamepadDetection()
         unregisterOrientationListener()
-        audioController.abandonAudioFocus()
+        if (::audioController.isInitialized) audioController.abandonAudioFocus()
         com.nendo.argosy.DualScreenManagerHolder.instance?.let { dsm ->
             dsm.emulatorKeyDispatcher = null
             dsm.emulatorMotionDispatcher = null
+            dsm.sessionQuickActions = null
+            dsm.sessionRefocus = null
         }
         if (::netplay.isInitialized) netplay.shutdown()
         if (::achievementBridge.isInitialized) achievementBridge.destroy()

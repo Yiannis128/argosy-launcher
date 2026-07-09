@@ -80,7 +80,10 @@ fun SecondaryHomeContent(
     onOptionAction: (DualGameDetailViewModel, GameDetailOption) -> Unit,
     onScreenshotViewed: (Int) -> Unit,
     onDimTapped: () -> Unit = {},
-    onTabChanged: (CompanionPanel) -> Unit = {}
+    onTabChanged: (CompanionPanel) -> Unit = {},
+    onQuickSave: () -> Unit = {},
+    onQuickLoad: () -> Unit = {},
+    onScreenshot: () -> Unit = {}
 ) {
     BackHandler(enabled = true) { }
 
@@ -145,7 +148,10 @@ fun SecondaryHomeContent(
                 homeApps = homeApps,
                 onAppClick = onAppClick,
                 onTabChanged = onTabChanged,
-                onOpenDrawer = { viewModel.openDrawer() }
+                onOpenDrawer = { viewModel.openDrawer() },
+                onQuickSave = onQuickSave,
+                onQuickLoad = onQuickLoad,
+                onScreenshot = onScreenshot
             )
         }
 

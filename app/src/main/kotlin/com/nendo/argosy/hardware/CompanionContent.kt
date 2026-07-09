@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -81,7 +82,10 @@ fun CompanionContent(
     onOpenDrawer: () -> Unit = {},
     onCloseDrawer: () -> Unit = {},
     onPinToggle: (String) -> Unit = {},
-    onDrawerAppClick: (String) -> Unit = {}
+    onDrawerAppClick: (String) -> Unit = {},
+    onQuickSave: () -> Unit = {},
+    onQuickLoad: () -> Unit = {},
+    onScreenshot: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -97,7 +101,10 @@ fun CompanionContent(
                 when (state.currentPanel) {
                     CompanionPanel.DASHBOARD -> DashboardPanel(
                         state = state,
-                        sessionTimer = sessionTimer
+                        sessionTimer = sessionTimer,
+                        onQuickSave = onQuickSave,
+                        onQuickLoad = onQuickLoad,
+                        onScreenshot = onScreenshot
                     )
                 }
             }
@@ -203,7 +210,10 @@ private fun CompanionTabHeader(
 @Composable
 private fun DashboardPanel(
     state: CompanionInGameState,
-    sessionTimer: CompanionSessionTimer?
+    sessionTimer: CompanionSessionTimer?,
+    onQuickSave: () -> Unit = {},
+    onQuickLoad: () -> Unit = {},
+    onScreenshot: () -> Unit = {}
 ) {
     if (!state.isLoaded) return
 
@@ -223,12 +233,92 @@ private fun DashboardPanel(
     ) {
         item { HeroGameCard(state) }
         item { SessionTimerCard(sessionMillis) }
+        if (state.quickActionsAvailable) {
+            item {
+                QuickActionsRow(
+                    onQuickSave = onQuickSave,
+                    onQuickLoad = onQuickLoad,
+                    onScreenshot = onScreenshot
+                )
+            }
+        }
         if (state.achievementCount > 0) {
             item { AchievementProgress(state) }
         }
         item { PlayStatsCard(state, sessionMillis) }
     }
 }
+
+@Composable
+private fun QuickActionsRow(
+    onQuickSave: () -> Unit,
+    onQuickLoad: () -> Unit,
+    onScreenshot: () -> Unit
+) {
+    val theme = LocalArgosyTheme.current
+    var loadArmedUntil by remember { mutableLongStateOf(0L) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+            QuickActionButton(
+                label = "Save State",
+                modifier = Modifier.weight(1f),
+                onTap = onQuickSave
+            )
+            QuickActionButton(
+                label = "Screenshot",
+                modifier = Modifier.weight(1f),
+                onTap = onScreenshot
+            )
+            val loadArmed = android.os.SystemClock.elapsedRealtime() < loadArmedUntil
+            QuickActionButton(
+                label = if (loadArmed) "Tap to confirm" else "Load State",
+                accent = loadArmed,
+                modifier = Modifier.weight(1f),
+                onTap = {
+                    if (android.os.SystemClock.elapsedRealtime() < loadArmedUntil) {
+                        loadArmedUntil = 0L
+                        onQuickLoad()
+                    } else {
+                        loadArmedUntil = android.os.SystemClock.elapsedRealtime() + 3000L
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickActionButton(
+    label: String,
+    modifier: Modifier = Modifier,
+    accent: Boolean = false,
+    onTap: () -> Unit
+) {
+    val theme = LocalArgosyTheme.current
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(Dimens.radiusControl))
+            .background(
+                if (accent) theme.focusAccent.copy(alpha = 0.25f)
+                else Color.White.copy(alpha = 0.08f)
+            )
+            .touchOnly(onTap)
+            .padding(vertical = Dimens.spacingMd),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (accent) theme.focusAccent else Color.White
+        )
+    }
+}
+
 
 @Composable
 private fun HeroGameCard(state: CompanionInGameState) {
@@ -446,8 +536,24 @@ private fun SaveStateIndicator(
     isDirty: Boolean,
     modifier: Modifier = Modifier
 ) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        Text(
+            text = if (isDirty) "New save data" else "Saves synced",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.7f)
+        )
+        SaveStateDot(isDirty)
+    }
+}
+
+@Composable
+private fun SaveStateDot(isDirty: Boolean) {
     Box(
-        modifier = modifier
+        modifier = Modifier
             .size(Dimens.iconLg)
             .clip(CircleShape)
             .background(
