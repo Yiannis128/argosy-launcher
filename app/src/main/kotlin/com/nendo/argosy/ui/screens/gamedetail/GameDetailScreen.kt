@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -606,8 +607,9 @@ private fun GameDetailContent(
             )
 
             BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                val aspectRatio = maxWidth / maxHeight
-                val isCompactMenu = aspectRatio <= 1.3f
+                val configuration = LocalConfiguration.current
+                val displayAspectRatio = configuration.screenWidthDp.toFloat() / configuration.screenHeightDp
+                val isCompactMenu = displayAspectRatio <= 1.3f
 
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Left Menu (compact: icon-only, normal: 30%)
