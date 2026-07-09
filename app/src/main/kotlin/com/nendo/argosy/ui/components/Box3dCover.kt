@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -60,8 +59,9 @@ fun Box3dCover(
     backPath: String? = null,
     modifier: Modifier = Modifier
 ) {
-    val faces by produceState<BoxFaces?>(initialValue = null, frontPath, spinePath, backPath) {
-        value = withContext(Dispatchers.IO) {
+    var faces by remember(frontPath, spinePath, backPath) { mutableStateOf<BoxFaces?>(null) }
+    androidx.compose.runtime.LaunchedEffect(frontPath, spinePath, backPath) {
+        faces = withContext(Dispatchers.IO) {
             val front = decode(frontPath)
             val spine = decode(spinePath)
             if (front == null || spine == null) {

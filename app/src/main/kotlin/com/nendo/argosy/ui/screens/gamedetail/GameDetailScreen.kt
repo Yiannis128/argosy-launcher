@@ -606,7 +606,7 @@ private fun GameDetailContent(
                 isVisible = isHeaderCollapsed
             )
 
-            BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f)) {
                 val configuration = LocalConfiguration.current
                 val displayAspectRatio = configuration.screenWidthDp.toFloat() / configuration.screenHeightDp
                 val isCompactMenu = displayAspectRatio <= 1.3f
