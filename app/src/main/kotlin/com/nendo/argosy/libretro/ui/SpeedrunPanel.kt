@@ -37,12 +37,11 @@ fun SpeedrunPanel(
     modifier: Modifier = Modifier
 ) {
     val elapsedMs by produceState(0L, state) {
+        value = state.elapsedAt(SystemClock.elapsedRealtime())
         if (state.phase == SpeedrunPhase.RUNNING) {
             while (true) {
                 withFrameMillis { value = state.elapsedAt(SystemClock.elapsedRealtime()) }
             }
-        } else {
-            value = state.elapsedAt(SystemClock.elapsedRealtime())
         }
     }
 

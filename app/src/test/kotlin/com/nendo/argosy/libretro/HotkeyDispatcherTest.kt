@@ -39,6 +39,11 @@ class HotkeyDispatcherTest {
             onAutoSaveState = {},
             onCycleCoreOption = { _, _, _ -> },
             onSendCoreInput = { _, _ -> },
+            onSpeedrunSplit = {},
+            onSpeedrunUndoSplit = {},
+            onSpeedrunSkipSplit = {},
+            onSpeedrunToggleTimer = {},
+            onSpeedrunResetTimer = {},
             onQuit = {}
         )
     }
