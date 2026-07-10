@@ -519,7 +519,17 @@ class PlaySessionTracker @Inject constructor(
                 coreName = coreName,
                 emulatorPackage = emulatorPackage,
                 gameId = gameId
-            )
+            ) ?: saveSyncRepository.get().predictFolderSavePath(
+                emulatorId = emulatorId,
+                platformSlug = game.platformSlug,
+                romPath = game.localPath,
+                gameId = gameId,
+                gameTitle = game.title,
+                cachedSaveId = game.saveId ?: game.titleId,
+                emulatorPackage = emulatorPackage
+            )?.also {
+                Logger.debug(TAG, "[GameSession] No existing save; watching predicted first-save path | path=$it")
+            }
         } else null
 
         val watchPath = if (savePath != null) {
