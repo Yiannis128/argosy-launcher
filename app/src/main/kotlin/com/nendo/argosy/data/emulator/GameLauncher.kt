@@ -206,6 +206,10 @@ class GameLauncher @Inject constructor(
 
         Logger.debug(TAG, "Emulator resolved: ${emulator.displayName} (${emulator.packageName})")
 
+        if (emulator.id == "gamenative" && game.platformSlug != "steam") {
+            return launchGameNativeCustomGame(game, romFile)
+        }
+
         ps2MemcardGate(gameId, game, emulator)?.let { return it }
 
         biosGate(game, emulator)?.let { return it }
@@ -538,6 +542,38 @@ class GameLauncher @Inject constructor(
             effectiveStatePath?.let { putExtra(LibretroActivity.EXTRA_STATES_DIR, it) }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+    }
+
+    /** Windows/PC titles launch through GameNative's custom-game intent using the appId GameNative wrote to the folder's .gamenative file. */
+    private fun launchGameNativeCustomGame(game: GameEntity, romFile: File): LaunchResult {
+        val appId = readGameNativeAppId(romFile)
+            ?: return LaunchResult.Error(
+                "Add \"${game.title}\" in GameNative as a Custom Game first, then launch it from Argosy."
+            ).also {
+                Logger.warn(TAG, "launchGameNativeCustomGame: no .gamenative metadata near ${romFile.path}")
+            }
+        Logger.info(TAG, "launchGameNativeCustomGame: gameId=${game.id}, appId=$appId")
+        return LaunchResult.Success(
+            com.nendo.argosy.data.launcher.GameNativeLauncher.createCustomGameLaunchIntent(appId)
+        )
+    }
+
+    private fun readGameNativeAppId(romFile: File): Int? {
+        var dir: File? = if (romFile.isDirectory) romFile else romFile.parentFile
+        repeat(3) {
+            val meta = dir?.let { File(it, ".gamenative") } ?: return null
+            if (meta.isFile) {
+                val content = runCatching { meta.readText().trim() }.getOrNull() ?: return null
+                if (content.isEmpty()) return null
+                val fromJson = runCatching {
+                    org.json.JSONObject(content).optInt("appId", -1)
+                }.getOrDefault(-1)
+                if (fromJson > 0) return fromJson
+                return content.toIntOrNull()?.takeIf { it > 0 }
+            }
+            dir = dir?.parentFile
+        }
+        return null
     }
 
     private suspend fun ps2MemcardGate(gameId: Long, game: GameEntity, emulator: EmulatorDef): LaunchResult? {
