@@ -107,8 +107,8 @@ class HotkeyManager(
 
         if (newlyMatched.isEmpty()) return null
 
-        val instantHotkey = newlyMatched.firstOrNull { it.holdMs == 0L }
-        val holdHotkey = newlyMatched.firstOrNull { it.holdMs > 0L }
+        val instantHotkey = newlyMatched.filter { it.holdMs == 0L }.maxByOrNull { it.keyCodes.size }
+        val holdHotkey = newlyMatched.filter { it.holdMs > 0L }.maxByOrNull { it.keyCodes.size }
 
         return when {
             holdHotkey == null && instantHotkey != null -> {
@@ -192,7 +192,6 @@ class HotkeyManager(
     fun getTriggeredAction(): HotkeyAction? = triggeredConfig?.action
 
     fun clearState() {
-        pressedKeys.clear()
         triggeredConfig = null
         clearPending()
     }

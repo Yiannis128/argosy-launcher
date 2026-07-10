@@ -37,6 +37,12 @@ sealed class SpeedrunImport {
     data object Loading : SpeedrunImport()
     data class Options(val entries: List<com.nendo.argosy.data.speedrun.SeedCategory>, val focusIndex: Int = 0) : SpeedrunImport()
     data object Importing : SpeedrunImport()
+    data class Preview(
+        val entry: com.nendo.argosy.data.speedrun.SeedCategory,
+        val template: com.nendo.argosy.data.speedrun.SeedTemplate,
+        val runnerIndex: Int,
+        val options: Options
+    ) : SpeedrunImport()
     data class Failed(val message: String) : SpeedrunImport()
 }
 
@@ -74,6 +80,9 @@ class SpeedrunSplitsDelegate @Inject constructor(
     fun dismiss() {
         val s = _state.value
         when {
+            s.import is SpeedrunImport.Preview -> _state.update {
+                it.copy(import = (s.import as SpeedrunImport.Preview).options)
+            }
             s.import != null -> _state.update { it.copy(import = null) }
             s.prompt != null -> _state.update { it.copy(prompt = null) }
             s.editingCategory != null -> _state.update {
@@ -122,43 +131,71 @@ class SpeedrunSplitsDelegate @Inject constructor(
 
     fun confirmImport() {
         val s = _state.value
-        val import = s.import
-        if (import !is SpeedrunImport.Options) {
-            if (import is SpeedrunImport.Failed) _state.update { it.copy(import = null) }
-            return
-        }
-        val entry = import.entries.getOrNull(import.focusIndex) ?: return
-        val currentScope = scope ?: return
-        _state.update { it.copy(import = SpeedrunImport.Importing) }
-        currentScope.launch(Dispatchers.IO) {
-            when (entry.source) {
-                com.nendo.argosy.data.speedrun.SeedCategory.Source.THERUN -> {
-                    val template = seedService.fetchTheRunTemplate(entry)
-                    if (template != null) {
-                        speedrunRepository.createCategory(
-                            gameId = gameId,
-                            name = entry.label,
-                            segmentNames = template.segments,
-                            sourceLabel = "therun.gg: ${template.runnerUsername}"
-                        )
-                        _state.update { it.copy(import = null) }
-                        reloadCategories()
-                    } else {
-                        _state.update {
-                            it.copy(import = SpeedrunImport.Failed("Couldn't fetch splits for ${entry.label}"))
+        when (val import = s.import) {
+            is SpeedrunImport.Options -> {
+                val entry = import.entries.getOrNull(import.focusIndex) ?: return
+                when (entry.source) {
+                    com.nendo.argosy.data.speedrun.SeedCategory.Source.THERUN -> loadPreview(entry, import, 0, 1)
+                    com.nendo.argosy.data.speedrun.SeedCategory.Source.SPEEDRUN_COM -> {
+                        val currentScope = scope ?: return
+                        _state.update { it.copy(import = SpeedrunImport.Importing) }
+                        currentScope.launch(Dispatchers.IO) {
+                            speedrunRepository.createCategory(
+                                gameId = gameId,
+                                name = entry.label,
+                                segmentNames = listOf("Segment 1"),
+                                sourceLabel = "speedrun.com"
+                            )
+                            _state.update { it.copy(import = null) }
+                            reloadCategories()
                         }
                     }
                 }
-                com.nendo.argosy.data.speedrun.SeedCategory.Source.SPEEDRUN_COM -> {
+            }
+            is SpeedrunImport.Preview -> {
+                val currentScope = scope ?: return
+                _state.update { it.copy(import = SpeedrunImport.Importing) }
+                currentScope.launch(Dispatchers.IO) {
                     speedrunRepository.createCategory(
                         gameId = gameId,
-                        name = entry.label,
-                        segmentNames = listOf("Segment 1"),
-                        sourceLabel = "speedrun.com"
+                        name = import.entry.label,
+                        segmentNames = import.template.segments,
+                        sourceLabel = "therun.gg: ${import.template.runnerUsername}"
                     )
                     _state.update { it.copy(import = null) }
                     reloadCategories()
                 }
+            }
+            is SpeedrunImport.Failed -> _state.update { it.copy(import = null) }
+            else -> Unit
+        }
+    }
+
+    fun cyclePreviewRunner(delta: Int) {
+        val import = _state.value.import as? SpeedrunImport.Preview ?: return
+        loadPreview(import.entry, import.options, import.runnerIndex + delta, delta, fallback = import)
+    }
+
+    private fun loadPreview(
+        entry: com.nendo.argosy.data.speedrun.SeedCategory,
+        options: SpeedrunImport.Options,
+        startIndex: Int,
+        direction: Int,
+        fallback: SpeedrunImport.Preview? = null
+    ) {
+        val currentScope = scope ?: return
+        if (startIndex !in entry.leaderboardUsernames.indices) return
+        _state.update { it.copy(import = SpeedrunImport.Importing) }
+        currentScope.launch(Dispatchers.IO) {
+            val result = seedService.fetchTheRunTemplateAt(entry, startIndex, direction)
+            _state.update {
+                it.copy(
+                    import = when {
+                        result != null -> SpeedrunImport.Preview(entry, result.second, result.first, options)
+                        fallback != null -> fallback
+                        else -> SpeedrunImport.Failed("Couldn't fetch splits for ${entry.label}")
+                    }
+                )
             }
         }
     }

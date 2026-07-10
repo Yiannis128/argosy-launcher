@@ -25,7 +25,8 @@ class HotkeyDispatcher(
     private val onSpeedrunSplit: () -> Unit,
     private val onSpeedrunUndoSplit: () -> Unit,
     private val onSpeedrunSkipSplit: () -> Unit,
-    private val onSpeedrunToggleTimer: () -> Unit
+    private val onSpeedrunToggleTimer: () -> Unit,
+    private val onSpeedrunResetTimer: () -> Unit
 ) {
     fun dispatch(config: HotkeyManager.HotkeyConfig): Boolean {
         when (config.action) {
@@ -127,6 +128,11 @@ class HotkeyDispatcher(
             }
             HotkeyAction.SPEEDRUN_TOGGLE_TIMER -> {
                 onSpeedrunToggleTimer()
+                hotkeyManager.clearState()
+                return true
+            }
+            HotkeyAction.SPEEDRUN_RESET_TIMER -> {
+                onSpeedrunResetTimer()
                 hotkeyManager.clearState()
                 return true
             }

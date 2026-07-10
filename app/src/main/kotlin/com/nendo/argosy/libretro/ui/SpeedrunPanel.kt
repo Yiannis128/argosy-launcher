@@ -56,7 +56,7 @@ fun SpeedrunPanel(
 
         LaunchedEffect(state.currentIndex) {
             if (state.phase == SpeedrunPhase.RUNNING) {
-                listState.animateScrollToItem(state.currentIndex.coerceAtLeast(0))
+                listState.animateScrollToItem((state.currentIndex - 2).coerceAtLeast(0))
             }
         }
 
@@ -90,7 +90,7 @@ fun SpeedrunPanel(
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy((2 * scale).dp),
-                modifier = Modifier.weight(1f, fill = false)
+                modifier = Modifier.weight(1f)
             ) {
                 itemsIndexed(state.segments, key = { index, _ -> index }) { index, name ->
                     val timeMs = state.splitTimesMs.getOrNull(index)
@@ -180,24 +180,10 @@ private fun SegmentRow(
 
 @Composable
 private fun PanelFooter(state: SpeedrunRunState, scale: Float) {
-    val sumOfBest = state.sumOfBestMs
     Column(modifier = Modifier.padding(top = (6 * scale).dp)) {
-        if (sumOfBest != null) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Sum of Best",
-                    fontSize = (11 * scale).sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = formatRunTime(sumOfBest),
-                    fontSize = (11 * scale).sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
-        }
+        state.pbTimeMs?.let { FooterRow("Personal Best", formatRunTime(it), scale) }
+        state.sessionBestMs?.let { FooterRow("Session Best", formatRunTime(it), scale) }
+        state.sumOfBestMs?.let { FooterRow("Sum of Best", formatRunTime(it), scale) }
         if (state.attemptCount > 0) {
             Text(
                 text = "Attempt ${state.attemptCount}",
@@ -205,6 +191,24 @@ private fun PanelFooter(state: SpeedrunRunState, scale: Float) {
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
         }
+    }
+}
+
+@Composable
+private fun FooterRow(label: String, value: String, scale: Float) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            fontSize = (11 * scale).sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            fontSize = (11 * scale).sp,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        )
     }
 }
 

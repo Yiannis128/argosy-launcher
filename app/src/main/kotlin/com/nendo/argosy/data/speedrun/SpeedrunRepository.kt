@@ -12,6 +12,7 @@ import javax.inject.Singleton
 data class SpeedrunComparison(
     val pbSplitTimesMs: List<Long?> = emptyList(),
     val bestSegmentDurationsMs: List<Long?> = emptyList(),
+    val pbTimeMs: Long? = null,
     val attemptCount: Int = 0
 )
 
@@ -96,6 +97,7 @@ class SpeedrunRepository @Inject constructor(
         return SpeedrunComparison(
             pbSplitTimesMs = pbSplits,
             bestSegmentDurationsMs = best,
+            pbTimeMs = pb?.finalTimeMs,
             attemptCount = attempts.size
         )
     }

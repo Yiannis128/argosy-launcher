@@ -33,7 +33,8 @@ class LibretroHotkeyDispatcher(
     private val onSpeedrunSplit: () -> Unit,
     private val onSpeedrunUndoSplit: () -> Unit,
     private val onSpeedrunSkipSplit: () -> Unit,
-    private val onSpeedrunToggleTimer: () -> Unit
+    private val onSpeedrunToggleTimer: () -> Unit,
+    private val onSpeedrunResetTimer: () -> Unit
 ) {
     var isFastForwarding: Boolean = false
         private set
@@ -60,7 +61,8 @@ class LibretroHotkeyDispatcher(
         onSpeedrunSplit = onSpeedrunSplit,
         onSpeedrunUndoSplit = onSpeedrunUndoSplit,
         onSpeedrunSkipSplit = onSpeedrunSkipSplit,
-        onSpeedrunToggleTimer = onSpeedrunToggleTimer
+        onSpeedrunToggleTimer = onSpeedrunToggleTimer,
+        onSpeedrunResetTimer = onSpeedrunResetTimer
     )
 
     init {

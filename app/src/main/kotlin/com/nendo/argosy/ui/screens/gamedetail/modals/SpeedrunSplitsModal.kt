@@ -68,8 +68,14 @@ fun SpeedrunSplitsModal(
                 }
                 return InputResult.HANDLED
             }
-            override fun onLeft(): InputResult = InputResult.HANDLED
-            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onLeft(): InputResult {
+                if (currentState.value.import is SpeedrunImport.Preview) delegate.cyclePreviewRunner(-1)
+                return InputResult.HANDLED
+            }
+            override fun onRight(): InputResult {
+                if (currentState.value.import is SpeedrunImport.Preview) delegate.cyclePreviewRunner(1)
+                return InputResult.HANDLED
+            }
             override fun onConfirm(): InputResult {
                 val s = currentState.value
                 when {
@@ -229,6 +235,31 @@ fun SpeedrunSplitsModal(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        is SpeedrunImport.Preview -> NestedModal(
+            title = import.entry.label,
+            onDismiss = { delegate.dismiss() },
+            footerHints = listOf(
+                InputButton.DPAD_HORIZONTAL to "Other Runner",
+                InputButton.A to "Import",
+                InputButton.B to "Back"
+            )
+        ) {
+            Text(
+                text = "Splits by ${import.template.runnerUsername} (#${import.runnerIndex + 1})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                itemsIndexed(import.template.segments, key = { index, _ -> index }) { index, segment ->
+                    Text(
+                        text = "${index + 1}.  $segment",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(vertical = Dimens.spacingXs)
+                    )
+                }
+            }
         }
         is SpeedrunImport.Options -> {
             val importListState = rememberLazyListState()

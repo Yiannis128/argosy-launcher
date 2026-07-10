@@ -55,11 +55,22 @@ class SpeedrunSeedService @Inject constructor() {
         merged
     }
 
-    suspend fun fetchTheRunTemplate(category: SeedCategory): SeedTemplate? = withContext(Dispatchers.IO) {
+    suspend fun fetchTheRunTemplateAt(
+        category: SeedCategory,
+        startIndex: Int,
+        direction: Int = 1
+    ): Pair<Int, SeedTemplate>? = withContext(Dispatchers.IO) {
         val gameName = category.gameDisplayName ?: return@withContext null
-        category.leaderboardUsernames.take(MAX_PLACING_FALLBACKS).forEach { username ->
-            val template = runCatching { fetchTemplateFromUser(username, gameName, category.label) }.getOrNull()
-            if (template != null) return@withContext template
+        val usernames = category.leaderboardUsernames
+        var index = startIndex
+        var attempts = 0
+        while (index in usernames.indices && attempts < MAX_PLACING_FALLBACKS) {
+            val template = runCatching {
+                fetchTemplateFromUser(usernames[index], gameName, category.label)
+            }.getOrNull()
+            if (template != null) return@withContext index to template
+            index += direction
+            attempts++
         }
         null
     }

@@ -70,7 +70,8 @@ private val HOTKEY_ACTIONS = listOf(
     HotkeyAction.SPEEDRUN_SPLIT,
     HotkeyAction.SPEEDRUN_UNDO_SPLIT,
     HotkeyAction.SPEEDRUN_SKIP_SPLIT,
-    HotkeyAction.SPEEDRUN_TOGGLE_TIMER
+    HotkeyAction.SPEEDRUN_TOGGLE_TIMER,
+    HotkeyAction.SPEEDRUN_RESET_TIMER
 )
 
 private val HOLD_DELAY_CYCLE = listOf(0L, 1000L, 2000L, 3000L)
@@ -615,7 +616,8 @@ private fun getActionDisplayName(action: HotkeyAction): String {
         HotkeyAction.SPEEDRUN_SPLIT -> "Split"
         HotkeyAction.SPEEDRUN_UNDO_SPLIT -> "Undo Split"
         HotkeyAction.SPEEDRUN_SKIP_SPLIT -> "Skip Split"
-        HotkeyAction.SPEEDRUN_TOGGLE_TIMER -> "Pause Timer"
+        HotkeyAction.SPEEDRUN_TOGGLE_TIMER -> "Start/Pause Timer"
+        HotkeyAction.SPEEDRUN_RESET_TIMER -> "Reset Timer"
     }
 }
 

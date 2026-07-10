@@ -25,6 +25,8 @@ data class SpeedrunRunState(
     val splitTimesMs: List<Long?> = emptyList(),
     val pbSplitTimesMs: List<Long?> = emptyList(),
     val bestSegmentDurationsMs: List<Long?> = emptyList(),
+    val pbTimeMs: Long? = null,
+    val sessionBestMs: Long? = null,
     val attemptCount: Int = 0,
     val anchorRealtimeMs: Long = 0L,
     val accumulatedMs: Long = 0L,
@@ -49,6 +51,10 @@ class SpeedrunTimerEngine(
     private val now: () -> Long = SystemClock::elapsedRealtime,
     private val epochNow: () -> Long = System::currentTimeMillis
 ) {
+    private companion object {
+        const val MIN_RECORDED_ATTEMPT_MS = 1000L
+    }
+
     private val _state = MutableStateFlow(SpeedrunRunState())
     val state: StateFlow<SpeedrunRunState> = _state.asStateFlow()
 
@@ -62,6 +68,7 @@ class SpeedrunTimerEngine(
         segments: List<String>,
         pbSplitTimesMs: List<Long?> = emptyList(),
         bestSegmentDurationsMs: List<Long?> = emptyList(),
+        pbTimeMs: Long? = null,
         attemptCount: Int = 0
     ) {
         if (segments.isEmpty()) return
@@ -74,6 +81,7 @@ class SpeedrunTimerEngine(
             splitTimesMs = List(segments.size) { null },
             pbSplitTimesMs = pbSplitTimesMs,
             bestSegmentDurationsMs = bestSegmentDurationsMs,
+            pbTimeMs = pbTimeMs,
             attemptCount = attemptCount
         )
     }
@@ -130,6 +138,7 @@ class SpeedrunTimerEngine(
     fun togglePause() {
         val s = _state.value
         when (s.phase) {
+            SpeedrunPhase.IDLE -> if (s.armed) startRun()
             SpeedrunPhase.RUNNING -> _state.value = s.copy(
                 phase = SpeedrunPhase.PAUSED,
                 accumulatedMs = s.accumulatedMs + (now() - s.anchorRealtimeMs)
@@ -138,7 +147,7 @@ class SpeedrunTimerEngine(
                 phase = SpeedrunPhase.RUNNING,
                 anchorRealtimeMs = now()
             )
-            SpeedrunPhase.IDLE, SpeedrunPhase.FINISHED -> Unit
+            SpeedrunPhase.FINISHED -> Unit
         }
     }
 
@@ -149,9 +158,9 @@ class SpeedrunTimerEngine(
     }
 
     fun resetRun() {
-        val s = _state.value
-        if (!s.armed) return
+        if (!_state.value.armed) return
         endAttemptIfStarted()
+        val s = _state.value
         _state.value = s.copy(
             phase = SpeedrunPhase.IDLE,
             currentIndex = 0,
@@ -179,12 +188,24 @@ class SpeedrunTimerEngine(
     private fun endAttemptIfStarted() {
         val s = _state.value
         if (!s.armed || s.phase == SpeedrunPhase.IDLE) return
+        if (s.phase != SpeedrunPhase.FINISHED &&
+            s.elapsedAt(now()) < MIN_RECORDED_ATTEMPT_MS &&
+            s.splitTimesMs.all { it == null }
+        ) return
+        val completed = s.phase == SpeedrunPhase.FINISHED
+        val finalTime = if (completed) s.finalTimeMs else null
+        if (finalTime != null) {
+            _state.value = s.copy(
+                sessionBestMs = minOf(finalTime, s.sessionBestMs ?: Long.MAX_VALUE),
+                pbTimeMs = s.pbTimeMs?.let { pb -> minOf(pb, finalTime) } ?: finalTime
+            )
+        }
         onRunEnded?.invoke(
             SpeedrunRunEnd(
                 categoryId = s.categoryId,
                 startedAtEpochMs = s.startedAtEpochMs,
-                completed = s.phase == SpeedrunPhase.FINISHED,
-                finalTimeMs = if (s.phase == SpeedrunPhase.FINISHED) s.finalTimeMs else null,
+                completed = completed,
+                finalTimeMs = finalTime,
                 splitTimesMs = s.splitTimesMs
             )
         )

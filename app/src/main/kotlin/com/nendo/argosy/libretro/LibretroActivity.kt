@@ -259,6 +259,7 @@ class LibretroActivity : ComponentActivity() {
     private val speedrunTimer = com.nendo.argosy.libretro.speedrun.SpeedrunTimerEngine()
     private var speedrunStartOnReset = true
     private var speedrunPanelSidePref = "Right"
+    private val hotkeyConsumedKeys = mutableSetOf<Int>()
     private var speedrunPickerVisible by mutableStateOf(false)
     private var speedrunPickerFocusIndex by mutableStateOf(0)
     private var speedrunPickerCategories by mutableStateOf<List<com.nendo.argosy.data.local.entity.SpeedrunCategoryEntity>>(emptyList())
@@ -720,7 +721,8 @@ class LibretroActivity : ComponentActivity() {
             onSpeedrunSplit = { speedrunTimer.split() },
             onSpeedrunUndoSplit = { speedrunTimer.undoSplit() },
             onSpeedrunSkipSplit = { speedrunTimer.skipSplit() },
-            onSpeedrunToggleTimer = { speedrunTimer.togglePause() }
+            onSpeedrunToggleTimer = { speedrunTimer.togglePause() },
+            onSpeedrunResetTimer = { speedrunTimer.resetRun() }
         )
     }
 
@@ -778,6 +780,7 @@ class LibretroActivity : ComponentActivity() {
                 segments = armData.second,
                 pbSplitTimesMs = armData.third.pbSplitTimesMs,
                 bestSegmentDurationsMs = armData.third.bestSegmentDurationsMs,
+                pbTimeMs = armData.third.pbTimeMs,
                 attemptCount = armData.third.attemptCount
             )
             setSpeedrunPanelSide(speedrunPanelSidePref)
@@ -2118,6 +2121,10 @@ class LibretroActivity : ComponentActivity() {
 
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP) {
+            hotkeyConsumedKeys.remove(event.keyCode)
+            if (::hotkeyDispatcher.isInitialized) hotkeyDispatcher.onKeyUp(event.keyCode)
+        }
         if (isAnyMenuOpen) {
             if (gamepadInputBridge.handleKeyEvent(event)) return true
             if (menuInputHandler.mapKeyToEvent(event.keyCode) != null) return true
@@ -2140,8 +2147,14 @@ class LibretroActivity : ComponentActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (isAnyMenuOpen) return super.onKeyDown(keyCode, event)
 
-        val controllerId = event.device?.let { getControllerId(it) }
-        if (hotkeyDispatcher.onKeyDown(keyCode, controllerId)) return true
+        if (event.repeatCount > 0 && keyCode in hotkeyConsumedKeys) return true
+        if (event.repeatCount == 0) {
+            val controllerId = event.device?.let { getControllerId(it) }
+            if (hotkeyDispatcher.onKeyDown(keyCode, controllerId)) {
+                hotkeyConsumedKeys.add(keyCode)
+                return true
+            }
+        }
 
         if (shouldFilterShoulderButton(keyCode)) return true
 
@@ -2158,8 +2171,6 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (isAnyMenuOpen) return super.onKeyUp(keyCode, event)
-
-        hotkeyDispatcher.onKeyUp(keyCode)
 
         if (shouldFilterShoulderButton(keyCode)) return true
 
