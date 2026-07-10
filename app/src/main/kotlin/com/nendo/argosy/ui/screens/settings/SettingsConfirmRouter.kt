@@ -141,6 +141,10 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 SteamItem.InstallPath -> vm.openSteamInstallPathPicker()
                 SteamItem.SyncLibrary -> vm.syncSteamLibrary()
                 SteamItem.AddManual -> vm.showAddSteamGameDialog()
+                SteamItem.StoreSync -> {
+                    if (state.steam.gameNativeSyncDir != null) vm.rescanGameNativeStores()
+                    else vm.openGameNativeSyncDirPicker()
+                }
                 SteamItem.Disconnect -> vm.disconnectSteam()
                 SteamItem.ResetLibrary -> vm.resetSteamLibrary()
                 else -> {}

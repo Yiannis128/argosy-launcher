@@ -679,6 +679,11 @@ class SettingsViewModel @Inject constructor(
     fun disconnectSteam() = steamDelegate.disconnectSteam(context, viewModelScope)
     fun resetSteamLibrary() = steamDelegate.resetLibrary(viewModelScope)
     fun showAddSteamGameDialog() = steamDelegate.showAddSteamGameDialog()
+    fun openGameNativeSyncDirPicker() = steamDelegate.openStoreSyncDirPicker(viewModelScope)
+    fun setGameNativeSyncDir(path: String) = steamDelegate.setStoreSyncDir(viewModelScope, path)
+    fun clearGameNativeSyncDir() = steamDelegate.clearStoreSyncDir(viewModelScope)
+    fun rescanGameNativeStores() = steamDelegate.rescanStoreSync(viewModelScope)
+    val openGameNativeSyncDirPickerEvent get() = steamDelegate.openStoreSyncDirPicker
     @Suppress("UNUSED_PARAMETER")
     fun showAddSteamGameDialog(launcherPackage: String?) = steamDelegate.showAddSteamGameDialog()
     fun dismissAddSteamGameDialog() = steamDelegate.dismissAddSteamGameDialog()

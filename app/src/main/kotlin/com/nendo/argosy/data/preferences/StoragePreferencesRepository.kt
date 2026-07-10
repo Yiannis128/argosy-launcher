@@ -19,7 +19,8 @@ data class StoragePreferences(
     val customBiosPath: String? = null,
     val weeklyIntegrityCheckEnabled: Boolean = true,
     val lastIntegrityCheckTime: Long? = null,
-    val steamInstallVolume: String? = null
+    val steamInstallVolume: String? = null,
+    val gameNativeSyncDir: String? = null
 )
 
 @Singleton
@@ -34,6 +35,7 @@ class StoragePreferencesRepository @Inject constructor(
         val WEEKLY_INTEGRITY_CHECK = booleanPreferencesKey("weekly_integrity_check_enabled")
         val LAST_INTEGRITY_CHECK = longPreferencesKey("last_integrity_check_time")
         val STEAM_INSTALL_VOLUME = stringPreferencesKey("steam_install_volume")
+        val GAMENATIVE_SYNC_DIR = stringPreferencesKey("gamenative_sync_dir")
     }
 
     val preferences: Flow<StoragePreferences> = dataStore.data.map { prefs ->
@@ -44,7 +46,8 @@ class StoragePreferencesRepository @Inject constructor(
             customBiosPath = prefs[Keys.CUSTOM_BIOS_PATH],
             weeklyIntegrityCheckEnabled = prefs[Keys.WEEKLY_INTEGRITY_CHECK] ?: true,
             lastIntegrityCheckTime = prefs[Keys.LAST_INTEGRITY_CHECK],
-            steamInstallVolume = prefs[Keys.STEAM_INSTALL_VOLUME]
+            steamInstallVolume = prefs[Keys.STEAM_INSTALL_VOLUME],
+            gameNativeSyncDir = prefs[Keys.GAMENATIVE_SYNC_DIR]
         )
     }
 
@@ -79,6 +82,13 @@ class StoragePreferencesRepository @Inject constructor(
         dataStore.edit { prefs ->
             if (volume != null) prefs[Keys.STEAM_INSTALL_VOLUME] = volume
             else prefs.remove(Keys.STEAM_INSTALL_VOLUME)
+        }
+    }
+
+    suspend fun setGameNativeSyncDir(path: String?) {
+        dataStore.edit { prefs ->
+            if (path != null) prefs[Keys.GAMENATIVE_SYNC_DIR] = path
+            else prefs.remove(Keys.GAMENATIVE_SYNC_DIR)
         }
     }
 }

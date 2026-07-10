@@ -326,6 +326,14 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(Unit) {
+        viewModel.openGameNativeSyncDirPickerEvent.collect {
+            fileBrowserTitle = "GameNative Sync Folder"
+            fileBrowserCallback = { path -> viewModel.setGameNativeSyncDir(path) }
+            showFileBrowser = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
         viewModel.launchSavePathPicker.collect {
             uiState.emulators.savePathModalInfo?.emulatorId?.let { emulatorId ->
                 fileBrowserTitle = "Save Path"

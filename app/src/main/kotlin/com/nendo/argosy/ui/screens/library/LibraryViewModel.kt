@@ -191,6 +191,7 @@ data class LibraryGameUi(
             GameSource.ROMM_REMOTE -> null
             GameSource.STEAM -> Icons.Default.Cloud
             GameSource.ANDROID_APP -> null
+            GameSource.GAMENATIVE -> Icons.Default.Cloud
         }
 }
 

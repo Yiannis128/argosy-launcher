@@ -750,9 +750,9 @@ data class NotInstalledSteamLauncher(
 )
 
 data class SteamSettingsState(
-    // GameNative
     val gnInstalled: Boolean = false,
     val gnStoragePath: String? = null,
+    val gameNativeSyncDir: String? = null,
 
     // Install volume
     val steamInstallVolume: String? = null,

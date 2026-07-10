@@ -101,6 +101,7 @@ internal sealed class SteamItem(
     data object AccountInfo : SteamItem("accountInfo", "account")
     data object SyncLibrary : SteamItem("syncLibrary", "library")
     data object AddManual : SteamItem("addManual", "library")
+    data object StoreSync : SteamItem("storeSync", "library")
     data object Disconnect : SteamItem("disconnect", "danger")
     data object ResetLibrary : SteamItem("resetLibrary", "danger")
 
@@ -116,7 +117,7 @@ internal sealed class SteamItem(
         val ALL: List<SteamItem> = listOf(
             SetupHeader, GnStatus, GnInstall, GnStorageWarning, InstallPath, InstallPathNote, InstallTriage,
             AccountSpacer, AccountHeader, AccountInfo,
-            LibrarySpacer, LibraryHeader, SyncLibrary, AddManual,
+            LibrarySpacer, LibraryHeader, SyncLibrary, AddManual, StoreSync,
             DangerSpacer, DangerHeader, Disconnect, ResetLibrary
         )
     }
@@ -320,6 +321,21 @@ fun SteamSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     subtitle = "Add a Steam game by its App ID",
                     isFocused = isFocused(item),
                     onClick = { viewModel.showAddSteamGameDialog() }
+                )
+
+                SteamItem.StoreSync -> ActionPreference(
+                    icon = Icons.Default.Folder,
+                    title = "Store Game Imports",
+                    subtitle = steam.gameNativeSyncDir?.let { formatPath(it) }
+                        ?: "Import GOG, Epic, and Amazon installs from GameNative's Export to Frontend folder",
+                    trailingButtonLabel = if (steam.gameNativeSyncDir != null) "Rescan" else "Set Folder",
+                    isFocused = isFocused(item),
+                    onClick = {
+                        if (steam.gameNativeSyncDir != null) viewModel.rescanGameNativeStores()
+                        else viewModel.openGameNativeSyncDirPicker()
+                    },
+                    showResetButton = steam.gameNativeSyncDir != null,
+                    onReset = { viewModel.clearGameNativeSyncDir() }
                 )
 
                 SteamItem.Disconnect -> ActionPreference(

@@ -128,6 +128,10 @@ class GameLauncher @Inject constructor(
             return launchSteamGame(game)
         }
 
+        if (game.source == GameSource.GAMENATIVE) {
+            return launchGameNativeStoreGame(game)
+        }
+
         if (game.source == GameSource.ANDROID_APP || game.platformSlug == "android") {
             return launchAndroidApp(game)
         }
@@ -542,6 +546,20 @@ class GameLauncher @Inject constructor(
             effectiveStatePath?.let { putExtra(LibretroActivity.EXTRA_STATES_DIR, it) }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+    }
+
+    private fun launchGameNativeStoreGame(game: GameEntity): LaunchResult {
+        val appId = game.steamAppId?.toInt()
+            ?: return LaunchResult.Error("Missing GameNative id for ${game.title}")
+        val store = com.nendo.argosy.data.launcher.GameNativeStore.forSlug(game.platformSlug)
+            ?: return LaunchResult.Error("Unknown store platform ${game.platformSlug}")
+        if (!com.nendo.argosy.data.launcher.GameNativeLauncher.isInstalled(context)) {
+            return LaunchResult.NoSteamLauncher(com.nendo.argosy.data.launcher.GameNativeLauncher.packageName)
+        }
+        Logger.info(TAG, "launchGameNativeStoreGame: gameId=${game.id}, store=${store.slug}, appId=$appId")
+        return LaunchResult.Success(
+            com.nendo.argosy.data.launcher.GameNativeLauncher.createSourcedLaunchIntent(appId, store.launchSource)
+        )
     }
 
     /** Windows/PC titles launch through GameNative's custom-game intent using the appId GameNative wrote to the folder's .gamenative file. */
