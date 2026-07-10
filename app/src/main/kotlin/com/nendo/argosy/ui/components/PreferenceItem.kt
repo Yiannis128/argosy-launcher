@@ -36,7 +36,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,42 +50,68 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import com.nendo.argosy.ui.primitives.ArgosyToggle
+import com.nendo.argosy.ui.primitives.ArgosyTrackSlider
+import com.nendo.argosy.ui.primitives.EnumValueControl
+import com.nendo.argosy.ui.primitives.StepperControl
 import com.nendo.argosy.ui.theme.AspectRatioClass
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalUiScale
+import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 
 @Composable
-private fun preferenceModifier(
+private fun preferenceAccent(isDangerous: Boolean = false): Color =
+    if (isDangerous) LocalArgosyTheme.current.destructive else LocalArgosyTheme.current.focusAccent
+
+@Composable
+internal fun preferenceModifier(
     isFocused: Boolean,
     isDangerous: Boolean = false,
     onClick: (() -> Unit)? = null
 ): Modifier {
-    val preferenceShape = RoundedCornerShape(Dimens.radiusLg)
-    val focusedColor = if (isDangerous) MaterialTheme.colorScheme.errorContainer
-                       else MaterialTheme.colorScheme.primaryContainer
+    val preferenceShape = RoundedCornerShape(Dimens.radiusControl)
+    val accent = preferenceAccent(isDangerous)
+    val surface = MaterialTheme.colorScheme.surface
+    val background by animateColorAsState(
+        targetValue = if (isFocused) accent.copy(alpha = 0.15f).compositeOver(surface) else surface.copy(alpha = 0.10f),
+        animationSpec = Motion.focusColorSpec,
+        label = "pref-bg"
+    )
+    val borderAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.8f else 0f,
+        animationSpec = Motion.focusSpring,
+        label = "pref-border"
+    )
 
     return Modifier
         .fillMaxWidth()
         .heightIn(min = Dimens.settingsItemMinHeight)
         .clip(preferenceShape)
-        .focusBackground(isFocused, focusedColor, MaterialTheme.colorScheme.surface, preferenceShape)
+        .background(background)
+        .border(Dimens.borderThin, accent.copy(alpha = borderAlpha), preferenceShape)
         .then(if (onClick != null) Modifier.clickableNoFocus(onClick = onClick) else Modifier)
-        .padding(Dimens.spacingMd)
+        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
 }
 
 @Composable
-private fun preferenceContentColor(isFocused: Boolean, isDangerous: Boolean = false): Color {
+internal fun preferenceContentColor(isFocused: Boolean, isDangerous: Boolean = false): Color {
     return when {
-        isDangerous -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isDangerous -> LocalArgosyTheme.current.destructive
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
 }
 
 @Composable
-private fun preferenceSecondaryColor(isFocused: Boolean): Color {
+internal fun preferenceSecondaryColor(isFocused: Boolean): Color {
     return if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.55f)
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f).copy(alpha = 0.65f)
     } else {
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
     }
@@ -139,12 +167,27 @@ fun CyclePreference(
     isCustom: Boolean = false,
     showResetButton: Boolean = false,
     onReset: (() -> Unit)? = null,
-    valueFooter: (@Composable () -> Unit)? = null
+    onPrev: (() -> Unit)? = null,
+    valueFooter: (@Composable () -> Unit)? = null,
+    options: List<String>? = null,
+    onSelect: ((Int) -> Unit)? = null,
+    pickerRequestToken: Int = 0
 ) {
     val valueColor = when {
         isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
         isCustom -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.primary
+    }
+    val hasPicker = options != null && onSelect != null
+    var pickerVisible by remember { mutableStateOf(false) }
+    var consumedPickerToken by remember { mutableIntStateOf(pickerRequestToken) }
+    LaunchedEffect(pickerRequestToken) {
+        if (hasPicker && pickerRequestToken > consumedPickerToken) {
+            consumedPickerToken = pickerRequestToken
+            pickerVisible = true
+        } else if (pickerRequestToken < consumedPickerToken) {
+            consumedPickerToken = pickerRequestToken
+        }
     }
 
     val modifier = if (showResetButton && onReset != null) {
@@ -196,16 +239,34 @@ fun CyclePreference(
                         )
                     }
                 }
-                Text(
-                    text = "< $value >",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = valueColor
+                EnumValueControl(
+                    value = value,
+                    focused = isFocused,
+                    onPrev = onPrev ?: onClick,
+                    onNext = onClick,
+                    selectedIndex = options?.indexOf(value)?.takeIf { it >= 0 },
+                    optionCount = options?.size,
+                    onOpen = if (hasPicker) ({ pickerVisible = true }) else onClick,
+                    valueColor = if (isFocused) null else valueColor
                 )
             }
             if (valueFooter != null) {
                 valueFooter()
             }
         }
+    }
+    if (options != null && onSelect != null) {
+        EnumPickerModal(
+            title = title,
+            options = options,
+            selectedIndex = options.indexOf(value),
+            onSelect = { index ->
+                pickerVisible = false
+                onSelect(index)
+            },
+            onDismiss = { pickerVisible = false },
+            visible = pickerVisible
+        )
     }
 }
 
@@ -218,7 +279,8 @@ fun SliderPreference(
     isFocused: Boolean,
     step: Int = 1,
     suffix: String? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    onAdjust: ((Int) -> Unit)? = null
 ) {
     Row(
         modifier = preferenceModifier(isFocused, onClick = onClick),
@@ -230,33 +292,13 @@ fun SliderPreference(
             style = MaterialTheme.typography.titleMedium,
             color = preferenceContentColor(isFocused)
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (suffix != null) {
-                Text(
-                    text = "$value$suffix",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                )
-            }
-            for (i in minValue..maxValue step step) {
-                val isSelected = i <= value
-                val dotColor = when {
-                    isFocused && isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                }
-                Box(
-                    modifier = Modifier
-                        .size(if (i == value) Dimens.dotLg else Dimens.dotSm)
-                        .clip(CircleShape)
-                        .background(dotColor)
-                )
-            }
-        }
+        StepperControl(
+            display = "$value${suffix.orEmpty()}",
+            focused = isFocused,
+            numericValue = value,
+            onDecrement = { onAdjust?.invoke(-step) },
+            onIncrement = { onAdjust?.invoke(step) ?: onClick?.invoke() }
+        )
     }
 }
 
@@ -276,15 +318,6 @@ fun TrackSliderPreference(
     val isWideDisplay = aspectRatioClass == AspectRatioClass.ULTRA_WIDE ||
                         aspectRatioClass == AspectRatioClass.WIDE
 
-    val sliderColors = SliderDefaults.colors(
-        thumbColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
-                     else MaterialTheme.colorScheme.primary,
-        activeTrackColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
-                           else MaterialTheme.colorScheme.primary,
-        inactiveTrackColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                             else MaterialTheme.colorScheme.surfaceVariant
-    )
-
     if (isWideDisplay) {
         Row(
             modifier = preferenceModifier(isFocused),
@@ -301,19 +334,18 @@ fun TrackSliderPreference(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
-                Slider(
+                ArgosyTrackSlider(
                     value = value,
                     onValueChange = onValueChange,
-                    valueRange = minValue..maxValue,
-                    steps = steps,
-                    colors = sliderColors,
-                    modifier = Modifier.weight(1f).height(Dimens.iconMd)
+                    minValue = minValue,
+                    maxValue = maxValue,
+                    focused = isFocused,
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "$displayValue$suffix",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.primary
+                    color = preferenceContentColor(isFocused)
                 )
             }
         }
@@ -334,18 +366,16 @@ fun TrackSliderPreference(
                 Text(
                     text = "$displayValue$suffix",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.primary
+                    color = preferenceContentColor(isFocused)
                 )
             }
             Spacer(modifier = Modifier.height(Dimens.spacingXs))
-            Slider(
+            ArgosyTrackSlider(
                 value = value,
                 onValueChange = onValueChange,
-                valueRange = minValue..maxValue,
-                steps = steps,
-                colors = sliderColors,
-                modifier = Modifier.height(Dimens.iconMd)
+                minValue = minValue,
+                maxValue = maxValue,
+                focused = isFocused
             )
         }
     }
@@ -364,15 +394,8 @@ fun SwitchPreference(
     showResetButton: Boolean = false,
     onReset: (() -> Unit)? = null
 ) {
-    val preferenceShape = RoundedCornerShape(Dimens.radiusLg)
-
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = Dimens.settingsItemMinHeight)
-            .clip(preferenceShape)
-            .focusBackground(isFocused, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface, preferenceShape)
-            .padding(Dimens.spacingMd),
+        modifier = preferenceModifier(isFocused),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
@@ -439,14 +462,10 @@ fun SwitchPreference(
             }
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
         }
-        val uiScale = com.nendo.argosy.ui.theme.LocalUiScale.current.scale
-        Switch(
+        ArgosyToggle(
             checked = isEnabled,
-            onCheckedChange = onToggle,
-            modifier = Modifier
-                .focusProperties { canFocus = false }
-                .scale(uiScale),
-            interactionSource = remember { MutableInteractionSource() }
+            onToggle = onToggle,
+            focused = isFocused
         )
     }
 }
@@ -622,7 +641,7 @@ fun ActionPreference(
                     Box(
                         modifier = Modifier
                             .background(
-                                color = MaterialTheme.colorScheme.tertiary,
+                                color = MaterialTheme.colorScheme.secondary,
                                 shape = RoundedCornerShape(Dimens.radiusSm)
                             )
                             .padding(horizontal = Dimens.spacingXs, vertical = 2.dp)
@@ -630,60 +649,12 @@ fun ActionPreference(
                         Text(
                             text = badge,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiary
+                            color = MaterialTheme.colorScheme.onSecondary
                         )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun PlatformPreference(
-    platformName: String,
-    emulatorCount: Int,
-    selectedEmulator: String?,
-    isFocused: Boolean,
-    isEnabled: Boolean = true,
-    onCycle: () -> Unit
-) {
-    val disabledAlpha = 0.45f
-    val contentColor = when {
-        !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
-        else -> preferenceContentColor(isFocused)
-    }
-    val secondaryColor = when {
-        !isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = disabledAlpha)
-        else -> preferenceSecondaryColor(isFocused)
-    }
-
-    Row(
-        modifier = preferenceModifier(isFocused, onClick = onCycle),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = platformName,
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor
-            )
-            Text(
-                text = if (isEnabled) "$emulatorCount emulators available" else "No emulators installed",
-                style = MaterialTheme.typography.bodySmall,
-                color = secondaryColor
-            )
-        }
-        Text(
-            text = if (isEnabled) "< ${selectedEmulator ?: "Auto"} >" else "Download",
-            style = MaterialTheme.typography.bodyMedium,
-            color = when {
-                !isEnabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-                else -> MaterialTheme.colorScheme.primary
-            }
-        )
     }
 }
 
@@ -765,7 +736,8 @@ fun HueSliderPreference(
     isFocused: Boolean,
     onHueChange: (Float?) -> Unit,
     saturation: Float = 0.7f,
-    lightness: Float = 0.5f
+    lightness: Float = 0.5f,
+    defaultLabel: String = "Default"
 ) {
     val hueSteps = 36
     val hueColors = (0..hueSteps).map { step ->
@@ -800,7 +772,7 @@ fun HueSliderPreference(
                 )
             } else {
                 Text(
-                    text = "Default",
+                    text = defaultLabel,
                     style = MaterialTheme.typography.bodyMedium,
                     color = preferenceSecondaryColor(isFocused)
                 )
@@ -864,26 +836,12 @@ fun ImageCachePreference(
     onChange: () -> Unit,
     onReset: () -> Unit
 ) {
-    val preferenceShape = RoundedCornerShape(Dimens.radiusLg)
-    val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-    val secondaryColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.55f)
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-    }
+    val contentColor = preferenceContentColor(isFocused)
+    val secondaryColor = preferenceSecondaryColor(isFocused)
     val disabledAlpha = 0.5f
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = Dimens.settingsItemMinHeight)
-            .clip(preferenceShape)
-            .focusBackground(isFocused, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface, preferenceShape)
-            .padding(Dimens.spacingMd),
+        modifier = preferenceModifier(isFocused),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

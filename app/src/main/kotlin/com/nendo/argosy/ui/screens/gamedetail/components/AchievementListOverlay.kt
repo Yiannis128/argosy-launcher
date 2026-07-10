@@ -38,7 +38,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.core.game.AchievementUi
 import com.nendo.argosy.ui.theme.ALauncherColors
@@ -125,12 +126,13 @@ fun AchievementListOverlay(
                     item { Spacer(modifier = Modifier.height(Dimens.spacingLg)) }
                 }
 
-                FooterBar(
+                FooterHints(
                     hints = listOf(
                         InputButton.DPAD_VERTICAL to "Navigate",
                         InputButton.B to "Back"
                     )
                 )
+                FooterSpacer()
             }
         }
     }

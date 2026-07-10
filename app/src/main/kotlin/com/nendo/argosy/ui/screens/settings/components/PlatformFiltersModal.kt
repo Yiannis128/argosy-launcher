@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.PlatformFilterHeader
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.components.platformFilterHints
@@ -167,7 +167,7 @@ fun PlatformFiltersModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(hints = platformFilterHints(searchActive, sortMenuOpen, headerFocused))
+            FooterHints(hints = platformFilterHints(searchActive, sortMenuOpen, headerFocused))
         }
     }
 }

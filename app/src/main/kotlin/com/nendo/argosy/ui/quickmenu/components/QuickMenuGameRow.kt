@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,7 @@ import com.nendo.argosy.ui.components.GameTitle
 import com.nendo.argosy.ui.quickmenu.GameRowUi
 import com.nendo.argosy.ui.quickmenu.MetadataType
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun QuickMenuGameRow(
@@ -40,7 +42,7 @@ fun QuickMenuGameRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val shape = RoundedCornerShape(Dimens.radiusControl)
 
     Row(
         modifier = modifier
@@ -51,7 +53,8 @@ fun QuickMenuGameRow(
                 } else Modifier
             )
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surface,
                 shape
             )

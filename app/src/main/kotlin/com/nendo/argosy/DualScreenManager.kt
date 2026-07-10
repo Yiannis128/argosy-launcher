@@ -17,6 +17,7 @@ import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.emulator.DiscOption
 import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -190,8 +191,23 @@ class DualScreenManager(
         fun onSaveDataReceived(json: String, activeChannel: String?, activeTimestamp: Long?, syncing: Boolean = false)
         fun onSavesSyncDone()
         fun onDownloadCompleted(gameId: Long)
+        fun onSessionActionsChanged(available: Boolean)
         fun finishCompanion()
     }
+
+    interface SessionQuickActions {
+        fun quickSave()
+        fun quickLoad()
+        fun screenshot()
+    }
+
+    var sessionQuickActions: SessionQuickActions? = null
+        set(value) {
+            field = value
+            companionHost?.onSessionActionsChanged(value != null)
+        }
+
+    var sessionRefocus: (() -> Unit)? = null
 
     var companionHost: CompanionHost? = null
     var onEmulatorDispatcherChanged: (() -> Unit)? = null
@@ -460,6 +476,9 @@ class DualScreenManager(
 
         emulatorDisplayId = null
         sessionStateStore.setDisplayRoleOverride("AUTO")
+        scope.launch {
+            preferencesRepository.setDisplayRoleOverride(DisplayRoleOverride.AUTO)
+        }
         _isRolesSwapped.value = false
         sessionStateStore.setRolesSwapped(false)
 
@@ -587,6 +606,8 @@ class DualScreenManager(
                 title = showcase.title,
                 coverPath = showcase.coverPath,
                 backgroundPath = showcase.backgroundPath,
+                boxBackPath = showcase.boxBackPath,
+                boxSpinePath = showcase.boxSpinePath,
                 platformName = showcase.platformName,
                 developer = showcase.developer,
                 releaseYear = showcase.releaseYear,
@@ -612,6 +633,8 @@ class DualScreenManager(
                         title = game.title,
                         coverPath = game.coverPath,
                         backgroundPath = game.backgroundPath,
+                        boxBackPath = game.boxBackPath?.takeIf { it.startsWith("/") },
+                        boxSpinePath = game.boxSpinePath?.takeIf { it.startsWith("/") },
                         platformName = platform?.name ?: "",
                         developer = game.developer,
                         releaseYear = game.releaseYear,
@@ -1811,12 +1834,16 @@ class DualScreenManager(
             }
         }
         sessionStateStore.setDisplayRoleOverride(newOverride)
+        scope.launch {
+            preferencesRepository.setDisplayRoleOverride(DisplayRoleOverride.fromString(newOverride))
+        }
         val newSwapped = newOverride == "SWAPPED" ||
             (newOverride == "AUTO" && displayAffinityHelper.secondaryDisplayType == SecondaryDisplayType.EXTERNAL)
         _isRolesSwapped.value = newSwapped
         sessionStateStore.setRolesSwapped(newSwapped)
         onRoleSwapped?.invoke(newSwapped)
         companionHost?.onRoleSwapped(newSwapped)
+        if (!newSwapped) companionHost?.refocusSelf()
     }
 
     fun selectGameSwapped(gameId: Long) {
@@ -1985,6 +2012,11 @@ class DualScreenManager(
         companionLaunchJob?.cancel()
         companionLaunchJob = null
         displayAffinityHelper.unregisterDisplayListener(displayListener)
+    }
+
+    fun refocusSession() {
+        if (!sessionStateStore.hasActiveSession()) return
+        sessionRefocus?.invoke()
     }
 
     private fun refocusMain() {

@@ -11,23 +11,23 @@ import androidx.compose.ui.graphics.Color
 object ColorTokens {
     object Scheme {
         object Dark {
-            val primary = Color(0xFF00ACC1)
+            val primary = Color(0xFF40C6D6)
             val secondary = Color(0xFF26A69A)
-            val tertiary = Color(0xFF66BB6A)
-            val surface = Color(0xFF121212)
-            val surfaceVariant = Color(0xFF1E1E1E)
-            val background = Color(0xFF121212)
-            val onSurface = Color(0xFFE1E1E1)
+            val surface = Color(0xFF13141A)
+            val surfaceVariant = Color(0xFF1C1E26)
+            val surfaceElevated = Color(0xFF262834)
+            val background = Color(0xFF050507)
+            val onSurface = Color(0xFFE6E8EC)
             val outline = Color(0x1FFFFFFF)
             val outlineVariant = Color(0x0FFFFFFF)
         }
         object Light {
             val primary = Color(0xFF007C91)
             val secondary = Color(0xFF00766C)
-            val tertiary = Color(0xFF388E3C)
-            val surface = Color(0xFFFFFBFE)
-            val surfaceVariant = Color(0xFFF5F5F5)
-            val background = Color(0xFFFFFBFE)
+            val surface = Color(0xFFF3F4F8)
+            val surfaceVariant = Color(0xFFE9EBF0)
+            val surfaceElevated = Color(0xFFDEE1E9)
+            val background = Color(0xFFFBFBFD)
             val onSurface = Color(0xFF1C1B1F)
             val outline = Color(0x1F000000)
             val outlineVariant = Color(0x0F000000)
@@ -47,11 +47,13 @@ object ColorTokens {
             val success = Color(0xFF66BB6A)
             val warning = Color(0xFFFF7043)
             val info = Color(0xFF5C6BC0)
+            val progress = Color(0xFF3FD9A8)
         }
         object Light {
             val success = Color(0xFF388E3C)
             val warning = Color(0xFFC63F17)
             val info = Color(0xFF26418F)
+            val progress = Color(0xFF189C76)
         }
     }
 

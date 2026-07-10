@@ -179,6 +179,18 @@ class SaveSyncRepository @Inject constructor(
         cachedSaveId: String? = null
     ): String? = apiClient.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName, cachedSaveId)
 
+    suspend fun predictFolderSavePath(
+        emulatorId: String,
+        platformSlug: String,
+        romPath: String?,
+        gameId: Long,
+        gameTitle: String,
+        cachedSaveId: String? = null,
+        emulatorPackage: String? = null
+    ): String? = apiClient.predictFolderSavePath(
+        emulatorId, platformSlug, romPath, gameId, gameTitle, cachedSaveId, emulatorPackage
+    )
+
     suspend fun resolveCoreForGame(gameId: Long): String? =
         apiClient.resolveCoreForGame(gameId)
 

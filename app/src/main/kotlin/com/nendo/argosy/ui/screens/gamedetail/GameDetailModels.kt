@@ -65,6 +65,8 @@ data class GameDetailUi(
     val platformName: String,
     val coverPath: String?,
     val backgroundPath: String?,
+    val boxBackPath: String? = null,
+    val boxSpinePath: String? = null,
     val developer: String?,
     val publisher: String?,
     val releaseYear: Int?,
@@ -116,6 +118,7 @@ enum class GameDownloadStatus {
     DOWNLOADING,
     EXTRACTING,
     PAUSED,
+    FAILED,
     DOWNLOADED,
     NEEDS_INSTALL
 }
@@ -140,6 +143,7 @@ sealed class MoreOptionAction {
     data object RefreshData : MoreOptionAction()
     data object AddToCollection : MoreOptionAction()
     data object RefreshTitleId : MoreOptionAction()
+    data object SpeedrunSplits : MoreOptionAction()
     data object Delete : MoreOptionAction()
     data object ToggleHide : MoreOptionAction()
 }

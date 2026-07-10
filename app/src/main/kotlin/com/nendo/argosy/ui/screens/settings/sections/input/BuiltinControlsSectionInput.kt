@@ -84,6 +84,42 @@ internal class BuiltinControlsSectionInput(
                 viewModel.showHotkeysModal()
                 InputResult.handled(SoundType.SELECT)
             }
+            BuiltinControlsItem.SpeedrunStartOnReset -> {
+                viewModel.setSpeedrunStartOnReset(!state.builtinControls.speedrunStartOnReset)
+                InputResult.handled(SoundType.TOGGLE)
+            }
+            BuiltinControlsItem.SpeedrunPanelSide -> {
+                viewModel.setSpeedrunPanelSide(
+                    if (state.builtinControls.speedrunPanelSide == "Left") "Right" else "Left"
+                )
+                InputResult.handled(SoundType.TOGGLE)
+            }
+            BuiltinControlsItem.SpeedrunPanelWidth -> {
+                viewModel.adjustSpeedrunPanelWidth(5)
+                InputResult.handled(SoundType.TOGGLE)
+            }
+            else -> InputResult.UNHANDLED
+        }
+    }
+
+    override fun onLeft(): InputResult {
+        val state = viewModel.uiState.value
+        return when (builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+            BuiltinControlsItem.SpeedrunPanelWidth -> {
+                viewModel.adjustSpeedrunPanelWidth(-5)
+                InputResult.handled(SoundType.TOGGLE)
+            }
+            else -> InputResult.UNHANDLED
+        }
+    }
+
+    override fun onRight(): InputResult {
+        val state = viewModel.uiState.value
+        return when (builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+            BuiltinControlsItem.SpeedrunPanelWidth -> {
+                viewModel.adjustSpeedrunPanelWidth(5)
+                InputResult.handled(SoundType.TOGGLE)
+            }
             else -> InputResult.UNHANDLED
         }
     }

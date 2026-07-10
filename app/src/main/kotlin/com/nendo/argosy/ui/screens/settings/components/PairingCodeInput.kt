@@ -17,12 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 private const val CODE_LENGTH = 8
 private const val GROUP_SIZE = 4
@@ -36,18 +40,19 @@ fun PairingCodeInput(
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(Dimens.radiusSm)
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val filledColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface)
     } else {
         MaterialTheme.colorScheme.surfaceVariant
     }
     val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
+        focusAccent
     } else {
         MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     }
     val textColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -82,7 +87,7 @@ fun PairingCodeInput(
                     val char = code.getOrNull(i)
                     val isCurrentSlot = i == code.length && isFocused
                     val slotBorder = if (isCurrentSlot) {
-                        MaterialTheme.colorScheme.primary
+                        focusAccent
                     } else {
                         borderColor
                     }

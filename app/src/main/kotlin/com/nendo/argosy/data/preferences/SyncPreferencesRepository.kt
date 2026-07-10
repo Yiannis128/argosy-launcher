@@ -29,6 +29,7 @@ data class SyncPreferences(
     val syncFilters: SyncFilterPreferences = SyncFilterPreferences(),
     val syncScreenshotsEnabled: Boolean = false,
     val uploadScreenshotsEnabled: Boolean = true,
+    val boxArtCacheEnabled: Boolean = true,
     val saveSyncEnabled: Boolean = false,
     val stateCacheEnabled: Boolean = true,
     val saveCacheLimit: Int = 10,
@@ -77,6 +78,7 @@ class SyncPreferencesRepository @Inject constructor(
         val SYNC_FILTER_DELETE_ORPHANS = booleanPreferencesKey("sync_filter_delete_orphans")
         val SYNC_SCREENSHOTS_ENABLED = booleanPreferencesKey("sync_screenshots_enabled")
         val UPLOAD_SCREENSHOTS_ENABLED = booleanPreferencesKey("upload_screenshots_enabled")
+        val BOX_ART_CACHE_ENABLED = booleanPreferencesKey("box_art_cache_enabled")
         val SAVE_SYNC_ENABLED = booleanPreferencesKey("save_sync_enabled")
         val STATE_CACHE_ENABLED = booleanPreferencesKey("state_cache_enabled")
         val SAVE_CACHE_LIMIT = intPreferencesKey("save_cache_limit")
@@ -142,7 +144,7 @@ class SyncPreferencesRepository @Inject constructor(
                 enabledRegions = prefs[Keys.SYNC_FILTER_REGIONS]
                     ?.split(",")
                     ?.filter { it.isNotBlank() }
-                    ?.toSet()
+                    ?.distinct()
                     ?: SyncFilterPreferences.DEFAULT_REGIONS,
                 regionMode = prefs[Keys.SYNC_FILTER_REGION_MODE]
                     ?.let { RegionFilterMode.valueOf(it) }
@@ -154,6 +156,7 @@ class SyncPreferencesRepository @Inject constructor(
                 deleteOrphans = prefs[Keys.SYNC_FILTER_DELETE_ORPHANS] ?: true
             ),
             syncScreenshotsEnabled = prefs[Keys.SYNC_SCREENSHOTS_ENABLED] ?: false,
+            boxArtCacheEnabled = prefs[Keys.BOX_ART_CACHE_ENABLED] ?: true,
             uploadScreenshotsEnabled = prefs[Keys.UPLOAD_SCREENSHOTS_ENABLED] ?: true,
             saveSyncEnabled = prefs[Keys.SAVE_SYNC_ENABLED] ?: false,
             stateCacheEnabled = prefs[Keys.STATE_CACHE_ENABLED] ?: true,
@@ -263,7 +266,7 @@ class SyncPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.LAST_FAVORITES_CHECK] = time.toString() }
     }
 
-    suspend fun setSyncFilterRegions(regions: Set<String>) {
+    suspend fun setSyncFilterRegions(regions: List<String>) {
         dataStore.edit { it[Keys.SYNC_FILTER_REGIONS] = regions.joinToString(",") }
     }
 
@@ -289,6 +292,10 @@ class SyncPreferencesRepository @Inject constructor(
 
     suspend fun setSyncFilterDeleteOrphans(delete: Boolean) {
         dataStore.edit { it[Keys.SYNC_FILTER_DELETE_ORPHANS] = delete }
+    }
+
+    suspend fun setBoxArtCacheEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.BOX_ART_CACHE_ENABLED] = enabled }
     }
 
     suspend fun setSyncScreenshotsEnabled(enabled: Boolean) {

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import com.nendo.argosy.data.local.entity.getDisplayName
+import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,9 +46,11 @@ import com.nendo.argosy.ui.screens.settings.components.VariantPickerModal
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.NetplaySupportLevel
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 
 // -- Item definitions --
 
@@ -222,6 +225,9 @@ fun PlatformDetailSection(
     fun isFocused(item: PlatformDetailItem): Boolean =
         uiState.focusedIndex == layout.focusIndexOf(item, visibility)
 
+    fun pickerToken(item: PlatformDetailItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     val modalBlur by animateDpAsState(
         targetValue = if (emulators.showEmulatorPicker || emulators.showSavePathModal || emulators.showVariantPicker || emulators.updateModal != null || emulators.showLaunchArgsModal || emulators.showAppPickerModal || emulators.showMemcardPicker) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
@@ -236,6 +242,7 @@ fun PlatformDetailSection(
             focusToListIndex = { layout.focusToListIndex(it, visibility) },
             itemKey = { it.key },
             isNavItem = { false },
+            isHeader = { it is PlatformDetailItem.Header },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
@@ -249,10 +256,10 @@ fun PlatformDetailSection(
                         config.effectiveEmulatorId in emulators.emulatorUpdateVersions
                     val hasInstallableKnown = config.availableEmulators.isNotEmpty() ||
                         config.downloadableEmulators.isNotEmpty()
-                    CyclePreference(
+                    ActionPreference(
                         title = if (hasInstallableKnown) "Change Emulator" else "Select App",
-                        value = config.effectiveEmulatorName ?: "Not installed",
-                        subtitle = if (hasUpdate) "Update available" else null,
+                        subtitle = config.effectiveEmulatorName ?: "Not installed",
+                        trailingText = if (hasUpdate) "Update available" else null,
                         isFocused = isFocused(item),
                         onClick = {
                             if (hasInstallableKnown) {
@@ -273,11 +280,18 @@ fun PlatformDetailSection(
                         activeCoreId != null &&
                         LibretroCoreRegistry.getCoreById(activeCoreId)?.netplaySupport == NetplaySupportLevel.SUPPORTED
 
+                    val currentCoreIndex = config.availableCores
+                        .indexOfFirst { it.id == config.selectedCore }
+                        .takeIf { it >= 0 } ?: 0
                     CyclePreference(
                         title = "Core",
                         value = config.selectedCore ?: "Default",
                         isFocused = isFocused(item),
                         onClick = { viewModel.cycleCoreForPlatform(config, 1) },
+                        onPrev = { viewModel.cycleCoreForPlatform(config, -1) },
+                        options = remember(config.availableCores) { config.availableCores.map { it.id } },
+                        onSelect = { viewModel.cycleCoreForPlatform(config, it - currentCoreIndex) },
+                        pickerRequestToken = pickerToken(item),
                         valueFooter = if (platformHasNetplay) {
                             {
                                 CoreTag(
@@ -294,20 +308,25 @@ fun PlatformDetailSection(
                 }
                 PlatformDetailItem.Extension -> CyclePreference(
                     title = "File Extension",
-                    value = config.selectedExtension ?: "Default",
+                    value = config.extensionOptions
+                        .firstOrNull { it.extension == config.selectedExtension }?.label
+                        ?: config.selectedExtension ?: "Default",
                     isFocused = isFocused(item),
-                    onClick = {
-                        val options = config.extensionOptions
-                        val currentIdx = options.indexOfFirst { it.extension == config.selectedExtension }
-                        val nextIdx = (currentIdx + 1).mod(options.size)
-                        viewModel.changeExtensionForPlatform(config, options[nextIdx].extension)
-                    }
+                    onClick = { viewModel.cycleExtensionForPlatform(config, 1) },
+                    onPrev = { viewModel.cycleExtensionForPlatform(config, -1) },
+                    options = remember(config.extensionOptions) { config.extensionOptions.map { it.label } },
+                    onSelect = { viewModel.changeExtensionForPlatform(config, config.extensionOptions[it].extension) },
+                    pickerRequestToken = pickerToken(item)
                 )
                 PlatformDetailItem.DisplayTarget -> CyclePreference(
                     title = "Display Target",
                     value = config.displayTarget.name,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleDisplayTarget(config, 1) }
+                    onClick = { viewModel.cycleDisplayTarget(config, 1) },
+                    onPrev = { viewModel.cycleDisplayTarget(config, -1) },
+                    options = remember { EmulatorDisplayTarget.entries.map { it.name } },
+                    onSelect = { viewModel.cycleDisplayTarget(config, it - config.displayTarget.ordinal) },
+                    pickerRequestToken = pickerToken(item)
                 )
                 PlatformDetailItem.LegacyMode -> SwitchPreference(
                     title = "Legacy Mode",
@@ -404,10 +423,10 @@ fun PlatformDetailSection(
 
 
                 // -- PATHS section --
-                PlatformDetailItem.RomPath -> CyclePreference(
+                PlatformDetailItem.RomPath -> ActionPreference(
                     title = "ROM Path",
-                    value = formatPath(storageConfig?.effectivePath),
-                    subtitle = if (storageConfig?.customRomPath != null) "(custom)" else null,
+                    subtitle = formatPath(storageConfig?.effectivePath),
+                    trailingText = if (storageConfig?.customRomPath != null) "(custom)" else null,
                     isFocused = isFocused(item),
                     onClick = { viewModel.openPlatformFolderPicker(config.platform.id) },
                     showResetButton = storageConfig?.customRomPath != null,
@@ -427,14 +446,13 @@ fun PlatformDetailSection(
                         )
                     } else {
                         val isBuiltinEmulator = config.effectiveEmulatorId == "builtin"
-                        CyclePreference(
+                        val accessBlocked = !isBuiltinEmulator && detail.packagePathAccessible == false &&
+                            storageConfig?.isUserSavePathOverride != true
+                        ActionPreference(
                             title = "Save Path",
-                            value = formatPath(storageConfig?.effectiveSavePath),
-                            subtitle = when {
-                                !isBuiltinEmulator && detail.packagePathAccessible == false && storageConfig?.isUserSavePathOverride != true -> "Access blocked -- set a custom save path"
-                                storageConfig?.isUserSavePathOverride == true -> "(custom)"
-                                else -> null
-                            },
+                            subtitle = if (accessBlocked) "Access blocked -- set a custom save path"
+                                       else formatPath(storageConfig?.effectiveSavePath),
+                            trailingText = if (storageConfig?.isUserSavePathOverride == true) "(custom)" else null,
                             isFocused = isFocused(item),
                             onClick = { viewModel.launchSavePathPicker(config.platform.id) },
                             showResetButton = storageConfig?.isUserSavePathOverride == true,
@@ -460,10 +478,10 @@ fun PlatformDetailSection(
                         else ->
                             "Not selected" to "Multiple memory cards detected -- select one to enable save sync"
                     }
-                    CyclePreference(
+                    ActionPreference(
                         title = "Memory Card",
-                        value = value,
-                        subtitle = subtitle,
+                        subtitle = subtitle ?: value,
+                        trailingText = if (subtitle != null) value else null,
                         isFocused = isFocused(item),
                         onClick = { viewModel.openMemcardPicker(config) },
                         showResetButton = selected != null && !isOverridingSavePath,
@@ -485,10 +503,10 @@ fun PlatformDetailSection(
                             }
                         )
                     } else {
-                        CyclePreference(
+                        ActionPreference(
                             title = "State Path",
-                            value = formatPath(storageConfig?.effectiveStatePath),
-                            subtitle = if (storageConfig?.isUserStatePathOverride == true) "(custom)" else null,
+                            subtitle = formatPath(storageConfig?.effectiveStatePath),
+                            trailingText = if (storageConfig?.isUserStatePathOverride == true) "(custom)" else null,
                             isFocused = isFocused(item),
                             onClick = { viewModel.launchStatePathPicker(config.platform.id) },
                             showResetButton = storageConfig?.isUserStatePathOverride == true,
@@ -563,30 +581,15 @@ fun PlatformDetailSection(
             )
         }
 
-        if (detail.showRemoveConfirm) {
-            com.nendo.argosy.ui.components.CenteredModal(
-                title = "Remove Local Files",
-                onDismiss = { viewModel.dismissRemoveConfirm() }
-            ) {
-                Text(
-                    text = "Delete ${detail.downloadedGames} ROM file${if (detail.downloadedGames > 1) "s" else ""} for ${config.platform.name}? Games will remain in your library but must be re-downloaded to play.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacingLg))
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)) {
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { viewModel.dismissRemoveConfirm() }
-                    ) { Text("Cancel") }
-                    androidx.compose.material3.Button(
-                        onClick = { viewModel.confirmRemoveLocalFiles(config.platform.id) },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) { Text("Delete") }
-                }
-            }
-        }
+        com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost(
+            visible = detail.showRemoveConfirm,
+            title = "Remove Local Files",
+            message = "Delete ${detail.downloadedGames} ROM file${if (detail.downloadedGames > 1) "s" else ""} for ${config.platform.name}? Games will remain in your library but must be re-downloaded to play.",
+            confirmLabel = "Delete",
+            onConfirm = { viewModel.confirmRemoveLocalFiles(config.platform.id) },
+            onDismiss = { viewModel.dismissRemoveConfirm() },
+            destructive = true
+        )
 
         // Modals
         if (emulators.showEmulatorPicker && emulators.emulatorPickerInfo != null) {

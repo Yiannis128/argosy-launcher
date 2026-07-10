@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.nendo.argosy.data.preferences.AmbientLedColorMode
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.HueSliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
@@ -141,6 +142,9 @@ fun AmbientLedSection(
     fun isFocused(item: AmbientLedItem): Boolean =
         uiState.focusedIndex == ambientLedLayout.focusIndexOf(item, display)
 
+    fun pickerToken(item: AmbientLedItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -196,12 +200,20 @@ fun AmbientLedSection(
                     onToggle = { viewModel.setAmbientLedCoverArtEnabled(!display.ambientLedCoverArtEnabled) }
                 )
 
-                AmbientLedItem.TransitionSpeed -> CyclePreference(
-                    title = "Transition Speed",
-                    value = transitionLabels[display.ambientLedTransitionMs] ?: "${display.ambientLedTransitionMs}ms",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleAmbientLedTransitionMsWrap() }
-                )
+                AmbientLedItem.TransitionSpeed -> {
+                    val steps = remember { transitionLabels.keys.toList() }
+                    val currentStep = steps.indexOf(display.ambientLedTransitionMs).coerceAtLeast(0)
+                    CyclePreference(
+                        title = "Transition Speed",
+                        value = transitionLabels[display.ambientLedTransitionMs] ?: "${display.ambientLedTransitionMs}ms",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.setAmbientLedTransitionMs(steps[(currentStep + 1).mod(steps.size)]) },
+                        onPrev = { viewModel.setAmbientLedTransitionMs(steps[(currentStep - 1).mod(steps.size)]) },
+                        options = remember { transitionLabels.values.toList() },
+                        onSelect = { viewModel.setAmbientLedTransitionMs(steps[it]) },
+                        pickerRequestToken = pickerToken(item)
+                    )
+                }
 
                 AmbientLedItem.AudioBrightness -> SwitchPreference(
                     title = "Audio Brightness",
@@ -241,7 +253,11 @@ fun AmbientLedSection(
                     title = "Color Selection",
                     value = display.ambientLedColorMode.displayName,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleAmbientLedColorMode() }
+                    onClick = { viewModel.cycleAmbientLedColorMode() },
+                    onPrev = { viewModel.cycleAmbientLedColorMode(-1) },
+                    options = remember { AmbientLedColorMode.entries.map { it.displayName } },
+                    onSelect = { viewModel.cycleAmbientLedColorMode(it - display.ambientLedColorMode.ordinal) },
+                    pickerRequestToken = pickerToken(item)
                 )
             }
     }

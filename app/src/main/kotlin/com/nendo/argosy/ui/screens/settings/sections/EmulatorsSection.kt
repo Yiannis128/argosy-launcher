@@ -131,6 +131,7 @@ fun EmulatorsSection(
             focusToListIndex = { layout.focusToListIndex(it, Unit) },
             itemKey = { it.key },
             isNavItem = { false },
+            isHeader = { it is EmulatorsItem.SectionHeader },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)

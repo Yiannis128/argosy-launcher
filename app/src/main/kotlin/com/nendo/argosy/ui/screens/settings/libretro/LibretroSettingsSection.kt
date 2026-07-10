@@ -46,6 +46,8 @@ fun LibretroSettingsSection(
     showSavingSection: Boolean = true,
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
+    enablePicker: Boolean = true,
+    pickerTokenFor: (LibretroSettingDef) -> Int = { 0 },
     trailingContent: @Composable (() -> Unit)? = null,
     trailingItems: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
@@ -127,7 +129,9 @@ fun LibretroSettingsSection(
                         setting = item.def,
                         accessor = accessor,
                         isFocused = focusedIndex == settingFocusIndex,
-                        isPerPlatform = isPerPlatform
+                        isPerPlatform = isPerPlatform,
+                        enablePicker = enablePicker,
+                        pickerRequestToken = pickerTokenFor(item.def)
                     )
                 }
             }

@@ -10,9 +10,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +30,11 @@ import com.nendo.argosy.data.preferences.SystemIconPosition
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.FooterStyleConfig
 import com.nendo.argosy.ui.components.LocalFooterStyle
+import com.nendo.argosy.ui.theme.backdrop.LocalBackdropStamps
+import com.nendo.argosy.ui.theme.backdrop.LocalSurfaceBackdrop
+import com.nendo.argosy.ui.theme.backdrop.backdropStampProvider
+import com.nendo.argosy.ui.theme.generated.ColorTokens
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 
 private fun colorToHsv(color: Color): FloatArray {
     val hsv = FloatArray(3)
@@ -68,10 +75,25 @@ private fun darken(color: Color, factor: Float = 0.6f): Color {
     return hsvToColor(hsv)
 }
 
+/** Tints a surface-ramp color toward [hue]: capped saturation plus a dark-weighted value lift so near-black chrome reads; bleed 0 returns the color unchanged. */
+internal fun tintSurface(color: Color, hue: Float, bleed: Int): Color {
+    if (bleed <= 0) return color
+    val fraction = (bleed / 100f).coerceIn(0f, 1f)
+    val hsv = colorToHsv(color)
+    hsv[0] = hue.mod(360f)
+    hsv[1] = (fraction * ComponentDefaults.SurfaceTint.maxSaturationRatio)
+        .coerceIn(0f, ComponentDefaults.SurfaceTint.maxSaturationRatio)
+    hsv[2] = hsv[2] + fraction * ComponentDefaults.SurfaceTint.valueLiftRatio * (1f - hsv[2])
+    return Color(AndroidColor.HSVToColor((color.alpha * 255).toInt(), hsv))
+}
+
+internal fun hueOf(color: Color): Float = colorToHsv(color)[0]
+
 internal fun createDarkColorScheme(
-    primary: Color = ALauncherColors.Cyan,
-    secondary: Color = ALauncherColors.Teal,
-    tertiary: Color = ALauncherColors.Green
+    primary: Color = ColorTokens.Scheme.Dark.primary,
+    secondary: Color = ColorTokens.Scheme.Dark.secondary,
+    tintHue: Float = 0f,
+    tintBleed: Int = 0
 ) = darkColorScheme(
     primary = primary,
     onPrimary = Color.White,
@@ -83,27 +105,28 @@ internal fun createDarkColorScheme(
     secondaryContainer = toContainerDark(secondary),
     onSecondaryContainer = secondary,
 
-    tertiary = tertiary,
+    tertiary = secondary,
     onTertiary = Color.White,
-    tertiaryContainer = toContainerDark(tertiary),
-    onTertiaryContainer = tertiary,
+    tertiaryContainer = toContainerDark(secondary),
+    onTertiaryContainer = secondary,
 
-    background = ALauncherColors.SurfaceDark,
-    onBackground = ALauncherColors.OnSurfaceDark,
+    background = tintSurface(ColorTokens.Scheme.Dark.background, tintHue, tintBleed),
+    onBackground = ColorTokens.Scheme.Dark.onSurface,
 
-    surface = ALauncherColors.SurfaceDark,
-    onSurface = ALauncherColors.OnSurfaceDark,
-    surfaceVariant = ALauncherColors.SurfaceDarkVariant,
-    onSurfaceVariant = ALauncherColors.OnSurfaceDark.copy(alpha = 0.8f),
+    surface = tintSurface(ColorTokens.Scheme.Dark.surface, tintHue, tintBleed),
+    onSurface = ColorTokens.Scheme.Dark.onSurface,
+    surfaceVariant = tintSurface(ColorTokens.Scheme.Dark.surfaceVariant, tintHue, tintBleed),
+    onSurfaceVariant = ColorTokens.Scheme.Dark.onSurface.copy(alpha = 0.8f),
 
-    outline = Color.White.copy(alpha = 0.12f),
-    outlineVariant = Color.White.copy(alpha = 0.06f)
+    outline = tintSurface(ColorTokens.Scheme.Dark.outline, tintHue, tintBleed),
+    outlineVariant = tintSurface(ColorTokens.Scheme.Dark.outlineVariant, tintHue, tintBleed)
 )
 
 internal fun createLightColorScheme(
-    primary: Color = ALauncherColors.CyanDark,
-    secondary: Color = ALauncherColors.TealDark,
-    tertiary: Color = ALauncherColors.GreenDark
+    primary: Color = ColorTokens.Scheme.Light.primary,
+    secondary: Color = ColorTokens.Scheme.Light.secondary,
+    tintHue: Float = 0f,
+    tintBleed: Int = 0
 ) = lightColorScheme(
     primary = primary,
     onPrimary = Color.White,
@@ -115,21 +138,21 @@ internal fun createLightColorScheme(
     secondaryContainer = toContainerLight(secondary),
     onSecondaryContainer = darken(secondary),
 
-    tertiary = tertiary,
+    tertiary = secondary,
     onTertiary = Color.White,
-    tertiaryContainer = toContainerLight(tertiary),
-    onTertiaryContainer = darken(tertiary),
+    tertiaryContainer = toContainerLight(secondary),
+    onTertiaryContainer = darken(secondary),
 
-    background = ALauncherColors.SurfaceLight,
-    onBackground = ALauncherColors.OnSurfaceLight,
+    background = tintSurface(ColorTokens.Scheme.Light.background, tintHue, tintBleed),
+    onBackground = ColorTokens.Scheme.Light.onSurface,
 
-    surface = ALauncherColors.SurfaceLight,
-    onSurface = ALauncherColors.OnSurfaceLight,
-    surfaceVariant = ALauncherColors.SurfaceLightVariant,
-    onSurfaceVariant = ALauncherColors.OnSurfaceLight.copy(alpha = 0.8f),
+    surface = tintSurface(ColorTokens.Scheme.Light.surface, tintHue, tintBleed),
+    onSurface = ColorTokens.Scheme.Light.onSurface,
+    surfaceVariant = tintSurface(ColorTokens.Scheme.Light.surfaceVariant, tintHue, tintBleed),
+    onSurfaceVariant = ColorTokens.Scheme.Light.onSurface.copy(alpha = 0.8f),
 
-    outline = Color.Black.copy(alpha = 0.12f),
-    outlineVariant = Color.Black.copy(alpha = 0.06f)
+    outline = tintSurface(ColorTokens.Scheme.Light.outline, tintHue, tintBleed),
+    outlineVariant = tintSurface(ColorTokens.Scheme.Light.outlineVariant, tintHue, tintBleed)
 )
 
 data class SemanticColors(
@@ -141,7 +164,10 @@ data class SemanticColors(
     val onWarningContainer: Color,
     val info: Color,
     val infoContainer: Color,
-    val onInfoContainer: Color
+    val onInfoContainer: Color,
+    val progress: Color,
+    val progressContainer: Color,
+    val onProgressContainer: Color
 )
 
 data class LauncherThemeConfig(
@@ -161,7 +187,10 @@ private val DarkSemanticColors = SemanticColors(
     onWarningContainer = ALauncherColors.Orange,
     info = ALauncherColors.Indigo,
     infoContainer = toContainerDark(ALauncherColors.Indigo),
-    onInfoContainer = ALauncherColors.Indigo
+    onInfoContainer = ALauncherColors.Indigo,
+    progress = ALauncherColors.Mint,
+    progressContainer = toContainerDark(ALauncherColors.Mint),
+    onProgressContainer = ALauncherColors.Mint
 )
 
 private val LightSemanticColors = SemanticColors(
@@ -173,7 +202,10 @@ private val LightSemanticColors = SemanticColors(
     onWarningContainer = darken(ALauncherColors.OrangeDark),
     info = ALauncherColors.IndigoDark,
     infoContainer = toContainerLight(ALauncherColors.IndigoDark),
-    onInfoContainer = darken(ALauncherColors.IndigoDark)
+    onInfoContainer = darken(ALauncherColors.IndigoDark),
+    progress = ALauncherColors.MintDark,
+    progressContainer = toContainerLight(ALauncherColors.MintDark),
+    onProgressContainer = darken(ALauncherColors.MintDark)
 )
 
 val LocalLauncherTheme = staticCompositionLocalOf {
@@ -218,11 +250,14 @@ val LocalBoxArtStyle = staticCompositionLocalOf { BoxArtStyleConfig() }
  */
 data class ArgosyPalette(
     val isDarkTheme: Boolean,
-    val rawPrimary: Color?,        // user-set primary, before fallback (drives focusGlow)
-    val effectivePrimary: Color,   // primary actually used everywhere (with default applied)
+    val rawPrimary: Color?,
+    val effectivePrimary: Color,
     val rawSecondary: Color?,
-    val effectiveSecondary: Color
-)
+    val effectiveSecondary: Color,
+    val surfaceTintBleed: Int = 0
+) {
+    val surfaceTintHue: Float get() = hueOf(effectivePrimary)
+}
 
 @Composable
 internal fun rememberArgosyPalette(
@@ -234,19 +269,32 @@ internal fun rememberArgosyPalette(
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val defaultPrimary = if (BuildConfig.DEBUG) ALauncherColors.Orange else ALauncherColors.Indigo
-    val defaultPrimaryDark = if (BuildConfig.DEBUG) ALauncherColors.OrangeDark else ALauncherColors.IndigoDark
+    val defaultPrimary = if (BuildConfig.DEBUG) ColorTokens.Scheme.DebugOverrides.Dark.primary else ColorTokens.Scheme.Dark.primary
+    val defaultPrimaryDark = if (BuildConfig.DEBUG) ColorTokens.Scheme.DebugOverrides.Light.primary else ColorTokens.Scheme.Light.primary
     val rawPrimary = primaryOverride ?: themeState.primaryColor?.let { Color(it) }
     val rawSecondary = themeState.secondaryColor?.let { Color(it) }
     val effectivePrimary = rawPrimary ?: if (isDarkTheme) defaultPrimary else defaultPrimaryDark
     val effectiveSecondary = rawSecondary ?: effectivePrimary
-    return ArgosyPalette(isDarkTheme, rawPrimary, effectivePrimary, rawSecondary, effectiveSecondary)
+    return ArgosyPalette(
+        isDarkTheme, rawPrimary, effectivePrimary, rawSecondary, effectiveSecondary,
+        themeState.surfaceTintBleed
+    )
 }
 
 internal fun argosyColorScheme(palette: ArgosyPalette) = if (palette.isDarkTheme) {
-    createDarkColorScheme(primary = palette.effectivePrimary, secondary = palette.effectiveSecondary)
+    createDarkColorScheme(
+        primary = palette.effectivePrimary,
+        secondary = palette.effectiveSecondary,
+        tintHue = palette.surfaceTintHue,
+        tintBleed = palette.surfaceTintBleed
+    )
 } else {
-    createLightColorScheme(primary = palette.effectivePrimary, secondary = palette.effectiveSecondary)
+    createLightColorScheme(
+        primary = palette.effectivePrimary,
+        secondary = palette.effectiveSecondary,
+        tintHue = palette.surfaceTintHue,
+        tintBleed = palette.surfaceTintBleed
+    )
 }
 
 @Composable
@@ -255,12 +303,16 @@ fun ALauncherTheme(
     content: @Composable () -> Unit
 ) {
     val themeState by viewModel.themeState.collectAsState()
+    val customFonts by viewModel.customFonts.collectAsState()
     val palette = rememberArgosyPalette(themeState)
+    val typography = remember(customFonts, themeState.displayFontScale, themeState.bodyFontScale) {
+        argosyTypography(customFonts, themeState.displayFontScale, themeState.bodyFontScale)
+    }
 
     ProvideArgosyThemeLocals(themeState = themeState, palette = palette) {
         MaterialTheme(
             colorScheme = argosyColorScheme(palette),
-            typography = Typography,
+            typography = typography,
             content = content
         )
     }
@@ -280,8 +332,7 @@ fun ProvideArgosyThemeLocals(
     palette: ArgosyPalette,
     content: @Composable () -> Unit
 ) {
-    val defaultPrimary = if (BuildConfig.DEBUG) ALauncherColors.Orange else ALauncherColors.Indigo
-    val focusGlow = (palette.rawPrimary ?: defaultPrimary).copy(alpha = 0.4f)
+    val focusGlow = palette.effectivePrimary.copy(alpha = 0.4f)
     val semanticColors = if (palette.isDarkTheme) DarkSemanticColors else LightSemanticColors
 
     val launcherConfig = LauncherThemeConfig(
@@ -333,9 +384,17 @@ fun ProvideArgosyThemeLocals(
         aspectRatioClass = aspectRatioClass
     )
 
+    val context = LocalContext.current
+    val stampProvider = remember(context) {
+        runCatching { backdropStampProvider(context) }.getOrNull()
+    }
+
     CompositionLocalProvider(
         LocalUiScale provides uiScaleConfig,
         LocalLauncherTheme provides launcherConfig,
+        LocalArgosyTheme provides argosyThemeTokens(palette),
+        LocalSurfaceBackdrop provides themeState.surfaceBackdrop,
+        LocalBackdropStamps provides stampProvider,
         LocalBoxArtStyle provides boxArtStyle,
         LocalFooterStyle provides footerStyle,
         content = content

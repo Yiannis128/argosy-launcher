@@ -230,7 +230,7 @@ class GamepadInputHandler @Inject constructor(
             return true
         }
 
-        if (event.action != KeyEvent.ACTION_DOWN) return false
+        if (event.action != KeyEvent.ACTION_DOWN) return true
 
         val isRepeat = event.repeatCount > 0
 

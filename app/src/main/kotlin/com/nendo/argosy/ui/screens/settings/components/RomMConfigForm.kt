@@ -37,10 +37,23 @@ import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.QrCodeWithOverlay
 import com.nendo.argosy.ui.components.QrScannerWithPermission
+import com.nendo.argosy.ui.screens.settings.ROMM_AUTH_METHOD_PICKER_KEY
 import com.nendo.argosy.ui.screens.settings.RomMAuthMethod
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+
+private fun authMethodLabel(method: RomMAuthMethod): String = when (method) {
+    RomMAuthMethod.DEVICE -> "Device Pairing"
+    RomMAuthMethod.PAIRING_CODE -> "Pairing Code"
+    RomMAuthMethod.PASSWORD -> "Password"
+}
+
+private fun cycleAuthMethod(current: RomMAuthMethod, direction: Int): RomMAuthMethod {
+    val methods = RomMAuthMethod.entries
+    return methods[(methods.indexOf(current) + direction).mod(methods.size)]
+}
 
 @Composable
 fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
@@ -120,27 +133,20 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 }
                 .then(
                     if (uiState.focusedIndex == 0)
-                        Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                        Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                     else Modifier
                 )
         )
 
         CyclePreference(
             title = "Auth Method",
-            value = when (authMethod) {
-                RomMAuthMethod.DEVICE -> "Device Pairing"
-                RomMAuthMethod.PAIRING_CODE -> "Pairing Code"
-                RomMAuthMethod.PASSWORD -> "Password"
-            },
+            value = authMethodLabel(authMethod),
             isFocused = uiState.focusedIndex == 1,
-            onClick = {
-                val next = when (authMethod) {
-                    RomMAuthMethod.DEVICE -> RomMAuthMethod.PAIRING_CODE
-                    RomMAuthMethod.PAIRING_CODE -> RomMAuthMethod.PASSWORD
-                    RomMAuthMethod.PASSWORD -> RomMAuthMethod.DEVICE
-                }
-                viewModel.setRommAuthMethod(next)
-            }
+            onClick = { viewModel.setRommAuthMethod(cycleAuthMethod(authMethod, 1)) },
+            onPrev = { viewModel.setRommAuthMethod(cycleAuthMethod(authMethod, -1)) },
+            options = remember { RomMAuthMethod.entries.map { authMethodLabel(it) } },
+            onSelect = { viewModel.setRommAuthMethod(RomMAuthMethod.entries[it]) },
+            pickerRequestToken = if (uiState.enumPickerKey == ROMM_AUTH_METHOD_PICKER_KEY) uiState.enumPickerToken else 0
         )
 
         when {
@@ -183,7 +189,7 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         .focusRequester(usernameFocusRequester)
                         .then(
                             if (uiState.focusedIndex == 2)
-                                Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                                Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                             else Modifier
                         )
                 )
@@ -201,7 +207,7 @@ fun RomMConfigForm(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         .focusRequester(passwordFocusRequester)
                         .then(
                             if (uiState.focusedIndex == 3)
-                                Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                                Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                             else Modifier
                         )
                 )

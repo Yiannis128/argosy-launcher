@@ -188,6 +188,10 @@ object DatabaseModule {
         database.touchLayoutOverrideDao()
 
     @Provides
+    fun provideSpeedrunDao(database: ALauncherDatabase): com.nendo.argosy.data.local.dao.SpeedrunDao =
+        database.speedrunDao()
+
+    @Provides
     fun provideSocialGameCacheDao(database: ALauncherDatabase): SocialGameCacheDao =
         database.socialGameCacheDao()
 

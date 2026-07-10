@@ -12,9 +12,6 @@ internal enum class InputMethod {
 internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
 
     fun intercept(state: SettingsUiState, method: InputMethod): InputResult? {
-        // Pass-through modals: system AlertDialog handles its own input
-        if (state.steam.showAddGameDialog) return null
-        // Pass-through modals: builtin controls sub-InputHandlers handle their own input
         if (state.builtinControls.showControllerOrderModal ||
             state.builtinControls.showInputMappingModal ||
             state.builtinControls.showHotkeysModal
@@ -217,6 +214,7 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             InputMethod.DOWN -> { viewModel.moveRegionPickerFocus(1); InputResult.HANDLED }
             InputMethod.CONFIRM -> { viewModel.confirmRegionPickerSelection(); InputResult.handled(SoundType.TOGGLE) }
             InputMethod.BACK -> { viewModel.dismissRegionPicker(); InputResult.HANDLED }
+            InputMethod.CONTEXT_MENU -> { viewModel.liftRegion(); InputResult.HANDLED }
             else -> InputResult.HANDLED
         }
     }
@@ -236,10 +234,23 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
 
     private fun interceptSyncFiltersModal(state: SettingsUiState, method: InputMethod): InputResult? {
         if (!state.syncSettings.showSyncFiltersModal) return null
+        val onRegionModeRow = state.syncSettings.syncFiltersModalFocusIndex == 1
         return when (method) {
             InputMethod.UP -> { viewModel.moveSyncFiltersModalFocus(-1); InputResult.HANDLED }
             InputMethod.DOWN -> { viewModel.moveSyncFiltersModalFocus(1); InputResult.HANDLED }
-            InputMethod.CONFIRM -> { viewModel.confirmSyncFiltersModalSelection(); InputResult.handled(SoundType.TOGGLE) }
+            InputMethod.LEFT, InputMethod.RIGHT -> {
+                if (onRegionModeRow) viewModel.toggleRegionMode()
+                InputResult.HANDLED
+            }
+            InputMethod.CONFIRM -> {
+                if (onRegionModeRow) {
+                    viewModel.requestEnumPicker(SYNC_REGION_MODE_PICKER_KEY)
+                    InputResult.handled(SoundType.OPEN_MODAL)
+                } else {
+                    viewModel.confirmSyncFiltersModalSelection()
+                    InputResult.handled(SoundType.TOGGLE)
+                }
+            }
             InputMethod.BACK -> { viewModel.dismissSyncFiltersModal(); InputResult.HANDLED }
             else -> InputResult.HANDLED
         }

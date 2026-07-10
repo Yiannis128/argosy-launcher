@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Devices
@@ -69,10 +70,14 @@ import coil.compose.SubcomposeAsyncImage
 import com.nendo.argosy.ui.coil.AppIconData
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalConfiguration
@@ -257,7 +262,7 @@ fun AppsScreen(
                 }
             }
 
-            FooterBar(
+            FooterHints(
                 hints = when {
                     uiState.isReorderMode -> listOf(
                         InputButton.DPAD to "Move",
@@ -267,7 +272,7 @@ fun AppsScreen(
                     else -> listOf(
                         InputButton.A to "Open",
                         InputButton.B to "Back",
-                        InputButton.Y to "Reorder",
+                        InputButton.Y to if (uiState.hasSecondaryDisplay) "Open on Top" else "Reorder",
                         InputButton.SELECT to "Options",
                         InputButton.X to if (uiState.showHiddenApps) "Show Apps" else "Show Hidden"
                     )
@@ -283,7 +288,7 @@ fun AppsScreen(
                         when (button) {
                             InputButton.A -> uiState.focusedApp?.let { viewModel.launchAppAt(uiState.focusedIndex) }
                             InputButton.B -> onBack()
-                            InputButton.Y -> viewModel.enterReorderMode()
+                            InputButton.Y -> viewModel.handleSecondaryAction()
                             InputButton.SELECT -> viewModel.showContextMenuAt(uiState.focusedIndex)
                             InputButton.X -> viewModel.toggleShowHidden()
                             else -> {}
@@ -291,6 +296,7 @@ fun AppsScreen(
                     }
                 }
             )
+            FooterSpacer()
         }
 
         if (uiState.showContextMenu) {
@@ -302,7 +308,7 @@ fun AppsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    shape = RoundedCornerShape(Dimens.radiusLg),
+                    shape = RoundedCornerShape(Dimens.radiusPanel),
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = Dimens.elevationLg,
                     modifier = Modifier.clickableNoFocus(enabled = false) {}
@@ -371,28 +377,29 @@ private fun ContextMenuItem(
         } else {
             Icons.Default.VisibilityOff to "Hide"
         }
+        AppContextMenuItem.REORDER -> Icons.Default.SwapVert to "Reorder Apps"
         AppContextMenuItem.UNINSTALL -> Icons.Default.Delete to "Uninstall"
     }
 
     val isDangerous = item == AppContextMenuItem.UNINSTALL
 
     val backgroundColor = when {
-        isFocused && isDangerous -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused && isDangerous -> LocalArgosyTheme.current.destructive.copy(alpha = 0.15f)
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 
     val contentColor = when {
-        isFocused && isDangerous -> MaterialTheme.colorScheme.onErrorContainer
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-        isDangerous -> MaterialTheme.colorScheme.error
+        isFocused && isDangerous -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
+        isDangerous -> LocalArgosyTheme.current.destructive
         else -> MaterialTheme.colorScheme.onSurface
     }
 
     val iconColor = when {
-        isFocused && isDangerous -> MaterialTheme.colorScheme.onErrorContainer
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-        isDangerous -> MaterialTheme.colorScheme.error
+        isFocused && isDangerous -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
+        isDangerous -> LocalArgosyTheme.current.destructive
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 

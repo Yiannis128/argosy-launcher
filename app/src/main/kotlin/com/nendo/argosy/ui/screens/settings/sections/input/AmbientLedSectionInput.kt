@@ -52,6 +52,23 @@ internal class AmbientLedSectionInput(
                 viewModel.cycleAmbientLedColorMode(direction)
                 return InputResult.HANDLED
             }
+            AmbientLedItem.Enable ->
+                return toggleLeftRight(direction, state.display.ambientLedEnabled) { viewModel.setAmbientLedEnabled(it) }
+            AmbientLedItem.CustomColor ->
+                return toggleLeftRight(direction, state.display.ambientLedCustomColor) { viewModel.setAmbientLedCustomColor(it) }
+            AmbientLedItem.CoverArtColors ->
+                return toggleLeftRight(direction, state.display.ambientLedCoverArtEnabled) { viewModel.setAmbientLedCoverArtEnabled(it) }
+            AmbientLedItem.AudioBrightness ->
+                return toggleLeftRight(direction, state.display.ambientLedAudioBrightness) { viewModel.setAmbientLedAudioBrightness(it) }
+            AmbientLedItem.AudioColors ->
+                return toggleLeftRight(direction, state.display.ambientLedAudioColors) { viewModel.setAmbientLedAudioColors(it) }
+            AmbientLedItem.ScreenColors ->
+                return toggleLeftRight(direction, state.display.ambientLedScreenEnabled) { enabled ->
+                    if (enabled && !state.display.hasScreenCapturePermission) {
+                        viewModel.requestScreenCapturePermission()
+                    }
+                    viewModel.setAmbientLedScreenEnabled(enabled)
+                }
             else -> return InputResult.UNHANDLED
         }
     }

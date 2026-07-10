@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.settings.sections
 
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,18 +27,23 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import com.nendo.argosy.ui.components.ListSection
 import com.nendo.argosy.ui.components.SectionFocusedScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.components.ExpandedChildItem
 import com.nendo.argosy.ui.components.ImageCachePreference
 import com.nendo.argosy.ui.screens.settings.BiosFirmwareItem
@@ -45,9 +51,17 @@ import com.nendo.argosy.ui.screens.settings.BiosPlatformGroup
 import com.nendo.argosy.ui.screens.settings.DistributeResultItem
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
+import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.primitives.ModalScaffold
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
+import kotlinx.coroutines.launch
 
 // --- Item definitions ---
 
@@ -270,13 +284,6 @@ fun BiosSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         }
     }
 
-    if (bios.showDistributeResultModal) {
-        DistributeResultModal(
-            results = bios.distributeResults,
-            onDismiss = { viewModel.dismissDistributeResultModal() }
-        )
-    }
-
     if (bios.showGpuDriverPrompt) {
         GpuDriverPromptModal(
             gpuName = bios.deviceGpuName,
@@ -297,18 +304,70 @@ internal fun DistributeResultModal(
     results: List<DistributeResultItem>,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    val theme = LocalArgosyTheme.current
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val scrollStepPx = with(LocalDensity.current) { (Dimens.menuRowHeight * 3).toPx() }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    val inputHandler = remember {
+        object : InputHandler {
+            private fun scroll(direction: Int) {
+                scope.launch { listState.animateScrollBy(direction * scrollStepPx) }
+            }
+
+            override fun onUp(): InputResult {
+                scroll(-1)
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                scroll(1)
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                currentOnDismiss()
+                return InputResult.HANDLED
+            }
+
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+
+    ModalInputEffect(active = true, handler = inputHandler)
+
+    ModalScaffold(
+        visible = true,
+        onDismiss = onDismiss,
+        maxWidth = Dimens.modalWidth
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(Dimens.radiusLg))
-                .background(MaterialTheme.colorScheme.surface)
                 .padding(Dimens.spacingMd)
         ) {
             Text(
                 text = "Distribution Complete",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = theme.textPrimary
             )
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
@@ -319,28 +378,29 @@ internal fun DistributeResultModal(
             Text(
                 text = "Copied $totalFiles BIOS files to ${results.size} emulators",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = theme.textDim
             )
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier.heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
-                items(results.size) { index ->
+                items(results.size, key = { results[it].emulatorName }) { index ->
                     val emulator = results[index]
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(Dimens.radiusMd))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .background(theme.surfaceElevated)
                             .padding(Dimens.spacingSm)
                     ) {
                         Text(
                             text = emulator.emulatorName,
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = theme.textPrimary
                         )
 
                         emulator.platformResults.forEach { platform ->
@@ -353,12 +413,12 @@ internal fun DistributeResultModal(
                                 Text(
                                     text = platform.platformName,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                    color = theme.textDim
                                 )
                                 Text(
                                     text = "${platform.filesCopied} files",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    color = theme.textMute
                                 )
                             }
                         }
@@ -368,21 +428,13 @@ internal fun DistributeResultModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(Dimens.radiusSm))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickableNoFocus { onDismiss() }
-                    .padding(Dimens.spacingSm),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "OK",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            }
+            ActionButton(
+                label = "OK",
+                onClick = onDismiss,
+                primary = true,
+                focused = true,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -412,7 +464,7 @@ private fun GpuDriverPromptModal(
         Column(
             modifier = Modifier
                 .width(Dimens.modalWidth)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingMd)
@@ -449,68 +501,40 @@ private fun GpuDriverPromptModal(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                LinearProgressIndicator(
-                    progress = { installProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
+                ArgosyProgressBar(progress = installProgress)
             } else {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
-                    GpuDriverOptionButton(
-                        text = if (driverName != null && driverVersion != null) {
+                    ActionButton(
+                        label = if (driverName != null && driverVersion != null) {
                             "Install Recommended ($driverVersion)"
                         } else {
                             "Install Recommended"
                         },
-                        isSelected = focusIndex == 0,
-                        onClick = onInstallRecommended
+                        onClick = onInstallRecommended,
+                        focused = focusIndex == 0,
+                        primary = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    GpuDriverOptionButton(
-                        text = "Install from File",
-                        isSelected = focusIndex == 1,
-                        onClick = onInstallFromFile
+                    ActionButton(
+                        label = "Install from File",
+                        onClick = onInstallFromFile,
+                        focused = focusIndex == 1,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    GpuDriverOptionButton(
-                        text = "Skip",
-                        isSelected = focusIndex == 2,
-                        onClick = onSkip
+                    ActionButton(
+                        label = "Skip",
+                        onClick = onSkip,
+                        focused = focusIndex == 2,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GpuDriverOptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusSm))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .clickableNoFocus { onClick() }
-            .padding(Dimens.spacingSm),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
@@ -528,12 +552,12 @@ private fun BiosSummaryCard(
     onDistributeAll: () -> Unit
 ) {
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -544,7 +568,7 @@ private fun BiosSummaryCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .background(backgroundColor)
             .padding(Dimens.spacingMd)
     ) {
@@ -595,12 +619,7 @@ private fun BiosSummaryCard(
                 color = contentColor.copy(alpha = 0.7f)
             )
             Spacer(modifier = Modifier.height(Dimens.spacingXs))
-            LinearProgressIndicator(
-                progress = { downloadProgress },
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            )
+            ArgosyProgressBar(progress = downloadProgress)
         }
 
         if (isDistributing) {
@@ -629,69 +648,36 @@ private fun BiosSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
                 val downloadSelected = isFocused && actionIndex == 0
-                val downloadBgColor = when {
-                    downloadSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-                val downloadTextColor = when {
-                    downloadSelected -> MaterialTheme.colorScheme.onPrimary
-                    else -> contentColor
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(Dimens.radiusSm))
-                        .background(downloadBgColor)
-                        .clickableNoFocus { onDownloadAll() }
-                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
-                    contentAlignment = Alignment.Center
+                ActionButton(
+                    onClick = onDownloadAll,
+                    focused = downloadSelected,
+                    primary = true,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.CloudDownload,
-                            contentDescription = null,
-                            tint = downloadTextColor,
-                            modifier = Modifier.size(Dimens.spacingMd)
-                        )
-                        Spacer(modifier = Modifier.width(Dimens.spacingXs))
-                        Text(
-                            text = if (missingFiles > 0) "Download $missingFiles" else "Redownload",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = downloadTextColor
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.CloudDownload,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(Dimens.spacingMd)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                    Text(
+                        text = if (missingFiles > 0) "Download $missingFiles" else "Redownload",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        maxLines = 1
+                    )
                 }
 
                 val distributeSelected = isFocused && actionIndex == 1
                 val distributeEnabled = downloadedFiles > 0
-                val distributeBgColor = when {
-                    distributeSelected -> MaterialTheme.colorScheme.primary
-                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-                val distributeTextColor = when {
-                    distributeSelected -> MaterialTheme.colorScheme.onPrimary
-                    !distributeEnabled -> contentColor.copy(alpha = 0.5f)
-                    else -> contentColor
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(Dimens.radiusSm))
-                        .background(distributeBgColor)
-                        .clickableNoFocus(enabled = distributeEnabled) { onDistributeAll() }
-                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Distribute",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = distributeTextColor
-                    )
-                }
+                ActionButton(
+                    label = "Distribute",
+                    onClick = onDistributeAll,
+                    focused = distributeSelected,
+                    enabled = distributeEnabled,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -710,12 +696,13 @@ private fun BiosPlatformItem(
     val downloadSubFocused = isFocused && subFocusIndex == 1
 
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+            .compositeOver(MaterialTheme.colorScheme.surface)
     } else {
         MaterialTheme.colorScheme.surface
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -724,7 +711,7 @@ private fun BiosPlatformItem(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Dimens.settingsItemMinHeight)
-            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .background(backgroundColor)
             .clickableNoFocus { onClick() }
             .padding(Dimens.spacingMd),

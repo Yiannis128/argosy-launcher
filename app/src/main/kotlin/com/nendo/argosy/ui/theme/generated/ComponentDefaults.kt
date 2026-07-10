@@ -65,6 +65,40 @@ object ComponentDefaults {
         const val glowAlphaUnfocused = 0f
     }
 
+    object ActionButton {
+        const val restFillAlpha = 0.82f
+        const val restRimAlpha = 0.9f
+        const val disabledFillAlpha = 0.6f
+    }
+
+    object Toggle {
+        const val trackWidth = 44
+        const val trackHeight = 24
+        const val trackRadius = 7
+        const val knobWidth = 12
+        const val knobHeight = 20
+        const val knobRadius = 5
+    }
+
+    object TrackSlider {
+        const val trackHeight = 6
+        const val trackRadius = 2
+        const val thumbSize = 10
+        const val gradientShiftRatio = 0.1f
+    }
+
+    object ProgressBar {
+        const val height = 6
+        const val stripeWidth = 7
+        const val stripeGap = 5
+        const val gradientShiftRatio = 0.1f
+    }
+
+    object DownloadItem {
+        const val rowHeight = 92
+        const val thumbSize = 64
+    }
+
     object Modal {
         const val blurRadius = 8
     }
@@ -94,6 +128,28 @@ object ComponentDefaults {
     object DualScreen {
         val displayRoleOverride = DisplayRoleOverride.AUTO
         val dualScreenInputFocus = DualScreenInputFocus.AUTO
+    }
+
+    object SurfaceTint {
+        const val maxSaturationRatio = 0.3f
+        const val valueLiftRatio = 0.12f
+    }
+
+    object SurfaceBackdrop {
+        const val contentMaxAlpha = 0.25f
+        const val wallpaperMaxAlpha = 0.5f
+        const val driftCellsPerSecondRatio = 0.08f
+        const val swayAmplitudeCellRatio = 0.35f
+        const val swayPeriodSeconds = 24
+        const val directionRingDiameter = 168
+        const val cellSizeMinDp = 16
+        const val cellSizeMaxDp = 120
+        const val cellSizeStepDp = 8
+        const val cellSizeDefaultDp = 104
+        const val scatterMaxCellRatio = 0.35f
+        const val jitterMaxScaleDropRatio = 0.5f
+        const val jitterMaxRotationDegrees = 60
+        const val stampCellRatio = 0.6f
     }
 
 }

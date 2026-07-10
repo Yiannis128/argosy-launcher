@@ -4,14 +4,19 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
@@ -22,25 +27,38 @@ import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.components.NavigationPreference
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
+import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.screens.settings.ConnectionStatus
 import com.nendo.argosy.ui.screens.settings.InstalledSteamLauncher
@@ -50,8 +68,10 @@ import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.RomMConfigForm
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
+import com.nendo.argosy.ui.screens.settings.delegates.SyncSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.components.SteamLauncherPreference
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -278,6 +298,7 @@ private fun GameDataContent(
         focusToListIndex = { layout.focusToListIndex(it, Unit) },
         itemKey = { it.key },
         isNavItem = { false },
+        isHeader = { it is GameDataItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
@@ -366,12 +387,19 @@ private fun GameDataContent(
                     onToggle = { viewModel.toggleSaveSync() }
                 )
 
-                GameDataItem.SaveCacheLimit -> CyclePreference(
-                    title = "Local Save Cache",
-                    value = "${uiState.syncSettings.saveCacheLimit} saves per game",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleSaveCacheLimit() }
-                )
+                GameDataItem.SaveCacheLimit -> {
+                    val limits = SyncSettingsDelegate.SAVE_CACHE_LIMIT_VALUES
+                    CyclePreference(
+                        title = "Local Save Cache",
+                        value = "${uiState.syncSettings.saveCacheLimit} saves per game",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.cycleSaveCacheLimit(1) },
+                        onPrev = { viewModel.cycleSaveCacheLimit(-1) },
+                        options = remember { limits.map { "$it saves per game" } },
+                        onSelect = { viewModel.setSaveCacheLimit(limits[it]) },
+                        pickerRequestToken = if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+                    )
+                }
 
                 GameDataItem.SyncSaves -> {
                     val pendingText = if (uiState.syncSettings.pendingUploadsCount > 0) {
@@ -513,63 +541,153 @@ private fun GameDataContent(
     }
 }
 
+private const val ADD_GAME_ROW_FIELD = 0
+private const val ADD_GAME_ROW_BUTTONS = 1
+
 @Composable
 internal fun AddSteamGameDialog(uiState: SettingsUiState, viewModel: SettingsViewModel) {
+    val theme = LocalArgosyTheme.current
     val selectedLauncherName = uiState.steam.selectedLauncherPackage?.let { pkg ->
         uiState.steam.installedLaunchers.find { it.packageName == pkg }?.displayName
     }
-    AlertDialog(
-        onDismissRequest = { viewModel.dismissAddSteamGameDialog() },
-        title = { Text("Add Steam Game") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)) {
-                val description = if (selectedLauncherName != null) {
-                    "Enter the Steam App ID to add a game for $selectedLauncherName. You can find this in the game's Steam store URL."
-                } else {
-                    "Enter the Steam App ID to add a game. You can find this in the game's Steam store URL."
+    val isAddingGame = uiState.steam.isAddingGame
+    val canAdd = !isAddingGame && uiState.steam.addGameAppId.isNotBlank()
+
+    var focusRow by remember { mutableIntStateOf(ADD_GAME_ROW_FIELD) }
+    var buttonIndex by remember { mutableIntStateOf(1) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val currentIsAdding by rememberUpdatedState(isAddingGame)
+    val currentCanAdd by rememberUpdatedState(canAdd)
+
+    LaunchedEffect(focusRow) {
+        if (focusRow == ADD_GAME_ROW_FIELD) focusRequester.requestFocus() else focusManager.clearFocus()
+    }
+
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onUp(): InputResult {
+                if (!currentIsAdding) focusRow = ADD_GAME_ROW_FIELD
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                if (!currentIsAdding) focusRow = ADD_GAME_ROW_BUTTONS
+                return InputResult.HANDLED
+            }
+
+            override fun onLeft(): InputResult {
+                if (!currentIsAdding && focusRow == ADD_GAME_ROW_BUTTONS) buttonIndex = 0
+                return InputResult.HANDLED
+            }
+
+            override fun onRight(): InputResult {
+                if (!currentIsAdding && focusRow == ADD_GAME_ROW_BUTTONS) buttonIndex = 1
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                when {
+                    currentIsAdding -> {}
+                    focusRow == ADD_GAME_ROW_FIELD -> focusRow = ADD_GAME_ROW_BUTTONS
+                    buttonIndex == 0 -> viewModel.dismissAddSteamGameDialog()
+                    currentCanAdd -> viewModel.confirmAddSteamGame()
                 }
-                Text(description, style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(
-                    value = uiState.steam.addGameAppId,
-                    onValueChange = { viewModel.setAddGameAppId(it) },
-                    label = { Text("Steam App ID") },
-                    placeholder = { Text("e.g. 730") },
-                    singleLine = true,
-                    enabled = !uiState.steam.isAddingGame,
-                    isError = uiState.steam.addGameError != null,
-                    modifier = Modifier.fillMaxWidth()
+                return InputResult.HANDLED
+            }
+
+            override fun onBack(): InputResult {
+                if (!currentIsAdding) viewModel.dismissAddSteamGameDialog()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+    ModalInputEffect(active = true, handler = inputHandler)
+
+    val fieldShape = RoundedCornerShape(Dimens.radiusMd)
+    Modal(
+        title = "Add Steam Game",
+        onDismiss = { if (!isAddingGame) viewModel.dismissAddSteamGameDialog() }
+    ) {
+        val description = if (selectedLauncherName != null) {
+            "Enter the Steam App ID to add a game for $selectedLauncherName. You can find this in the game's Steam store URL."
+        } else {
+            "Enter the Steam App ID to add a game. You can find this in the game's Steam store URL."
+        }
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(Dimens.spacingMd))
+        OutlinedTextField(
+            value = uiState.steam.addGameAppId,
+            onValueChange = { viewModel.setAddGameAppId(it) },
+            label = { Text("Steam App ID") },
+            placeholder = { Text("e.g. 730") },
+            singleLine = true,
+            enabled = !isAddingGame,
+            isError = uiState.steam.addGameError != null,
+            shape = fieldShape,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (canAdd) viewModel.confirmAddSteamGame() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .then(
+                    if (focusRow == ADD_GAME_ROW_FIELD) {
+                        Modifier.background(theme.focusAccent.copy(alpha = 0.15f), fieldShape)
+                    } else Modifier
                 )
-                if (uiState.steam.addGameError != null) {
-                    Text(
-                        text = uiState.steam.addGameError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { viewModel.confirmAddSteamGame() },
-                enabled = !uiState.steam.isAddingGame && uiState.steam.addGameAppId.isNotBlank()
-            ) {
-                if (uiState.steam.isAddingGame) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(Dimens.spacingMd),
-                        strokeWidth = Dimens.borderMedium
-                    )
-                } else {
-                    Text("Add")
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(
+        )
+        if (uiState.steam.addGameError != null) {
+            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Text(
+                text = uiState.steam.addGameError,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm, Alignment.End)
+        ) {
+            ModalActionButton(
+                label = "Cancel",
+                tint = theme.focusAccent,
+                restLabelColor = theme.textPrimary,
+                focused = focusRow == ADD_GAME_ROW_BUTTONS && buttonIndex == 0,
                 onClick = { viewModel.dismissAddSteamGameDialog() },
-                enabled = !uiState.steam.isAddingGame
-            ) {
-                Text("Cancel")
+                enabled = !isAddingGame
+            )
+            if (isAddingGame) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(Dimens.iconMd),
+                    strokeWidth = Dimens.borderMedium
+                )
+            } else {
+                ModalActionButton(
+                    label = "Add",
+                    tint = theme.focusAccent,
+                    restLabelColor = theme.textPrimary,
+                    focused = focusRow == ADD_GAME_ROW_BUTTONS && buttonIndex == 1,
+                    onClick = { viewModel.confirmAddSteamGame() },
+                    enabled = canAdd
+                )
             }
         }
-    )
+    }
 }

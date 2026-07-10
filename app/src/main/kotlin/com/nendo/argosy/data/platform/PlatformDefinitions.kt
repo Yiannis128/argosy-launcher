@@ -6,6 +6,9 @@ object LocalPlatformIds {
     const val ANDROID = -1L
     const val STEAM = -2L
     const val IOS = -3L
+    const val GOG = -4L
+    const val EPIC = -5L
+    const val AMAZON = -6L
 }
 
 data class PlatformDef(

@@ -43,7 +43,8 @@ internal class BoxArtSectionInput(
             BoxArtItem.BorderStyle -> viewModel.cycleBoxArtBorderStyle(direction)
             BoxArtItem.GlassTint -> viewModel.cycleGlassBorderTint(direction)
             BoxArtItem.GradientPresetItem -> viewModel.cycleGradientPreset(direction)
-            BoxArtItem.GradientAdvanced -> viewModel.toggleGradientAdvancedMode()
+            BoxArtItem.GradientAdvanced ->
+                return toggleLeftRight(direction, state.display.gradientAdvancedMode) { viewModel.toggleGradientAdvancedMode() }
             BoxArtItem.SampleGrid -> viewModel.cycleGradientSampleGrid(direction)
             BoxArtItem.SampleRadius -> viewModel.cycleGradientRadius(direction)
             BoxArtItem.MinSaturation -> viewModel.cycleGradientMinSaturation(direction)

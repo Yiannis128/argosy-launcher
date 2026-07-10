@@ -35,38 +35,53 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Usb
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import android.content.res.Configuration
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.Modal
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.LocalInputDispatcher
+import com.nendo.argosy.ui.input.ModalInputEffect
+import com.nendo.argosy.ui.primitives.ModalActionButton
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun FileBrowserScreen(
@@ -289,7 +304,7 @@ private fun FileBrowserPermissionFooter(
     onGrant: () -> Unit,
     onCancel: () -> Unit
 ) {
-    FooterBar(
+    FooterHints(
         hints = listOf(
             InputButton.A to "Grant Access",
             InputButton.B to "Back"
@@ -302,6 +317,7 @@ private fun FileBrowserPermissionFooter(
             }
         }
     )
+    FooterSpacer()
 }
 
 @Composable
@@ -380,13 +396,13 @@ private fun VolumeItem(
     }
 
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
 
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -591,19 +607,19 @@ private fun FileItem(
     }
 
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
 
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
 
     val iconTint = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         entry.isDirectory -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -669,7 +685,7 @@ private fun FileBrowserFooter(
         }
     }
 
-    FooterBar(
+    FooterHints(
         hints = hints,
         onHintClick = { button ->
             when (button) {
@@ -681,7 +697,11 @@ private fun FileBrowserFooter(
             }
         }
     )
+    FooterSpacer()
 }
+
+private const val FOLDER_ROW_FIELD = 0
+private const val FOLDER_ROW_BUTTONS = 1
 
 @Composable
 private fun CreateFolderDialog(
@@ -691,42 +711,121 @@ private fun CreateFolderDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Folder") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                OutlinedTextField(
-                    value = folderName,
-                    onValueChange = onFolderNameChange,
-                    label = { Text("Folder name") },
-                    singleLine = true,
-                    isError = error != null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (error != null) {
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
+    val theme = LocalArgosyTheme.current
+    var focusRow by remember { mutableIntStateOf(FOLDER_ROW_FIELD) }
+    var buttonIndex by remember { mutableIntStateOf(1) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val canCreate = folderName.isNotBlank()
+    val currentCanCreate by rememberUpdatedState(canCreate)
+    val currentOnConfirm by rememberUpdatedState(onConfirm)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    LaunchedEffect(focusRow) {
+        if (focusRow == FOLDER_ROW_FIELD) focusRequester.requestFocus() else focusManager.clearFocus()
+    }
+
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onUp(): InputResult {
+                focusRow = FOLDER_ROW_FIELD
+                return InputResult.HANDLED
+            }
+
+            override fun onDown(): InputResult {
+                focusRow = FOLDER_ROW_BUTTONS
+                return InputResult.HANDLED
+            }
+
+            override fun onLeft(): InputResult {
+                if (focusRow == FOLDER_ROW_BUTTONS) buttonIndex = 0
+                return InputResult.HANDLED
+            }
+
+            override fun onRight(): InputResult {
+                if (focusRow == FOLDER_ROW_BUTTONS) buttonIndex = 1
+                return InputResult.HANDLED
+            }
+
+            override fun onConfirm(): InputResult {
+                when {
+                    focusRow == FOLDER_ROW_FIELD -> focusRow = FOLDER_ROW_BUTTONS
+                    buttonIndex == 0 -> currentOnDismiss()
+                    currentCanCreate -> currentOnConfirm()
                 }
+                return InputResult.HANDLED
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = folderName.isNotBlank()
-            ) {
-                Text("Create")
+
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
         }
-    )
+    }
+    ModalInputEffect(active = true, handler = inputHandler)
+
+    val fieldShape = RoundedCornerShape(Dimens.radiusMd)
+    Modal(title = "New Folder", onDismiss = onDismiss) {
+        OutlinedTextField(
+            value = folderName,
+            onValueChange = onFolderNameChange,
+            label = { Text("Folder name") },
+            singleLine = true,
+            isError = error != null,
+            shape = fieldShape,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (canCreate) onConfirm() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .then(
+                    if (focusRow == FOLDER_ROW_FIELD) {
+                        Modifier.background(theme.focusAccent.copy(alpha = 0.15f), fieldShape)
+                    } else Modifier
+                )
+        )
+        if (error != null) {
+            Spacer(modifier = Modifier.height(Dimens.spacingSm))
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm, Alignment.End)
+        ) {
+            ModalActionButton(
+                label = "Cancel",
+                tint = theme.focusAccent,
+                restLabelColor = theme.textPrimary,
+                focused = focusRow == FOLDER_ROW_BUTTONS && buttonIndex == 0,
+                onClick = onDismiss
+            )
+            ModalActionButton(
+                label = "Create",
+                tint = theme.focusAccent,
+                restLabelColor = theme.textPrimary,
+                focused = focusRow == FOLDER_ROW_BUTTONS && buttonIndex == 1,
+                onClick = onConfirm,
+                enabled = canCreate
+            )
+        }
+    }
 }
 
 private fun formatFileSize(bytes: Long): String {

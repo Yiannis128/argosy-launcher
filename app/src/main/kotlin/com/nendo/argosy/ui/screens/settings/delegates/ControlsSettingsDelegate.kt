@@ -77,14 +77,9 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleControllerLayout(scope: CoroutineScope) {
-        val current = _state.value.controllerLayout
-        val next = when (current) {
-            "auto" -> "xbox"
-            "xbox" -> "nintendo"
-            else -> "auto"
-        }
-        setControllerLayout(scope, next)
+    fun cycleControllerLayout(scope: CoroutineScope, direction: Int = 1) {
+        val index = LAYOUT_CYCLE.indexOf(_state.value.controllerLayout).coerceAtLeast(0)
+        setControllerLayout(scope, LAYOUT_CYCLE[(index + direction).mod(LAYOUT_CYCLE.size)])
     }
 
     fun refreshDetectedLayout() {
@@ -118,28 +113,33 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleSelectLCombo(scope: CoroutineScope) {
-        val next = cycleComboValue(_state.value.selectLCombo)
+    fun setSelectLCombo(scope: CoroutineScope, value: String) {
         scope.launch {
-            preferencesRepository.setSelectLCombo(next)
-            _state.update { it.copy(selectLCombo = next) }
+            preferencesRepository.setSelectLCombo(value)
+            _state.update { it.copy(selectLCombo = value) }
         }
     }
 
-    fun cycleSelectRCombo(scope: CoroutineScope) {
-        val next = cycleComboValue(_state.value.selectRCombo)
+    fun setSelectRCombo(scope: CoroutineScope, value: String) {
         scope.launch {
-            preferencesRepository.setSelectRCombo(next)
-            _state.update { it.copy(selectRCombo = next) }
+            preferencesRepository.setSelectRCombo(value)
+            _state.update { it.copy(selectRCombo = value) }
         }
     }
+
+    fun cycleSelectLCombo(scope: CoroutineScope, direction: Int = 1) =
+        setSelectLCombo(scope, cycleComboValue(_state.value.selectLCombo, direction))
+
+    fun cycleSelectRCombo(scope: CoroutineScope, direction: Int = 1) =
+        setSelectRCombo(scope, cycleComboValue(_state.value.selectRCombo, direction))
 
     companion object {
-        private val COMBO_CYCLE = listOf("quick_menu", "quick_settings", "none")
+        val LAYOUT_CYCLE = listOf("auto", "xbox", "nintendo")
+        val COMBO_CYCLE = listOf("quick_menu", "quick_settings", "none")
 
-        fun cycleComboValue(current: String): String {
-            val index = COMBO_CYCLE.indexOf(current)
-            return COMBO_CYCLE[(index + 1) % COMBO_CYCLE.size]
+        fun cycleComboValue(current: String, direction: Int = 1): String {
+            val index = COMBO_CYCLE.indexOf(current).coerceAtLeast(0)
+            return COMBO_CYCLE[(index + direction).mod(COMBO_CYCLE.size)]
         }
 
         fun comboDisplayName(value: String): String = when (value) {
@@ -147,15 +147,24 @@ class ControlsSettingsDelegate @Inject constructor(
             "quick_settings" -> "Quick Settings"
             else -> "None"
         }
+
+        fun layoutDisplayName(value: String): String = when (value) {
+            "nintendo" -> "Nintendo"
+            "xbox" -> "Xbox"
+            else -> "Auto"
+        }
     }
 
-    fun cycleMenuWrapMode(scope: CoroutineScope) {
-        val current = _state.value.menuWrapMode
-        val next = MenuWrapMode.entries[(current.ordinal + 1) % MenuWrapMode.entries.size]
+    fun setMenuWrapMode(scope: CoroutineScope, mode: MenuWrapMode) {
         scope.launch {
-            preferencesRepository.setMenuWrapMode(next)
-            _state.update { it.copy(menuWrapMode = next) }
+            preferencesRepository.setMenuWrapMode(mode)
+            _state.update { it.copy(menuWrapMode = mode) }
         }
+    }
+
+    fun cycleMenuWrapMode(scope: CoroutineScope, direction: Int = 1) {
+        val current = _state.value.menuWrapMode
+        setMenuWrapMode(scope, MenuWrapMode.entries[(current.ordinal + direction).mod(MenuWrapMode.entries.size)])
     }
 
     fun refreshUsageStatsPermission() {

@@ -2,11 +2,13 @@ package com.nendo.argosy.hardware
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.nendo.argosy.ui.theme.CustomFontFamilies
 import com.nendo.argosy.ui.theme.ProvideArgosyThemeLocals
 import com.nendo.argosy.ui.theme.ThemeState
-import com.nendo.argosy.ui.theme.Typography
 import com.nendo.argosy.ui.theme.argosyColorScheme
+import com.nendo.argosy.ui.theme.argosyTypography
 import com.nendo.argosy.ui.theme.rememberArgosyPalette
 
 /**
@@ -29,6 +31,7 @@ import com.nendo.argosy.ui.theme.rememberArgosyPalette
 @Composable
 fun SecondaryHomeTheme(
     themeState: ThemeState,
+    fonts: CustomFontFamilies = CustomFontFamilies(),
     primaryColor: Int? = null,
     content: @Composable () -> Unit
 ) {
@@ -36,11 +39,14 @@ fun SecondaryHomeTheme(
         themeState = themeState,
         primaryOverride = primaryColor?.let { Color(it) }
     )
+    val typography = remember(fonts, themeState.displayFontScale, themeState.bodyFontScale) {
+        argosyTypography(fonts, themeState.displayFontScale, themeState.bodyFontScale)
+    }
 
     ProvideArgosyThemeLocals(themeState = themeState, palette = palette) {
         MaterialTheme(
             colorScheme = argosyColorScheme(palette),
-            typography = Typography,
+            typography = typography,
             content = content
         )
     }

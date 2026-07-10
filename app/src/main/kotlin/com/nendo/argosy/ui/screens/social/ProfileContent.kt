@@ -49,7 +49,9 @@ import com.nendo.argosy.data.social.MostPlayedGame
 import com.nendo.argosy.data.social.PresenceStatus
 import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.data.social.UserProfileData
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.AspectRatioClass
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalUiScale
 import com.nendo.argosy.ui.util.clickableNoFocus
 import java.time.LocalDate
@@ -473,12 +475,12 @@ private fun MostPlayedGameRow(
     onClick: () -> Unit
 ) {
     val bgColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
     val textColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }

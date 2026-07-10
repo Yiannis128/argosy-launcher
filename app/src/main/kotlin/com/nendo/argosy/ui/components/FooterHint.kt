@@ -1,5 +1,7 @@
 package com.nendo.argosy.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
 import androidx.compose.foundation.layout.Arrangement
@@ -15,10 +17,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.icons.InputIcons
@@ -28,6 +34,7 @@ import com.nendo.argosy.ui.input.LocalSwapStartSelect
 import androidx.compose.ui.platform.LocalConfiguration
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
+import com.nendo.argosy.ui.theme.Motion
 
 data class FooterStyleConfig(
     val useAccentColor: Boolean = false
@@ -238,12 +245,31 @@ private fun InputButton.faceButtonPriority(): Int = when (this) {
 }
 
 private fun InputButton.hidePriority(): Int = when (this) {
-    InputButton.X, InputButton.Y -> 5
-    InputButton.START, InputButton.SELECT -> 4
+    InputButton.X, InputButton.Y -> 4
     InputButton.LB, InputButton.RB, InputButton.LB_RB,
     InputButton.LT, InputButton.RT, InputButton.LT_RT -> 3
+    InputButton.START, InputButton.SELECT -> 2
     InputButton.A, InputButton.B -> 1
     else -> 0
+}
+
+internal fun isObviousHint(button: InputButton, label: String): Boolean =
+    button == InputButton.A || button == InputButton.B || button.isDpadButton() ||
+        label == "Back" || label == "Select" || label == "Close"
+
+@Composable
+private fun footerCollapseProgress(quiet: Boolean): Float {
+    val progress by animateFloatAsState(
+        targetValue = if (quiet) 1f else 0f,
+        animationSpec = tween(durationMillis = Motion.durationContent, easing = Motion.argosyEase),
+        label = "footerCollapse"
+    )
+    return progress
+}
+
+private fun Modifier.footerCollapse(progress: Float): Modifier = graphicsLayer {
+    translationY = size.height * progress
+    alpha = 1f - progress
 }
 
 @Composable
@@ -260,8 +286,13 @@ fun FooterBar(
         MaterialTheme.colorScheme.surfaceVariant
     }
 
+    val quiet = hints.all { isObviousHint(it.first, it.second) }
+    var displayHints by remember { mutableStateOf(hints) }
+    if (!quiet) displayHints = hints
+    val collapseProgress = footerCollapseProgress(quiet)
+
     val filteredHints = filterHintsByWidth(
-        hints,
+        displayHints,
         buttonOf = { it.first },
         labelOf = { it.second },
         priorityOf = { it.first.hidePriority() }
@@ -277,9 +308,10 @@ fun FooterBar(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = Dimens.footerHeight - Dimens.spacingSm - Dimens.borderMedium)
+            .footerCollapse(collapseProgress)
             .background(backgroundColor)
             .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm + Dimens.spacingXs),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)) {
             dpadHints.forEach { (button, action) ->
@@ -312,7 +344,8 @@ fun FooterBarWithState(
     hints: List<FooterHintItem>,
     modifier: Modifier = Modifier,
     onHintClick: ((InputButton) -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null
+    trailingContent: @Composable (() -> Unit)? = null,
+    forceVisible: Boolean = false
 ) {
     val footerStyle = LocalFooterStyle.current
     val backgroundColor = if (footerStyle.useAccentColor) {
@@ -321,8 +354,13 @@ fun FooterBarWithState(
         MaterialTheme.colorScheme.surfaceVariant
     }
 
+    val quiet = !forceVisible && hints.all { isObviousHint(it.button, it.action) }
+    var displayHints by remember { mutableStateOf(hints) }
+    if (!quiet) displayHints = hints
+    val collapseProgress = footerCollapseProgress(quiet)
+
     val filteredHints = filterHintsByWidth(
-        hints,
+        displayHints,
         buttonOf = { it.button },
         labelOf = { it.action },
         priorityOf = { it.button.hidePriority() }
@@ -338,9 +376,10 @@ fun FooterBarWithState(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = Dimens.footerHeight - Dimens.spacingSm - Dimens.borderMedium)
+            .footerCollapse(collapseProgress)
             .background(backgroundColor)
             .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm + Dimens.spacingXs),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)) {
             dpadHints.forEach { hint ->
@@ -397,8 +436,13 @@ fun SubtleFooterBar(
 ) {
     val footerStyle = LocalFooterStyle.current
 
+    val quiet = hints.all { isObviousHint(it.first, it.second) }
+    var displayHints by remember { mutableStateOf(hints) }
+    if (!quiet) displayHints = hints
+    val collapseProgress = footerCollapseProgress(quiet)
+
     val filteredHints = filterHintsByWidth(
-        hints,
+        displayHints,
         buttonOf = { it.first },
         labelOf = { it.second },
         priorityOf = { it.first.hidePriority() }
@@ -418,9 +462,10 @@ fun SubtleFooterBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .footerCollapse(collapseProgress)
             .background(backgroundColor)
             .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)) {
             dpadHints.forEach { (button, action) ->

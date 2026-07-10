@@ -25,8 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 data class CollectionItem(
     val id: Long,
@@ -100,7 +102,10 @@ private fun CreateCollectionRow(
             .fillMaxWidth()
             .then(borderModifier)
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                if (isFocused) {
+                    LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
+                } else MaterialTheme.colorScheme.surfaceVariant,
                 shape
             )
             .clickableNoFocus(onClick = onClick)
@@ -142,7 +147,10 @@ private fun CollectionCheckRow(
             .padding(vertical = Dimens.borderMedium)
             .then(borderModifier)
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                if (isFocused) {
+                    LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
+                } else MaterialTheme.colorScheme.surface,
                 shape
             )
             .clickableNoFocus(onClick = onClick)

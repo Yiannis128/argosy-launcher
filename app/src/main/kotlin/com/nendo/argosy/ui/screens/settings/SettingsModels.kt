@@ -24,6 +24,7 @@ import com.nendo.argosy.data.preferences.BoxArtOuterEffectThickness
 import com.nendo.argosy.data.preferences.GlowColorMode
 import com.nendo.argosy.data.preferences.DefaultView
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.data.preferences.PlatformIndicatorContent
 import com.nendo.argosy.data.preferences.PlatformIndicatorStyle
@@ -35,6 +36,7 @@ import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.ui.input.SoundPreset
+import com.nendo.argosy.ui.theme.backdrop.BackdropConfig
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import com.nendo.argosy.util.PlatformFilterLogic
@@ -58,6 +60,10 @@ enum class SettingsSection {
     RETRO_ACHIEVEMENTS,
     STORAGE,
     BIOS,
+    THEME,
+    THEME_SOUNDS,
+    THEME_FONTS,
+    THEME_BACKDROP,
     INTERFACE,
     BOX_ART,
     HOME_SCREEN,
@@ -90,6 +96,10 @@ enum class RomMAuthMethod {
     PAIRING_CODE,
     PASSWORD
 }
+
+internal const val ROMM_AUTH_METHOD_PICKER_KEY = "rommAuthMethod"
+
+internal const val SYNC_REGION_MODE_PICKER_KEY = "syncRegionMode"
 
 data class PlatformEmulatorConfig(
     val platform: PlatformEntity,
@@ -168,12 +178,19 @@ data class DisplayState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val primaryColor: Int? = null,
     val secondaryColor: Int? = null,
+    val surfaceTintBleed: Int = 0,
+    val surfaceBackdrop: BackdropConfig = BackdropConfig(),
+    val displayFontName: String? = null,
+    val bodyFontName: String? = null,
+    val displayFontScale: Int = 100,
+    val bodyFontScale: Int = 100,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val backgroundBlur: Int = 0,
     val backgroundSaturation: Int = 100,
     val backgroundOpacity: Int = 100,
     val useGameBackground: Boolean = true,
     val customBackgroundPath: String? = null,
+    val homeBackgroundMode: HomeBackgroundMode = HomeBackgroundMode.GAME_ART,
     val useAccentColorFooter: Boolean = false,
     val boxArtShape: BoxArtShape = BoxArtShape.STANDARD,
     val boxArtCornerRadius: BoxArtCornerRadius = BoxArtCornerRadius.MEDIUM,
@@ -242,7 +259,7 @@ data class SoundState(
     val soundPickerType: SoundType? = null,
     val soundPickerFocusIndex: Int = 0
 ) {
-    val presets: List<SoundPreset> get() = SoundPreset.entries.toList()
+    val presets: List<SoundPreset> get() = SoundPreset.selectable
 
     fun getCurrentPresetForType(type: SoundType): SoundPreset? {
         val config = soundConfigs[type] ?: return null
@@ -458,6 +475,9 @@ data class ShaderStackEntry(
 data class BuiltinControlsState(
     val rumbleEnabled: Boolean = true,
     val limitHotkeysToPlayer1: Boolean = true,
+    val speedrunStartOnReset: Boolean = true,
+    val speedrunPanelSide: String = "Right",
+    val speedrunPanelWidthPercent: Int = 30,
     val fastForwardMode: com.nendo.argosy.data.local.entity.FastForwardMode = com.nendo.argosy.data.local.entity.FastForwardMode.HOLD,
     val fastForwardPreservePitch: Boolean = false,
     val analogAsDpad: Boolean = false,
@@ -659,6 +679,7 @@ data class ServerState(
     val rommDeviceVerificationUrl: String? = null,
     val syncScreenshotsEnabled: Boolean = false,
     val uploadScreenshotsEnabled: Boolean = true,
+    val boxArtCacheEnabled: Boolean = true,
     val screenshotUploadSupported: Boolean = false
 )
 
@@ -676,6 +697,8 @@ data class SyncSettingsState(
     val syncFiltersModalFocusIndex: Int = 0,
     val showRegionPicker: Boolean = false,
     val regionPickerFocusIndex: Int = 0,
+    val regionPickerHeldRegion: String? = null,
+    val regionPickerOrderBackup: List<String>? = null,
     val showPlatformFiltersModal: Boolean = false,
     val platformFiltersModalFocusIndex: Int = 0,
     val platformFiltersList: List<PlatformFilterItem> = emptyList(),
@@ -728,9 +751,9 @@ data class NotInstalledSteamLauncher(
 )
 
 data class SteamSettingsState(
-    // GameNative
     val gnInstalled: Boolean = false,
     val gnStoragePath: String? = null,
+    val gameNativeSyncDir: String? = null,
 
     // Install volume
     val steamInstallVolume: String? = null,
@@ -789,11 +812,29 @@ data class UpdateCheckState(
     val hasChecked: Boolean = false,
     val updateAvailable: Boolean = false,
     val latestVersion: String? = null,
+    val latestName: String? = null,
+    val latestBody: String? = null,
     val downloadUrl: String? = null,
     val error: String? = null,
     val isDownloading: Boolean = false,
     val downloadProgress: Int = 0,
     val readyToInstall: Boolean = false
+)
+
+data class ChangelogRelease(
+    val tag: String,
+    val name: String,
+    val body: String?,
+    val prerelease: Boolean,
+    val publishedAt: String?
+)
+
+data class ChangelogState(
+    val visible: Boolean = false,
+    val releases: List<ChangelogRelease> = emptyList(),
+    val page: Int = 0,
+    val canLoadMore: Boolean = false,
+    val isLoading: Boolean = false
 )
 
 data class PermissionsState(
@@ -998,6 +1039,8 @@ data class SettingsUiState(
     val currentSection: SettingsSection = SettingsSection.MAIN,
     val focusedIndex: Int = 0,
     val parentFocusIndex: Int = 0,
+    val enumPickerKey: String? = null,
+    val enumPickerToken: Int = 0,
     val systemizeResult: com.nendo.argosy.util.SystemizeWriteResult? = null,
     val colorFocusIndex: Int = 0,
     val display: DisplayState = DisplayState(),
@@ -1029,6 +1072,8 @@ data class SettingsUiState(
     val pendingBuiltinPathMigration: BuiltinPathMigration? = null,
     val appVersion: String = BuildConfig.VERSION_NAME,
     val updateCheck: UpdateCheckState = UpdateCheckState(),
+    val changelog: ChangelogState = ChangelogState(),
+    val aboutUpdateActionIndex: Int = 0,
     val betaUpdatesEnabled: Boolean = false,
     val fileLoggingEnabled: Boolean = false,
     val fileLoggingPath: String? = null,

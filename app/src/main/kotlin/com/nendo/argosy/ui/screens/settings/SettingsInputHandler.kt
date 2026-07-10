@@ -14,6 +14,10 @@ import com.nendo.argosy.ui.screens.settings.sections.input.InterfaceSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.LightSectionsInput
 import com.nendo.argosy.ui.screens.settings.sections.input.ShaderStackSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.StorageSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.ThemeBackdropSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.ThemeFontsSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.ThemeSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.ThemeSoundsSectionInput
 
 class SettingsInputHandler(
     private val viewModel: SettingsViewModel,
@@ -22,12 +26,14 @@ class SettingsInputHandler(
 
     companion object {
         internal const val SLIDER_STEP = 10
+        internal const val FONT_SCALE_STEP = 5
         internal const val HUE_STEP = 10f
 
         private val TOP_LEVEL_SECTIONS = listOf(
             SettingsSection.PLATFORMS,
             SettingsSection.BUILTIN_EMULATOR,
             SettingsSection.STORAGE,
+            SettingsSection.THEME,
             SettingsSection.INTERFACE,
             SettingsSection.CONTROLS,
             SettingsSection.SERVER,
@@ -49,6 +55,10 @@ class SettingsInputHandler(
         put(SettingsSection.BUILTIN_CONTROLS, BuiltinControlsSectionInput(viewModel))
         put(SettingsSection.BOX_ART, BoxArtSectionInput(viewModel))
         put(SettingsSection.INTERFACE, InterfaceSectionInput(viewModel))
+        put(SettingsSection.THEME, ThemeSectionInput(viewModel))
+        put(SettingsSection.THEME_SOUNDS, ThemeSoundsSectionInput(viewModel))
+        put(SettingsSection.THEME_FONTS, ThemeFontsSectionInput(viewModel))
+        put(SettingsSection.THEME_BACKDROP, ThemeBackdropSectionInput(viewModel))
         put(SettingsSection.AMBIENT_LED, AmbientLedSectionInput(viewModel))
         put(SettingsSection.SHADER_STACK, ShaderStackSectionInput(viewModel))
         put(SettingsSection.CORE_OPTIONS, CoreOptionsSectionInput(viewModel))
@@ -58,7 +68,7 @@ class SettingsInputHandler(
             SettingsSection.BIOS, SettingsSection.SERVER, SettingsSection.HOME_SCREEN,
             SettingsSection.CONTROLS, SettingsSection.SYNC_SETTINGS,
             SettingsSection.ABOUT, SettingsSection.STEAM_SETTINGS, SettingsSection.CORE_MANAGEMENT,
-            SettingsSection.SOCIAL
+            SettingsSection.SOCIAL, SettingsSection.BUILTIN_EMULATOR
         )) {
             put(s, lightHandler)
         }

@@ -28,7 +28,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -51,10 +50,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.ui.components.AlphabetSidebar
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.screens.collections.components.WideGameCard
 import com.nendo.argosy.ui.theme.Dimens
 
@@ -178,8 +178,7 @@ fun VirtualCategoryScreen(
             }
         }
 
-        FooterBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
+        FooterHints(
             hints = if (uiState.isSearchActive) {
                 listOf(
                     InputButton.A to "Open",
@@ -283,11 +282,7 @@ private fun DownloadAllModal(
 
                 Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-                LinearProgressIndicator(
-                    progress = { if (totalCount > 0) currentIndex.toFloat() / totalCount else 0f },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                ArgosyProgressBar(progress = if (totalCount > 0) currentIndex.toFloat() / totalCount else 0f)
             }
         }
     }

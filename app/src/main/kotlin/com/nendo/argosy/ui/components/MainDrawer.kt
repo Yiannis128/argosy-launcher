@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,15 +53,20 @@ import androidx.core.graphics.toColorInt
 import com.nendo.argosy.R
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.PresenceStatus
+import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.ui.DrawerItem
 import com.nendo.argosy.ui.DrawerModal
 import com.nendo.argosy.ui.DrawerState
 import com.nendo.argosy.ui.DrawerTab
 import com.nendo.argosy.ui.components.friends.AddFriendModal
 import com.nendo.argosy.ui.components.friends.FriendCodeModal
+import com.nendo.argosy.ui.components.friends.FriendOptionsModal
 import com.nendo.argosy.ui.components.friends.FriendsOption
 import com.nendo.argosy.ui.components.friends.FriendsOptionsModal
+import com.nendo.argosy.ui.components.friends.SocialAvatar
+import com.nendo.argosy.ui.primitives.InputGlyph
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.navigation.Screen
 
 @Composable
@@ -68,6 +74,7 @@ fun MainDrawer(
     items: List<DrawerItem>,
     currentRoute: String?,
     drawerState: DrawerState,
+    isOpen: Boolean,
     onNavigate: (String) -> Unit,
     onShowFriendCode: () -> Unit,
     onShowAddFriend: () -> Unit,
@@ -75,6 +82,7 @@ fun MainDrawer(
     onRegenerateFriendCode: () -> Unit,
     onAddFriendByCode: (String) -> Unit,
     onJoinFriendSession: (Friend) -> Unit,
+    onSelectTab: (DrawerTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
     ModalDrawerSheet(modifier = modifier) {
@@ -83,14 +91,17 @@ fun MainDrawer(
                 .fillMaxHeight()
                 .padding(vertical = Dimens.spacingLg)
         ) {
-            DrawerStatusBar(isRommConnected = drawerState.rommConnected)
+            DrawerStatusBar(
+                isRommConnected = drawerState.rommConnected,
+                localUser = drawerState.localUser
+            )
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = Dimens.spacingLg, vertical = Dimens.radiusLg),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
 
             if (drawerState.socialConnected) {
-                TabHeader(currentTab = drawerState.currentTab)
+                TabHeader(currentTab = drawerState.currentTab, onSelectTab = onSelectTab)
                 Spacer(modifier = Modifier.height(Dimens.spacingSm))
             }
 
@@ -118,14 +129,55 @@ fun MainDrawer(
             }
 
             if (drawerState.currentTab == DrawerTab.FRIENDS) {
-                val focusedFriend = drawerState.friends.getOrNull(drawerState.friendsFocusIndex)
-                val focusedIsJoinable = focusedFriend?.currentGame?.netplaySession?.joinable == true
-                FriendsFooter(showJoinHint = focusedIsJoinable)
+                FooterSpacer()
             }
         }
     }
 
-    when (drawerState.modal) {
+    if (isOpen) {
+        val focusedFriend = drawerState.friends.getOrNull(drawerState.friendsFocusIndex)
+        val focusedIsJoinable = focusedFriend?.currentGame?.netplaySession?.joinable == true
+        FooterHints(
+            hints = if (drawerState.currentTab == DrawerTab.FRIENDS) {
+                buildList {
+                    add(InputButton.Y to "Favorite")
+                    add(InputButton.X to "Options")
+                    if (focusedIsJoinable) add(InputButton.A to "Join")
+                }
+            } else {
+                emptyList()
+            }
+        )
+    }
+
+    when (val modal = drawerState.modal) {
+        is DrawerModal.FriendOptions -> {
+            val friend = drawerState.friends.firstOrNull { it.id == modal.friendId }
+            if (friend != null) {
+                FriendOptionsModal(
+                    friend = friend,
+                    onJoinSession = {
+                        onDismissModal()
+                        onJoinFriendSession(it)
+                    },
+                    onViewProfile = {
+                        onDismissModal()
+                        onNavigate(Screen.UserProfile.createRoute(it.id))
+                    },
+                    onShowFriendCode = {
+                        onDismissModal()
+                        onShowFriendCode()
+                    },
+                    onShowAddFriend = {
+                        onDismissModal()
+                        onShowAddFriend()
+                    },
+                    onDismiss = onDismissModal
+                )
+            } else {
+                LaunchedEffect(modal) { onDismissModal() }
+            }
+        }
         DrawerModal.FriendsOptions -> {
             FriendsOptionsModal(
                 onSelectOption = { option ->
@@ -160,20 +212,33 @@ fun MainDrawer(
 }
 
 @Composable
-private fun TabHeader(currentTab: DrawerTab) {
+private fun TabHeader(currentTab: DrawerTab, onSelectTab: (DrawerTab) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Dimens.spacingLg),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        InputGlyph(
+            button = InputButton.LB,
+            size = Dimens.iconSm,
+            tint = LocalArgosyTheme.current.textMute
+        )
         TabIndicator(
             label = "Nav",
-            isSelected = currentTab == DrawerTab.NAVIGATION
+            isSelected = currentTab == DrawerTab.NAVIGATION,
+            onClick = { onSelectTab(DrawerTab.NAVIGATION) }
         )
         TabIndicator(
             label = "Friends",
-            isSelected = currentTab == DrawerTab.FRIENDS
+            isSelected = currentTab == DrawerTab.FRIENDS,
+            onClick = { onSelectTab(DrawerTab.FRIENDS) }
+        )
+        InputGlyph(
+            button = InputButton.RB,
+            size = Dimens.iconSm,
+            tint = LocalArgosyTheme.current.textMute
         )
     }
 }
@@ -181,9 +246,13 @@ private fun TabHeader(currentTab: DrawerTab) {
 @Composable
 private fun TabIndicator(
     label: String,
-    isSelected: Boolean
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickableNoFocus(onClick = onClick)
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -367,7 +436,7 @@ private fun FriendItem(
     onJoinSession: (Friend) -> Unit
 ) {
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
@@ -435,7 +504,7 @@ private fun FriendItem(
                 text = friend.displayName,
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isFocused) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
+                    lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
@@ -484,20 +553,7 @@ private fun FriendItem(
 }
 
 @Composable
-private fun FriendsFooter(showJoinHint: Boolean) {
-    val hints = buildList {
-        add(InputButton.Y to "Favorite")
-        add(InputButton.X to "Options")
-        if (showJoinHint) add(InputButton.A to "Join")
-    }
-    FooterBar(
-        hints = hints,
-        modifier = Modifier.padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
-    )
-}
-
-@Composable
-private fun DrawerStatusBar(isRommConnected: Boolean) {
+private fun DrawerStatusBar(isRommConnected: Boolean, localUser: SocialUser?) {
     val mutedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
     Row(
         modifier = Modifier
@@ -506,15 +562,27 @@ private fun DrawerStatusBar(isRommConnected: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            painter = painterResource(
-                if (isRommConnected) R.drawable.ic_romm_connected
-                else R.drawable.ic_romm_disconnected
-            ),
-            contentDescription = if (isRommConnected) "RomM Connected" else "RomM Offline",
-            tint = if (isRommConnected) Color.Unspecified else mutedColor,
-            modifier = Modifier.size(Dimens.iconMd)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) {
+            if (localUser != null) {
+                SocialAvatar(
+                    displayName = localUser.displayName,
+                    avatarColor = localUser.avatarColor,
+                    size = Dimens.iconLg
+                )
+            }
+            Icon(
+                painter = painterResource(
+                    if (isRommConnected) R.drawable.ic_romm_connected
+                    else R.drawable.ic_romm_disconnected
+                ),
+                contentDescription = if (isRommConnected) "RomM Connected" else "RomM Offline",
+                tint = if (isRommConnected) Color.Unspecified else mutedColor,
+                modifier = Modifier.size(Dimens.iconMd)
+            )
+        }
         SystemStatusBar(
             contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
@@ -555,7 +623,7 @@ private fun DrawerMenuItem(
     onClick: () -> Unit
 ) {
     val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         isSelected -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         else -> Color.Transparent
     }

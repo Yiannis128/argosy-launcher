@@ -29,7 +29,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -152,6 +154,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var platformLibretroSettingsDao: com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao
     @Inject lateinit var frameRegistry: FrameRegistry
     @Inject lateinit var coreOptionsRepository: com.nendo.argosy.data.repository.CoreOptionsRepository
+    @Inject lateinit var speedrunRepository: com.nendo.argosy.data.speedrun.SpeedrunRepository
 
     private var coreLoadedSuccessfully = false
     @Volatile private var coreDestroyed = false
@@ -251,13 +254,23 @@ class LibretroActivity : ComponentActivity() {
     private var perGameControlsEnabled by mutableStateOf(false)
     private var inputDeviceListener: android.hardware.input.InputManager.InputDeviceListener? = null
     private var splitColumn: android.widget.LinearLayout? = null
+    private var splitRow: android.widget.LinearLayout? = null
+    private var speedrunPanelSideState by mutableStateOf("Off")
+    private var speedrunPanelFractionState by mutableStateOf(SPEEDRUN_PANEL_FRACTION_DEFAULT)
+    private val speedrunTimer = com.nendo.argosy.libretro.speedrun.SpeedrunTimerEngine()
+    private var speedrunStartOnReset = true
+    private var speedrunPanelSidePref = "Right"
+    private val hotkeyConsumedKeys = mutableSetOf<Int>()
+    private var speedrunPickerVisible by mutableStateOf(false)
+    private var speedrunPickerFocusIndex by mutableStateOf(0)
+    private var speedrunPickerCategories by mutableStateOf<List<com.nendo.argosy.data.local.entity.SpeedrunCategoryEntity>>(emptyList())
     private var touchEditMode by mutableStateOf(false)
     private var baselineRotation: Int = 0
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
         get() = menuVisible || cheatsMenuVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || quickTimelineVisible || discMenuVisible ||
-            isClosing || netplay.isAnyDialogVisible
+            speedrunPickerVisible || isClosing || netplay.isAnyDialogVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -284,6 +297,20 @@ class LibretroActivity : ComponentActivity() {
         com.nendo.argosy.DualScreenManagerHolder.instance?.let { dsm ->
             dsm.emulatorKeyDispatcher = { event -> dispatchKeyEvent(event) }
             dsm.emulatorMotionDispatcher = { event -> dispatchGenericMotionEvent(event) }
+            dsm.sessionQuickActions = createSessionQuickActions()
+            dsm.sessionRefocus = {
+                @Suppress("DEPRECATION")
+                val options = android.app.ActivityOptions.makeBasic()
+                    .setLaunchDisplayId(windowManager.defaultDisplay.displayId)
+                startActivity(
+                    Intent(this, LibretroActivity::class.java).addFlags(
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                            Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    ),
+                    options.toBundle()
+                )
+            }
         }
 
         netplay = LibretroNetplayCoordinator(
@@ -358,6 +385,15 @@ class LibretroActivity : ComponentActivity() {
                     lastShow = it.showTouchControlsWhenNoGamepad
                     splitColumn?.let { col -> applyPortraitSplit(col) }
                 }
+                speedrunStartOnReset = it.speedrunStartOnReset
+                speedrunPanelSidePref = it.speedrunPanelSide
+                val newFraction = it.speedrunPanelWidthPercent / 100f
+                if (newFraction != speedrunPanelFractionState) {
+                    setSpeedrunPanelFraction(newFraction)
+                }
+                if (speedrunPanelSideState != "Off" && speedrunPanelSideState != it.speedrunPanelSide) {
+                    setSpeedrunPanelSide(it.speedrunPanelSide)
+                }
             }
         }
         applyOrientationLock(globalSettings.touchControlsLockOrientation)
@@ -412,6 +448,7 @@ class LibretroActivity : ComponentActivity() {
 
         initializeCheatManager()
         initializeHotkeyDispatcher()
+        initializeSpeedrun()
         motionProcessor = MotionEventProcessor(
             inputMapper = inputMapper,
             portResolver = portResolver,
@@ -687,8 +724,75 @@ class LibretroActivity : ComponentActivity() {
             onAutoSaveState = ::performAutoSaveState,
             onCycleCoreOption = { key, direction, values -> cycleCoreOption(key, direction, values) },
             onSendCoreInput = ::sendCoreInput,
-            onQuit = ::finish
+            onQuit = ::finish,
+            onGameReset = { speedrunTimer.onGameReset(speedrunStartOnReset) },
+            onSpeedrunSplit = { speedrunTimer.split() },
+            onSpeedrunUndoSplit = { speedrunTimer.undoSplit() },
+            onSpeedrunSkipSplit = { speedrunTimer.skipSplit() },
+            onSpeedrunToggleTimer = { speedrunTimer.togglePause() },
+            onSpeedrunResetTimer = { speedrunTimer.resetRun() }
         )
+    }
+
+    private fun initializeSpeedrun() {
+        speedrunTimer.onRunEnded = { runEnd ->
+            val categoryId = runEnd.categoryId
+            if (categoryId != null) {
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                    speedrunRepository.recordAttempt(
+                        categoryId = categoryId,
+                        startedAt = runEnd.startedAtEpochMs,
+                        completed = runEnd.completed,
+                        finalTimeMs = runEnd.finalTimeMs,
+                        splitTimesMs = runEnd.splitTimesMs
+                    )
+                }
+            }
+        }
+    }
+
+    private fun requestSpeedrunArm() {
+        lifecycleScope.launch {
+            val categories = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                speedrunRepository.getCategoriesForGame(gameId)
+            }
+            when {
+                categories.isEmpty() -> armSpeedrunCategory(null)
+                categories.size == 1 -> armSpeedrunCategory(categories.first().id)
+                else -> {
+                    speedrunPickerCategories = categories
+                    speedrunPickerFocusIndex = 0
+                    speedrunPickerVisible = true
+                }
+            }
+        }
+    }
+
+    private fun armSpeedrunCategory(categoryId: Long?) {
+        lifecycleScope.launch {
+            val armData = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val category = categoryId?.let { id ->
+                    speedrunRepository.getCategoriesForGame(gameId).firstOrNull { it.id == id }
+                } ?: speedrunRepository.createCategory(
+                    gameId = gameId,
+                    name = "Practice",
+                    segmentNames = (1..5).map { "Segment $it" }
+                ).let { newId -> speedrunRepository.getCategoriesForGame(gameId).first { it.id == newId } }
+                val segments = speedrunRepository.getSegmentNames(category.id)
+                val comparison = speedrunRepository.getComparison(category.id, segments.size)
+                Triple(category, segments, comparison)
+            }
+            speedrunTimer.arm(
+                categoryId = armData.first.id,
+                categoryName = armData.first.name,
+                segments = armData.second,
+                pbSplitTimesMs = armData.third.pbSplitTimesMs,
+                bestSegmentDurationsMs = armData.third.bestSegmentDurationsMs,
+                pbTimeMs = armData.third.pbTimeMs,
+                attemptCount = armData.third.attemptCount
+            )
+            setSpeedrunPanelSide(speedrunPanelSidePref)
+        }
     }
 
     private fun buildContentView() {
@@ -719,8 +823,35 @@ class LibretroActivity : ComponentActivity() {
                 )
             )
         }
+        val splitRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            addView(
+                android.widget.Space(this@LibretroActivity),
+                android.widget.LinearLayout.LayoutParams(
+                    0,
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    0f
+                )
+            )
+            addView(
+                splitColumn,
+                android.widget.LinearLayout.LayoutParams(
+                    0,
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    1f
+                )
+            )
+            addView(
+                android.widget.Space(this@LibretroActivity),
+                android.widget.LinearLayout.LayoutParams(
+                    0,
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    0f
+                )
+            )
+        }
         val container = FrameLayout(this).apply {
-            addView(splitColumn, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            addView(splitRow, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             addView(
                 ComposeView(this@LibretroActivity).apply {
                     setContent { InGameOverlay() }
@@ -732,11 +863,13 @@ class LibretroActivity : ComponentActivity() {
 
         setContentView(container)
         this.splitColumn = splitColumn
+        this.splitRow = splitRow
         applyPortraitSplit(splitColumn)
+        applySpeedrunSplit(splitRow)
 
         container.post {
-            videoSettings.setScreenSize(container.width, container.height)
-            Log.d(TAG, "Container size: ${container.width}x${container.height}, aspectRatioMode: ${videoSettings.aspectRatioMode}")
+            videoSettings.setScreenSize(splitColumn.width, container.height)
+            Log.d(TAG, "Game region size: ${splitColumn.width}x${container.height}, aspectRatioMode: ${videoSettings.aspectRatioMode}")
             if (coreLoadedSuccessfully) {
                 videoSettings.applyAspectRatio()
                 videoSettings.applyOverscanCrop()
@@ -771,6 +904,42 @@ class LibretroActivity : ComponentActivity() {
         column.requestLayout()
     }
 
+    private fun applySpeedrunSplit(row: android.widget.LinearLayout) {
+        val landscape = currentOrientationState != android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val panelWeight = if (landscape && isGamepadConnectedState && speedrunPanelSideState != "Off") {
+            speedrunPanelFractionState.coerceIn(SPEEDRUN_PANEL_FRACTION_RANGE)
+        } else 0f
+        val (leftWeight, rightWeight) = when (speedrunPanelSideState) {
+            "Left" -> panelWeight to 0f
+            "Right" -> 0f to panelWeight
+            else -> 0f to 0f
+        }
+        val spacerLeft = row.getChildAt(0)
+        val gameArea = row.getChildAt(1)
+        val spacerRight = row.getChildAt(2)
+        (spacerLeft.layoutParams as android.widget.LinearLayout.LayoutParams).weight = leftWeight
+        (gameArea.layoutParams as android.widget.LinearLayout.LayoutParams).weight = 1f - panelWeight
+        (spacerRight.layoutParams as android.widget.LinearLayout.LayoutParams).weight = rightWeight
+        spacerLeft.layoutParams = spacerLeft.layoutParams
+        gameArea.layoutParams = gameArea.layoutParams
+        spacerRight.layoutParams = spacerRight.layoutParams
+        row.requestLayout()
+        row.post {
+            splitColumn?.let { videoSettings.setScreenSize(it.width, it.height) }
+            if (coreLoadedSuccessfully) videoSettings.applyAspectRatio()
+        }
+    }
+
+    private fun setSpeedrunPanelSide(side: String) {
+        speedrunPanelSideState = side
+        splitRow?.let { applySpeedrunSplit(it) }
+    }
+
+    private fun setSpeedrunPanelFraction(fraction: Float) {
+        speedrunPanelFractionState = fraction.coerceIn(SPEEDRUN_PANEL_FRACTION_RANGE)
+        splitRow?.let { applySpeedrunSplit(it) }
+    }
+
 
     @androidx.compose.runtime.Composable
     private fun InGameOverlay() {
@@ -794,6 +963,21 @@ class LibretroActivity : ComponentActivity() {
                     onExitEdit = { exitTouchEditMode() },
                     onKey = { action, kc -> dispatchTouchKey(action, kc) }
                 )
+                val speedrunState by speedrunTimer.state.collectAsState()
+                val speedrunPanelVisible = speedrunState.armed &&
+                    speedrunPanelSideState != "Off" &&
+                    isGamepadConnectedState &&
+                    currentOrientationState != android.content.res.Configuration.ORIENTATION_PORTRAIT
+                if (speedrunPanelVisible) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        com.nendo.argosy.libretro.ui.SpeedrunPanel(
+                            state = speedrunState,
+                            modifier = Modifier
+                                .align(if (speedrunPanelSideState == "Left") Alignment.CenterStart else Alignment.CenterEnd)
+                                .fillMaxWidth(speedrunPanelFractionState.coerceIn(SPEEDRUN_PANEL_FRACTION_RANGE))
+                        )
+                    }
+                }
                 if (menuVisible) {
                     val quality = if (netplay.inSession && netplay.role != null) {
                         NetplayQualityInfo(
@@ -824,6 +1008,9 @@ class LibretroActivity : ComponentActivity() {
                         netplaySessionIsReserved = netplay.sessionIsReserved,
                         netplayQuality = quality,
                         touchControlsVisible = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState,
+                        speedrunAvailable = isGamepadConnectedState &&
+                            currentOrientationState != android.content.res.Configuration.ORIENTATION_PORTRAIT,
+                        speedrunArmed = speedrunState.armed,
                         hasQuickSave = saveStateManager.hasQuickSave,
                         quickHistoryFocused = menuQuickHistoryFocused,
                         onQuickHistoryFocusChange = { menuQuickHistoryFocused = it }
@@ -849,6 +1036,20 @@ class LibretroActivity : ComponentActivity() {
                             menuFocusIndex = 0
                             menuVisible = true
                         }
+                    )
+                }
+                if (speedrunPickerVisible) {
+                    activeMenuHandler = DiscMenu(
+                        labels = speedrunPickerCategories.map { it.name },
+                        currentIndex = -1,
+                        focusedIndex = speedrunPickerFocusIndex,
+                        onFocusChange = { speedrunPickerFocusIndex = it },
+                        onSelect = { index ->
+                            speedrunPickerVisible = false
+                            speedrunPickerCategories.getOrNull(index)?.let { armSpeedrunCategory(it.id) }
+                        },
+                        onDismiss = { speedrunPickerVisible = false },
+                        title = "Speedrun Category"
                     )
                 }
                 if (netplay.modePickerVisible) {
@@ -1520,6 +1721,16 @@ class LibretroActivity : ComponentActivity() {
             }
             InGameMenuAction.Reset -> {
                 retroView.reset()
+                speedrunTimer.onGameReset(speedrunStartOnReset)
+                hideMenu()
+            }
+            InGameMenuAction.ToggleSpeedrun -> {
+                if (speedrunTimer.isArmed) {
+                    speedrunTimer.disarm()
+                    setSpeedrunPanelSide("Off")
+                } else {
+                    requestSpeedrunArm()
+                }
                 hideMenu()
             }
             InGameMenuAction.Quit -> {
@@ -1918,6 +2129,10 @@ class LibretroActivity : ComponentActivity() {
 
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP) {
+            hotkeyConsumedKeys.remove(event.keyCode)
+            if (::hotkeyDispatcher.isInitialized) hotkeyDispatcher.onKeyUp(event.keyCode)
+        }
         if (isAnyMenuOpen) {
             if (gamepadInputBridge.handleKeyEvent(event)) return true
             if (menuInputHandler.mapKeyToEvent(event.keyCode) != null) return true
@@ -1940,8 +2155,14 @@ class LibretroActivity : ComponentActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (isAnyMenuOpen) return super.onKeyDown(keyCode, event)
 
-        val controllerId = event.device?.let { getControllerId(it) }
-        if (hotkeyDispatcher.onKeyDown(keyCode, controllerId)) return true
+        if (event.repeatCount > 0 && keyCode in hotkeyConsumedKeys) return true
+        if (event.repeatCount == 0) {
+            val controllerId = event.device?.let { getControllerId(it) }
+            if (hotkeyDispatcher.onKeyDown(keyCode, controllerId)) {
+                hotkeyConsumedKeys.add(keyCode)
+                return true
+            }
+        }
 
         if (shouldFilterShoulderButton(keyCode)) return true
 
@@ -1958,8 +2179,6 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (isAnyMenuOpen) return super.onKeyUp(keyCode, event)
-
-        hotkeyDispatcher.onKeyUp(keyCode)
 
         if (shouldFilterShoulderButton(keyCode)) return true
 
@@ -2098,32 +2317,24 @@ class LibretroActivity : ComponentActivity() {
         currentOrientationState = newConfig.orientation
         currentRotationState = windowManager.defaultDisplay.rotation
         splitColumn?.let { applyPortraitSplit(it) }
+        splitRow?.let { applySpeedrunSplit(it) }
+    }
+
+    private fun refreshGamepadPresence() {
+        val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
+        if (connected != isGamepadConnectedState) {
+            isGamepadConnectedState = connected
+            splitColumn?.let { applyPortraitSplit(it) }
+            splitRow?.let { applySpeedrunSplit(it) }
+        }
     }
 
     private fun registerGamepadDetection() {
         val im = getSystemService(android.hardware.input.InputManager::class.java) ?: return
         val listener = object : android.hardware.input.InputManager.InputDeviceListener {
-            override fun onInputDeviceAdded(deviceId: Int) {
-                val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
-                if (connected != isGamepadConnectedState) {
-                    isGamepadConnectedState = connected
-                    splitColumn?.let { applyPortraitSplit(it) }
-                }
-            }
-            override fun onInputDeviceRemoved(deviceId: Int) {
-                val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
-                if (connected != isGamepadConnectedState) {
-                    isGamepadConnectedState = connected
-                    splitColumn?.let { applyPortraitSplit(it) }
-                }
-            }
-            override fun onInputDeviceChanged(deviceId: Int) {
-                val connected = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
-                if (connected != isGamepadConnectedState) {
-                    isGamepadConnectedState = connected
-                    splitColumn?.let { applyPortraitSplit(it) }
-                }
-            }
+            override fun onInputDeviceAdded(deviceId: Int) = refreshGamepadPresence()
+            override fun onInputDeviceRemoved(deviceId: Int) = refreshGamepadPresence()
+            override fun onInputDeviceChanged(deviceId: Int) = refreshGamepadPresence()
         }
         inputDeviceListener = listener
         im.registerInputDeviceListener(listener, null)
@@ -2154,15 +2365,83 @@ class LibretroActivity : ComponentActivity() {
         orientationEventListener = null
     }
 
+    private fun createSessionQuickActions() = object : com.nendo.argosy.DualScreenManager.SessionQuickActions {
+        override fun quickSave() {
+            runOnUiThread {
+                if (coreDestroyed || !::retroView.isInitialized) return@runOnUiThread
+                val frame = try { retroView.captureRawFrame() } catch (_: Exception) { null }
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val stateData = try { retroView.serializeState() } catch (_: Exception) { null }
+                    val ok = stateData != null && saveStateManager.performQuickSave(stateData, frame)
+                    notifyQuickAction(ok, "State saved", "Save failed")
+                }
+            }
+        }
+
+        override fun quickLoad() {
+            runOnUiThread {
+                if (coreDestroyed || !::retroView.isInitialized) return@runOnUiThread
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val ok = try { saveStateManager.performQuickLoad(retroView) } catch (_: Exception) { false }
+                    notifyQuickAction(ok, "State loaded", "No quick save yet")
+                }
+            }
+        }
+
+        override fun screenshot() {
+            runOnUiThread {
+                if (coreDestroyed || !::retroView.isInitialized) return@runOnUiThread
+                val frame = try { retroView.captureRawFrame() } catch (_: Exception) { null }
+                if (frame == null) {
+                    notifyQuickAction(false, "", "Capture failed")
+                    return@runOnUiThread
+                }
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val ok = saveFrameToGallery(frame)
+                    notifyQuickAction(ok, "Screenshot saved", "Screenshot failed")
+                }
+            }
+        }
+    }
+
+    private fun notifyQuickAction(ok: Boolean, successTitle: String, failureTitle: String) {
+        com.nendo.argosy.data.social.SocialOverlayService.show(
+            this, if (ok) successTitle else failureTitle
+        )
+    }
+
+    private fun saveFrameToGallery(frame: android.graphics.Bitmap): Boolean {
+        return try {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "argosy_${System.currentTimeMillis()}.png")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Argosy")
+            }
+            val uri = contentResolver.insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+            ) ?: return false
+            contentResolver.openOutputStream(uri)?.use { out ->
+                frame.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+            } ?: return false
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "saveFrameToGallery failed", e)
+            false
+        }
+    }
+
     override fun onDestroy() {
         Log.d(TAG, "onDestroy: isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations")
         coreDestroyed = true
+        if (isFinishing) speedrunTimer.disarm()
         unregisterGamepadDetection()
         unregisterOrientationListener()
-        audioController.abandonAudioFocus()
+        if (::audioController.isInitialized) audioController.abandonAudioFocus()
         com.nendo.argosy.DualScreenManagerHolder.instance?.let { dsm ->
             dsm.emulatorKeyDispatcher = null
             dsm.emulatorMotionDispatcher = null
+            dsm.sessionQuickActions = null
+            dsm.sessionRefocus = null
         }
         if (::netplay.isInitialized) netplay.shutdown()
         if (::achievementBridge.isInitialized) achievementBridge.destroy()
@@ -2201,6 +2480,9 @@ class LibretroActivity : ComponentActivity() {
         private const val TAG = "LibretroActivity"
 
         private const val CORE_INPUT_PULSE_MS = 50L
+
+        private const val SPEEDRUN_PANEL_FRACTION_DEFAULT = 0.30f
+        private val SPEEDRUN_PANEL_FRACTION_RANGE = 0.20f..0.40f
 
         const val EXTRA_ROM_PATH = "rom_path"
         const val EXTRA_CORE_PATH = "core_path"

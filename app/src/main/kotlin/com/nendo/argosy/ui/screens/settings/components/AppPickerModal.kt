@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -30,6 +31,7 @@ import com.nendo.argosy.data.platform.LaunchableApp
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.screens.settings.AppPickerModalState
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
@@ -105,10 +107,11 @@ private fun AppRow(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
-    val background = if (isFocused) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val labelColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val theme = LocalArgosyTheme.current
+    val background = if (isFocused) theme.focusAccent.copy(alpha = 0.15f) else Color.Transparent
+    val labelColor = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f) else MaterialTheme.colorScheme.onSurface
     val subtitleColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        lerp(theme.focusAccent, Color.White, 0.45f).copy(alpha = 0.7f)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     }

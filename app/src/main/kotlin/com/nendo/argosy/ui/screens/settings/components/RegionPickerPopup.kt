@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.settings.components
 
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,32 +25,58 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.nendo.argosy.data.preferences.SyncFilterPreferences
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.nendo.argosy.ui.components.DragReorderState
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.dragReorderContainer
+import com.nendo.argosy.ui.components.dragReorderItem
+import com.nendo.argosy.ui.components.rememberDragReorderState
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 @Composable
 fun RegionPickerPopup(
-    enabledRegions: Set<String>,
+    regions: List<String>,
+    enabledRegions: List<String>,
     focusIndex: Int,
+    heldRegion: String?,
+    orderingEnabled: Boolean,
     onToggle: (String) -> Unit,
+    onLift: (String) -> Unit,
+    onMoveTo: (String, Int) -> Unit,
+    onDrop: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
-    val allRegions = SyncFilterPreferences.ALL_KNOWN_REGIONS
+    val haptics = LocalHapticFeedback.current
 
-    FocusedScroll(
+    val dragState = rememberDragReorderState(
         listState = listState,
-        focusedIndex = focusIndex
+        canDrag = { key -> orderingEnabled && key is String && key in enabledRegions },
+        onLift = { key ->
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onLift(key as String)
+        },
+        onMove = { key, index -> onMoveTo(key as String, index) },
+        onDrop = onDrop
     )
+
+    if (dragState.draggingKey == null) {
+        FocusedScroll(
+            listState = listState,
+            focusedIndex = focusIndex
+        )
+    }
 
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
@@ -64,7 +91,7 @@ fun RegionPickerPopup(
         Column(
             modifier = Modifier
                 .width(Dimens.modalWidthLg)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg),
@@ -76,7 +103,11 @@ fun RegionPickerPopup(
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Toggle regions to include/exclude during sync",
+                text = if (orderingEnabled) {
+                    "Toggle regions to sync. Hold and drag to set priority; the top match wins when a game has multiple versions"
+                } else {
+                    "Toggle regions to include/exclude during sync"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -85,29 +116,52 @@ fun RegionPickerPopup(
 
             LazyColumn(
                 state = listState,
-                modifier = Modifier.heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm),
+                modifier = Modifier
+                    .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm)
+                    .dragReorderContainer(dragState),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
-                itemsIndexed(allRegions) { index, region ->
-                    val isFocused = focusIndex == index
-                    val isSelected = region in enabledRegions
+                itemsIndexed(regions, key = { _, region -> region }) { index, region ->
+                    val rank = if (orderingEnabled) enabledRegions.indexOf(region) else -1
+                    val touchDragActive = dragState.draggingKey != null
                     RegionPickerItem(
                         name = region,
-                        isFocused = isFocused,
-                        isSelected = isSelected,
-                        onClick = { onToggle(region) }
+                        rank = rank,
+                        showRank = orderingEnabled,
+                        isFocused = focusIndex == index,
+                        isSelected = region in enabledRegions,
+                        isHeld = heldRegion == region,
+                        dragState = dragState,
+                        modifier = if (touchDragActive && dragState.draggingKey != region) Modifier.animateItem() else Modifier,
+                        onClick = { if (heldRegion == null) onToggle(region) }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
-                hints = listOf(
-                    InputButton.DPAD to "Navigate",
-                    InputButton.A to "Toggle",
-                    InputButton.B to "Close"
-                )
+            FooterHints(
+                forced = heldRegion != null,
+                hints = if (heldRegion != null) {
+                    listOf(
+                        InputButton.DPAD_VERTICAL to "Move",
+                        InputButton.A to "Accept",
+                        InputButton.B to "Cancel"
+                    )
+                } else if (orderingEnabled) {
+                    listOf(
+                        InputButton.DPAD to "Navigate",
+                        InputButton.A to "Toggle",
+                        InputButton.X to "Prioritize",
+                        InputButton.B to "Close"
+                    )
+                } else {
+                    listOf(
+                        InputButton.DPAD to "Navigate",
+                        InputButton.A to "Toggle",
+                        InputButton.B to "Close"
+                    )
+                }
             )
         }
     }
@@ -116,20 +170,37 @@ fun RegionPickerPopup(
 @Composable
 private fun RegionPickerItem(
     name: String,
+    rank: Int,
+    showRank: Boolean,
     isFocused: Boolean,
     isSelected: Boolean,
+    isHeld: Boolean,
+    dragState: DragReorderState,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .dragReorderItem(dragState, name)
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 when {
-                    isFocused -> MaterialTheme.colorScheme.primaryContainer
+                    isHeld -> theme.focusAccent.copy(alpha = 0.3f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
+                    isFocused -> theme.focusAccent.copy(alpha = 0.15f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
                     isSelected -> MaterialTheme.colorScheme.surfaceVariant
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 }
+            )
+            .then(
+                if (isHeld) Modifier.border(
+                    width = Dimens.borderThin,
+                    color = theme.focusAccent,
+                    shape = RoundedCornerShape(Dimens.radiusMd)
+                ) else Modifier
             )
             .clickableNoFocus(onClick = onClick)
             .padding(Dimens.spacingMd),
@@ -139,17 +210,26 @@ private fun RegionPickerItem(
         Text(
             text = name,
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused || isHeld) lerp(theme.focusAccent, Color.White, 0.45f)
                     else MaterialTheme.colorScheme.onSurface
         )
         if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
-                       else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(Dimens.iconSm)
-            )
+            if (showRank && rank >= 0) {
+                Text(
+                    text = "${rank + 1}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isFocused || isHeld) lerp(theme.focusAccent, Color.White, 0.45f)
+                            else MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f)
+                           else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
+            }
         }
     }
 }

@@ -680,7 +680,7 @@ object EmulatorRegistry {
         EmulatorDef(
             id = "armsx2",
             packageName = "come.nanodata.armsx2",
-            displayName = "ARMSX2 (Legacy)",
+            displayName = "ARMSX2 (Play Store)",
             supportedPlatforms = setOf("ps2"),
             launchConfig = LaunchConfig.Custom(
                 activityClass = "kr.co.iefriends.pcsx2.activities.MainActivity"
@@ -919,7 +919,7 @@ object EmulatorRegistry {
             id = "gamenative",
             packageName = "app.gamenative",
             displayName = "GameNative",
-            supportedPlatforms = setOf("steam"),
+            supportedPlatforms = setOf("steam", "windows", "pc"),
             downloadUrl = "https://github.com/utkarshdalal/GameNative/releases",
             releaseSource = ReleaseSource.GitHub("utkarshdalal/GameNative")
         )
@@ -1007,6 +1007,8 @@ object EmulatorRegistry {
         "pokemini" to listOf("builtin", "retroarch", "retroarch_64"),
         "xbox360" to listOf("ax360e", "ax360e_free"),
         "steam" to listOf("gamehub", "gamehub_lite", "gamenative"),
+        "windows" to listOf("gamenative"),
+        "pc" to listOf("gamenative"),
         "c64" to listOf("retroarch", "retroarch_64"),
         "vic20" to listOf("retroarch", "retroarch_64"),
         "pc9800" to listOf("retroarch", "retroarch_64"),

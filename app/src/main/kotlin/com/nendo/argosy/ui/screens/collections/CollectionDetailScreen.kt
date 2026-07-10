@@ -47,7 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.ui.components.AlphabetSidebar
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -212,10 +212,7 @@ fun CollectionDetailScreen(
             )
             baseHints + pinHint + jumpHint + optionsHint + refreshHint
         }
-        FooterBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            hints = hints
-        )
+        FooterHints(hints = hints)
 
         uiState.overlayLetter?.let { letter ->
             Box(

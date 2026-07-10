@@ -14,36 +14,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.GridDensity
-import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.components.CyclePreference
-import com.nendo.argosy.ui.components.HueSliderPreference
 import com.nendo.argosy.ui.components.NavigationPreference
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
-import com.nendo.argosy.ui.theme.colorIntToHue
-import com.nendo.argosy.ui.theme.hueToColorInt
-import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.DisplayState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 internal data class InterfaceLayoutState(
     val display: DisplayState,
     val bgmEnabled: Boolean,
     val bgmIsFolder: Boolean,
-    val uiSoundsEnabled: Boolean,
     val hasSecondaryDisplay: Boolean = false,
     val hasPhysicalSecondaryDisplay: Boolean = false,
     val dualScreenEnabled: Boolean = false
@@ -53,7 +49,6 @@ internal data class InterfaceLayoutState(
             display = state.display,
             bgmEnabled = state.ambientAudio.enabled,
             bgmIsFolder = state.ambientAudio.isFolder,
-            uiSoundsEnabled = state.sounds.enabled,
             hasSecondaryDisplay = state.display.hasSecondaryDisplay,
             hasPhysicalSecondaryDisplay = state.display.hasPhysicalSecondaryDisplay,
             dualScreenEnabled = state.display.dualScreenEnabled
@@ -81,77 +76,50 @@ internal sealed class InterfaceItem(
     class SectionSpacer(key: String, section: String, visibleWhen: (InterfaceLayoutState) -> Boolean = { true })
         : InterfaceItem(key, section, visibleWhen)
 
-    // Appearance
-    data object Theme : InterfaceItem("theme", "appearance")
-    data object AccentColor : InterfaceItem("accentColor", "appearance")
-    data object SecondaryColor : InterfaceItem("secondaryColor", "appearance")
-    data object AmbientLedSettings : InterfaceItem(
-        key = "ambientLedSettings",
-        section = "appearance",
-        visibleWhen = { it.display.ambientLedAvailable }
-    )
-    data object GridDensity : InterfaceItem("gridDensity", "appearance")
-    data object UiScale : InterfaceItem("uiScale", "appearance")
-    data object BoxArt : InterfaceItem("boxArt", "appearance")
-    data object HomeScreen : InterfaceItem("homeScreen", "appearance")
-    data object DualScreenEnabled : InterfaceItem("dualScreenEnabled", "appearance")
-    data object DisplayRoles : InterfaceItem(
-        key = "displayRoles",
-        section = "appearance",
-        visibleWhen = { it.dualScreenEnabled }
-    )
-    // Screen Safety
+    data object GridDensity : InterfaceItem("gridDensity", "layout")
+    data object UiScale : InterfaceItem("uiScale", "layout")
+    data object HomeScreen : InterfaceItem("homeScreen", "layout")
+
     data object ScreenDimmer : InterfaceItem("screenDimmer", "screenSafety")
     data object DimAfter : InterfaceItem("dimAfter", "screenSafety")
     data object DimLevel : InterfaceItem("dimLevel", "screenSafety")
 
-    // Background Music
-    data object BgmToggle : InterfaceItem("bgmToggle", "bgm")
-    data object BgmVolume : InterfaceItem("bgmVolume", "bgm", { it.bgmEnabled })
-    data object BgmFile : InterfaceItem("bgmFile", "bgm", { it.bgmEnabled })
-    data object BgmShuffle : InterfaceItem("bgmShuffle", "bgm", { it.bgmEnabled && it.bgmIsFolder })
+    data object BgmToggle : InterfaceItem("bgmToggle", "ambience")
+    data object BgmVolume : InterfaceItem("bgmVolume", "ambience", { it.bgmEnabled })
+    data object BgmFile : InterfaceItem("bgmFile", "ambience", { it.bgmEnabled })
+    data object BgmShuffle : InterfaceItem("bgmShuffle", "ambience", { it.bgmEnabled && it.bgmIsFolder })
 
-    // UI Sounds
-    data object UiSoundsToggle : InterfaceItem("uiSoundsToggle", "uiSounds")
-    data object UiSoundsVolume : InterfaceItem("uiVolume", "uiSounds", { it.uiSoundsEnabled })
-
-    // Sound Customization
-    class SoundTypeItem(val soundType: SoundType) : InterfaceItem(
-        key = "soundType_${soundType.name}",
-        section = "customize",
-        visibleWhen = { it.uiSoundsEnabled }
+    data object DualScreenEnabled : InterfaceItem("dualScreenEnabled", "displays")
+    data object DisplayRoles : InterfaceItem(
+        key = "displayRoles",
+        section = "displays",
+        visibleWhen = { it.dualScreenEnabled }
+    )
+    data object AmbientLedSettings : InterfaceItem(
+        key = "ambientLedSettings",
+        section = "displays",
+        visibleWhen = { it.display.ambientLedAvailable }
     )
 
     companion object {
-        private val AppearanceHeader = Header("appearanceHeader", "appearance", "Appearance")
+        private val LayoutHeader = Header("layoutHeader", "layout", "Layout")
+        private val ScreenSafetySpacer = SectionSpacer("screenSafetySpacer", "screenSafety")
         private val ScreenSafetyHeader = Header("screenSafetyHeader", "screenSafety", "Screen Safety")
-        private val BgmSpacer = SectionSpacer("bgmSpacer", "bgm")
-        private val BgmHeader = Header("bgmHeader", "bgm", "Background Music")
-        private val UiSoundsSpacer = SectionSpacer("uiSoundsSpacer", "uiSounds")
-        private val UiSoundsHeader = Header("uiSoundsHeader", "uiSounds", "UI Sounds")
-        private val CustomizeSpacer = SectionSpacer(
-            key = "customizeSpacer",
-            section = "customize",
-            visibleWhen = { it.uiSoundsEnabled }
-        )
-        private val CustomizeHeader = Header(
-            key = "customizeHeader",
-            section = "customize",
-            title = "Customize Sounds",
-            visibleWhen = { it.uiSoundsEnabled }
-        )
+        private val AmbienceSpacer = SectionSpacer("ambienceSpacer", "ambience")
+        private val AmbienceHeader = Header("ambienceHeader", "ambience", "Ambience")
+        private val DisplaysSpacer = SectionSpacer("displaysSpacer", "displays")
+        private val DisplaysHeader = Header("displaysHeader", "displays", "Displays")
 
         val ALL: List<InterfaceItem> = listOf(
-            AppearanceHeader,
-            Theme, AccentColor, SecondaryColor, AmbientLedSettings, GridDensity, UiScale, BoxArt, HomeScreen, DualScreenEnabled, DisplayRoles,
-            ScreenSafetyHeader,
+            LayoutHeader,
+            GridDensity, UiScale, HomeScreen,
+            ScreenSafetySpacer, ScreenSafetyHeader,
             ScreenDimmer, DimAfter, DimLevel,
-            BgmSpacer, BgmHeader,
+            AmbienceSpacer, AmbienceHeader,
             BgmToggle, BgmVolume, BgmFile, BgmShuffle,
-            UiSoundsSpacer, UiSoundsHeader,
-            UiSoundsToggle, UiSoundsVolume,
-            CustomizeSpacer, CustomizeHeader
-        ) + SoundType.entries.map { SoundTypeItem(it) }
+            DisplaysSpacer, DisplaysHeader,
+            DualScreenEnabled, DisplayRoles, AmbientLedSettings
+        )
     }
 }
 
@@ -162,11 +130,10 @@ private val interfaceLayout = SettingsLayout<InterfaceItem, InterfaceLayoutState
     sectionOf = { it.section },
     sectionTitle = {
         when (it) {
-            "appearance" -> "Appearance"
+            "layout" -> "Layout"
             "screenSafety" -> "Screen Safety"
-            "bgm" -> "Background Music"
-            "uiSounds" -> "UI Sounds"
-            "customize" -> "Customize Sounds"
+            "ambience" -> "Ambience"
+            "displays" -> "Displays"
             else -> null
         }
     }
@@ -188,7 +155,6 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val storage = uiState.storage
     val bgmEnabled = uiState.ambientAudio.enabled
     val bgmIsFolder = uiState.ambientAudio.isFolder
-    val uiSoundsEnabled = uiState.sounds.enabled
 
     val layoutState = remember(
         display.ambientLedAvailable,
@@ -196,14 +162,10 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.hasPhysicalSecondaryDisplay,
         display.dualScreenEnabled,
         bgmEnabled,
-        bgmIsFolder,
-        uiSoundsEnabled
+        bgmIsFolder
     ) {
-        InterfaceLayoutState(display, bgmEnabled, bgmIsFolder, uiSoundsEnabled, display.hasSecondaryDisplay, display.hasPhysicalSecondaryDisplay, display.dualScreenEnabled)
+        InterfaceLayoutState(display, bgmEnabled, bgmIsFolder, display.hasSecondaryDisplay, display.hasPhysicalSecondaryDisplay, display.dualScreenEnabled)
     }
-
-    val currentHue = display.primaryColor?.let { colorIntToHue(it) }
-    val secondaryHue = display.secondaryColor?.let { colorIntToHue(it) }
 
     val visibleItems = remember(layoutState) {
         interfaceLayout.visibleItems(layoutState)
@@ -215,6 +177,9 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: InterfaceItem): Boolean =
         uiState.focusedIndex == interfaceLayout.focusIndexOf(item, layoutState)
 
+    fun pickerToken(item: InterfaceItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -222,6 +187,7 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { interfaceLayout.focusToListIndex(it, layoutState) },
         itemKey = { it.key },
         isNavItem = { it is InterfaceItem.SectionSpacer },
+        isHeader = { it is InterfaceItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
@@ -230,58 +196,15 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 is InterfaceItem.Header -> InterfaceSectionHeader(item.title)
                 is InterfaceItem.SectionSpacer -> Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-                InterfaceItem.Theme -> CyclePreference(
-                    title = "Theme",
-                    value = display.themeMode.name.lowercase().replaceFirstChar { it.uppercase() },
-                    isFocused = isFocused(item),
-                    onClick = {
-                        val next = when (display.themeMode) {
-                            ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                            ThemeMode.LIGHT -> ThemeMode.DARK
-                            ThemeMode.DARK -> ThemeMode.SYSTEM
-                        }
-                        viewModel.setThemeMode(next)
-                    }
-                )
-
-                InterfaceItem.AccentColor -> HueSliderPreference(
-                    title = "Accent Color",
-                    currentHue = currentHue,
-                    isFocused = isFocused(item),
-                    onHueChange = { hue ->
-                        if (hue != null) {
-                            viewModel.setPrimaryColor(hueToColorInt(hue))
-                        } else {
-                            viewModel.resetToDefaultColor()
-                        }
-                    }
-                )
-
-                InterfaceItem.SecondaryColor -> HueSliderPreference(
-                    title = "Secondary Color",
-                    currentHue = secondaryHue,
-                    isFocused = isFocused(item),
-                    onHueChange = { hue ->
-                        if (hue != null) {
-                            viewModel.setSecondaryColor(hueToColorInt(hue))
-                        } else {
-                            viewModel.resetToDefaultSecondaryColor()
-                        }
-                    }
-                )
-
                 InterfaceItem.GridDensity -> CyclePreference(
                     title = "Grid Density",
                     value = display.gridDensity.name.lowercase().replaceFirstChar { it.uppercase() },
                     isFocused = isFocused(item),
-                    onClick = {
-                        val next = when (display.gridDensity) {
-                            GridDensity.COMPACT -> GridDensity.NORMAL
-                            GridDensity.NORMAL -> GridDensity.SPACIOUS
-                            GridDensity.SPACIOUS -> GridDensity.COMPACT
-                        }
-                        viewModel.setGridDensity(next)
-                    }
+                    onClick = { viewModel.cycleGridDensity(1) },
+                    onPrev = { viewModel.cycleGridDensity(-1) },
+                    options = remember { GridDensity.entries.map { d -> d.name.lowercase().replaceFirstChar { c -> c.uppercase() } } },
+                    onSelect = { viewModel.setGridDensity(GridDensity.entries[it]) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 InterfaceItem.UiScale -> SliderPreference(
@@ -295,36 +218,12 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.adjustUiScale(5) }
                 )
 
-                InterfaceItem.BoxArt -> NavigationPreference(
-                    icon = Icons.Outlined.Image,
-                    title = "Box Art",
-                    subtitle = "Customize card appearance",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.navigateToBoxArt() }
-                )
-
                 InterfaceItem.HomeScreen -> NavigationPreference(
                     icon = Icons.Outlined.Home,
                     title = "Home Screen",
                     subtitle = "Background and footer settings",
                     isFocused = isFocused(item),
                     onClick = { viewModel.navigateToHomeScreen() }
-                )
-
-                InterfaceItem.DualScreenEnabled -> SwitchPreference(
-                    title = "Enable Dual-screen Mode",
-                    subtitle = "Use secondary display as companion screen",
-                    isEnabled = display.dualScreenEnabled,
-                    isFocused = isFocused(item),
-                    onToggle = { viewModel.setDualScreenEnabled(it) }
-                )
-
-                InterfaceItem.DisplayRoles -> CyclePreference(
-                    title = "Display Roles",
-                    subtitle = "Which physical display is the main vs companion screen; Swapped flips top and bottom",
-                    value = display.displayRoleOverride.displayName,
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleDisplayRoleOverride() }
                 )
 
                 InterfaceItem.ScreenDimmer -> SwitchPreference(
@@ -339,7 +238,11 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     title = "Dim After",
                     value = "${storage.screenDimmerTimeoutMinutes} min",
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleScreenDimmerTimeout() }
+                    onClick = { viewModel.cycleScreenDimmerTimeout() },
+                    onPrev = { viewModel.adjustScreenDimmerTimeout(-1) },
+                    options = remember { (1..5).map { "$it min" } },
+                    onSelect = { viewModel.adjustScreenDimmerTimeout((it + 1) - storage.screenDimmerTimeoutMinutes) },
+                    pickerRequestToken = pickerToken(item)
                 )
 
                 InterfaceItem.DimLevel -> SliderPreference(
@@ -350,14 +253,6 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     isFocused = isFocused(item),
                     step = 10,
                     onClick = { viewModel.cycleScreenDimmerLevel() }
-                )
-
-                InterfaceItem.AmbientLedSettings -> NavigationPreference(
-                    icon = Icons.Outlined.WbTwilight,
-                    title = "LED Control",
-                    subtitle = "Thumbstick LED colors and effects",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.navigateToAmbientLed() }
                 )
 
                 InterfaceItem.BgmToggle -> SwitchPreference(
@@ -399,36 +294,32 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onToggle = { viewModel.setAmbientAudioShuffle(it) }
                 )
 
-                InterfaceItem.UiSoundsToggle -> SwitchPreference(
-                    title = "UI Sounds",
-                    subtitle = "Play tones on navigation and selection",
-                    isEnabled = uiState.sounds.enabled,
+                InterfaceItem.DualScreenEnabled -> SwitchPreference(
+                    title = "Enable Dual-screen Mode",
+                    subtitle = "Use secondary display as companion screen",
+                    isEnabled = display.dualScreenEnabled,
                     isFocused = isFocused(item),
-                    onToggle = { viewModel.setSoundEnabled(it) }
+                    onToggle = { viewModel.setDualScreenEnabled(it) }
                 )
 
-                InterfaceItem.UiSoundsVolume -> {
-                    val volumeLevels = listOf(50, 70, 85, 95, 100)
-                    val currentIndex = volumeLevels.indexOfFirst { it >= uiState.sounds.volume }.takeIf { it >= 0 } ?: 0
-                    val sliderValue = currentIndex + 1
-                    SliderPreference(
-                        title = "Volume",
-                        value = sliderValue,
-                        minValue = 1,
-                        maxValue = 5,
-                        isFocused = isFocused(item),
-                        onClick = {
-                            val nextIndex = (currentIndex + 1).mod(volumeLevels.size)
-                            viewModel.setSoundVolume(volumeLevels[nextIndex])
-                        }
-                    )
-                }
-
-                is InterfaceItem.SoundTypeItem -> SoundCustomizationItem(
-                    soundType = item.soundType,
-                    displayValue = uiState.sounds.getDisplayNameForType(item.soundType),
+                InterfaceItem.DisplayRoles -> CyclePreference(
+                    title = "Display Roles",
+                    subtitle = "Which physical display is the main vs companion screen; Swapped flips top and bottom",
+                    value = display.displayRoleOverride.displayName,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.showSoundPicker(item.soundType) }
+                    onClick = { viewModel.cycleDisplayRoleOverride() },
+                    onPrev = { viewModel.cycleDisplayRoleOverride(-1) },
+                    options = remember { DisplayRoleOverride.entries.map { it.displayName } },
+                    onSelect = { viewModel.setDisplayRoleOverride(DisplayRoleOverride.entries[it]) },
+                    pickerRequestToken = pickerToken(item)
+                )
+
+                InterfaceItem.AmbientLedSettings -> NavigationPreference(
+                    icon = Icons.Outlined.WbTwilight,
+                    title = "LED Control",
+                    subtitle = "Thumbstick LED colors and effects",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.navigateToAmbientLed() }
                 )
             }
     }
@@ -442,47 +333,6 @@ private fun InterfaceSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = Dimens.spacingXs)
     )
-}
-
-@Composable
-private fun SoundCustomizationItem(
-    soundType: SoundType,
-    displayValue: String,
-    isFocused: Boolean,
-    onClick: () -> Unit
-) {
-    val displayName = soundType.name
-        .replace("_", " ")
-        .lowercase()
-        .split(" ")
-        .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusMd))
-            .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-            .clickableNoFocus(onClick = onClick)
-            .padding(Dimens.spacingMd),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = displayName,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = displayValue,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
 }
 
 private fun truncatePathMiddle(path: String, maxLength: Int = 40): String {
@@ -514,12 +364,14 @@ private fun BackgroundMusicFileItem(
 ) {
     val displayValue = filePath?.let { truncatePathMiddle(it) } ?: "None selected"
 
+    val focusAccent = LocalArgosyTheme.current.focusAccent
+    val focusedContent = lerp(focusAccent, Color.White, 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) focusAccent.copy(alpha = 0.15f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
             .clickableNoFocus(onClick = onClick)
@@ -530,13 +382,13 @@ private fun BackgroundMusicFileItem(
         Text(
             text = "Music File(s)",
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+            color = if (isFocused) focusedContent
                     else MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = displayValue,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            color = if (isFocused) focusedContent.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

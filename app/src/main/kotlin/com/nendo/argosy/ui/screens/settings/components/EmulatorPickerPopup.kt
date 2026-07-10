@@ -35,17 +35,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.data.emulator.EmulatorDef
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.remote.github.VersionFormatter
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.core.emulator.EmulatorDownloadState
 import com.nendo.argosy.ui.screens.settings.EmulatorPickerInfo
 import com.nendo.argosy.ui.screens.settings.EmulatorUpdateInfo
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 private data class PickerLayoutState(
@@ -142,7 +144,7 @@ fun EmulatorPickerPopup(
             modifier = Modifier
                 .width(Dimens.modalWidthLg)
                 .heightIn(max = popupMaxHeight)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
+                .clip(RoundedCornerShape(Dimens.radiusPanel))
                 .background(MaterialTheme.colorScheme.surface)
                 .clickableNoFocus(enabled = false) {}
                 .padding(Dimens.spacingLg),
@@ -280,7 +282,7 @@ fun EmulatorPickerPopup(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD to "Navigate",
                     InputButton.A to "Select",
@@ -307,6 +309,7 @@ private fun EmulatorPickerItem(
     val isHighlighted = (isFocused || isTouchSelected) && !isDisabled
     val isDownloading = downloadState is EmulatorDownloadState.Downloading
     val isFailed = downloadState is EmulatorDownloadState.Failed
+    val focusContent = lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
 
     val contentAlpha = if (isDisabled) 0.5f else 1f
 
@@ -325,7 +328,7 @@ private fun EmulatorPickerItem(
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 when {
-                    isHighlighted -> MaterialTheme.colorScheme.primaryContainer
+                    isHighlighted -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
                     isCurrentEmulator -> MaterialTheme.colorScheme.surfaceVariant
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 }
@@ -343,7 +346,7 @@ private fun EmulatorPickerItem(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = (if (isHighlighted) MaterialTheme.colorScheme.onPrimaryContainer
+                    color = (if (isHighlighted) focusContent
                             else MaterialTheme.colorScheme.onSurface).copy(alpha = contentAlpha)
                 )
                 Text(
@@ -351,7 +354,7 @@ private fun EmulatorPickerItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = when {
                         isFailed -> MaterialTheme.colorScheme.error
-                        isHighlighted -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f * contentAlpha)
+                        isHighlighted -> focusContent.copy(alpha = 0.7f * contentAlpha)
                         else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
                     }
                 )
@@ -367,21 +370,21 @@ private fun EmulatorPickerItem(
                 isCurrentEmulator && !hasUpdate -> Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = (if (isHighlighted) MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = (if (isHighlighted) focusContent
                            else MaterialTheme.colorScheme.primary).copy(alpha = contentAlpha),
                     modifier = Modifier.size(Dimens.iconSm)
                 )
                 hasUpdate -> Icon(
                     imageVector = Icons.Default.SystemUpdate,
                     contentDescription = "Update available",
-                    tint = (if (isHighlighted) MaterialTheme.colorScheme.onPrimaryContainer
-                           else MaterialTheme.colorScheme.tertiary).copy(alpha = contentAlpha),
+                    tint = (if (isHighlighted) focusContent
+                           else LocalLauncherTheme.current.semanticColors.info).copy(alpha = contentAlpha),
                     modifier = Modifier.size(Dimens.iconSm)
                 )
                 isDownload -> Icon(
                     imageVector = Icons.Default.Cloud,
                     contentDescription = null,
-                    tint = (if (isHighlighted) MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = (if (isHighlighted) focusContent
                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)).copy(alpha = contentAlpha),
                     modifier = Modifier.size(Dimens.iconSm)
                 )

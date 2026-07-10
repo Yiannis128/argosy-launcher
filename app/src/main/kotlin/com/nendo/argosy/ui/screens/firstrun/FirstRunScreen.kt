@@ -35,15 +35,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Button
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,7 +87,10 @@ import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
 import com.nendo.argosy.ui.input.LocalInputDispatcher
+import androidx.compose.ui.graphics.Color
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.util.PlatformFilterLogic
 
 @Composable
@@ -484,7 +483,7 @@ private fun RommLoginStep(
                         if (focusedIndex == 0)
                             Modifier
                                 .border(2.dp, MaterialTheme.colorScheme.primary, inputShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                                .background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                         else Modifier
                     )
             )
@@ -1332,16 +1331,13 @@ private fun CoreDownloadItem(
                         tint = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.width(Dimens.spacingSm))
-                    OutlinedButton(
-                        onClick = onRetry,
-                        modifier = Modifier.heightIn(min = 32.dp)
-                    ) {
+                    ActionButton(onClick = onRetry) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Retry",
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(Dimens.iconXs)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Dimens.spacingXs))
                         Text("Retry", style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -1410,30 +1406,18 @@ private fun FocusableButton(
     enabled: Boolean = true,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
-    val containerColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Button(
+    val labelColor = if (enabled) Color.White else LocalArgosyTheme.current.textMute
+    ActionButton(
         onClick = onClick,
-        enabled = enabled,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        )
+        focused = isFocused,
+        primary = true,
+        enabled = enabled
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null)
+            Icon(icon, contentDescription = null, tint = labelColor)
             Spacer(modifier = Modifier.width(Dimens.spacingSm))
         }
-        Text(text)
+        Text(text, style = MaterialTheme.typography.titleSmall, color = labelColor, maxLines = 1)
     }
 }
 
@@ -1444,19 +1428,10 @@ private fun FocusableOutlinedButton(
     onClick: () -> Unit,
     enabled: Boolean = true
 ) {
-    val containerColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-    val contentColor = if (isFocused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-    val borderColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-
-    OutlinedButton(
+    ActionButton(
+        label = text,
         onClick = onClick,
-        enabled = enabled,
-        border = BorderStroke(if (isFocused) 2.dp else 1.dp, borderColor),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        )
-    ) {
-        Text(text)
-    }
+        focused = isFocused,
+        enabled = enabled
+    )
 }

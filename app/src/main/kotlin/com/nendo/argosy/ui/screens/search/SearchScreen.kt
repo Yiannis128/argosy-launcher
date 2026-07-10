@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -45,11 +46,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun SearchScreen(
@@ -226,13 +229,14 @@ private fun SearchResultItem(
             .fillMaxWidth()
             .then(
                 if (isFocused) {
-                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimens.radiusLg))
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimens.radiusControl))
                 } else Modifier
             )
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surface,
-                RoundedCornerShape(Dimens.radiusLg)
+                RoundedCornerShape(Dimens.radiusControl)
             )
             .padding(Dimens.radiusLg),
         verticalAlignment = Alignment.CenterVertically
@@ -323,7 +327,7 @@ private fun LoadingState() {
 
 @Composable
 private fun SearchFooter(resultCount: Int) {
-    FooterBar(
+    FooterHints(
         hints = listOf(
             InputButton.DPAD to "Navigate",
             InputButton.A to "Select",
@@ -339,5 +343,6 @@ private fun SearchFooter(resultCount: Int) {
             }
         } else null
     )
+    FooterSpacer()
 }
 

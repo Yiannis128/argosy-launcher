@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -46,10 +45,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBarWithState
+import com.nendo.argosy.ui.components.FooterHintsWithState
 import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.NestedModal
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.common.StateScreenshotViewer
 import com.nendo.argosy.util.formatSaveSize
 import com.nendo.argosy.util.formatSaveTimestamp
@@ -130,11 +131,7 @@ fun SaveChannelModal(
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             if (state.isLoadingServer) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                )
+                ArgosyProgressBar(progress = null, style = ProgressBarStyle.Working)
                 Spacer(modifier = Modifier.height(Dimens.spacingSm))
             }
 
@@ -173,7 +170,7 @@ fun SaveChannelModal(
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             val hints = buildFooterHints(state)
-            FooterBarWithState(hints = hints)
+            FooterHintsWithState(hints = hints)
         }
 
         if (state.showRestoreConfirmation &&

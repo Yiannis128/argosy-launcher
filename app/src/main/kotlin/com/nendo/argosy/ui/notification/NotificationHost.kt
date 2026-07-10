@@ -15,15 +15,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nendo.argosy.R
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import kotlinx.coroutines.delay
@@ -178,14 +176,7 @@ private fun StatusNotificationBar(
         }
 
         status.progress?.let { progress ->
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(Dimens.borderMedium),
-                color = accentColor,
-                trackColor = textColor.copy(alpha = 0.12f)
-            )
+            ArgosyProgressBar(progress = progress, tint = accentColor)
         }
     }
 }
@@ -312,14 +303,7 @@ private fun PersistentNotificationBar(
         }
 
         notification.progress?.let { progress ->
-            LinearProgressIndicator(
-                progress = { progress.fraction },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(Dimens.borderMedium),
-                color = accentColor,
-                trackColor = textColor.copy(alpha = 0.12f)
-            )
+            ArgosyProgressBar(progress = progress.fraction, tint = accentColor)
         }
     }
 }

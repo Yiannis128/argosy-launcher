@@ -43,7 +43,7 @@ data class ImageCacheRequest(
     val gameId: Long? = null
 )
 
-enum class ImageType { BACKGROUND, SCREENSHOT, COVER }
+enum class ImageType { BACKGROUND, SCREENSHOT, COVER, BOX_BACK, BOX_SPINE }
 
 data class ImageCacheProgress(
     val isProcessing: Boolean = false,
@@ -439,7 +439,10 @@ class ImageCacheManager @Inject constructor(
     suspend fun deleteGameImages(rommId: Long) {
         withContext(Dispatchers.IO) {
             val slug = resolveRommPlatformSlug(rommId)
-            val prefixes = listOf("cover_${rommId}_", "bg_${rommId}_", "ss_${rommId}_")
+            val prefixes = listOf(
+                "cover_${rommId}_", "bg_${rommId}_", "ss_${rommId}_",
+                "box_back_${rommId}_", "box_spine_${rommId}_"
+            )
             val types = listOf("covers", "backgrounds", "screenshots")
             types.forEach { type ->
                 val dir = File(File(cacheDir, slug), type)
@@ -959,9 +962,19 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    enum class BoxFace { BACK, SPINE }
+
     fun queueCoverCache(url: String, rommId: Long, gameTitle: String = "") {
         scope.launch {
             coverQueue.send(ImageCacheRequest(url, rommId, ImageType.COVER, gameTitle, isSteam = false))
+            startCoverProcessingIfNeeded()
+        }
+    }
+
+    fun queueBoxFaceCache(url: String, rommId: Long, gameTitle: String = "", face: BoxFace) {
+        scope.launch {
+            val type = if (face == BoxFace.BACK) ImageType.BOX_BACK else ImageType.BOX_SPINE
+            coverQueue.send(ImageCacheRequest(url, rommId, type, gameTitle, isSteam = false))
             startCoverProcessingIfNeeded()
         }
     }
@@ -989,7 +1002,10 @@ class ImageCacheManager @Inject constructor(
                         currentGameTitle = request.gameTitle,
                         currentType = "cover"
                     )
-                    processCoverRequest(request)
+                    when (request.type) {
+                        ImageType.BOX_BACK, ImageType.BOX_SPINE -> processBoxFaceRequest(request)
+                        else -> processCoverRequest(request)
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process cover for ${request.id}: ${e.message}")
                 }
@@ -1064,6 +1080,82 @@ class ImageCacheManager @Inject constructor(
             _localCoverWritten.tryEmit(request.gameId to cachedFile.absolutePath)
         } else {
             updateGameCover(request.id, cachedFile.absolutePath)
+        }
+    }
+
+    private suspend fun processBoxFaceRequest(request: ImageCacheRequest) {
+        val game = gameDao.getByRommId(request.id) ?: return
+        val isBack = request.type == ImageType.BOX_BACK
+        val currentDbPath = if (isBack) game.boxBackPath else game.boxSpinePath
+        if (currentDbPath != null && currentDbPath.startsWith("/") && File(currentDbPath).exists()) {
+            return
+        }
+        val prefix = if (isBack) "box_back_${request.id}" else "box_spine_${request.id}"
+        val baseName = "${prefix}_${request.url.md5Hash()}"
+        val slug = resolveRommPlatformSlug(request.id)
+        val coverDir = platformDir(slug, "covers")
+        val existingFile = listOf("jpg", "png")
+            .map { File(coverDir, "$baseName.$it") }
+            .firstOrNull { it.exists() }
+
+        if (existingFile != null) {
+            if (isValidImageFile(existingFile)) {
+                updateGameBoxFace(request.id, isBack, existingFile.absolutePath)
+                return
+            } else {
+                existingFile.delete()
+            }
+        }
+
+        val bitmap = downloadAndResize(request.url, 400)
+        if (bitmap == null) {
+            Log.w(TAG, "Box face download failed: ${request.url}")
+            return
+        }
+
+        val hasTransparency = hasTransparentPixels(bitmap)
+        val cachedFile = File(coverDir, "$baseName.${if (hasTransparency) "png" else "jpg"}")
+        FileOutputStream(cachedFile).use { out ->
+            if (hasTransparency) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            } else {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
+        }
+        bitmap.recycle()
+
+        if (!isValidImageFile(cachedFile)) {
+            cachedFile.delete()
+            Log.w(TAG, "Box face cached file invalid: ${cachedFile.name}")
+            return
+        }
+        Log.d(TAG, "Cached box face ${cachedFile.name} for rommId ${request.id}")
+        updateGameBoxFace(request.id, isBack, cachedFile.absolutePath)
+    }
+
+    private suspend fun updateGameBoxFace(rommId: Long, isBack: Boolean, localPath: String) {
+        val game = gameDao.getByRommId(rommId) ?: return
+        val current = if (isBack) game.boxBackPath else game.boxSpinePath
+        if (current?.startsWith("/") == true && File(current).exists()) return
+        if (isBack) gameDao.updateBoxBackPath(game.id, localPath)
+        else gameDao.updateBoxSpinePath(game.id, localPath)
+    }
+
+    fun resumePendingBoxFaceCache() {
+        scope.launch {
+            val uncached = gameDao.getGamesWithUncachedBoxFaces()
+            if (uncached.isEmpty()) return@launch
+
+            Log.d(TAG, "Resuming cache for ${uncached.size} games with uncached box faces")
+            uncached.forEach { game ->
+                val rommId = game.rommId ?: return@forEach
+                game.boxBackPath?.takeIf { it.startsWith("http") }?.let {
+                    queueBoxFaceCache(it, rommId, game.title, BoxFace.BACK)
+                }
+                game.boxSpinePath?.takeIf { it.startsWith("http") }?.let {
+                    queueBoxFaceCache(it, rommId, game.title, BoxFace.SPINE)
+                }
+            }
         }
     }
 

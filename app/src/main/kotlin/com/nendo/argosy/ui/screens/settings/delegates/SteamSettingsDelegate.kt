@@ -63,7 +63,9 @@ class SteamSettingsDelegate @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val steamPathResolver: SteamPathResolver,
     private val gameRepository: GameRepository,
-    private val platformRepository: PlatformRepository
+    private val platformRepository: PlatformRepository,
+    private val storagePrefs: com.nendo.argosy.data.preferences.StoragePreferencesRepository,
+    private val gameNativeStoreSync: com.nendo.argosy.data.launcher.GameNativeStoreSync
 ) {
     private val _state = MutableStateFlow(SteamSettingsState())
     val state: StateFlow<SteamSettingsState> = _state.asStateFlow()
@@ -87,6 +89,42 @@ class SteamSettingsDelegate @Inject constructor(
     val requestStoragePermissionEvent: SharedFlow<Unit> = _requestStoragePermissionEvent.asSharedFlow()
     private val _openUrlEvent = MutableSharedFlow<String>()
     val openUrlEvent: SharedFlow<String> = _openUrlEvent.asSharedFlow()
+
+    private val _openStoreSyncDirPicker = MutableSharedFlow<Unit>()
+    val openStoreSyncDirPicker: SharedFlow<Unit> = _openStoreSyncDirPicker.asSharedFlow()
+
+    fun openStoreSyncDirPicker(scope: CoroutineScope) {
+        scope.launch { _openStoreSyncDirPicker.emit(Unit) }
+    }
+
+    fun setStoreSyncDir(scope: CoroutineScope, path: String) {
+        scope.launch {
+            storagePrefs.setGameNativeSyncDir(path)
+            _state.update { it.copy(gameNativeSyncDir = path) }
+            val summary = withContext(Dispatchers.IO) { gameNativeStoreSync.scan() }
+            notificationManager.show(
+                "GameNative store sync: ${summary.markers} game(s) found, ${summary.added} added"
+            )
+        }
+    }
+
+    fun clearStoreSyncDir(scope: CoroutineScope) {
+        scope.launch {
+            storagePrefs.setGameNativeSyncDir(null)
+            _state.update { it.copy(gameNativeSyncDir = null) }
+        }
+    }
+
+    fun rescanStoreSync(scope: CoroutineScope) {
+        scope.launch {
+            val summary = withContext(Dispatchers.IO) { gameNativeStoreSync.scan() }
+            if (summary.configured) {
+                notificationManager.show(
+                    "GameNative store sync: ${summary.markers} game(s) found, ${summary.added} added, ${summary.removed} removed"
+                )
+            }
+        }
+    }
     val downloadProgress = flowOf<com.nendo.argosy.data.emulator.EmulatorDownloadProgress?>(null)
 
     private var serviceRef: SteamService? = null
@@ -151,6 +189,9 @@ class SteamSettingsDelegate @Inject constructor(
                 }
 
             val prefs = preferencesRepository.userPreferences.first()
+            val storeSyncDir = withContext(Dispatchers.IO) {
+                storagePrefs.preferences.first().gameNativeSyncDir
+            }
             val volumes = withContext(Dispatchers.IO) { steamPathResolver.getAvailableVolumes() }
             val installedByVolume = withContext(Dispatchers.IO) { loadInstalledSteamSummary(volumes) }
             val resolvedSteamPath = withContext(Dispatchers.IO) { steamPathResolver.getResolvedSteamBase() }
@@ -170,7 +211,8 @@ class SteamSettingsDelegate @Inject constructor(
                     availableVolumes = volumes,
                     installedGamesByVolume = installedByVolume,
                     steamInstallPath = resolvedSteamPath,
-                    steamInstallPathIsCustom = !customRomPath.isNullOrBlank()
+                    steamInstallPathIsCustom = !customRomPath.isNullOrBlank(),
+                    gameNativeSyncDir = storeSyncDir
                 )
             }
 

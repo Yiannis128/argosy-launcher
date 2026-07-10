@@ -306,7 +306,8 @@ class HomeViewModel @Inject constructor(
                         backgroundSaturation = prefs.backgroundSaturation,
                         backgroundOpacity = prefs.backgroundOpacity,
                         useGameBackground = prefs.useGameBackground,
-                        customBackgroundPath = prefs.customBackgroundPath
+                        customBackgroundPath = prefs.customBackgroundPath,
+                        homeBackgroundMode = prefs.homeBackgroundMode
                     )
                 }
 

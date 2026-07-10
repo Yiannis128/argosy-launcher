@@ -56,6 +56,8 @@ internal class StorageSectionInput(
         when (storageItemAtFocusIndex(state.focusedIndex, info)) {
             StorageItem.MaxDownloads -> { viewModel.adjustMaxConcurrentDownloads(direction); return InputResult.HANDLED }
             StorageItem.Threshold -> { viewModel.cycleInstantDownloadThreshold(direction); return InputResult.HANDLED }
+            StorageItem.WeeklyIntegrityCheck ->
+                return toggleLeftRight(direction, state.storage.weeklyIntegrityCheckEnabled) { viewModel.toggleWeeklyIntegrityCheck(it) }
             else -> {}
         }
         return InputResult.UNHANDLED

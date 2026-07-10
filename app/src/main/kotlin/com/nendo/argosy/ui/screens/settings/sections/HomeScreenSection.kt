@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.SliderPreference
@@ -18,6 +19,7 @@ import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.DisplayState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.screens.settings.delegates.DisplaySettingsDelegate
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 
@@ -30,6 +32,7 @@ internal sealed class HomeScreenItem(
 
     class Header(key: String, section: String, val title: String) : HomeScreenItem(key, section)
 
+    data object Background : HomeScreenItem("homeBackgroundMode", "background")
     data object GameArtwork : HomeScreenItem("gameArtwork", "background")
     data object CustomImage : HomeScreenItem(
         key = "customImage",
@@ -66,7 +69,7 @@ internal sealed class HomeScreenItem(
             ContentHeader,
             InstalledOnly,
             BackgroundHeader,
-            GameArtwork, CustomImage, Blur, Saturation, Opacity,
+            Background, GameArtwork, CustomImage, Blur, Saturation, Opacity,
             VideoHeader,
             VideoWallpaper, VideoDelay, VideoMuted,
             FooterHeader,
@@ -112,6 +115,9 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: HomeScreenItem): Boolean =
         uiState.focusedIndex == homeScreenLayout.focusIndexOf(item, display)
 
+    fun pickerToken(item: HomeScreenItem): Int =
+        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -119,12 +125,25 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { homeScreenLayout.focusToListIndex(it, display) },
         itemKey = { it.key },
         isNavItem = { false },
+        isHeader = { it is HomeScreenItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) { item ->
             when (item) {
                 is HomeScreenItem.Header -> HomeScreenSectionHeader(item.title)
+
+                HomeScreenItem.Background -> CyclePreference(
+                    title = "Background",
+                    subtitle = "Game art or the backdrop pattern",
+                    value = display.homeBackgroundMode.displayName,
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.cycleHomeBackgroundMode() },
+                    onPrev = { viewModel.cycleHomeBackgroundMode(-1) },
+                    options = remember { HomeBackgroundMode.entries.map { it.displayName } },
+                    onSelect = { index -> viewModel.setHomeBackgroundMode(HomeBackgroundMode.entries[index]) },
+                    pickerRequestToken = pickerToken(item)
+                )
 
                 HomeScreenItem.GameArtwork -> SwitchPreference(
                     title = "Game Artwork",
@@ -185,16 +204,20 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 )
 
                 HomeScreenItem.VideoDelay -> {
-                    val delayText = when (display.videoWallpaperDelaySeconds) {
-                        0 -> "Instant"
-                        1 -> "1 second"
-                        else -> "${display.videoWallpaperDelaySeconds} seconds"
-                    }
+                    val delayText = videoDelayLabel(display.videoWallpaperDelaySeconds)
                     CyclePreference(
                         title = "Delay Before Playback",
                         value = delayText,
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleVideoWallpaperDelay() }
+                        onClick = { viewModel.cycleVideoWallpaperDelay() },
+                        onPrev = { viewModel.cycleVideoWallpaperDelay(-1) },
+                        options = remember { DisplaySettingsDelegate.VIDEO_DELAY_SECONDS.map { videoDelayLabel(it) } },
+                        onSelect = { index ->
+                            val currentIndex = DisplaySettingsDelegate.VIDEO_DELAY_SECONDS
+                                .indexOf(display.videoWallpaperDelaySeconds).coerceAtLeast(0)
+                            viewModel.cycleVideoWallpaperDelay(index - currentIndex)
+                        },
+                        pickerRequestToken = pickerToken(item)
                     )
                 }
 
@@ -225,6 +248,12 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 )
             }
     }
+}
+
+private fun videoDelayLabel(seconds: Int): String = when (seconds) {
+    0 -> "Instant"
+    1 -> "1 second"
+    else -> "$seconds seconds"
 }
 
 @Composable

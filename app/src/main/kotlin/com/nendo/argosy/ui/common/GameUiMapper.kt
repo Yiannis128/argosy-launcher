@@ -50,6 +50,8 @@ suspend fun GameEntity.toHomeGameUi(
         coverPath = coverPath,
         gradientColors = gradientColors,
         backgroundPath = effectiveBackground,
+        boxBackPath = boxBackPath?.takeIf { it.startsWith("/") },
+        boxSpinePath = boxSpinePath?.takeIf { it.startsWith("/") },
         developer = developer,
         releaseYear = releaseYear,
         genre = genre,

@@ -11,6 +11,7 @@ import com.nendo.argosy.ui.screens.settings.sections.ControlsItem
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.HomeScreenItem
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
+import com.nendo.argosy.ui.screens.settings.sections.aboutHasChangelog
 import com.nendo.argosy.ui.screens.settings.sections.aboutItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.aboutSections
 import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
@@ -96,6 +97,12 @@ internal class LightSectionsInput(
     private fun handleServerLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         if (state.server.rommConfiguring) {
+            if (!state.server.rommDevicePairing && state.focusedIndex == 1) {
+                val methods = com.nendo.argosy.ui.screens.settings.RomMAuthMethod.entries
+                val next = methods[(methods.indexOf(state.server.rommAuthMethod) + direction).mod(methods.size)]
+                viewModel.setRommAuthMethod(next)
+                return InputResult.HANDLED
+            }
             val isPassword = state.server.rommAuthMethod == com.nendo.argosy.ui.screens.settings.RomMAuthMethod.PASSWORD
             if (isPassword && !state.server.rommDevicePairing && (state.focusedIndex == 2 || state.focusedIndex == 3)) {
                 val targetIndex = if (direction < 0) 2 else 3
@@ -107,31 +114,13 @@ internal class LightSectionsInput(
             return InputResult.UNHANDLED
         }
         val items = buildGameDataItemsFromState(state)
-        val item = gameDataItemAtFocusIndex(state.focusedIndex, items)
-        if (item is GameDataItem.InstalledLauncher) {
-            viewModel.moveLauncherActionFocus(direction)
-            return InputResult.HANDLED
-        }
-        return InputResult.UNHANDLED
-    }
-
-    private fun handleHomeScreenLeftRight(direction: Int): InputResult {
-        val state = viewModel.uiState.value
-        val step = SettingsInputHandler.SLIDER_STEP
-        when (homeScreenItemAtFocusIndex(state.focusedIndex, state.display)) {
-            HomeScreenItem.Blur -> { viewModel.adjustBackgroundBlur(direction * step); return InputResult.HANDLED }
-            HomeScreenItem.Saturation -> { viewModel.adjustBackgroundSaturation(direction * step); return InputResult.HANDLED }
-            HomeScreenItem.Opacity -> { viewModel.adjustBackgroundOpacity(direction * step); return InputResult.HANDLED }
-            else -> {}
-        }
-        return InputResult.UNHANDLED
-    }
-
-    private fun handleControlsLeftRight(direction: Int): InputResult {
-        val state = viewModel.uiState.value
-        when (controlsItemAtFocusIndex(state.focusedIndex, state.controls)) {
-            ControlsItem.VibrationStrength -> if (state.controls.hapticEnabled && state.controls.vibrationSupported) {
-                viewModel.adjustVibrationStrength(direction * 0.1f)
+        when (gameDataItemAtFocusIndex(state.focusedIndex, items)) {
+            is GameDataItem.InstalledLauncher -> {
+                viewModel.moveLauncherActionFocus(direction)
+                return InputResult.HANDLED
+            }
+            GameDataItem.SaveCacheLimit -> {
+                viewModel.cycleSaveCacheLimit(direction)
                 return InputResult.HANDLED
             }
             else -> {}
@@ -139,11 +128,72 @@ internal class LightSectionsInput(
         return InputResult.UNHANDLED
     }
 
+    private fun handleHomeScreenLeftRight(direction: Int): InputResult {
+        val state = viewModel.uiState.value
+        val display = state.display
+        val step = SettingsInputHandler.SLIDER_STEP
+        when (homeScreenItemAtFocusIndex(state.focusedIndex, display)) {
+            HomeScreenItem.Background -> { viewModel.cycleHomeBackgroundMode(direction); return InputResult.HANDLED }
+            HomeScreenItem.Blur -> { viewModel.adjustBackgroundBlur(direction * step); return InputResult.HANDLED }
+            HomeScreenItem.Saturation -> { viewModel.adjustBackgroundSaturation(direction * step); return InputResult.HANDLED }
+            HomeScreenItem.Opacity -> { viewModel.adjustBackgroundOpacity(direction * step); return InputResult.HANDLED }
+            HomeScreenItem.GameArtwork ->
+                return toggleLeftRight(direction, display.useGameBackground) { viewModel.setUseGameBackground(it) }
+            HomeScreenItem.VideoWallpaper ->
+                return toggleLeftRight(direction, display.videoWallpaperEnabled) { viewModel.setVideoWallpaperEnabled(it) }
+            HomeScreenItem.VideoDelay -> { viewModel.cycleVideoWallpaperDelay(direction); return InputResult.HANDLED }
+            HomeScreenItem.VideoMuted ->
+                return toggleLeftRight(direction, display.videoWallpaperMuted) { viewModel.setVideoWallpaperMuted(it) }
+            HomeScreenItem.AccentFooter ->
+                return toggleLeftRight(direction, display.useAccentColorFooter) { viewModel.setUseAccentColorFooter(it) }
+            HomeScreenItem.InstalledOnly ->
+                return toggleLeftRight(direction, display.installedOnlyHome) { viewModel.setInstalledOnlyHome(it) }
+            else -> {}
+        }
+        return InputResult.UNHANDLED
+    }
+
+    private fun handleControlsLeftRight(direction: Int): InputResult {
+        val state = viewModel.uiState.value
+        val controls = state.controls
+        when (controlsItemAtFocusIndex(state.focusedIndex, controls)) {
+            ControlsItem.VibrationStrength -> if (controls.hapticEnabled && controls.vibrationSupported) {
+                viewModel.adjustVibrationStrength(direction * 0.1f)
+                return InputResult.HANDLED
+            }
+            ControlsItem.HapticFeedback ->
+                return toggleLeftRight(direction, controls.hapticEnabled) { viewModel.setHapticEnabled(it) }
+            ControlsItem.ControllerLayout -> { viewModel.cycleControllerLayout(direction); return InputResult.HANDLED }
+            ControlsItem.SwapAB ->
+                return toggleLeftRight(direction, controls.swapAB) { viewModel.setSwapAB(it) }
+            ControlsItem.SwapXY ->
+                return toggleLeftRight(direction, controls.swapXY) { viewModel.setSwapXY(it) }
+            ControlsItem.SwapStartSelect ->
+                return toggleLeftRight(direction, controls.swapStartSelect) { viewModel.setSwapStartSelect(it) }
+            ControlsItem.SelectLCombo -> { viewModel.cycleSelectLCombo(direction); return InputResult.HANDLED }
+            ControlsItem.SelectRCombo -> { viewModel.cycleSelectRCombo(direction); return InputResult.HANDLED }
+            ControlsItem.MenuWrap -> { viewModel.cycleMenuWrapMode(direction); return InputResult.HANDLED }
+            else -> {}
+        }
+        return InputResult.UNHANDLED
+    }
+
     private fun handleSyncSettingsLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
-        if (syncSettingsItemAtFocusIndex(state.focusedIndex) is SyncSettingsItem.ImageCacheLocation) {
-            viewModel.moveImageCacheActionFocus(direction)
-            return InputResult.HANDLED
+        when (syncSettingsItemAtFocusIndex(state.focusedIndex)) {
+            is SyncSettingsItem.ImageCacheLocation -> {
+                viewModel.moveImageCacheActionFocus(direction)
+                return InputResult.HANDLED
+            }
+            SyncSettingsItem.CacheScreenshots ->
+                return toggleLeftRight(direction, state.server.syncScreenshotsEnabled) { viewModel.toggleSyncScreenshots() }
+            SyncSettingsItem.CacheBoxArt ->
+                return toggleLeftRight(direction, state.server.boxArtCacheEnabled) { viewModel.toggleBoxArtCache() }
+            SyncSettingsItem.UploadScreenshots -> {
+                if (!state.server.screenshotUploadSupported) return InputResult.UNHANDLED
+                return toggleLeftRight(direction, state.server.uploadScreenshotsEnabled) { viewModel.toggleUploadScreenshots() }
+            }
+            else -> {}
         }
         return InputResult.UNHANDLED
     }
@@ -151,8 +201,19 @@ internal class LightSectionsInput(
     private fun handleAboutLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         val hasLogPath = state.fileLoggingPath != null
-        when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath)) {
+        val hasChangelog = aboutHasChangelog(state.updateCheck)
+        when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath, hasChangelog)) {
+            AboutItem.CheckUpdates -> { viewModel.moveUpdateActionFocus(direction); return InputResult.HANDLED }
             AboutItem.LogLevel -> { viewModel.cycleFileLogLevel(direction); return InputResult.HANDLED }
+            AboutItem.BetaUpdates ->
+                return toggleLeftRight(direction, state.betaUpdatesEnabled) { viewModel.setBetaUpdatesEnabled(it) }
+            AboutItem.FileLogging -> if (hasLogPath) {
+                return toggleLeftRight(direction, state.fileLoggingEnabled) { viewModel.toggleFileLogging(it) }
+            }
+            AboutItem.SaveDebugLogging ->
+                return toggleLeftRight(direction, state.saveDebugLoggingEnabled) { viewModel.setSaveDebugLoggingEnabled(it) }
+            AboutItem.AppAffinity ->
+                return toggleLeftRight(direction, state.appAffinityEnabled) { viewModel.setAppAffinityEnabled(it) }
             else -> {}
         }
         return InputResult.UNHANDLED
@@ -183,7 +244,7 @@ internal class LightSectionsInput(
             SettingsSection.BIOS -> biosSections(state.bios.platformGroups, state.bios.expandedPlatformIndex)
             SettingsSection.SERVER -> gameDataSections(buildGameDataItemsFromState(state))
             SettingsSection.SOCIAL -> socialSections()
-            SettingsSection.ABOUT -> aboutSections(state.fileLoggingPath != null)
+            SettingsSection.ABOUT -> aboutSections(state.fileLoggingPath != null, aboutHasChangelog(state.updateCheck))
             else -> return InputResult.HANDLED
         }
         val jumped = if (direction < 0) viewModel.jumpToPrevSection(sections)

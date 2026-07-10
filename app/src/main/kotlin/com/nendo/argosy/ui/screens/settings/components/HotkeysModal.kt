@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.input.LocalGamepadInputHandler
 import com.nendo.argosy.data.local.entity.CoreInputMode
@@ -54,6 +55,7 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -64,7 +66,12 @@ private val HOTKEY_ACTIONS = listOf(
     HotkeyAction.QUICK_LOAD,
     HotkeyAction.FAST_FORWARD,
     HotkeyAction.REWIND,
-    HotkeyAction.QUICK_SUSPEND
+    HotkeyAction.QUICK_SUSPEND,
+    HotkeyAction.SPEEDRUN_SPLIT,
+    HotkeyAction.SPEEDRUN_UNDO_SPLIT,
+    HotkeyAction.SPEEDRUN_SKIP_SPLIT,
+    HotkeyAction.SPEEDRUN_TOGGLE_TIMER,
+    HotkeyAction.SPEEDRUN_RESET_TIMER
 )
 
 private val HOLD_DELAY_CYCLE = listOf(0L, 1000L, 2000L, 3000L)
@@ -391,19 +398,20 @@ private fun HotkeyRow(
     onClick: () -> Unit,
     onSecondaryClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     val backgroundColor = when {
         isFocused && isConflicting -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> theme.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
     val borderColor = when {
         isConflicting -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.primary
+        isFocused -> theme.focusAccent
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
     val contentColor = when {
         isFocused && isConflicting -> MaterialTheme.colorScheme.onErrorContainer
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(theme.focusAccent, Color.White, 0.45f)
         isConflicting -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -605,6 +613,11 @@ private fun getActionDisplayName(action: HotkeyAction): String {
         HotkeyAction.QUICK_SUSPEND -> "Quick Suspend"
         HotkeyAction.CYCLE_CORE_OPTION -> "Cycle Core Option"
         HotkeyAction.SEND_CORE_INPUT -> "Core Input"
+        HotkeyAction.SPEEDRUN_SPLIT -> "Split"
+        HotkeyAction.SPEEDRUN_UNDO_SPLIT -> "Undo Split"
+        HotkeyAction.SPEEDRUN_SKIP_SPLIT -> "Skip Split"
+        HotkeyAction.SPEEDRUN_TOGGLE_TIMER -> "Start/Pause Timer"
+        HotkeyAction.SPEEDRUN_RESET_TIMER -> "Reset Timer"
     }
 }
 

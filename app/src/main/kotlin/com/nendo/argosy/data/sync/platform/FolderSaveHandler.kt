@@ -60,6 +60,7 @@ open class FolderSaveHandler(
 
         val targetFolder = File(targetPath)
         targetFolder.mkdirs()
+        ensureContainerPrepared(targetFolder)
 
         context.saveId?.let { pruneNonCanonicalSiblings(targetFolder, it) }
 
@@ -125,6 +126,9 @@ open class FolderSaveHandler(
      */
     protected open fun folderMatches(folderName: String, saveId: String): Boolean =
         folderName.equals(saveId, ignoreCase = true)
+
+    /** Hook after the restore target dir is created; PS2 marks a fresh folder card as formatted. */
+    protected open fun ensureContainerPrepared(targetFolder: File) {}
 
     private fun pruneNonCanonicalSiblings(canonicalTarget: File, saveId: String) {
         val parent = canonicalTarget.parentFile ?: return

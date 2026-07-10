@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -29,7 +30,7 @@ import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.theme.Dimens
@@ -42,7 +43,12 @@ fun SyncFiltersModal(
     focusIndex: Int,
     showRegionPicker: Boolean,
     regionPickerFocusIndex: Int,
+    regionPickerRegions: List<String>,
+    regionPickerHeldRegion: String?,
     onToggleRegion: (String) -> Unit,
+    onLiftRegion: (String) -> Unit,
+    onMoveRegionTo: (String, Int) -> Unit,
+    onDropRegion: () -> Unit,
     onToggleRegionMode: () -> Unit,
     onToggleExcludeBeta: (Boolean) -> Unit,
     onToggleExcludePrototype: (Boolean) -> Unit,
@@ -51,7 +57,8 @@ fun SyncFiltersModal(
     onToggleDeleteOrphans: (Boolean) -> Unit,
     onShowRegionPicker: () -> Unit,
     onDismissRegionPicker: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    regionModePickerToken: Int = 0
 ) {
     val listState = rememberLazyListState()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
@@ -107,7 +114,7 @@ fun SyncFiltersModal(
                     val regionsText = if (enabledRegions.isEmpty()) {
                         "None selected"
                     } else {
-                        enabledRegions.sorted().joinToString(", ")
+                        enabledRegions.joinToString(", ")
                     }
                     ActionPreference(
                         title = "Regions",
@@ -117,15 +124,16 @@ fun SyncFiltersModal(
                     )
                 }
                 item {
-                    val modeText = when (syncFilters.regionMode) {
-                        RegionFilterMode.INCLUDE -> "Include selected"
-                        RegionFilterMode.EXCLUDE -> "Exclude selected"
-                    }
+                    val modeText = regionModeLabel(syncFilters.regionMode)
                     CyclePreference(
                         title = "Region Mode",
                         value = modeText,
                         isFocused = focusIndex == 1,
-                        onClick = onToggleRegionMode
+                        onClick = onToggleRegionMode,
+                        onPrev = onToggleRegionMode,
+                        options = remember { RegionFilterMode.entries.map { regionModeLabel(it) } },
+                        onSelect = { if (RegionFilterMode.entries[it] != syncFilters.regionMode) onToggleRegionMode() },
+                        pickerRequestToken = regionModePickerToken
                     )
                 }
                 item {
@@ -173,7 +181,7 @@ fun SyncFiltersModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            FooterBar(
+            FooterHints(
                 hints = listOf(
                     InputButton.DPAD to "Navigate",
                     InputButton.A to "Toggle",
@@ -184,11 +192,22 @@ fun SyncFiltersModal(
 
         if (showRegionPicker) {
             RegionPickerPopup(
+                regions = regionPickerRegions,
                 enabledRegions = syncFilters.enabledRegions,
                 focusIndex = regionPickerFocusIndex,
+                heldRegion = regionPickerHeldRegion,
+                orderingEnabled = syncFilters.regionMode == RegionFilterMode.INCLUDE,
                 onToggle = onToggleRegion,
+                onLift = onLiftRegion,
+                onMoveTo = onMoveRegionTo,
+                onDrop = onDropRegion,
                 onDismiss = onDismissRegionPicker
             )
         }
     }
+}
+
+private fun regionModeLabel(mode: RegionFilterMode): String = when (mode) {
+    RegionFilterMode.INCLUDE -> "Include selected"
+    RegionFilterMode.EXCLUDE -> "Exclude selected"
 }

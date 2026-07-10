@@ -63,7 +63,7 @@ class MoreOptionsDelegate @Inject constructor(
         if (canTrackProgress) optionCount += 2
         if (isSteamGame || isEmulatedGame) optionCount++
         if (hasMultipleCores && isEmulatedGame) optionCount++
-        if (isEmulatedGame) optionCount++
+        if (isEmulatedGame) optionCount += 2
         if (usesTitleId && isEmulatedGame) optionCount++
         if (isMultiDisc) optionCount++
         if (hasVariants && isEmulatedGame) optionCount++
@@ -101,6 +101,7 @@ class MoreOptionsDelegate @Inject constructor(
         val emulatorOrLauncherIdx = if (isSteamGame || isEmulatedGame) currentIdx++ else -1
         val coreIdx = if (hasMultipleCores && isEmulatedGame) currentIdx++ else -1
         val platformSettingsIdx = if (isEmulatedGame) currentIdx++ else -1
+        val speedrunSplitsIdx = if (isEmulatedGame) currentIdx++ else -1
         val titleIdIdx = if (usesTitleId && isEmulatedGame) currentIdx++ else -1
         val discIdx = if (isMultiDisc) currentIdx++ else -1
         val variantIdx = if (hasVariants && isEmulatedGame) currentIdx++ else -1
@@ -116,6 +117,7 @@ class MoreOptionsDelegate @Inject constructor(
             emulatorOrLauncherIdx -> if (isSteamGame) MoreOptionAction.ChangeSteamLauncher else MoreOptionAction.ChangeEmulator
             coreIdx -> MoreOptionAction.ChangeCore
             platformSettingsIdx -> MoreOptionAction.PlatformSettings
+            speedrunSplitsIdx -> MoreOptionAction.SpeedrunSplits
             titleIdIdx -> MoreOptionAction.RefreshTitleId
             discIdx -> MoreOptionAction.SelectDisc
             variantIdx -> MoreOptionAction.SelectVariant

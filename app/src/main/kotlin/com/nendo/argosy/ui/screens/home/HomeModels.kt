@@ -5,6 +5,7 @@ import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.platform.PlatformDefinitions
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.domain.model.PinnedCollection
 import com.nendo.argosy.domain.usecase.collection.CategoryType
 import com.nendo.argosy.ui.screens.common.DiscPickerState
@@ -34,6 +35,8 @@ data class HomeGameUi(
     val coverPath: String?,
     val gradientColors: Pair<androidx.compose.ui.graphics.Color, androidx.compose.ui.graphics.Color>? = null,
     val backgroundPath: String?,
+    val boxBackPath: String? = null,
+    val boxSpinePath: String? = null,
     val developer: String?,
     val releaseYear: Int?,
     val genre: String?,
@@ -136,6 +139,7 @@ data class HomeUiState(
     val backgroundOpacity: Int = 100,
     val useGameBackground: Boolean = true,
     val customBackgroundPath: String? = null,
+    val homeBackgroundMode: HomeBackgroundMode = HomeBackgroundMode.GAME_ART,
     val syncOverlayState: SyncOverlayState? = null,
     val discPickerState: DiscPickerState? = null,
     val discPickerFocusIndex: Int = 0,

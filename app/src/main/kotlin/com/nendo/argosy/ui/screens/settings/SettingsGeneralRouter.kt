@@ -59,6 +59,14 @@ internal fun routeNavigateToAmbientLed(vm: SettingsViewModel) {
     vm._uiState.update { it.copy(currentSection = SettingsSection.AMBIENT_LED, focusedIndex = 0) }
 }
 
+internal fun routeNavigateToThemeSounds(vm: SettingsViewModel) {
+    vm._uiState.update { it.copy(currentSection = SettingsSection.THEME_SOUNDS, focusedIndex = 0) }
+}
+
+internal fun routeNavigateToThemeBackdrop(vm: SettingsViewModel) {
+    vm._uiState.update { it.copy(currentSection = SettingsSection.THEME_BACKDROP, focusedIndex = 0) }
+}
+
 // --- Emulator methods ---
 
 internal fun routeShowEmulatorPicker(vm: SettingsViewModel, config: PlatformEmulatorConfig) {
@@ -268,6 +276,12 @@ internal fun routeCycleGradientPreset(vm: SettingsViewModel, direction: Int) {
     vm.extractGradientForPreview()
 }
 
+internal fun routeSetGradientPreset(vm: SettingsViewModel, preset: GradientPreset) {
+    vm._uiState.update { it.copy(gradientConfig = preset.toConfig()) }
+    vm.displayDelegate.setGradientPreset(vm.viewModelScope, preset)
+    vm.extractGradientForPreview()
+}
+
 internal fun routeToggleGradientAdvancedMode(vm: SettingsViewModel) {
     vm.displayDelegate.toggleGradientAdvancedMode(vm.viewModelScope)
     vm.extractGradientForPreview()
@@ -293,7 +307,20 @@ internal fun routeSetDualScreenEnabled(vm: SettingsViewModel, enabled: Boolean) 
 internal fun routeCycleDisplayRoleOverride(vm: SettingsViewModel, direction: Int) {
     val entries = com.nendo.argosy.data.preferences.DisplayRoleOverride.entries
     val current = vm._uiState.value.display.displayRoleOverride
-    val next = entries[(current.ordinal + direction + entries.size) % entries.size]
+    val currentSwapped = com.nendo.argosy.DualScreenManagerHolder.instance?.isRolesSwapped?.value
+        ?: overrideResolvesToSwapped(vm, current)
+    val next = (1..entries.size)
+        .asSequence()
+        .map { step -> entries[(current.ordinal + direction * step).mod(entries.size)] }
+        .firstOrNull { overrideResolvesToSwapped(vm, it) != currentSwapped }
+        ?: return
+    routeSetDisplayRoleOverride(vm, next)
+}
+
+internal fun routeSetDisplayRoleOverride(
+    vm: SettingsViewModel,
+    next: com.nendo.argosy.data.preferences.DisplayRoleOverride
+) {
     vm.viewModelScope.launch {
         vm.preferencesRepository.setDisplayRoleOverride(next)
         val sessionStore = com.nendo.argosy.data.preferences.SessionStateStore(vm.context)
@@ -312,6 +339,17 @@ internal fun routeCycleDisplayRoleOverride(vm: SettingsViewModel, direction: Int
             dsm.companionHost?.onRoleSwapped(newSwapped)
         }
     }
+}
+
+private fun overrideResolvesToSwapped(
+    vm: SettingsViewModel,
+    value: com.nendo.argosy.data.preferences.DisplayRoleOverride
+): Boolean = when (value) {
+    com.nendo.argosy.data.preferences.DisplayRoleOverride.SWAPPED -> true
+    com.nendo.argosy.data.preferences.DisplayRoleOverride.STANDARD -> false
+    com.nendo.argosy.data.preferences.DisplayRoleOverride.AUTO ->
+        vm.displayAffinityHelper.secondaryDisplayType ==
+            com.nendo.argosy.util.SecondaryDisplayType.EXTERNAL
 }
 
 // --- Gradient cycle methods ---
@@ -463,6 +501,10 @@ internal fun routeDismissRegionPicker(vm: SettingsViewModel) {
 
 internal fun routeToggleSyncScreenshots(vm: SettingsViewModel) {
     vm.syncDelegate.toggleSyncScreenshots(vm.viewModelScope, vm._uiState.value.server.syncScreenshotsEnabled)
+}
+
+internal fun routeToggleBoxArtCache(vm: SettingsViewModel) {
+    vm.syncDelegate.toggleBoxArtCache(vm.viewModelScope, vm._uiState.value.server.boxArtCacheEnabled)
 }
 
 internal fun routeToggleUploadScreenshots(vm: SettingsViewModel) {

@@ -21,6 +21,12 @@ class RomMApiClient @Inject constructor(
         return if (path.startsWith("http")) path else "$baseUrl$path"
     }
 
+    /** For paths relative to RomM's resources mount (ss_metadata media); cover paths arrive pre-prefixed. */
+    fun buildResourceUrl(path: String): String {
+        if (path.startsWith("http")) return path
+        return "$baseUrl/assets/romm/resources/${path.trimStart('/')}"
+    }
+
     fun isVersionAtLeast(minVersion: String): Boolean =
         connectionManager.isVersionAtLeast(minVersion)
 

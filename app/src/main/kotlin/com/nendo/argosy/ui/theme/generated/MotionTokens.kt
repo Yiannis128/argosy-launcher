@@ -19,6 +19,16 @@ object MotionTokens {
         val focus: AnimationSpec<Float> = spring(dampingRatio = focusDampingRatio, stiffness = focusStiffness)
         val focusDp: AnimationSpec<Dp> = spring(dampingRatio = focusDampingRatio, stiffness = focusStiffness)
         val focusColor: AnimationSpec<Color> = spring(dampingRatio = focusDampingRatio, stiffness = focusStiffness)
+        const val focusSnappyDampingRatio = 0.55f
+        const val focusSnappyStiffness = 700f
+        val focusSnappy: AnimationSpec<Float> = spring(dampingRatio = focusSnappyDampingRatio, stiffness = focusSnappyStiffness)
+        val focusSnappyDp: AnimationSpec<Dp> = spring(dampingRatio = focusSnappyDampingRatio, stiffness = focusSnappyStiffness)
+        val focusSnappyColor: AnimationSpec<Color> = spring(dampingRatio = focusSnappyDampingRatio, stiffness = focusSnappyStiffness)
+        const val focusReducedDampingRatio = 1f
+        const val focusReducedStiffness = 1200f
+        val focusReduced: AnimationSpec<Float> = spring(dampingRatio = focusReducedDampingRatio, stiffness = focusReducedStiffness)
+        val focusReducedDp: AnimationSpec<Dp> = spring(dampingRatio = focusReducedDampingRatio, stiffness = focusReducedStiffness)
+        val focusReducedColor: AnimationSpec<Color> = spring(dampingRatio = focusReducedDampingRatio, stiffness = focusReducedStiffness)
     }
 
     object Tween {
@@ -30,6 +40,14 @@ object MotionTokens {
         val long: AnimationSpec<Float> = tween(durationMillis = longMs)
         const val shimmerMs = 2000
         val shimmer: AnimationSpec<Float> = tween(durationMillis = shimmerMs)
+        const val microMs = 120
+        val micro: AnimationSpec<Float> = tween(durationMillis = microMs)
+        const val contentMs = 180
+        val content: AnimationSpec<Float> = tween(durationMillis = contentMs)
+        const val pageMs = 250
+        val page: AnimationSpec<Float> = tween(durationMillis = pageMs)
+        const val drawerMs = 450
+        val drawer: AnimationSpec<Float> = tween(durationMillis = drawerMs)
     }
 
 }

@@ -29,7 +29,9 @@ import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 import com.nendo.argosy.ui.screens.settings.PlatformStorageConfig
 import com.nendo.argosy.ui.screens.settings.sections.formatStoragePath
+import com.nendo.argosy.ui.primitives.ArgosyToggle
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun PlatformSettingsModal(
@@ -129,7 +131,7 @@ private fun ToggleOptionItem(
         MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
@@ -149,11 +151,10 @@ private fun ToggleOptionItem(
             style = MaterialTheme.typography.bodyMedium,
             color = contentColor
         )
-        Switch(
+        ArgosyToggle(
             checked = checked,
-            onCheckedChange = { onToggle() },
-            modifier = Modifier.focusProperties { canFocus = false },
-            interactionSource = remember { MutableInteractionSource() }
+            onToggle = { onToggle() },
+            focused = isFocused
         )
     }
 }
@@ -230,7 +231,7 @@ private fun PathConfigItem(
                     if (onReset != null) {
                         Button(
                             onClick = onReset,
-                            modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs),
+                            modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs).focusProperties { canFocus = false },
                             contentPadding = PaddingValues(horizontal = Dimens.spacingMd, vertical = 0.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (resetFocused) {
@@ -250,7 +251,7 @@ private fun PathConfigItem(
                     }
                     Button(
                         onClick = onChange,
-                        modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs),
+                        modifier = Modifier.height(Dimens.iconLg - Dimens.spacingXs).focusProperties { canFocus = false },
                         contentPadding = PaddingValues(horizontal = Dimens.spacingMd, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (changeFocused) {

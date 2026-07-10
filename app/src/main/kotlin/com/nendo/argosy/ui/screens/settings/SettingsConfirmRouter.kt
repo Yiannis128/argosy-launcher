@@ -2,8 +2,6 @@ package com.nendo.argosy.ui.screens.settings
 
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.entity.getDisplayName
-import com.nendo.argosy.data.preferences.GridDensity
-import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.ui.input.InputResult
@@ -26,6 +24,24 @@ import com.nendo.argosy.ui.screens.settings.sections.InterfaceItem
 import com.nendo.argosy.ui.screens.settings.sections.InterfaceLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.MainSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.StorageItem
+import com.nendo.argosy.data.preferences.FontSlot
+import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropLayoutState
+import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsLayoutState
+import com.nendo.argosy.ui.screens.settings.sections.ThemeItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsLayoutState
+import com.nendo.argosy.ui.screens.settings.sections.themeBackdropItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeBackdropMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeFontsItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeFontsMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeFocusIndexOf
+import com.nendo.argosy.ui.screens.settings.sections.themeItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeSoundsItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeSoundsMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.aboutHasChangelog
 import com.nendo.argosy.ui.screens.settings.sections.aboutItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.boxArtItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.controlsItemAtFocusIndex
@@ -100,6 +116,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 MainSettingsItem.GameData -> vm.navigateToSection(SettingsSection.SERVER)
                 MainSettingsItem.RetroAchievements -> vm.navigateToSection(SettingsSection.RETRO_ACHIEVEMENTS)
                 MainSettingsItem.Storage -> vm.navigateToSection(SettingsSection.STORAGE)
+                MainSettingsItem.Theme -> vm.navigateToSection(SettingsSection.THEME)
                 MainSettingsItem.Interface -> vm.navigateToSection(SettingsSection.INTERFACE)
                 MainSettingsItem.Controls -> vm.navigateToSection(SettingsSection.CONTROLS)
                 MainSettingsItem.Platforms -> vm.navigateToSection(SettingsSection.PLATFORMS)
@@ -124,6 +141,10 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 SteamItem.InstallPath -> vm.openSteamInstallPathPicker()
                 SteamItem.SyncLibrary -> vm.syncSteamLibrary()
                 SteamItem.AddManual -> vm.showAddSteamGameDialog()
+                SteamItem.StoreSync -> {
+                    if (state.steam.gameNativeSyncDir != null) vm.rescanGameNativeStores()
+                    else vm.openGameNativeSyncDirPicker()
+                }
                 SteamItem.Disconnect -> vm.disconnectSteam()
                 SteamItem.ResetLibrary -> vm.resetSteamLibrary()
                 else -> {}
@@ -171,6 +192,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                 SyncSettingsItem.PlatformFilters -> vm.showPlatformFiltersModal()
                 SyncSettingsItem.MetadataFilters -> vm.showSyncFiltersModal()
                 SyncSettingsItem.CacheScreenshots -> { vm.toggleSyncScreenshots(); return InputResult.handled(SoundType.TOGGLE) }
+                SyncSettingsItem.CacheBoxArt -> { vm.toggleBoxArtCache(); return InputResult.handled(SoundType.TOGGLE) }
                 SyncSettingsItem.UploadScreenshots -> {
                     if (!state.server.screenshotUploadSupported) return InputResult.HANDLED
                     vm.toggleUploadScreenshots()
@@ -190,6 +212,10 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             InputResult.HANDLED
         }
         SettingsSection.STORAGE -> routeStorageConfirm(vm, state)
+        SettingsSection.THEME -> routeThemeConfirm(vm, state)
+        SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
+        SettingsSection.THEME_FONTS -> routeThemeFontsConfirm(vm, state)
+        SettingsSection.THEME_BACKDROP -> routeThemeBackdropConfirm(vm, state)
         SettingsSection.INTERFACE -> routeInterfaceConfirm(vm, state)
         SettingsSection.HOME_SCREEN -> routeHomeScreenConfirm(vm, state)
         SettingsSection.BOX_ART -> routeBoxArtConfirm(vm, state)
@@ -224,7 +250,10 @@ private fun routeServerConfirm(vm: SettingsViewModel, state: SettingsUiState): I
         }
         val indices = rommConfigIndices(state.server)
         when (state.focusedIndex) {
-            1 -> vm.setRommAuthMethod(nextRommAuthMethod(state.server.rommAuthMethod))
+            1 -> {
+                vm.requestEnumPicker(ROMM_AUTH_METHOD_PICKER_KEY)
+                return InputResult.handled(SoundType.OPEN_MODAL)
+            }
             indices.connectIndex -> vm.connectToRomm()
             indices.scanIndex -> vm.showRommScanner()
             indices.cancelIndex -> vm.cancelRommConfig()
@@ -251,7 +280,10 @@ private fun routeServerConfirm(vm: SettingsViewModel, state: SettingsUiState): I
             vm.toggleSaveSync()
             return InputResult.handled(SoundType.TOGGLE)
         }
-        GameDataItem.SaveCacheLimit -> vm.cycleSaveCacheLimit()
+        GameDataItem.SaveCacheLimit -> {
+            vm.requestEnumPicker(GameDataItem.SaveCacheLimit.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         GameDataItem.SyncSaves -> if (isOnline) vm.requestSyncSaves()
         GameDataItem.ClearPathCache -> vm.requestClearPathCache()
         GameDataItem.ResetSaveCache -> vm.requestResetSaveCache()
@@ -278,7 +310,10 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
     val info = createStorageLayoutInfo()
     when (val item = storageItemAtFocusIndex(state.focusedIndex, info)) {
         StorageItem.MaxDownloads -> vm.cycleMaxConcurrentDownloads()
-        StorageItem.Threshold -> vm.cycleInstantDownloadThreshold()
+        StorageItem.Threshold -> {
+            vm.requestEnumPicker(StorageItem.Threshold.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         StorageItem.GlobalRomPath -> vm.openFolderPicker()
         StorageItem.ImageCache -> vm.openImageCachePicker()
         StorageItem.ValidateCache -> vm.validateImageCache()
@@ -292,31 +327,18 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
 private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val layoutState = InterfaceLayoutState.from(state)
     when (interfaceItemAtFocusIndex(state.focusedIndex, layoutState)) {
-        InterfaceItem.DualScreenEnabled -> vm.setDualScreenEnabled(!state.display.dualScreenEnabled)
-        InterfaceItem.Theme -> {
-            val next = when (state.display.themeMode) {
-                ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                ThemeMode.LIGHT -> ThemeMode.DARK
-                ThemeMode.DARK -> ThemeMode.SYSTEM
-            }
-            vm.setThemeMode(next)
-        }
         InterfaceItem.GridDensity -> {
-            val next = when (state.display.gridDensity) {
-                GridDensity.COMPACT -> GridDensity.NORMAL
-                GridDensity.NORMAL -> GridDensity.SPACIOUS
-                GridDensity.SPACIOUS -> GridDensity.COMPACT
-            }
-            vm.setGridDensity(next)
+            vm.requestEnumPicker(InterfaceItem.GridDensity.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
         }
         InterfaceItem.UiScale -> vm.cycleUiScale()
-        InterfaceItem.BoxArt -> vm.navigateToBoxArt()
         InterfaceItem.HomeScreen -> vm.navigateToHomeScreen()
-        InterfaceItem.DisplayRoles -> vm.cycleDisplayRoleOverride()
         InterfaceItem.ScreenDimmer -> vm.toggleScreenDimmer()
-        InterfaceItem.DimAfter -> vm.cycleScreenDimmerTimeout()
+        InterfaceItem.DimAfter -> {
+            vm.requestEnumPicker(InterfaceItem.DimAfter.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         InterfaceItem.DimLevel -> vm.cycleScreenDimmerLevel()
-        InterfaceItem.AmbientLedSettings -> vm.navigateToAmbientLed()
         InterfaceItem.BgmToggle -> {
             val newEnabled = !state.ambientAudio.enabled
             vm.setAmbientAudioEnabled(newEnabled)
@@ -328,7 +350,37 @@ private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState)
             vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
             return InputResult.handled(SoundType.TOGGLE)
         }
-        InterfaceItem.UiSoundsToggle -> {
+        InterfaceItem.DualScreenEnabled -> vm.setDualScreenEnabled(!state.display.dualScreenEnabled)
+        InterfaceItem.DisplayRoles -> {
+            vm.requestEnumPicker(InterfaceItem.DisplayRoles.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        InterfaceItem.AmbientLedSettings -> vm.navigateToAmbientLed()
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeThemeConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    when (themeItemAtFocusIndex(state.focusedIndex)) {
+        ThemeItem.Mode -> {
+            vm.requestEnumPicker(ThemeItem.Mode.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeItem.TintBleed -> vm.cycleSurfaceTintBleed()
+        ThemeItem.BoxArt -> vm.navigateToBoxArt()
+        ThemeItem.Backdrop -> vm.navigateToThemeBackdrop()
+        ThemeItem.Fonts -> vm.navigateToThemeFonts()
+        ThemeItem.Sounds -> vm.navigateToThemeSounds()
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeThemeSoundsConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val layoutState = ThemeSoundsLayoutState.from(state)
+    when (val item = themeSoundsItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        ThemeSoundsItem.UiSoundsToggle -> {
             val newEnabled = !state.sounds.enabled
             vm.setSoundEnabled(newEnabled)
             if (newEnabled) {
@@ -337,11 +389,66 @@ private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState)
             }
             return InputResult.handled(SoundType.SILENT)
         }
-        InterfaceItem.UiSoundsVolume -> vm.cycleSoundVolume()
-        is InterfaceItem.SoundTypeItem -> {
-            val soundItem = interfaceItemAtFocusIndex(state.focusedIndex, layoutState) as InterfaceItem.SoundTypeItem
-            vm.showSoundPicker(soundItem.soundType)
+        ThemeSoundsItem.UiSoundsVolume -> vm.cycleSoundVolume()
+        is ThemeSoundsItem.SoundTypeItem -> vm.showSoundPicker(item.soundType)
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeThemeFontsConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val layoutState = ThemeFontsLayoutState.from(state)
+    when (themeFontsItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        ThemeFontsItem.DisplaySlot -> {
+            vm.openFontPicker(FontSlot.DISPLAY)
+            return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        ThemeFontsItem.DisplayScale -> vm.cycleFontScale(FontSlot.DISPLAY)
+        ThemeFontsItem.DisplayRevert -> vm.revertFont(FontSlot.DISPLAY)
+        ThemeFontsItem.BodySlot -> {
+            vm.openFontPicker(FontSlot.BODY)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeFontsItem.BodyScale -> vm.cycleFontScale(FontSlot.BODY)
+        ThemeFontsItem.BodyRevert -> vm.revertFont(FontSlot.BODY)
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeThemeBackdropConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val layoutState = ThemeBackdropLayoutState.from(state)
+    when (themeBackdropItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        ThemeBackdropItem.Enabled -> {
+            vm.setBackdropEnabled(!state.display.surfaceBackdrop.enabled)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        ThemeBackdropItem.Preset -> {
+            vm.requestEnumPicker(ThemeBackdropItem.Preset.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.EdgeLines -> {
+            vm.requestEnumPicker(ThemeBackdropItem.EdgeLines.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.CornerIcons -> {
+            vm.requestEnumPicker(ThemeBackdropItem.CornerIcons.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.Motion -> {
+            vm.requestEnumPicker(ThemeBackdropItem.Motion.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.Direction -> {
+            vm.requestEnumPicker(ThemeBackdropItem.Direction.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ThemeBackdropItem.Density -> vm.cycleBackdropCellSize()
+        ThemeBackdropItem.Scatter -> vm.cycleBackdropScatter()
+        ThemeBackdropItem.ScaleJitter -> vm.cycleBackdropScaleJitter()
+        ThemeBackdropItem.Strength -> vm.cycleBackdropStrength()
+        ThemeBackdropItem.Speed -> vm.cycleBackdropMotionSpeed()
+        ThemeBackdropItem.Reshuffle -> vm.reshuffleBackdropSeed()
         else -> {}
     }
     return InputResult.HANDLED
@@ -349,6 +456,10 @@ private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState)
 
 private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     when (homeScreenItemAtFocusIndex(state.focusedIndex, state.display)) {
+        HomeScreenItem.Background -> {
+            vm.requestEnumPicker(HomeScreenItem.Background.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         HomeScreenItem.GameArtwork -> {
             vm.setUseGameBackground(!state.display.useGameBackground)
             return InputResult.handled(SoundType.TOGGLE)
@@ -361,7 +472,10 @@ private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.setVideoWallpaperEnabled(!state.display.videoWallpaperEnabled)
             return InputResult.handled(SoundType.TOGGLE)
         }
-        HomeScreenItem.VideoDelay -> vm.cycleVideoWallpaperDelay()
+        HomeScreenItem.VideoDelay -> {
+            vm.requestEnumPicker(HomeScreenItem.VideoDelay.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         HomeScreenItem.VideoMuted -> {
             vm.setVideoWallpaperMuted(!state.display.videoWallpaperMuted)
             return InputResult.handled(SoundType.TOGGLE)
@@ -380,31 +494,23 @@ private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState
 }
 
 private fun routeBoxArtConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
-    when (boxArtItemAtFocusIndex(state.focusedIndex, state.display)) {
-        BoxArtItem.Shape -> vm.cycleBoxArtShape()
-        BoxArtItem.CornerRadius -> vm.cycleBoxArtCornerRadius()
-        BoxArtItem.BorderThickness -> vm.cycleBoxArtBorderThickness()
-        BoxArtItem.BorderStyle -> vm.cycleBoxArtBorderStyle()
-        BoxArtItem.GlassTint -> vm.cycleGlassBorderTint()
-        BoxArtItem.GradientPresetItem -> vm.cycleGradientPreset()
-        BoxArtItem.GradientAdvanced -> vm.toggleGradientAdvancedMode()
-        BoxArtItem.SampleGrid -> vm.cycleGradientSampleGrid(1)
-        BoxArtItem.SampleRadius -> vm.cycleGradientRadius(1)
-        BoxArtItem.MinSaturation -> vm.cycleGradientMinSaturation(1)
-        BoxArtItem.MinBrightness -> vm.cycleGradientMinValue(1)
-        BoxArtItem.HueDistance -> vm.cycleGradientHueDistance(1)
-        BoxArtItem.SaturationBoost -> vm.cycleGradientSaturationBump(1)
-        BoxArtItem.BrightnessClamp -> vm.cycleGradientValueClamp(1)
-        BoxArtItem.IndicatorStyle -> vm.cyclePlatformIndicatorStyle()
-        BoxArtItem.IndicatorContent -> vm.cyclePlatformIndicatorContent()
-        BoxArtItem.IconPos -> vm.cycleSystemIconPosition()
-        BoxArtItem.IconPad -> vm.cycleSystemIconPadding()
-        BoxArtItem.OuterEffect -> vm.cycleBoxArtOuterEffect()
-        BoxArtItem.OuterThickness -> vm.cycleBoxArtOuterEffectThickness()
-        BoxArtItem.GlowIntensity -> vm.cycleBoxArtGlowStrength()
-        BoxArtItem.GlowColor -> vm.cycleGlowColorMode()
-        BoxArtItem.InnerEffect -> vm.cycleBoxArtInnerEffect()
-        BoxArtItem.InnerThickness -> vm.cycleBoxArtInnerEffectThickness()
+    val item = boxArtItemAtFocusIndex(state.focusedIndex, state.display)
+    when (item) {
+        BoxArtItem.Shape, BoxArtItem.CornerRadius, BoxArtItem.BorderThickness, BoxArtItem.BorderStyle,
+        BoxArtItem.GlassTint, BoxArtItem.GradientPresetItem, BoxArtItem.IndicatorStyle,
+        BoxArtItem.IndicatorContent, BoxArtItem.IconPos, BoxArtItem.IconPad, BoxArtItem.OuterEffect,
+        BoxArtItem.OuterThickness, BoxArtItem.GlowIntensity, BoxArtItem.GlowColor,
+        BoxArtItem.InnerEffect, BoxArtItem.InnerThickness,
+        BoxArtItem.SampleGrid, BoxArtItem.SampleRadius, BoxArtItem.MinSaturation,
+        BoxArtItem.MinBrightness, BoxArtItem.HueDistance, BoxArtItem.SaturationBoost,
+        BoxArtItem.BrightnessClamp -> {
+            vm.requestEnumPicker(item.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        BoxArtItem.GradientAdvanced -> {
+            vm.toggleGradientAdvancedMode()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         else -> {}
     }
     return InputResult.HANDLED
@@ -415,7 +521,10 @@ private fun routeAmbientLedConfirm(vm: SettingsViewModel, state: SettingsUiState
         AmbientLedItem.Enable -> vm.setAmbientLedEnabled(!state.display.ambientLedEnabled)
         AmbientLedItem.CustomColor -> vm.setAmbientLedCustomColor(!state.display.ambientLedCustomColor)
         AmbientLedItem.CoverArtColors -> vm.setAmbientLedCoverArtEnabled(!state.display.ambientLedCoverArtEnabled)
-        AmbientLedItem.TransitionSpeed -> vm.cycleAmbientLedTransitionMsWrap()
+        AmbientLedItem.TransitionSpeed -> {
+            vm.requestEnumPicker(AmbientLedItem.TransitionSpeed.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         AmbientLedItem.AudioBrightness -> vm.setAmbientLedAudioBrightness(!state.display.ambientLedAudioBrightness)
         AmbientLedItem.AudioColors -> vm.setAmbientLedAudioColors(!state.display.ambientLedAudioColors)
         AmbientLedItem.ScreenColors -> {
@@ -424,7 +533,10 @@ private fun routeAmbientLedConfirm(vm: SettingsViewModel, state: SettingsUiState
             }
             vm.setAmbientLedScreenEnabled(!state.display.ambientLedScreenEnabled)
         }
-        AmbientLedItem.ScreenColorMode -> vm.cycleAmbientLedColorMode()
+        AmbientLedItem.ScreenColorMode -> {
+            vm.requestEnumPicker(AmbientLedItem.ScreenColorMode.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         else -> {}
     }
     return InputResult.HANDLED
@@ -438,13 +550,25 @@ private fun routeControlsConfirm(vm: SettingsViewModel, state: SettingsUiState):
             return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         ControlsItem.VibrationStrength -> vm.cycleVibrationStrength()
-        ControlsItem.ControllerLayout -> vm.cycleControllerLayout()
+        ControlsItem.ControllerLayout -> {
+            vm.requestEnumPicker(ControlsItem.ControllerLayout.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         ControlsItem.SwapAB -> { vm.setSwapAB(!state.controls.swapAB); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SwapXY -> { vm.setSwapXY(!state.controls.swapXY); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SwapStartSelect -> { vm.setSwapStartSelect(!state.controls.swapStartSelect); return InputResult.handled(SoundType.TOGGLE) }
-        ControlsItem.SelectLCombo -> vm.cycleSelectLCombo()
-        ControlsItem.SelectRCombo -> vm.cycleSelectRCombo()
-        ControlsItem.MenuWrap -> vm.cycleMenuWrapMode()
+        ControlsItem.SelectLCombo -> {
+            vm.requestEnumPicker(ControlsItem.SelectLCombo.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ControlsItem.SelectRCombo -> {
+            vm.requestEnumPicker(ControlsItem.SelectRCombo.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        ControlsItem.MenuWrap -> {
+            vm.requestEnumPicker(ControlsItem.MenuWrap.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         null -> {}
     }
     return InputResult.HANDLED
@@ -522,14 +646,18 @@ private fun routePermissionsConfirm(vm: SettingsViewModel, state: SettingsUiStat
 
 private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val hasLogPath = state.fileLoggingPath != null
-    when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath)) {
+    val hasChangelog = aboutHasChangelog(state.updateCheck)
+    when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath, hasChangelog)) {
         AboutItem.CheckUpdates -> {
-            if (state.updateCheck.updateAvailable) {
+            if (state.aboutUpdateActionIndex == 1) {
+                vm.openChangelog()
+            } else if (state.updateCheck.updateAvailable) {
                 vm.viewModelScope.launch { vm._downloadUpdateEvent.emit(Unit) }
             } else {
                 vm.checkForUpdates()
             }
         }
+        AboutItem.ChangelogPreview -> vm.openChangelog()
         AboutItem.BetaUpdates -> {
             vm.setBetaUpdatesEnabled(!state.betaUpdatesEnabled)
             return InputResult.handled(SoundType.TOGGLE)
@@ -542,7 +670,10 @@ private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             }
             return InputResult.handled(SoundType.TOGGLE)
         }
-        AboutItem.LogLevel -> vm.cycleFileLogLevel()
+        AboutItem.LogLevel -> {
+            vm.requestEnumPicker(AboutItem.LogLevel.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         AboutItem.SaveDebugLogging -> {
             vm.setSaveDebugLoggingEnabled(!state.saveDebugLoggingEnabled)
             return InputResult.handled(SoundType.TOGGLE)
@@ -582,6 +713,7 @@ private fun routeFramePickerConfirm(vm: SettingsViewModel, state: SettingsUiStat
 internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
     val state = vm._uiState.value
     return when {
+        state.changelog.visible -> { vm.closeChangelog(); true }
         state.systemizeResult != null -> { vm.dismissSystemizeDialog(); true }
         state.emulators.showSavePathModal -> { vm.dismissSavePathModal(); true }
         state.emulators.showMemcardPicker -> { vm.dismissMemcardPicker(); true }
@@ -612,7 +744,20 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             vm._uiState.update { it.copy(currentSection = SettingsSection.MAIN, focusedIndex = state.parentFocusIndex) }; true
         }
         state.currentSection == SettingsSection.BOX_ART -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.INTERFACE, focusedIndex = 5) }; true
+            val focusIdx = themeFocusIndexOf(ThemeItem.BoxArt)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
+        state.currentSection == SettingsSection.THEME_SOUNDS -> {
+            val focusIdx = themeFocusIndexOf(ThemeItem.Sounds)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
+        state.currentSection == SettingsSection.THEME_FONTS -> {
+            val focusIdx = themeFocusIndexOf(ThemeItem.Fonts)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
+        state.currentSection == SettingsSection.THEME_BACKDROP -> {
+            val focusIdx = themeFocusIndexOf(ThemeItem.Backdrop)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
         }
         state.currentSection == SettingsSection.AMBIENT_LED -> {
             val layoutState = InterfaceLayoutState.from(state)
@@ -620,7 +765,9 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             vm._uiState.update { it.copy(currentSection = SettingsSection.INTERFACE, focusedIndex = focusIdx) }; true
         }
         state.currentSection == SettingsSection.HOME_SCREEN -> {
-            vm._uiState.update { it.copy(currentSection = SettingsSection.INTERFACE, focusedIndex = 6) }; true
+            val layoutState = InterfaceLayoutState.from(state)
+            val focusIdx = interfaceFocusIndexOf(InterfaceItem.HomeScreen, layoutState)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.INTERFACE, focusedIndex = focusIdx) }; true
         }
         state.currentSection == SettingsSection.SHADER_STACK -> {
             vm._uiState.update { it.copy(currentSection = SettingsSection.BUILTIN_VIDEO, focusedIndex = 1) }; true
@@ -759,6 +906,10 @@ private fun computeMaxFocusIndex(
     }
     SettingsSection.STORAGE -> createStorageLayoutInfo(
     ).let { it.layout.maxFocusIndex(it.state) }
+    SettingsSection.THEME -> themeMaxFocusIndex()
+    SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))
+    SettingsSection.THEME_FONTS -> themeFontsMaxFocusIndex(ThemeFontsLayoutState.from(state))
+    SettingsSection.THEME_BACKDROP -> themeBackdropMaxFocusIndex(ThemeBackdropLayoutState.from(state))
     SettingsSection.INTERFACE -> interfaceMaxFocusIndex(InterfaceLayoutState.from(state))
     SettingsSection.HOME_SCREEN -> homeScreenMaxFocusIndex(state.display)
     SettingsSection.BOX_ART -> boxArtMaxFocusIndex(state.display)
@@ -778,7 +929,7 @@ private fun computeMaxFocusIndex(
     SettingsSection.BIOS -> biosMaxFocusIndex(state.bios.platformGroups, state.bios.expandedPlatformIndex)
     SettingsSection.PERMISSIONS -> permissionsMaxFocusIndex(state.permissions)
     SettingsSection.DRIVERS -> (state.drivers.groups.size - 1).coerceAtLeast(0)
-    SettingsSection.ABOUT -> aboutMaxFocusIndex(state.fileLoggingPath != null)
+    SettingsSection.ABOUT -> aboutMaxFocusIndex(state.fileLoggingPath != null, aboutHasChangelog(state.updateCheck))
     SettingsSection.SOCIAL -> com.nendo.argosy.ui.screens.settings.sections.socialMaxFocusIndex(state.social)
 }
 
@@ -797,9 +948,18 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
                 vm.openAppPickerModal(config.platform.id)
             }
         }
-        PlatformDetailItem.Core -> vm.cycleCoreForPlatform(config, 1)
-        PlatformDetailItem.Extension -> vm.cycleExtensionForPlatform(config, 1)
-        PlatformDetailItem.DisplayTarget -> vm.cycleDisplayTarget(config, 1)
+        PlatformDetailItem.Core -> {
+            vm.requestEnumPicker(PlatformDetailItem.Core.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        PlatformDetailItem.Extension -> {
+            vm.requestEnumPicker(PlatformDetailItem.Extension.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        PlatformDetailItem.DisplayTarget -> {
+            vm.requestEnumPicker(PlatformDetailItem.DisplayTarget.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         PlatformDetailItem.LegacyMode -> vm.toggleLegacyMode(config)
         PlatformDetailItem.LaunchArgs -> vm.openLaunchArgsModal(config.platform.id)
         PlatformDetailItem.BuiltinVideo -> vm.navigateToBuiltinVideoForPlatform(state.platformDetail.platformIndex)
@@ -831,7 +991,10 @@ private fun routeBuiltinEmulatorConfirm(vm: SettingsViewModel, state: SettingsUi
     val builtinEnabled = state.emulators.builtinLibretroEnabled
     when (state.focusedIndex) {
         0 -> vm.setBuiltinLibretroEnabled(!builtinEnabled)
-        1 -> if (builtinEnabled) vm.cycleBuiltinArchitecture(1)
+        1 -> if (builtinEnabled) {
+            vm.requestEnumPicker(BUILTIN_ARCHITECTURE_PICKER_KEY)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         2 -> if (builtinEnabled) vm.navigateToBuiltinVideo()
         3 -> if (builtinEnabled) vm.navigateToBuiltinControls()
         4 -> if (builtinEnabled) vm.navigateToCoreManagement()

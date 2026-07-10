@@ -15,7 +15,6 @@ class DualHomeInputHandler(
     private val onBroadcastCollectionGameSelection: () -> Unit,
     private val onBroadcastDirectAction: (String, Long) -> Unit,
     private val onSelectGame: (Long) -> Unit,
-    private val onOpenOverlay: (String) -> Unit,
     private val onLaunchApp: (String) -> Unit,
     private val onLaunchAppAlternate: (String) -> Unit = {}
 ) : InputHandler {
@@ -76,13 +75,6 @@ class DualHomeInputHandler(
         val apps = homeApps()
 
         return when (event) {
-            com.nendo.argosy.ui.input.GamepadEvent.Menu,
-            com.nendo.argosy.ui.input.GamepadEvent.LeftStickClick,
-            com.nendo.argosy.ui.input.GamepadEvent.RightStickClick -> {
-                viewModel.startDrawerForwarding()
-                onOpenOverlay(event::class.simpleName ?: "Menu")
-                InputResult.HANDLED
-            }
             com.nendo.argosy.ui.input.GamepadEvent.Left -> {
                 if (inAppBar) viewModel.selectPreviousApp()
                 else {
@@ -221,13 +213,6 @@ class DualHomeInputHandler(
                 onBroadcastCurrentGameSelection()
                 InputResult.HANDLED
             }
-            com.nendo.argosy.ui.input.GamepadEvent.Menu,
-            com.nendo.argosy.ui.input.GamepadEvent.LeftStickClick,
-            com.nendo.argosy.ui.input.GamepadEvent.RightStickClick -> {
-                viewModel.startDrawerForwarding()
-                onOpenOverlay(event::class.simpleName ?: "Menu")
-                InputResult.HANDLED
-            }
             else -> InputResult.HANDLED
         }
     }
@@ -269,13 +254,6 @@ class DualHomeInputHandler(
                 viewModel.exitCollectionGames()
                 onBroadcastViewModeChange()
                 onBroadcastCollectionFocused()
-                InputResult.HANDLED
-            }
-            com.nendo.argosy.ui.input.GamepadEvent.Menu,
-            com.nendo.argosy.ui.input.GamepadEvent.LeftStickClick,
-            com.nendo.argosy.ui.input.GamepadEvent.RightStickClick -> {
-                viewModel.startDrawerForwarding()
-                onOpenOverlay(event::class.simpleName ?: "Menu")
                 InputResult.HANDLED
             }
             else -> InputResult.HANDLED
@@ -364,13 +342,6 @@ class DualHomeInputHandler(
                 } else {
                     viewModel.toggleFilterOverlay()
                 }
-                InputResult.HANDLED
-            }
-            com.nendo.argosy.ui.input.GamepadEvent.Menu,
-            com.nendo.argosy.ui.input.GamepadEvent.LeftStickClick,
-            com.nendo.argosy.ui.input.GamepadEvent.RightStickClick -> {
-                viewModel.startDrawerForwarding()
-                onOpenOverlay(event::class.simpleName ?: "Menu")
                 InputResult.HANDLED
             }
             else -> InputResult.HANDLED

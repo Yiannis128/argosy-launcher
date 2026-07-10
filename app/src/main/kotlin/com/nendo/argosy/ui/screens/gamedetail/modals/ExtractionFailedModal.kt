@@ -8,18 +8,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.components.CenteredModal
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.screens.gamedetail.ExtractionFailedInfo
@@ -65,35 +62,18 @@ fun ExtractionFailedModal(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.radiusLg, Alignment.CenterHorizontally)
         ) {
-            if (focusIndex == 0) {
-                Button(
-                    onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Retry Extraction")
-                }
-            } else {
-                OutlinedButton(onClick = onRetry) {
-                    Text("Retry Extraction")
-                }
-            }
+            ActionButton(
+                label = "Retry Extraction",
+                onClick = onRetry,
+                focused = focusIndex == 0,
+                primary = true
+            )
 
-            if (focusIndex == 1) {
-                Button(
-                    onClick = onRedownload,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Redownload")
-                }
-            } else {
-                OutlinedButton(onClick = onRedownload) {
-                    Text("Redownload")
-                }
-            }
+            ActionButton(
+                label = "Redownload",
+                onClick = onRedownload,
+                focused = focusIndex == 1
+            )
         }
     }
 }

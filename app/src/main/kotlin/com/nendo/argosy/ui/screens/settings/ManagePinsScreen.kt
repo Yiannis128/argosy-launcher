@@ -38,7 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,11 +49,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.domain.model.PinnedCollection
 import com.nendo.argosy.domain.usecase.collection.CategoryType
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
 fun ManagePinsScreen(
@@ -150,10 +154,7 @@ fun ManagePinsScreen(
             )
         }
 
-        FooterBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            hints = hints
-        )
+        FooterHints(hints = hints)
     }
 }
 
@@ -190,10 +191,6 @@ private fun PinRow(
     isBeingMoved: Boolean,
     onClick: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
-        label = "scale"
-    )
     val alpha by animateFloatAsState(
         targetValue = if (isBeingMoved) 0.7f else 1f,
         label = "alpha"
@@ -208,17 +205,16 @@ private fun PinRow(
         }
     }
 
+    val focusAccent = LocalArgosyTheme.current.focusAccent
+    val focusedContentColor = lerp(focusAccent, Color.White, 0.45f)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-            }
+            .graphicsLayer { this.alpha = alpha }
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
-                if (isFocused) MaterialTheme.colorScheme.primaryContainer
+                if (isFocused) focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surfaceVariant
             )
             .clickableNoFocus(onClick = onClick)
@@ -236,7 +232,7 @@ private fun PinRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                tint = if (isFocused) focusedContentColor
                 else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(Dimens.iconMd)
             )
@@ -248,13 +244,13 @@ private fun PinRow(
             Text(
                 text = pin.displayName,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                color = if (isFocused) focusedContentColor
                 else MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "$typeLabel - ${pin.gameCount} games",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

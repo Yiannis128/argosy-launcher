@@ -642,12 +642,14 @@ class SavePathResolver @Inject constructor(
 
         val userConfig = emulatorSaveConfigDao.getByEmulator(config.emulatorId)
         val basePathOverride = userConfig?.takeIf { it.isUserOverride }?.savePathPattern
+        val selectedMemcard = userConfig?.selectedMemcardPath?.takeIf { directoryExists(it) }
 
         val baseDir = if (platformSlug == "switch") {
             switchSaveHandler.resolveBasePath(config, basePathOverride, emulatorPackage)
         } else {
-            saveHandlerRegistry.getFolderHandler(platformSlug)
-                ?.resolveBasePath(config, basePathOverride)
+            selectedMemcard
+                ?: saveHandlerRegistry.getFolderHandler(platformSlug)
+                    ?.resolveBasePath(config, basePathOverride)
                 ?: basePathOverride
                 ?: config.defaultPaths.firstOrNull { directoryExists(it) }
                 ?: config.defaultPaths.firstOrNull()

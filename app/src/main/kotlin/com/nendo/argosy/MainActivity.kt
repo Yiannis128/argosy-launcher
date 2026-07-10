@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var triggerAxisKeyEmitter: com.nendo.argosy.ui.input.TriggerAxisKeyEmitter
     @Inject lateinit var imageCacheManager: ImageCacheManager
     @Inject lateinit var androidGameScanner: com.nendo.argosy.data.scanner.AndroidGameScanner
+    @Inject lateinit var gameNativeStoreSync: com.nendo.argosy.data.launcher.GameNativeStoreSync
     @Inject lateinit var romMRepository: RomMRepository
     @Inject lateinit var preferencesRepository: UserPreferencesRepository
     @Inject lateinit var syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
@@ -646,6 +647,9 @@ class MainActivity : ComponentActivity() {
 
             imageCacheManager.resumePendingCache()
             imageCacheManager.resumePendingCoverCache()
+            if (preferencesRepository.preferences.first().boxArtCacheEnabled) {
+                imageCacheManager.resumePendingBoxFaceCache()
+            }
             imageCacheManager.recoverMissingCovers()
             imageCacheManager.resumePendingLogoCache()
             imageCacheManager.resumePendingBadgeCache()
@@ -653,6 +657,11 @@ class MainActivity : ComponentActivity() {
             val relinked = androidGameScanner.relinkInstalledRommAndroidApps()
             if (relinked > 0) {
                 Log.i(TAG, "Relinked $relinked installed RomM Android games to their packages")
+            }
+
+            val storeSync = gameNativeStoreSync.scan()
+            if (storeSync.added > 0 || storeSync.removed > 0) {
+                Log.i(TAG, "GameNative store sync: ${storeSync.added} added, ${storeSync.removed} removed")
             }
 
             if (shouldInitializeScreenCapture(prefs)) {

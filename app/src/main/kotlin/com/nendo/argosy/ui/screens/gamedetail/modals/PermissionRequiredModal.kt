@@ -13,19 +13,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.screens.gamedetail.PermissionModalType
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -66,7 +63,7 @@ fun PermissionRequiredModal(
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(Dimens.radiusXl),
+            shape = RoundedCornerShape(Dimens.radiusPanel),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = Dimens.elevationLg,
             modifier = Modifier
@@ -107,26 +104,24 @@ fun PermissionRequiredModal(
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
+                    ActionButton(
+                        label = buttonText,
                         onClick = onGrantPermission,
+                        primary = true,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(buttonText)
-                    }
+                    )
 
-                    OutlinedButton(
+                    ActionButton(
+                        label = "Disable Save Sync",
                         onClick = onDisableSync,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Disable Save Sync")
-                    }
+                    )
 
-                    TextButton(
+                    ActionButton(
+                        label = "Cancel",
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Cancel")
-                    }
+                    )
                 }
             }
         }

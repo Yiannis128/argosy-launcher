@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
@@ -190,13 +192,14 @@ private fun FrameListItem(
     onClick: () -> Unit,
     onDownload: () -> Unit
 ) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
     val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> focusAccent.copy(alpha = 0.15f)
         isSelected -> MaterialTheme.colorScheme.surfaceVariant
         else -> Color.Transparent
     }
     val contentColor = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> lerp(focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
 

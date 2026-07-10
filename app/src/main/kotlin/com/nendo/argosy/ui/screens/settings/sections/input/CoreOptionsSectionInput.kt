@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -18,12 +19,17 @@ internal class CoreOptionsSectionInput(
         val state = viewModel.uiState.value
         return when (val item = coreOptionsItemAtFocusIndex(state.focusedIndex, state.coreOptions)) {
             is CoreOptionItem.CoreSelector -> {
-                viewModel.cycleCoreSelector(1)
-                InputResult.HANDLED
+                if (state.coreOptions.coresForCurrentPlatform.isEmpty()) return InputResult.HANDLED
+                viewModel.requestEnumPicker(item.key)
+                InputResult.handled(SoundType.OPEN_MODAL)
             }
             is CoreOptionItem.Option -> {
-                viewModel.cycleCoreOptionValue(item.optionKey, 1)
-                InputResult.HANDLED
+                if (item.values.size > 1) {
+                    viewModel.requestEnumPicker(item.optionKey)
+                    InputResult.handled(SoundType.OPEN_MODAL)
+                } else {
+                    InputResult.HANDLED
+                }
             }
             is CoreOptionItem.DownloadCore -> {
                 val core = state.coreOptions.selectedCore

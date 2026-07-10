@@ -32,7 +32,11 @@ import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.data.social.UserProfileData
-import com.nendo.argosy.ui.components.FooterBarWithState
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import com.nendo.argosy.ui.components.FooterHintsWithState
+import com.nendo.argosy.ui.components.FooterSpacer
+import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.components.FooterHintItem
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
@@ -308,7 +312,7 @@ fun UserProfileScreen(
             }
         }
 
-        FooterBarWithState(
+        FooterHintsWithState(
             hints = buildList {
                 add(FooterHintItem(InputButton.A, "View Game", enabled = uiState.focusedGameInLibrary))
                 if (profile != null) {
@@ -323,5 +327,6 @@ fun UserProfileScreen(
                 add(FooterHintItem(InputButton.B, "Back"))
             }
         )
+        FooterSpacer()
     }
 }

@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -55,15 +54,26 @@ import coil.compose.AsyncImage
 import com.nendo.argosy.data.emulator.DiscOption
 import androidx.compose.material3.OutlinedTextField
 import com.nendo.argosy.domain.model.UnifiedStateEntry
+import androidx.compose.foundation.layout.fillMaxHeight
 import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.ui.components.Box3dCover
 import com.nendo.argosy.ui.components.GameTitle
+import com.nendo.argosy.ui.dualscreen.ShowcaseAmbience
+import com.nendo.argosy.ui.dualscreen.ShowcaseEyebrow
+import com.nendo.argosy.ui.dualscreen.ShowcaseRatingsCluster
+import com.nendo.argosy.ui.dualscreen.ShowcaseStatsRow
+import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.GlassPanel
+import com.nendo.argosy.ui.primitives.RowButton
 import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.screens.gamedetail.RatingType
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.StatusPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.UpdatesPickerModal
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.util.touchOnly
 import com.nendo.argosy.util.formatPlayTime
@@ -91,6 +101,7 @@ fun DualGameDetailUpperScreen(
     footerHints: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     val viewerPath = state.viewerScreenshotIndex?.let { idx ->
         state.screenshots.getOrNull(idx)
     }
@@ -100,7 +111,7 @@ fun DualGameDetailUpperScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(theme.surfaceBase)
     ) {
         if (viewerPath != null) {
             ScreenshotViewer(
@@ -211,6 +222,7 @@ internal fun DualSteamInstallPickerContent(
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -218,44 +230,43 @@ internal fun DualSteamInstallPickerContent(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp)
         ) {
-            Text(
-                text = "INSTALL LOCATION",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "INSTALL LOCATION",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
-                item {
-                    EmulatorPickerItem(
-                        name = "Download via Argosy",
-                        version = null,
-                        isSelected = focusIndex == 0,
-                        isCurrent = false,
-                        onClick = { onSelect(0) }
-                    )
-                }
-                itemsIndexed(optionNames, key = { _, n -> n }) { index, name ->
-                    val itemIndex = index + 1
-                    EmulatorPickerItem(
-                        name = "Mark as Installed",
-                        version = "Managed by $name",
-                        isSelected = focusIndex == itemIndex,
-                        isCurrent = false,
-                        onClick = { onSelect(itemIndex) }
-                    )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    contentPadding = PaddingValues(vertical = Dimens.spacingXs)
+                ) {
+                    item {
+                        EmulatorPickerItem(
+                            name = "Download via Argosy",
+                            version = null,
+                            isSelected = focusIndex == 0,
+                            isCurrent = false,
+                            onClick = { onSelect(0) }
+                        )
+                    }
+                    itemsIndexed(optionNames, key = { _, n -> n }) { index, name ->
+                        val itemIndex = index + 1
+                        EmulatorPickerItem(
+                            name = "Mark as Installed",
+                            version = "Managed by $name",
+                            isSelected = focusIndex == itemIndex,
+                            isCurrent = false,
+                            onClick = { onSelect(itemIndex) }
+                        )
+                    }
                 }
             }
         }
@@ -276,7 +287,7 @@ private fun ScreenshotViewer(
             contentDescription = "Screenshot",
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize(),
-            onError = { /* Show black background instead of blank */ }
+            onError = {}
         )
     }
 }
@@ -286,356 +297,119 @@ private fun GameInfoDisplay(
     state: DualGameDetailUpperState,
     footerHints: @Composable () -> Unit
 ) {
-    // Background image (blurred)
-    if (state.backgroundPath != null || state.coverPath != null) {
-        AsyncImage(
-            model = File(state.backgroundPath ?: state.coverPath!!),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(20.dp),
-            onError = { /* Show gradient overlay instead of blank */ }
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
-                )
-        )
-    }
+    val theme = LocalArgosyTheme.current
+    ShowcaseAmbience(artPath = state.backgroundPath ?: state.coverPath)
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Header bar
-        DetailHeader(
-            title = state.title,
-            platformName = state.platformName,
-            developer = state.developer,
-            releaseYear = state.releaseYear,
-            titleId = state.titleId,
-            communityRating = state.communityRating,
-            userRating = state.rating ?: 0,
-            userDifficulty = state.userDifficulty
-        )
-
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
-        )
-
-        // Main content area
         Row(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = Dimens.spacingXxl),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXxl)
         ) {
-            // Cover art
             if (state.coverPath != null) {
-                val boxArtStyle = LocalBoxArtStyle.current
-                val coverAspectRatio = if (boxArtStyle.nativeAspectRatio) {
-                    rememberCoverAspectRatio(state.coverPath, boxArtStyle.aspectRatio)
+                if (state.boxSpinePath != null && state.coverPath.startsWith("/")) {
+                    Box3dCover(
+                        frontPath = state.coverPath,
+                        spinePath = state.boxSpinePath,
+                        backPath = state.boxBackPath,
+                        modifier = Modifier.fillMaxHeight(0.72f)
+                    )
                 } else {
-                    boxArtStyle.aspectRatio
+                    val boxArtStyle = LocalBoxArtStyle.current
+                    val coverAspectRatio = if (boxArtStyle.nativeAspectRatio) {
+                        rememberCoverAspectRatio(state.coverPath, boxArtStyle.aspectRatio)
+                    } else {
+                        boxArtStyle.aspectRatio
+                    }
+                    AsyncImage(
+                        model = File(state.coverPath),
+                        contentDescription = state.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxHeight(0.72f)
+                            .aspectRatio(coverAspectRatio)
+                            .clip(RoundedCornerShape(Dimens.radiusSm)),
+                        onError = {}
+                    )
                 }
-                AsyncImage(
-                    model = File(state.coverPath),
-                    contentDescription = state.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .width(160.dp)
-                        .aspectRatio(coverAspectRatio)
-                        .clip(RoundedCornerShape(8.dp)),
-                    onError = { /* Show empty space instead of broken image */ }
-                )
             }
 
-            // Info column
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.Center
             ) {
-                // Description
+                ShowcaseEyebrow(
+                    platformName = state.platformName,
+                    releaseYear = state.releaseYear,
+                    developer = state.developer
+                )
+                Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                GameTitle(
+                    title = state.title,
+                    titleStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    titleColor = theme.textPrimary,
+                    maxLines = 2
+                )
+                Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                ShowcaseRatingsCluster(
+                    communityRating = state.communityRating,
+                    userRating = state.rating ?: 0,
+                    userDifficulty = state.userDifficulty
+                )
                 if (state.description != null) {
+                    Spacer(modifier = Modifier.height(Dimens.spacingLg))
                     Text(
                         text = state.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 6,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = theme.textDim,
+                        maxLines = 5,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-
-                // Stats row
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    // Play time
-                    Column {
-                        Text(
-                            text = formatPlayTime(state.playTimeMinutes),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Play Time",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // Last played
-                    if (state.lastPlayedAt > 0) {
-                        Column {
-                            Text(
-                                text = formatLastPlayed(state.lastPlayedAt),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Last Played",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Status
-                    if (state.status != null) {
-                        Column {
-                            Text(
-                                text = state.status.replaceFirstChar { it.uppercase() },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Status",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                // Achievements
                 if (state.achievementCount > 0) {
+                    Spacer(modifier = Modifier.height(Dimens.spacingLg))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.EmojiEvents,
                             contentDescription = null,
                             tint = ALauncherColors.StarGold,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(Dimens.iconMd)
                         )
                         Text(
                             text = "${state.earnedAchievementCount}/${state.achievementCount}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = theme.textPrimary
                         )
                         Text(
                             text = "Achievements",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = theme.textDim
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(Dimens.spacingXl))
+                ShowcaseStatsRow(
+                    playTimeMinutes = state.playTimeMinutes,
+                    lastPlayedAt = state.lastPlayedAt,
+                    status = state.status
+                )
             }
         }
 
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+            color = theme.hairlineLow
         )
 
-        // Footer hints
         footerHints()
-    }
-}
-
-private val PLATFORM_KEEP_TOGETHER = listOf(
-    "Game Boy", "Nintendo 64", "Nintendo DS", "Nintendo 3DS",
-    "Super Nintendo", "Neo Geo", "Master System", "Mega Drive",
-    "PC Engine", "PlayStation Portable", "PlayStation Vita"
-)
-
-private fun splitPlatformName(name: String): List<String> {
-    var processed = name
-    for (phrase in PLATFORM_KEEP_TOGETHER) {
-        processed = processed.replace(phrase, phrase.replace(" ", "\u00A0"))
-    }
-    val words = processed.split(" ")
-    if (words.size <= 1) return listOf(name)
-
-    var bestSplit = 1
-    var bestDiff = Int.MAX_VALUE
-    for (splitAt in 1 until words.size) {
-        val firstLen = words.subList(0, splitAt).sumOf { it.length } + splitAt - 1
-        val lastLen = words.subList(splitAt, words.size).sumOf { it.length } + (words.size - splitAt - 1)
-        if (lastLen >= firstLen) {
-            val diff = lastLen - firstLen
-            if (diff < bestDiff) { bestDiff = diff; bestSplit = splitAt }
-        }
-    }
-    val firstPart = words.subList(0, bestSplit).joinToString(" ").replace("\u00A0", " ")
-    val lastPart = words.subList(bestSplit, words.size).joinToString(" ").replace("\u00A0", " ")
-    return listOf(firstPart, lastPart)
-}
-
-@Composable
-private fun DetailHeader(
-    title: String,
-    platformName: String,
-    developer: String?,
-    releaseYear: Int?,
-    titleId: String?,
-    communityRating: Float?,
-    userRating: Int,
-    userDifficulty: Int
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            if (title.isEmpty()) {
-                Text(
-                    text = "Game Details",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            } else {
-                GameTitle(
-                    title = title,
-                    titleStyle = MaterialTheme.typography.titleLarge
-                        .copy(fontWeight = FontWeight.Bold),
-                    titleColor = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1
-                )
-            }
-            if (titleId != null) {
-                Text(
-                    text = "TitleID: $titleId",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                        .copy(alpha = 0.7f)
-                )
-            }
-        }
-
-        DetailRatingsCluster(
-            communityRating = communityRating,
-            userRating = userRating,
-            userDifficulty = userDifficulty
-        )
-
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.End
-        ) {
-            val platformLines = splitPlatformName(platformName)
-            platformLines.forEach { line ->
-                Text(
-                    text = line,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            if (developer != null || releaseYear != null) {
-                Text(
-                    text = listOfNotNull(
-                        developer, releaseYear?.toString()
-                    ).joinToString(" - "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailRatingsCluster(
-    communityRating: Float?,
-    userRating: Int,
-    userDifficulty: Int
-) {
-    val hasAnyRating = communityRating != null || userRating > 0 || userDifficulty > 0
-    if (!hasAnyRating) return
-
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        communityRating?.let { rating ->
-            DetailRatingItem(
-                icon = Icons.Default.People,
-                value = "${rating.toInt()}",
-                iconColor = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(24.dp))
-        }
-        if (userRating > 0) {
-            DetailRatingItem(
-                icon = Icons.Default.Star,
-                value = "$userRating",
-                iconColor = ALauncherColors.StarGold
-            )
-            if (userDifficulty > 0) {
-                Spacer(modifier = Modifier.width(24.dp))
-            }
-        }
-        if (userDifficulty > 0) {
-            DetailRatingItem(
-                icon = Icons.Default.Whatshot,
-                value = "$userDifficulty",
-                iconColor = ALauncherColors.DifficultyRed
-            )
-        }
-    }
-}
-
-@Composable
-private fun DetailRatingItem(
-    icon: ImageVector,
-    value: String,
-    iconColor: Color
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconColor,
-            modifier = Modifier.size(20.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
     }
 }
 
@@ -648,6 +422,7 @@ private fun DualEmulatorPickerContent(
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -655,49 +430,48 @@ private fun DualEmulatorPickerContent(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp)
         ) {
-            Text(
-                text = "SELECT EMULATOR",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "SELECT EMULATOR",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
-                item {
-                    val isSelected = focusIndex == 0
-                    val isCurrent = currentEmulatorName == null
-                    EmulatorPickerItem(
-                        name = "Use Platform Default",
-                        version = null,
-                        isSelected = isSelected,
-                        isCurrent = isCurrent,
-                        onClick = { onSelect(0) }
-                    )
-                }
-                itemsIndexed(emulatorNames, key = { _, n -> n }) { index, name ->
-                    val itemIndex = index + 1
-                    val isSelected = focusIndex == itemIndex
-                    val isCurrent = name == currentEmulatorName
-                    EmulatorPickerItem(
-                        name = name,
-                        version = emulatorVersions.getOrNull(index)
-                            ?.takeIf { it.isNotBlank() },
-                        isSelected = isSelected,
-                        isCurrent = isCurrent,
-                        onClick = { onSelect(itemIndex) }
-                    )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    contentPadding = PaddingValues(vertical = Dimens.spacingXs)
+                ) {
+                    item {
+                        val isSelected = focusIndex == 0
+                        val isCurrent = currentEmulatorName == null
+                        EmulatorPickerItem(
+                            name = "Use Platform Default",
+                            version = null,
+                            isSelected = isSelected,
+                            isCurrent = isCurrent,
+                            onClick = { onSelect(0) }
+                        )
+                    }
+                    itemsIndexed(emulatorNames, key = { _, n -> n }) { index, name ->
+                        val itemIndex = index + 1
+                        val isSelected = focusIndex == itemIndex
+                        val isCurrent = name == currentEmulatorName
+                        EmulatorPickerItem(
+                            name = name,
+                            version = emulatorVersions.getOrNull(index)
+                                ?.takeIf { it.isNotBlank() },
+                            isSelected = isSelected,
+                            isCurrent = isCurrent,
+                            onClick = { onSelect(itemIndex) }
+                        )
+                    }
                 }
             }
         }
@@ -712,6 +486,7 @@ private fun DualCorePickerContent(
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -719,48 +494,47 @@ private fun DualCorePickerContent(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp)
         ) {
-            Text(
-                text = "SELECT CORE",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "SELECT CORE",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
-                item {
-                    val isSelected = focusIndex == 0
-                    val isCurrent = currentCoreName == null
-                    EmulatorPickerItem(
-                        name = "Use Platform Default",
-                        version = null,
-                        isSelected = isSelected,
-                        isCurrent = isCurrent,
-                        onClick = { onSelect(0) }
-                    )
-                }
-                itemsIndexed(coreNames, key = { _, n -> n }) { index, name ->
-                    val itemIndex = index + 1
-                    val isSelected = focusIndex == itemIndex
-                    val isCurrent = name == currentCoreName
-                    EmulatorPickerItem(
-                        name = name,
-                        version = null,
-                        isSelected = isSelected,
-                        isCurrent = isCurrent,
-                        onClick = { onSelect(itemIndex) }
-                    )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    contentPadding = PaddingValues(vertical = Dimens.spacingXs)
+                ) {
+                    item {
+                        val isSelected = focusIndex == 0
+                        val isCurrent = currentCoreName == null
+                        EmulatorPickerItem(
+                            name = "Use Platform Default",
+                            version = null,
+                            isSelected = isSelected,
+                            isCurrent = isCurrent,
+                            onClick = { onSelect(0) }
+                        )
+                    }
+                    itemsIndexed(coreNames, key = { _, n -> n }) { index, name ->
+                        val itemIndex = index + 1
+                        val isSelected = focusIndex == itemIndex
+                        val isCurrent = name == currentCoreName
+                        EmulatorPickerItem(
+                            name = name,
+                            version = null,
+                            isSelected = isSelected,
+                            isCurrent = isCurrent,
+                            onClick = { onSelect(itemIndex) }
+                        )
+                    }
                 }
             }
         }
@@ -775,6 +549,7 @@ private fun DualVariantPickerContent(
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -782,46 +557,45 @@ private fun DualVariantPickerContent(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp)
         ) {
-            Text(
-                text = "SELECT VARIANT",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "SELECT VARIANT",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
-                item {
-                    EmulatorPickerItem(
-                        name = "Default (Original)",
-                        version = null,
-                        isSelected = focusIndex == 0,
-                        isCurrent = currentVariantName == null,
-                        onClick = { onSelect(0) }
-                    )
-                }
-                itemsIndexed(variantNames, key = { _, n -> n }) { index, name ->
-                    val itemIndex = index + 1
-                    val isSelected = focusIndex == itemIndex
-                    val isCurrent = name == currentVariantName
-                    EmulatorPickerItem(
-                        name = name,
-                        version = null,
-                        isSelected = isSelected,
-                        isCurrent = isCurrent,
-                        onClick = { onSelect(itemIndex) }
-                    )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    contentPadding = PaddingValues(vertical = Dimens.spacingXs)
+                ) {
+                    item {
+                        EmulatorPickerItem(
+                            name = "Default (Original)",
+                            version = null,
+                            isSelected = focusIndex == 0,
+                            isCurrent = currentVariantName == null,
+                            onClick = { onSelect(0) }
+                        )
+                    }
+                    itemsIndexed(variantNames, key = { _, n -> n }) { index, name ->
+                        val itemIndex = index + 1
+                        val isSelected = focusIndex == itemIndex
+                        val isCurrent = name == currentVariantName
+                        EmulatorPickerItem(
+                            name = name,
+                            version = null,
+                            isSelected = isSelected,
+                            isCurrent = isCurrent,
+                            onClick = { onSelect(itemIndex) }
+                        )
+                    }
                 }
             }
         }
@@ -835,6 +609,7 @@ private fun DualDiscPickerContent(
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -842,63 +617,31 @@ private fun DualDiscPickerContent(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp)
         ) {
-            Text(
-                text = "SELECT DISC",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "SELECT DISC",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
-                itemsIndexed(discs, key = { _, d -> d.filePath }) { index, disc ->
-                    val isSelected = focusIndex == index
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                    .copy(alpha = 0.5f)
-                                else Color.Transparent
-                            )
-                            .then(
-                                if (isSelected) Modifier.border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(8.dp)
-                                ) else Modifier
-                            )
-                            .touchOnly { onSelect(index) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Disc ${disc.discNumber}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = disc.fileName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    contentPadding = PaddingValues(vertical = Dimens.spacingXs)
+                ) {
+                    itemsIndexed(discs, key = { _, d -> d.filePath }) { index, disc ->
+                        RowButton(
+                            label = "Disc ${disc.discNumber}",
+                            subtitle = disc.fileName,
+                            focused = focusIndex == index,
+                            onClick = { onSelect(index) }
+                        )
                     }
                 }
             }
@@ -914,26 +657,10 @@ private fun EmulatorPickerItem(
     isCurrent: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                    .copy(alpha = 0.5f)
-                else Color.Transparent
-            )
-            .then(
-                if (isSelected) Modifier.border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(8.dp)
-                ) else Modifier
-            )
-            .touchOnly { onClick() }
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    val theme = LocalArgosyTheme.current
+    RowButton(
+        onClick = onClick,
+        focused = isSelected
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -941,13 +668,13 @@ private fun EmulatorPickerItem(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isCurrent) FontWeight.Bold
                     else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface
+                color = theme.textPrimary
             )
             if (version != null) {
                 Text(
                     text = version,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = theme.textDim
                 )
             }
         }
@@ -955,8 +682,8 @@ private fun EmulatorPickerItem(
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                tint = theme.focusAccent,
+                modifier = Modifier.size(Dimens.iconSm)
             )
         }
     }
@@ -973,6 +700,7 @@ private fun DualCollectionModalContent(
     onCreateDismiss: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -980,102 +708,64 @@ private fun DualCollectionModalContent(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp)
         ) {
-            Text(
-                text = "ADD TO COLLECTION",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.padding(Dimens.spacingLg)) {
+                Text(
+                    text = "ADD TO COLLECTION",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary,
+                    modifier = Modifier.padding(bottom = Dimens.spacingMd)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
-                itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                    val isSelected = focusIndex == index
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                        .copy(alpha = 0.5f)
-                                else Color.Transparent
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    contentPadding = PaddingValues(vertical = Dimens.spacingXs)
+                ) {
+                    itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                        RowButton(
+                            onClick = { onToggle(item.id) },
+                            focused = focusIndex == index
+                        ) {
+                            Text(
+                                text = item.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = theme.textPrimary,
+                                modifier = Modifier.weight(1f)
                             )
-                            .then(
-                                if (isSelected) Modifier.border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(8.dp)
-                                ) else Modifier
-                            )
-                            .touchOnly { onToggle(item.id) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = item.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (item.isInCollection) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            if (item.isInCollection) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = theme.focusAccent,
+                                    modifier = Modifier.size(Dimens.iconSm)
+                                )
+                            }
                         }
                     }
-                }
 
-                item(key = "create") {
-                    val isSelected = focusIndex == items.size
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                        .copy(alpha = 0.5f)
-                                else Color.Transparent
+                    item(key = "create") {
+                        RowButton(
+                            onClick = onShowCreate,
+                            focused = focusIndex == items.size
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = null,
+                                tint = theme.focusAccent,
+                                modifier = Modifier.size(Dimens.iconSm)
                             )
-                            .then(
-                                if (isSelected) Modifier.border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(8.dp)
-                                ) else Modifier
+                            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+                            Text(
+                                text = "Create New Collection",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = theme.focusAccent
                             )
-                            .touchOnly { onShowCreate() }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "Create New Collection",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        }
                     }
                 }
             }
@@ -1084,7 +774,8 @@ private fun DualCollectionModalContent(
         if (showCreateDialog) {
             CreateCollectionDialog(
                 onDismiss = onCreateDismiss,
-                onCreate = onCreate
+                onCreate = onCreate,
+                gamepadInput = false
             )
         }
     }
@@ -1097,6 +788,7 @@ private fun StatePreviewDisplay(
     coverPath: String?,
     footerHints: @Composable () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Column(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -1127,10 +819,8 @@ private fun StatePreviewDisplay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .background(theme.surfaceRaised.copy(alpha = 0.9f))
+                    .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1138,21 +828,21 @@ private fun StatePreviewDisplay(
                     text = entry.displayName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = theme.textPrimary
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = entry.timestampFormatted,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = theme.textDim
                     )
                     Text(
                         text = entry.sizeFormatted,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = theme.textDim
                     )
                     val syncLabel = when (entry.syncStatus) {
                         UnifiedStateEntry.SyncStatus.SYNCED -> "Synced"
@@ -1162,7 +852,7 @@ private fun StatePreviewDisplay(
                     }
                     val syncColor = when (entry.syncStatus) {
                         UnifiedStateEntry.SyncStatus.SYNCED -> Color(0xFF4CAF50)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> theme.textDim
                     }
                     Text(
                         text = "[$syncLabel]",
@@ -1174,26 +864,10 @@ private fun StatePreviewDisplay(
         }
 
         HorizontalDivider(
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+            color = theme.hairlineLow
         )
 
         footerHints()
-    }
-}
-
-private fun formatLastPlayed(timestamp: Long): String {
-    if (timestamp <= 0) return ""
-
-    val now = Instant.now()
-    val lastPlayed = Instant.ofEpochMilli(timestamp)
-    val daysBetween = ChronoUnit.DAYS.between(lastPlayed, now)
-
-    return when {
-        daysBetween == 0L -> "Today"
-        daysBetween == 1L -> "Yesterday"
-        daysBetween < 7 -> "$daysBetween days ago"
-        daysBetween < 30 -> "${daysBetween / 7} weeks ago"
-        else -> "${daysBetween / 30} months ago"
     }
 }
 
@@ -1204,6 +878,7 @@ private fun DualSaveNamePrompt(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1211,59 +886,44 @@ private fun DualSaveNamePrompt(
             .touchOnly { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        GlassPanel(
             modifier = Modifier
                 .fillMaxWidth(0.5f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
                 .touchOnly { }
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "CREATE SAVE SLOT",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
-                label = { Text("Slot name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(Dimens.spacingLg),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .touchOnly { onDismiss() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                Text(
+                    text = "CREATE SAVE SLOT",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.textPrimary
+                )
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    label = { Text("Slot name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Cancel",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ActionButton(
+                        label = "Cancel",
+                        onClick = onDismiss
                     )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primary)
-                        .touchOnly { onConfirm() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "Create",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
+                    Spacer(modifier = Modifier.width(Dimens.spacingSm))
+                    ActionButton(
+                        label = "Create",
+                        onClick = onConfirm,
+                        primary = true
                     )
                 }
             }

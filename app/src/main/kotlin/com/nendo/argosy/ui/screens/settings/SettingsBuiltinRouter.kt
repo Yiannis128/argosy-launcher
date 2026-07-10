@@ -36,12 +36,14 @@ internal fun routeSetBuiltinFramesEnabled(vm: SettingsViewModel, enabled: Boolea
     }
 }
 
-private val ARCHITECTURE_OPTIONS: List<String>
+internal val ARCHITECTURE_OPTIONS: List<String>
     get() = buildList {
         add("Universal")
         if (LibretroBuildbot.processIs64Bit) add("ARMv8 (64-bit)")
         else add("ARMv7 (32-bit)")
     }
+
+internal const val BUILTIN_ARCHITECTURE_PICKER_KEY = "builtin_architecture"
 
 private fun architectureDisplayToAbi(display: String): String? = when (display) {
     "ARMv7 (32-bit)" -> "armeabi-v7a"
@@ -378,6 +380,29 @@ internal fun routeSetBuiltinLimitHotkeysToPlayer1(vm: SettingsViewModel, enabled
     }
 }
 
+internal fun routeSetSpeedrunStartOnReset(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(speedrunStartOnReset = enabled)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setSpeedrunStartOnReset(enabled)
+    }
+}
+
+internal fun routeSetSpeedrunPanelSide(vm: SettingsViewModel, side: String) {
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(speedrunPanelSide = side)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setSpeedrunPanelSide(side)
+    }
+}
+
+internal fun routeAdjustSpeedrunPanelWidth(vm: SettingsViewModel, delta: Int) {
+    val current = vm._uiState.value.builtinControls.speedrunPanelWidthPercent
+    val next = 20 + (current - 20 + delta).mod(25)
+    vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(speedrunPanelWidthPercent = next)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setSpeedrunPanelWidthPercent(next)
+    }
+}
+
 internal fun routeSetBuiltinFastForwardMode(vm: SettingsViewModel, mode: com.nendo.argosy.data.local.entity.FastForwardMode) {
     vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(fastForwardMode = mode)) }
     vm.viewModelScope.launch {
@@ -543,7 +568,7 @@ internal fun routeCycleBuiltinFilter(vm: SettingsViewModel, direction: Int) {
 }
 
 internal fun routeCycleBuiltinAspectRatio(vm: SettingsViewModel, direction: Int) {
-    val options = listOf("Core Provided", "4:3", "16:9", "Integer", "Stretch")
+    val options = listOf("Core Provided", "4:3", "3:2", "16:9", "Integer", "Stretch")
     val current = vm._uiState.value.builtinVideo.aspectRatio
     val currentIndex = options.indexOf(current).coerceAtLeast(0)
     val nextIndex = (currentIndex + direction + options.size) % options.size

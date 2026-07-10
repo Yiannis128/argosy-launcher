@@ -50,6 +50,8 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 
 @Composable
 fun RASettingsSection(
@@ -152,7 +154,7 @@ private fun RALoggedInContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                            LocalLauncherTheme.current.semanticColors.warningContainer.copy(alpha = 0.3f),
                             RoundedCornerShape(Dimens.radiusMd)
                         )
                         .padding(Dimens.spacingMd),
@@ -306,7 +308,7 @@ private fun LazyListScope.raProxyItems(
                     .focusRequester(focusRequester)
                     .then(
                         if (focusedIndex == RA_PROXY_FIELD_INDEX)
-                            Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                            Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                         else Modifier
                     )
             )
@@ -380,7 +382,7 @@ private fun RALoginForm(
                 .focusRequester(usernameFocusRequester)
                 .then(
                     if (focusedIndex == 0)
-                        Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                        Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                     else Modifier
                 )
         )
@@ -398,7 +400,7 @@ private fun RALoginForm(
                 .focusRequester(passwordFocusRequester)
                 .then(
                     if (focusedIndex == 1)
-                        Modifier.background(MaterialTheme.colorScheme.primaryContainer, inputShape)
+                        Modifier.background(LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f), inputShape)
                     else Modifier
                 )
         )

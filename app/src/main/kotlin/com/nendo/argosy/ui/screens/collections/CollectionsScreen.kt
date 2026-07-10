@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -53,7 +54,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.domain.usecase.collection.CollectionWithCount
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -62,6 +63,7 @@ import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.screens.collections.dialogs.DeleteCollectionDialog
 import com.nendo.argosy.ui.screens.collections.dialogs.EditCollectionDialog
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,7 +223,7 @@ fun CollectionsScreen(
             } else {
                 emptyList()
             }
-            FooterBar(hints = baseHints + contextHints)
+            FooterHints(hints = baseHints + contextHints)
         }
     }
 
@@ -266,7 +268,7 @@ private fun CollectionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     val borderModifier = if (isFocused) {
         Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
     } else Modifier
@@ -279,7 +281,8 @@ private fun CollectionRow(
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.primaryContainer
+                LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }
@@ -421,7 +424,7 @@ private fun NewCollectionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     val borderModifier = if (isFocused) {
         Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
     } else Modifier
@@ -434,7 +437,8 @@ private fun NewCollectionRow(
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.primaryContainer
+                LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             }
@@ -481,7 +485,7 @@ private fun BrowseByRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val shape = RoundedCornerShape(Dimens.radiusControl)
     val borderModifier = if (isFocused) {
         Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
     } else Modifier
@@ -494,7 +498,8 @@ private fun BrowseByRow(
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.primaryContainer
+                LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+                    .compositeOver(MaterialTheme.colorScheme.surface)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }

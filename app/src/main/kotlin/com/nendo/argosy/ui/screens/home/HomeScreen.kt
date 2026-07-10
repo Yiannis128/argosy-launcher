@@ -92,7 +92,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
 import com.nendo.argosy.ui.theme.ALauncherColors
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.LocalSurfaceBackdrop
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -120,7 +126,9 @@ import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.components.GameCard
 import com.nendo.argosy.ui.components.GameCardWithNewBadge
 import com.nendo.argosy.ui.components.InputButton
-import com.nendo.argosy.ui.components.SubtleFooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
+import com.nendo.argosy.ui.components.FooterVariant
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
 import com.nendo.argosy.ui.components.SyncOverlay
@@ -137,6 +145,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import kotlinx.coroutines.launch
 
 private const val SCROLL_OFFSET = -25
@@ -481,6 +490,9 @@ fun HomeScreen(
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayBaseColor = if (isDarkTheme) Color.Black else Color.White
 
+    val backdropEnabled = LocalSurfaceBackdrop.current.enabled
+    val showArtLayer = !backdropEnabled || uiState.homeBackgroundMode == HomeBackgroundMode.GAME_ART
+
     val effectiveBackgroundPath = if (uiState.useGameBackground) {
         uiState.focusedGame?.let { game ->
             when {
@@ -505,46 +517,51 @@ fun HomeScreen(
         } else {
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = backgroundAlpha }
-            ) {
-                if (effectiveBackgroundPath != null) {
-                    val backgroundContext = LocalContext.current
-                    val backgroundModel = rememberFileImageModel(effectiveBackgroundPath)
-                    val backgroundRequest = remember(backgroundModel) {
-                        ImageRequest.Builder(backgroundContext)
-                            .data(backgroundModel)
-                            .size(640, 360)
-                            .transitionFactory(AlwaysCrossfadeFactory(380))
-                            .build()
-                    }
-                    AsyncImage(
-                        model = backgroundRequest,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        colorFilter = ColorFilter.colorMatrix(saturationMatrix),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .let {
-                                val totalBlur = backgroundBlurDp + combinedBlur
-                                if (totalBlur > 0.dp) it.blur(totalBlur) else it
-                            }
-                    )
-                }
+            if (backdropEnabled) {
+                Box(modifier = Modifier.fillMaxSize().surfaceBackdrop(BackdropRole.CONTENT))
+            }
+            if (showArtLayer) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    overlayBaseColor.copy(alpha = overlayAlphaTop),
-                                    overlayBaseColor.copy(alpha = overlayAlphaBottom)
+                        .graphicsLayer { alpha = backgroundAlpha }
+                ) {
+                    if (effectiveBackgroundPath != null) {
+                        val backgroundContext = LocalContext.current
+                        val backgroundModel = rememberFileImageModel(effectiveBackgroundPath)
+                        val backgroundRequest = remember(backgroundModel) {
+                            ImageRequest.Builder(backgroundContext)
+                                .data(backgroundModel)
+                                .size(640, 360)
+                                .transitionFactory(AlwaysCrossfadeFactory(380))
+                                .build()
+                        }
+                        AsyncImage(
+                            model = backgroundRequest,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            colorFilter = ColorFilter.colorMatrix(saturationMatrix),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .let {
+                                    val totalBlur = backgroundBlurDp + combinedBlur
+                                    if (totalBlur > 0.dp) it.blur(totalBlur) else it
+                                }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        overlayBaseColor.copy(alpha = overlayAlphaTop),
+                                        overlayBaseColor.copy(alpha = overlayAlphaBottom)
+                                    )
                                 )
                             )
-                        )
-                )
+                    )
+                }
             }
 
             if (uiState.isVideoPreviewLoading || uiState.isVideoPreviewActive) {
@@ -674,35 +691,38 @@ fun HomeScreen(
 
                 val focusedGame = uiState.focusedGame
                 if (focusedGame != null && !uiState.showGameMenu) {
-                    SubtleFooterBar(
-                        hints = listOf(
-                            InputButton.DPAD_HORIZONTAL to "Game",
-                            InputButton.DPAD_VERTICAL to "Platform",
-                            InputButton.A to when {
-                                focusedGame.needsInstall -> "Install"
-                                focusedGame.isDownloaded -> "Play"
-                                else -> "Download"
-                            },
-                            InputButton.Y to if (focusedGame.isFavorite) "Unfavorite" else "Favorite",
-                            InputButton.X to "Details"
-                        ),
-                        onHintClick = { button ->
-                            when (button) {
-                                InputButton.A -> {
-                                    when {
-                                        focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
-                                        focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
-                                        focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
-                                        else -> viewModel.queueDownload(focusedGame.id)
+                    if (!uiState.isVideoPreviewActive) {
+                        FooterHints(
+                            hints = listOf(
+                                InputButton.DPAD_HORIZONTAL to "Game",
+                                InputButton.DPAD_VERTICAL to "Platform",
+                                InputButton.A to when {
+                                    focusedGame.needsInstall -> "Install"
+                                    focusedGame.isDownloaded -> "Play"
+                                    else -> "Download"
+                                },
+                                InputButton.Y to if (focusedGame.isFavorite) "Unfavorite" else "Favorite",
+                                InputButton.X to "Details"
+                            ),
+                            variant = FooterVariant.SUBTLE,
+                            onHintClick = { button ->
+                                when (button) {
+                                    InputButton.A -> {
+                                        when {
+                                            focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
+                                            focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
+                                            focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
+                                            else -> viewModel.queueDownload(focusedGame.id)
+                                        }
                                     }
+                                    InputButton.Y -> viewModel.toggleFavorite(focusedGame.id)
+                                    InputButton.X -> onGameSelect(focusedGame.id)
+                                    else -> {}
                                 }
-                                InputButton.Y -> viewModel.toggleFavorite(focusedGame.id)
-                                InputButton.X -> onGameSelect(focusedGame.id)
-                                else -> {}
                             }
-                        },
-                        modifier = Modifier.padding(top = Dimens.spacingSm)
-                    )
+                        )
+                    }
+                    FooterSpacer()
                 } else {
                     Spacer(modifier = Modifier.height(Dimens.spacingXl))
                 }
@@ -1629,14 +1649,14 @@ private fun MenuOption(
     onClick: () -> Unit
 ) {
     val contentColor = when {
-        isDangerous && isFocused -> MaterialTheme.colorScheme.onErrorContainer
-        isDangerous -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isDangerous && isFocused -> lerp(LocalArgosyTheme.current.destructive, Color.White, 0.45f)
+        isDangerous -> LocalArgosyTheme.current.destructive
+        isFocused -> lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val backgroundColor = when {
-        isDangerous && isFocused -> MaterialTheme.colorScheme.errorContainer
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isDangerous && isFocused -> LocalArgosyTheme.current.destructive.copy(alpha = 0.15f)
+        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 

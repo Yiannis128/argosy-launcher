@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -53,7 +54,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.ui.common.rememberFileImageModel
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.domain.model.SyncProgress
@@ -491,13 +493,7 @@ private fun GameDetailContent(
 
     val menuDisplayState = GameDetailMenuState(
         focusedIndex = uiState.menuFocusIndex,
-        isDownloaded = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED,
-        isDownloading = uiState.downloadStatus in listOf(
-            GameDownloadStatus.QUEUED,
-            GameDownloadStatus.DOWNLOADING,
-            GameDownloadStatus.WAITING_FOR_STORAGE
-        ),
-        isExtracting = uiState.downloadStatus == GameDownloadStatus.EXTRACTING,
+        downloadStatus = uiState.downloadStatus,
         downloadProgress = uiState.downloadProgress,
         isFavorite = game.isFavorite,
         saveStatus = uiState.saveStatusInfo,
@@ -610,9 +606,10 @@ private fun GameDetailContent(
                 isVisible = isHeaderCollapsed
             )
 
-            BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                val aspectRatio = maxWidth / maxHeight
-                val isCompactMenu = aspectRatio <= 1.3f
+            Box(modifier = Modifier.weight(1f)) {
+                val configuration = LocalConfiguration.current
+                val displayAspectRatio = configuration.screenWidthDp.toFloat() / configuration.screenHeightDp
+                val isCompactMenu = displayAspectRatio <= 1.3f
 
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Left Menu (compact: icon-only, normal: 30%)
@@ -764,7 +761,7 @@ private fun GameDetailContent(
             ) {
                 val canShowPlayOptions = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED &&
                     game.isBuiltInEmulator
-                FooterBar(
+                FooterHints(
                     hints = buildList {
                         add(InputButton.LB_RB to "Prev/Next Game")
                         if (focusedItem == MenuItem.Screenshots || focusedItem == MenuItem.Achievements || focusedItem == MenuItem.RelatedGames) {
@@ -777,10 +774,11 @@ private fun GameDetailContent(
                                 uiState.downloadStatus == GameDownloadStatus.NEEDS_INSTALL -> "Install"
                                 uiState.downloadStatus == GameDownloadStatus.NOT_DOWNLOADED -> "Download"
                                 uiState.downloadStatus == GameDownloadStatus.QUEUED -> "Queued"
-                                uiState.downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE -> "No Space"
+                                uiState.downloadStatus == GameDownloadStatus.WAITING_FOR_STORAGE -> "Retry"
                                 uiState.downloadStatus == GameDownloadStatus.DOWNLOADING -> "Downloading"
                                 uiState.downloadStatus == GameDownloadStatus.EXTRACTING -> "Extracting"
-                                uiState.downloadStatus == GameDownloadStatus.PAUSED -> "Paused"
+                                uiState.downloadStatus == GameDownloadStatus.PAUSED -> "Resume"
+                                uiState.downloadStatus == GameDownloadStatus.FAILED -> "Retry"
                                 else -> "Play"
                             })
                             MenuItem.Saves -> add(InputButton.A to if (uiState.isSyncingSaves) "Syncing..." else "Sync")
@@ -821,6 +819,7 @@ private fun GameDetailContent(
                         }
                     }
                 )
+                FooterSpacer()
             }
         }
 
@@ -859,6 +858,15 @@ private fun GameDetailModals(
             updateCount = uiState.updateFiles.size + uiState.dlcFiles.size,
             onAction = { action -> viewModel.handleMoreOptionAction(action, onBack, onNavigateToPlatformSettings) },
             onDismiss = viewModel::toggleMoreOptions
+        )
+    }
+
+    val speedrunSplitsState by viewModel.speedrunSplitsDelegate.state.collectAsState()
+    if (speedrunSplitsState.visible) {
+        com.nendo.argosy.ui.screens.gamedetail.modals.SpeedrunSplitsModal(
+            gameTitle = game.title,
+            state = speedrunSplitsState,
+            delegate = viewModel.speedrunSplitsDelegate
         )
     }
 

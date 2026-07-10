@@ -122,6 +122,7 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusToListIndex = { layout.focusToListIndex(it, layoutState) },
         itemKey = { it.key },
         isNavItem = { it is StorageItem.SectionSpacer },
+        isHeader = { it is StorageItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
@@ -140,13 +141,21 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.cycleMaxConcurrentDownloads() }
                 )
 
-                StorageItem.Threshold -> CyclePreference(
-                    title = "Instant Download Threshold",
-                    value = "${storage.instantDownloadThresholdMb} MB",
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleInstantDownloadThreshold() },
-                    subtitle = "Files under this size download immediately"
-                )
+                StorageItem.Threshold -> {
+                    val thresholds = remember { listOf(50, 100, 250, 500) }
+                    val currentIndex = thresholds.indexOf(storage.instantDownloadThresholdMb).coerceAtLeast(0)
+                    CyclePreference(
+                        title = "Instant Download Threshold",
+                        value = "${storage.instantDownloadThresholdMb} MB",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.cycleInstantDownloadThreshold(1) },
+                        onPrev = { viewModel.cycleInstantDownloadThreshold(-1) },
+                        subtitle = "Files under this size download immediately",
+                        options = remember { thresholds.map { "$it MB" } },
+                        onSelect = { viewModel.cycleInstantDownloadThreshold(it - currentIndex) },
+                        pickerRequestToken = if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+                    )
+                }
 
                 StorageItem.DownloadedInfo -> {
                     val downloadedText = if (storage.downloadedGamesCount > 0) {

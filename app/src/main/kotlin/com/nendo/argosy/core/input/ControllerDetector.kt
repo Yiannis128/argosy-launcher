@@ -14,6 +14,7 @@ enum class DetectionSource {
     VENDOR_ID,
     DEVICE_NAME,
     SYSTEM_PROPERTY,
+    BUILD_IDENTITY,
     UNKNOWN
 }
 
@@ -140,7 +141,24 @@ object ControllerDetector {
             }
         }
 
+        if (isBuiltInPad(device)) {
+            detectFromBuildIdentity()?.let { layout ->
+                return DetectionResult(layout, device.name, vendorId, DetectionSource.BUILD_IDENTITY)
+            }
+        }
+
         return DetectionResult(null, device.name, vendorId, DetectionSource.UNKNOWN)
+    }
+
+    private fun isBuiltInPad(device: InputDevice): Boolean =
+        android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && !device.isExternal
+
+    /** Built-in pads on handhelds often report generic names (virtual_gamepad) and junk vendor ids; fall back to the device build. */
+    private fun detectFromBuildIdentity(): DetectedLayout? {
+        val identity = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".lowercase()
+        if (XBOX_NAME_PATTERNS.any { identity.contains(it) }) return DetectedLayout.XBOX
+        if (NINTENDO_NAME_PATTERNS.any { identity.contains(it) }) return DetectedLayout.NINTENDO
+        return null
     }
 
     fun detectFromActiveGamepad(): DetectionResult {

@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +37,13 @@ import com.nendo.argosy.libretro.touch.ResolvedLayout
 import com.nendo.argosy.libretro.touch.TouchBackdropCache
 import com.nendo.argosy.libretro.touch.TouchLayoutEditor
 import com.nendo.argosy.libretro.touch.TouchLayoutRegistry
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.repository.TouchLayoutRepository
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.ModalInputEffect
+import com.nendo.argosy.ui.primitives.ActionButton
+import com.nendo.argosy.ui.primitives.EnumValueControl
 import kotlinx.coroutines.launch
 
 @Composable
@@ -69,6 +74,34 @@ fun TouchLayoutEditorModal(
     val backdrop = remember(platformSlug, orientation) {
         TouchBackdropCache.load(context, platformSlug, orientation)
     }
+
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val inputHandler = remember {
+        object : InputHandler {
+            override fun onBack(): InputResult {
+                currentOnDismiss()
+                return InputResult.handled(SoundType.CLOSE_MODAL)
+            }
+
+            override fun onUp(): InputResult = InputResult.HANDLED
+            override fun onDown(): InputResult = InputResult.HANDLED
+            override fun onLeft(): InputResult = InputResult.HANDLED
+            override fun onRight(): InputResult = InputResult.HANDLED
+            override fun onConfirm(): InputResult = InputResult.HANDLED
+            override fun onMenu(): InputResult = InputResult.HANDLED
+            override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+            override fun onContextMenu(): InputResult = InputResult.HANDLED
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
+            override fun onSelect(): InputResult = InputResult.HANDLED
+            override fun onLeftStickClick(): InputResult = InputResult.HANDLED
+            override fun onRightStickClick(): InputResult = InputResult.HANDLED
+            override fun onLongConfirm(): InputResult = InputResult.HANDLED
+        }
+    }
+    ModalInputEffect(active = true, handler = inputHandler)
 
     BackHandler(enabled = true) { onDismiss() }
 
@@ -109,33 +142,31 @@ fun TouchLayoutEditorModal(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(onClick = {
-                    platformIndex = (platformIndex - 1 + supported.size) % supported.size
-                }) { Text("◀") }
-                Text(
-                    text = platformSlug,
-                    color = Color.White,
-                    modifier = Modifier.width(140.dp)
+                EnumValueControl(
+                    value = platformSlug,
+                    focused = false,
+                    onPrev = { platformIndex = (platformIndex - 1 + supported.size) % supported.size },
+                    onNext = { platformIndex = (platformIndex + 1) % supported.size },
+                    onOpen = {},
+                    modifier = Modifier.width(180.dp)
                 )
-                OutlinedButton(onClick = {
-                    platformIndex = (platformIndex + 1) % supported.size
-                }) { Text("▶") }
 
                 Spacer(modifier = Modifier.padding(8.dp))
 
-                OutlinedButton(onClick = {
-                    orientation = if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-                        Configuration.ORIENTATION_LANDSCAPE
-                    } else {
-                        Configuration.ORIENTATION_PORTRAIT
+                ActionButton(
+                    label = if (orientation == Configuration.ORIENTATION_PORTRAIT) "Portrait" else "Landscape",
+                    onClick = {
+                        orientation = if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                            Configuration.ORIENTATION_LANDSCAPE
+                        } else {
+                            Configuration.ORIENTATION_PORTRAIT
+                        }
                     }
-                }) {
-                    Text(if (orientation == Configuration.ORIENTATION_PORTRAIT) "Portrait" else "Landscape")
-                }
+                )
 
                 Spacer(modifier = Modifier.padding(8.dp))
 
-                Button(onClick = onDismiss) { Text("Close") }
+                ActionButton(label = "Close", onClick = onDismiss, primary = true)
             }
         }
 

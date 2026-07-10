@@ -403,6 +403,18 @@ class SaveSyncApiClient @Inject constructor(
         cachedSaveId: String? = null
     ): String? = savePathResolver.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName, cachedSaveId)
 
+    suspend fun predictFolderSavePath(
+        emulatorId: String,
+        platformSlug: String,
+        romPath: String?,
+        gameId: Long,
+        gameTitle: String,
+        cachedSaveId: String? = null,
+        emulatorPackage: String? = null
+    ): String? = savePathResolver.constructFolderSavePathWithOverride(
+        emulatorId, platformSlug, romPath, gameId, gameTitle, cachedSaveId, emulatorPackage
+    )
+
     internal suspend fun <T> withRetry(
         maxAttempts: Int = 3,
         initialDelayMs: Long = 500,

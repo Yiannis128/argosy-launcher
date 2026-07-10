@@ -17,17 +17,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -44,20 +42,27 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.backdrop.BackdropRole
+import com.nendo.argosy.ui.theme.backdrop.surfaceBackdrop
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.nendo.argosy.ui.components.FooterBar
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
 import com.nendo.argosy.ui.filebrowser.FileFilter
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.primitives.ArgosyConfirmModal
+import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
 import com.nendo.argosy.ui.screens.settings.components.PlatformSettingsModal
+import com.nendo.argosy.ui.screens.settings.components.ReleaseChangelogModal
 import com.nendo.argosy.ui.screens.settings.components.SoundPickerPopup
 import com.nendo.argosy.ui.screens.settings.delegates.BuiltinNavigationTarget
 import com.nendo.argosy.ui.screens.settings.sections.AboutSection
 import com.nendo.argosy.ui.screens.settings.sections.BiosSection
+import com.nendo.argosy.ui.screens.settings.sections.DistributeResultModal
 import com.nendo.argosy.ui.screens.settings.sections.DriversSection
 import com.nendo.argosy.ui.screens.settings.sections.AmbientLedSection
 import com.nendo.argosy.ui.screens.settings.sections.BoxArtSection
@@ -85,6 +90,11 @@ import com.nendo.argosy.ui.screens.settings.sections.SocialSection
 import com.nendo.argosy.ui.screens.settings.sections.SteamSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
+import com.nendo.argosy.data.preferences.FontSlot
+import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsSection
 import com.nendo.argosy.ui.screens.settings.sections.formatFileSize
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsMaxFocusIndex
 import com.nendo.argosy.ui.icons.InputIcons
@@ -148,6 +158,24 @@ fun SettingsScreen(
                 // Ignore if permission can't be persisted
             }
             viewModel.setAmbientAudioUri(it.toString())
+        }
+    }
+
+    var pendingFontSlot by remember { mutableStateOf<FontSlot?>(null) }
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        val slot = pendingFontSlot
+        pendingFontSlot = null
+        if (uri != null && slot != null) {
+            viewModel.importFont(slot, uri)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.openFontPickerEvent.collect { slot ->
+            pendingFontSlot = slot
+            fontPickerLauncher.launch(FONT_PICKER_MIME_TYPES)
         }
     }
 
@@ -298,6 +326,14 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(Unit) {
+        viewModel.openGameNativeSyncDirPickerEvent.collect {
+            fileBrowserTitle = "GameNative Sync Folder"
+            fileBrowserCallback = { path -> viewModel.setGameNativeSyncDir(path) }
+            showFileBrowser = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
         viewModel.launchSavePathPicker.collect {
             uiState.emulators.savePathModalInfo?.emulatorId?.let { emulatorId ->
                 fileBrowserTitle = "Save Path"
@@ -411,7 +447,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .blur(soundPickerBlur)
-                .background(MaterialTheme.colorScheme.background)
+                .surfaceBackdrop(BackdropRole.CONTENT)
         ) {
             if (uiState.currentSection != SettingsSection.SHADER_STACK &&
                 uiState.currentSection != SettingsSection.FRAME_PICKER) {
@@ -423,6 +459,10 @@ fun SettingsScreen(
                         SettingsSection.STEAM_SETTINGS -> "STEAM (EXPERIMENTAL)"
                         SettingsSection.RETRO_ACHIEVEMENTS -> "RETROACHIEVEMENTS"
                         SettingsSection.STORAGE -> "STORAGE"
+                        SettingsSection.THEME -> "THEME"
+                        SettingsSection.THEME_SOUNDS -> "SOUNDS"
+                        SettingsSection.THEME_FONTS -> "FONTS"
+                        SettingsSection.THEME_BACKDROP -> "SURFACE BACKDROP"
                         SettingsSection.INTERFACE -> "INTERFACE"
                         SettingsSection.BOX_ART -> "BOX ART"
                         SettingsSection.HOME_SCREEN -> "HOME SCREEN"
@@ -483,6 +523,10 @@ fun SettingsScreen(
                     SettingsSection.STEAM_SETTINGS -> SteamSection(uiState, viewModel)
                     SettingsSection.RETRO_ACHIEVEMENTS -> RASettingsSection(uiState, viewModel)
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
+                    SettingsSection.THEME -> ThemeSection(uiState, viewModel)
+                    SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
+                    SettingsSection.THEME_FONTS -> ThemeFontsSection(uiState, viewModel)
+                    SettingsSection.THEME_BACKDROP -> ThemeBackdropSection(uiState, viewModel)
                     SettingsSection.INTERFACE -> InterfaceSection(uiState, viewModel)
                     SettingsSection.BOX_ART -> BoxArtSection(uiState, viewModel)
                     SettingsSection.HOME_SCREEN -> HomeScreenSection(uiState, viewModel)
@@ -570,229 +614,118 @@ fun SettingsScreen(
             }
         }
 
-    }
+        ReleaseChangelogModal(
+            state = uiState.changelog,
+            onLoadMore = { viewModel.loadChangelogPage() },
+            onDismiss = { viewModel.closeChangelog() }
+        )
 
-    uiState.pendingBuiltinPathMigration?.let { migration ->
-        if (uiState.showBuiltinPathMigrationDialog) {
-            val typeLabel = when (migration.pathType) {
-                BuiltinPathType.SAVE -> "save"
-                BuiltinPathType.STATE -> "state"
-            }
-            AlertDialog(
-                onDismissRequest = { viewModel.cancelBuiltinPathMigration() },
-                title = { Text("Migrate ${typeLabel} files?") },
-                text = {
-                    Text("The destination already contains ${migration.existingFileCount} ${typeLabel} files. Move existing files from the old location? This will overwrite any conflicts.")
-                },
-                confirmButton = {
-                    Button(onClick = { viewModel.confirmBuiltinPathMigration() }) {
-                        Text("Migrate")
-                    }
-                },
-                dismissButton = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                        TextButton(onClick = { viewModel.cancelBuiltinPathMigration() }) {
-                            Text("Cancel")
-                        }
-                        TextButton(onClick = { viewModel.skipBuiltinPathMigration() }) {
-                            Text("Skip")
-                        }
-                    }
-                }
+        uiState.systemizeResult?.let { result ->
+            com.nendo.argosy.ui.screens.settings.dialogs.SystemizeResultDialog(
+                result = result,
+                onDismiss = { viewModel.dismissSystemizeDialog() }
+            )
+        }
+        if (uiState.bios.showDistributeResultModal) {
+            DistributeResultModal(
+                results = uiState.bios.distributeResults,
+                onDismiss = { viewModel.dismissDistributeResultModal() }
             )
         }
     }
 
-    if (uiState.showMigrationDialog) {
-        val sizeText = formatFileSize(uiState.storage.downloadedGamesSize)
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelMigration() },
-            title = { Text("Migrate Downloads?") },
-            text = {
-                Text("Move ${uiState.storage.downloadedGamesCount} games ($sizeText) to the new location?")
-            },
-            confirmButton = {
-                Button(onClick = { viewModel.confirmMigration() }) {
-                    Text("Migrate")
-                }
-            },
-            dismissButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                    TextButton(onClick = { viewModel.cancelMigration() }) {
-                        Text("Cancel")
-                    }
-                    TextButton(onClick = { viewModel.skipMigration() }) {
-                        Text("Skip")
-                    }
-                }
-            }
-        )
+    val builtinMigration = uiState.pendingBuiltinPathMigration
+    val builtinMigrationTypeLabel = when (builtinMigration?.pathType) {
+        BuiltinPathType.SAVE -> "save"
+        BuiltinPathType.STATE -> "state"
+        null -> ""
     }
+    ArgosyConfirmModalHost(
+        visible = uiState.showBuiltinPathMigrationDialog && builtinMigration != null,
+        title = "Migrate $builtinMigrationTypeLabel files?",
+        message = "The destination already contains ${builtinMigration?.existingFileCount ?: 0} $builtinMigrationTypeLabel files. Move existing files from the old location? This will overwrite any conflicts.",
+        confirmLabel = "Migrate",
+        onConfirm = { viewModel.confirmBuiltinPathMigration() },
+        onDismiss = { viewModel.cancelBuiltinPathMigration() },
+        neutralLabel = "Skip",
+        onNeutral = { viewModel.skipBuiltinPathMigration() }
+    )
 
-    uiState.storage.showMigratePlatformConfirm?.let { info ->
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelPlatformMigration() },
-            title = { Text("Migrate ${info.platformName} ROMs?") },
-            text = {
-                Text("Move downloaded games to the new location? Files will be copied and then removed from the old location.")
-            },
-            confirmButton = {
-                Button(onClick = { viewModel.confirmPlatformMigration() }) {
-                    Text("Migrate")
-                }
-            },
-            dismissButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                    TextButton(onClick = { viewModel.cancelPlatformMigration() }) {
-                        Text("Cancel")
-                    }
-                    TextButton(onClick = { viewModel.skipPlatformMigration() }) {
-                        Text("Skip")
-                    }
-                }
-            }
-        )
-    }
+    ArgosyConfirmModalHost(
+        visible = uiState.showMigrationDialog,
+        title = "Migrate Downloads?",
+        message = "Move ${uiState.storage.downloadedGamesCount} games (${formatFileSize(uiState.storage.downloadedGamesSize)}) to the new location?",
+        confirmLabel = "Migrate",
+        onConfirm = { viewModel.confirmMigration() },
+        onDismiss = { viewModel.cancelMigration() },
+        neutralLabel = "Skip",
+        onNeutral = { viewModel.skipMigration() }
+    )
 
-    uiState.storage.showPurgePlatformConfirm?.let { platformId ->
-        val config = uiState.storage.platformConfigs.find { it.platformId == platformId }
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelPurgePlatform() },
-            title = { Text("Purge ${config?.platformName ?: "Platform"}?") },
-            text = {
-                Text("This will delete all ${config?.gameCount ?: 0} games and their local ROM files. This cannot be undone.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmPurgePlatform() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Purge")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelPurgePlatform() }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    val platformMigrationInfo = uiState.storage.showMigratePlatformConfirm
+    ArgosyConfirmModalHost(
+        visible = platformMigrationInfo != null,
+        title = "Migrate ${platformMigrationInfo?.platformName ?: "Platform"} ROMs?",
+        message = "Move downloaded games to the new location? Files will be copied and then removed from the old location.",
+        confirmLabel = "Migrate",
+        onConfirm = { viewModel.confirmPlatformMigration() },
+        onDismiss = { viewModel.cancelPlatformMigration() },
+        neutralLabel = "Skip",
+        onNeutral = { viewModel.skipPlatformMigration() }
+    )
 
-    if (uiState.storage.showPurgeAllConfirm) {
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelPurgeAll() },
-            title = { Text("Reset Library?") },
-            text = {
-                Text("This will clear all metadata, platforms, and cached images. Downloaded ROM files will be preserved. You will need to re-sync your library.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmPurgeAll() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Reset")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelPurgeAll() }) {
-                    Text("Cancel")
-                }
-            }
-        )
+    val purgePlatformConfig = uiState.storage.showPurgePlatformConfirm?.let { platformId ->
+        uiState.storage.platformConfigs.find { it.platformId == platformId }
     }
+    ArgosyConfirmModalHost(
+        visible = uiState.storage.showPurgePlatformConfirm != null,
+        title = "Purge ${purgePlatformConfig?.platformName ?: "Platform"}?",
+        message = "This will delete all ${purgePlatformConfig?.gameCount ?: 0} games and their local ROM files. This cannot be undone.",
+        confirmLabel = "Purge",
+        destructive = true,
+        onConfirm = { viewModel.confirmPurgePlatform() },
+        onDismiss = { viewModel.cancelPurgePlatform() }
+    )
 
-    if (uiState.syncSettings.showResetSaveCacheConfirm) {
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelResetSaveCache() },
-            title = { Text("Reset Save Cache?") },
-            text = {
-                Text("This will delete all locally cached save snapshots and pending sync operations. Your actual save files and server saves are not affected.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmResetSaveCache() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Reset")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelResetSaveCache() }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    ArgosyConfirmModalHost(
+        visible = uiState.storage.showPurgeAllConfirm,
+        title = "Reset Library?",
+        message = "This will clear all metadata, platforms, and cached images. Downloaded ROM files will be preserved. You will need to re-sync your library.",
+        confirmLabel = "Reset",
+        destructive = true,
+        onConfirm = { viewModel.confirmPurgeAll() },
+        onDismiss = { viewModel.cancelPurgeAll() }
+    )
 
-    if (uiState.syncSettings.showClearPathCacheConfirm) {
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelClearPathCache() },
-            title = { Text("Clear Save Path Cache?") },
-            text = {
-                Text("This will clear all detected save file paths. Paths will be re-detected on next sync. Use this if saves are syncing to the wrong location.")
-            },
-            confirmButton = {
-                Button(onClick = { viewModel.confirmClearPathCache() }) {
-                    Text("Clear")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelClearPathCache() }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    ArgosyConfirmModalHost(
+        visible = uiState.syncSettings.showResetSaveCacheConfirm,
+        title = "Reset Save Cache?",
+        message = "This will delete all locally cached save snapshots and pending sync operations. Your actual save files and server saves are not affected.",
+        confirmLabel = "Reset",
+        destructive = true,
+        onConfirm = { viewModel.confirmResetSaveCache() },
+        onDismiss = { viewModel.cancelResetSaveCache() }
+    )
 
-    if (uiState.syncSettings.showForceSyncConfirm) {
-        val focusedButton = uiState.syncSettings.syncConfirmButtonIndex
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelSyncSaves() },
-            title = { Text("Sync Saves?") },
-            text = {
-                Text("This will scan all downloaded games for save changes and sync them with the server. Local saves newer than the last sync will be uploaded, and newer server saves will be downloaded.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmSyncSaves() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (focusedButton == 1) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        contentColor = if (focusedButton == 1) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                ) {
-                    Text("Sync")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { viewModel.cancelSyncSaves() },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = if (focusedButton == 0) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    ArgosyConfirmModalHost(
+        visible = uiState.syncSettings.showClearPathCacheConfirm,
+        title = "Clear Save Path Cache?",
+        message = "This will clear all detected save file paths. Paths will be re-detected on next sync. Use this if saves are syncing to the wrong location.",
+        confirmLabel = "Clear",
+        destructive = true,
+        onConfirm = { viewModel.confirmClearPathCache() },
+        onDismiss = { viewModel.cancelClearPathCache() }
+    )
+
+    ArgosyConfirmModal(
+        visible = uiState.syncSettings.showForceSyncConfirm,
+        title = "Sync Saves?",
+        message = "This will scan all downloaded games for save changes and sync them with the server. Local saves newer than the last sync will be uploaded, and newer server saves will be downloaded.",
+        confirmLabel = "Sync",
+        onConfirm = { viewModel.confirmSyncSaves() },
+        onDismiss = { viewModel.cancelSyncSaves() },
+        focusedIndex = uiState.syncSettings.syncConfirmButtonIndex
+    )
 
     if (showFileBrowser) {
         FileBrowserScreen(
@@ -1168,6 +1101,7 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
         add(InputButton.B to "Back")
     }
 
-    FooterBar(hints = hints)
+    FooterHints(hints = hints)
+    FooterSpacer()
 }
 

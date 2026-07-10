@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.screens.settings.ARCHITECTURE_OPTIONS
+import com.nendo.argosy.ui.screens.settings.BUILTIN_ARCHITECTURE_PICKER_KEY
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.theme.Dimens
@@ -42,11 +45,19 @@ fun BuiltinEmulatorSection(
         }
         if (builtinEnabled) {
             item(key = "builtin_architecture") {
+                val architectureOptions = remember { ARCHITECTURE_OPTIONS }
                 CyclePreference(
                     title = "Architecture",
                     value = emulators.architectureDisplay,
                     isFocused = uiState.focusedIndex == 1,
-                    onClick = { viewModel.cycleBuiltinArchitecture(1) }
+                    onClick = { viewModel.cycleBuiltinArchitecture(1) },
+                    onPrev = { viewModel.cycleBuiltinArchitecture(-1) },
+                    options = architectureOptions,
+                    onSelect = {
+                        val current = architectureOptions.indexOf(emulators.architectureDisplay).coerceAtLeast(0)
+                        viewModel.cycleBuiltinArchitecture(it - current)
+                    },
+                    pickerRequestToken = if (uiState.enumPickerKey == BUILTIN_ARCHITECTURE_PICKER_KEY) uiState.enumPickerToken else 0
                 )
             }
             item(key = "builtin_video") {

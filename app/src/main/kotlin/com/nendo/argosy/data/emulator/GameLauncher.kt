@@ -130,6 +130,10 @@ class GameLauncher @Inject constructor(
             return launchSteamGame(game)
         }
 
+        if (game.source == GameSource.GAMENATIVE) {
+            return launchGameNativeStoreGame(game)
+        }
+
         if (game.source == GameSource.ANDROID_APP || game.platformSlug == "android") {
             return launchAndroidApp(game)
         }
@@ -207,6 +211,10 @@ class GameLauncher @Inject constructor(
             }
 
         Logger.debug(TAG, "Emulator resolved: ${emulator.displayName} (${emulator.packageName})")
+
+        if (emulator.id == "gamenative" && game.platformSlug != "steam") {
+            return launchGameNativeCustomGame(game, romFile)
+        }
 
         ps2MemcardGate(gameId, game, emulator)?.let { return it }
 
@@ -544,9 +552,55 @@ class GameLauncher @Inject constructor(
         }
     }
 
+    private fun launchGameNativeStoreGame(game: GameEntity): LaunchResult {
+        val appId = game.steamAppId?.toInt()
+            ?: return LaunchResult.Error("Missing GameNative id for ${game.title}")
+        val store = com.nendo.argosy.data.launcher.GameNativeStore.forSlug(game.platformSlug)
+            ?: return LaunchResult.Error("Unknown store platform ${game.platformSlug}")
+        if (!com.nendo.argosy.data.launcher.GameNativeLauncher.isInstalled(context)) {
+            return LaunchResult.NoSteamLauncher(com.nendo.argosy.data.launcher.GameNativeLauncher.packageName)
+        }
+        Logger.info(TAG, "launchGameNativeStoreGame: gameId=${game.id}, store=${store.slug}, appId=$appId")
+        return LaunchResult.Success(
+            com.nendo.argosy.data.launcher.GameNativeLauncher.createSourcedLaunchIntent(appId, store.launchSource)
+        )
+    }
+
+    /** Windows/PC titles launch through GameNative's custom-game intent using the appId GameNative wrote to the folder's .gamenative file. */
+    private fun launchGameNativeCustomGame(game: GameEntity, romFile: File): LaunchResult {
+        val appId = readGameNativeAppId(romFile)
+            ?: return LaunchResult.Error(
+                "Add \"${game.title}\" in GameNative as a Custom Game first, then launch it from Argosy."
+            ).also {
+                Logger.warn(TAG, "launchGameNativeCustomGame: no .gamenative metadata near ${romFile.path}")
+            }
+        Logger.info(TAG, "launchGameNativeCustomGame: gameId=${game.id}, appId=$appId")
+        return LaunchResult.Success(
+            com.nendo.argosy.data.launcher.GameNativeLauncher.createCustomGameLaunchIntent(appId)
+        )
+    }
+
+    private fun readGameNativeAppId(romFile: File): Int? {
+        var dir: File? = if (romFile.isDirectory) romFile else romFile.parentFile
+        repeat(3) {
+            val meta = dir?.let { File(it, ".gamenative") } ?: return null
+            if (meta.isFile) {
+                val content = runCatching { meta.readText().trim() }.getOrNull() ?: return null
+                if (content.isEmpty()) return null
+                val fromJson = runCatching {
+                    org.json.JSONObject(content).optInt("appId", -1)
+                }.getOrDefault(-1)
+                if (fromJson > 0) return fromJson
+                return content.toIntOrNull()?.takeIf { it > 0 }
+            }
+            dir = dir?.parentFile
+        }
+        return null
+    }
+
     private suspend fun ps2MemcardGate(gameId: Long, game: GameEntity, emulator: EmulatorDef): LaunchResult? {
         if (game.platformSlug != "ps2") return null
-        val emulatorId = emulator.id
+        val emulatorId = SavePathRegistry.canonicalConfigId(emulator.id, emulator.packageName)
         val userConfig = emulatorSaveConfigRepository.getByEmulator(emulatorId)
         if (userConfig?.selectedMemcardPath != null) return null
         val basePathOverride = if (userConfig?.isUserOverride == true) userConfig.savePathPattern else null

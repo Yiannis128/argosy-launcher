@@ -31,12 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.input.LocalGamepadInputHandler
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 data class AssignedController(
     val controllerId: String,
@@ -155,17 +157,18 @@ private fun ControllerSlot(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalArgosyTheme.current
     val backgroundColor = when {
-        isActive -> MaterialTheme.colorScheme.primaryContainer
+        isActive -> theme.focusAccent.copy(alpha = 0.15f)
         assignment != null -> MaterialTheme.colorScheme.surfaceVariant
         else -> Color.Transparent
     }
     val borderColor = when {
-        isActive -> MaterialTheme.colorScheme.primary
+        isActive -> theme.focusAccent
         else -> MaterialTheme.colorScheme.outlineVariant
     }
     val contentColor = when {
-        isActive -> MaterialTheme.colorScheme.onPrimaryContainer
+        isActive -> lerp(theme.focusAccent, Color.White, 0.45f)
         assignment != null -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     }

@@ -51,6 +51,7 @@ enum class AppContextMenuItem {
     TOGGLE_HOME,
     TOGGLE_SECONDARY_HOME,
     TOGGLE_VISIBILITY,
+    REORDER,
     UNINSTALL
 }
 
@@ -85,6 +86,7 @@ data class AppsUiState(
                 add(AppContextMenuItem.TOGGLE_SECONDARY_HOME)
             }
             add(AppContextMenuItem.TOGGLE_VISIBILITY)
+            add(AppContextMenuItem.REORDER)
             add(AppContextMenuItem.UNINSTALL)
         }
 }
@@ -269,6 +271,9 @@ class AppsViewModel @Inject constructor(
             AppContextMenuItem.TOGGLE_VISIBILITY -> {
                 toggleAppVisibility(app.packageName, app.isHidden, app.isSystemApp)
             }
+            AppContextMenuItem.REORDER -> {
+                enterReorderMode()
+            }
             AppContextMenuItem.UNINSTALL -> {
                 viewModelScope.launch {
                     _events.emit(AppsEvent.RequestUninstall(app.packageName))
@@ -425,6 +430,18 @@ class AppsViewModel @Inject constructor(
                     platformRepository.insert(entity)
                 }
             }
+        }
+    }
+
+    fun handleSecondaryAction() {
+        val state = _uiState.value
+        if (state.showContextMenu || state.isReorderMode) return
+        if (state.hasSecondaryDisplay) {
+            state.focusedApp?.let {
+                launchApp(it.packageName, overrideDisplayId = android.view.Display.DEFAULT_DISPLAY)
+            }
+        } else {
+            enterReorderMode()
         }
     }
 
@@ -672,10 +689,7 @@ class AppsViewModel @Inject constructor(
         }
 
         override fun onSecondaryAction(): InputResult {
-            val state = _uiState.value
-            if (!state.showContextMenu && !state.isReorderMode) {
-                enterReorderMode()
-            }
+            handleSecondaryAction()
             return InputResult.HANDLED
         }
 

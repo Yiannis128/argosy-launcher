@@ -54,6 +54,7 @@ sealed class InGameMenuAction {
     data object ClearReservation : InGameMenuAction()
     data object CloseNetplaySession : InGameMenuAction()
     data object CustomizeTouchControls : InGameMenuAction()
+    data object ToggleSpeedrun : InGameMenuAction()
 }
 
 enum class NetplayMenuRole { Host, Guest }
@@ -97,6 +98,8 @@ fun InGameMenu(
     netplaySessionIsReserved: Boolean = false,
     netplayQuality: NetplayQualityInfo? = null,
     touchControlsVisible: Boolean = false,
+    speedrunAvailable: Boolean = false,
+    speedrunArmed: Boolean = false,
     hasQuickSave: Boolean = false,
     quickHistoryFocused: Boolean = false,
     onQuickHistoryFocusChange: (Boolean) -> Unit = {}
@@ -111,6 +114,8 @@ fun InGameMenu(
         netplayRole,
         netplaySessionIsReserved,
         touchControlsVisible,
+        speedrunAvailable,
+        speedrunArmed,
         hasQuickSave
     ) {
         buildList {
@@ -145,6 +150,9 @@ fun InGameMenu(
                 }
             }
             add("Settings" to InGameMenuAction.Settings)
+            if (speedrunAvailable && !isInNetplaySession) {
+                add((if (speedrunArmed) "Stop Speedrun Timer" else "Speedrun Timer") to InGameMenuAction.ToggleSpeedrun)
+            }
             if (touchControlsVisible) {
                 add("Touch Controls" to InGameMenuAction.CustomizeTouchControls)
             }
@@ -175,14 +183,14 @@ fun InGameMenu(
             override fun onUp(): InputResult {
                 if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx - 1).coerceAtLeast(0)
+                val newIndex = if (idx <= 0) menuItems.lastIndex else idx - 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
                 if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx + 1).coerceAtMost(menuItems.lastIndex)
+                val newIndex = if (idx >= menuItems.lastIndex) 0 else idx + 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
@@ -324,7 +332,8 @@ fun DiscMenu(
     focusedIndex: Int,
     onFocusChange: (Int) -> Unit,
     onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String = "Swap Disc"
 ): InputHandler {
     val isDarkTheme = isSystemInDarkTheme()
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
@@ -338,13 +347,13 @@ fun DiscMenu(
         object : InputHandler {
             override fun onUp(): InputResult {
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx - 1).coerceAtLeast(0)
+                val newIndex = if (idx <= 0) labels.lastIndex else idx - 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx + 1).coerceAtMost(labels.lastIndex)
+                val newIndex = if (idx >= labels.lastIndex) 0 else idx + 1
                 if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 return InputResult.HANDLED
             }
@@ -390,7 +399,7 @@ fun DiscMenu(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Swap Disc",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,

@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -45,6 +46,7 @@ import com.nendo.argosy.ui.screens.settings.LaunchArgsModalState
 import com.nendo.argosy.ui.screens.settings.LaunchArgsRow
 import com.nendo.argosy.ui.screens.settings.launchArgsModalRows
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
@@ -68,7 +70,7 @@ fun LaunchArgsModal(
         baseWidth = Dimens.modalWidthXl,
         onDismiss = onDismiss,
         footerHints = buildList {
-            add(com.nendo.argosy.ui.components.InputButton.A to "Cycle")
+            add(com.nendo.argosy.ui.components.InputButton.A to "Change")
             add(com.nendo.argosy.ui.components.InputButton.Y to "Reset Field")
             if (hasOverride) {
                 add(com.nendo.argosy.ui.components.InputButton.X to "Reset All")
@@ -263,15 +265,17 @@ private fun LaunchArgsOptionRow(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
-    val background = if (isFocused) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val labelColor = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val theme = LocalArgosyTheme.current
+    val background = if (isFocused) theme.focusAccent.copy(alpha = 0.15f) else Color.Transparent
+    val focusedContent = lerp(theme.focusAccent, Color.White, 0.45f)
+    val labelColor = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface
     val valueColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+        focusedContent.copy(alpha = 0.85f)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     val subtitleColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        focusedContent.copy(alpha = 0.7f)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     }
@@ -302,7 +306,7 @@ private fun LaunchArgsOptionRow(
                     Text(
                         text = "(custom)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                        color = if (isFocused) focusedContent else MaterialTheme.colorScheme.primary
                     )
                 }
             }

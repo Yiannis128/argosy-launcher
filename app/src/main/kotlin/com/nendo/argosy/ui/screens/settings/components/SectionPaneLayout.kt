@@ -1,7 +1,9 @@
 package com.nendo.argosy.ui.screens.settings.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,9 +25,11 @@ import com.nendo.argosy.ui.components.ListSection
 import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.theme.AspectRatioClass
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.util.verticalEdgeFade
 import com.nendo.argosy.ui.theme.LocalUiScale
 import com.nendo.argosy.ui.util.clickableNoFocus
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun <Item> SectionPaneLayout(
     items: List<Item>,
@@ -36,6 +40,7 @@ fun <Item> SectionPaneLayout(
     isNavItem: (Item) -> Boolean,
     onSectionTap: (ListSection) -> Unit,
     modifier: Modifier = Modifier,
+    isHeader: (Item) -> Boolean = { false },
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     itemContent: @Composable (Item) -> Unit
 ) {
@@ -102,7 +107,8 @@ fun <Item> SectionPaneLayout(
                 modifier = Modifier
                     .weight(0.75f)
                     .fillMaxHeight()
-                    .padding(start = Dimens.spacingMd),
+                    .padding(start = Dimens.spacingMd)
+                    .verticalEdgeFade(contentListState, fadeHeight = Dimens.spacingMd),
                 verticalArrangement = verticalArrangement
             ) {
                 items(filteredItems, key = { itemKey(it) }) { item ->
@@ -122,11 +128,25 @@ fun <Item> SectionPaneLayout(
 
         LazyColumn(
             state = listState,
-            modifier = modifier,
+            modifier = modifier.verticalEdgeFade(listState, fadeHeight = Dimens.spacingMd, top = false),
             verticalArrangement = verticalArrangement
         ) {
-            items(items, key = { itemKey(it) }) { item ->
-                itemContent(item)
+            items.forEach { item ->
+                if (isHeader(item)) {
+                    stickyHeader(key = itemKey(item)) {
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxWidth()
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
+                            itemContent(item)
+                        }
+                    }
+                } else {
+                    item(key = itemKey(item)) {
+                        itemContent(item)
+                    }
+                }
             }
         }
     }

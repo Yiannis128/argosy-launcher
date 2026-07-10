@@ -48,6 +48,7 @@ data class RomMRom(
     @Json(name = "summary") val summary: String?,
     @Json(name = "metadatum") val metadatum: RomMMetadatum? = null,
     @Json(name = "launchbox_metadata") val launchboxMetadata: RomMLaunchboxMetadata? = null,
+    @Json(name = "ss_metadata") val ssMetadata: RomMSsMetadata? = null,
     @Json(name = "merged_ra_metadata") val raMetadata: RomMRAMetadata? = null,
 
     @Json(name = "path_cover_small") val coverSmall: String?,
@@ -109,6 +110,9 @@ data class RomMRom(
         get() = isFolderMultiDisc || (isDiscVariant && effectiveSiblings.any { sibling ->
             sibling.fileNameNoExt.contains(DISC_TAG_REGEX)
         })
+
+    val hasNonDiscSiblings: Boolean
+        get() = effectiveSiblings.any { !it.isDiscVariant }
 
     companion object {
         private val DISC_TAG_REGEX = Regex("Disc \\d+", RegexOption.IGNORE_CASE)
@@ -188,6 +192,12 @@ data class RomMMetadatum(
 @JsonClass(generateAdapter = true)
 data class RomMLaunchboxMetadata(
     @Json(name = "images") val images: List<RomMLaunchboxImage>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMSsMetadata(
+    @Json(name = "box2d_back_path") val box2dBackPath: String? = null,
+    @Json(name = "box2d_side_path") val box2dSidePath: String? = null
 )
 
 @JsonClass(generateAdapter = true)

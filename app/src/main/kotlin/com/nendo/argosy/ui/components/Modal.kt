@@ -63,7 +63,7 @@ fun Modal(
                 )
                 .background(
                     MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
+                    RoundedCornerShape(Dimens.radiusPanel)
                 )
                 .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
                 .padding(Dimens.spacingLg)
@@ -89,8 +89,7 @@ fun Modal(
             content()
 
             if (footerHints != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                FooterBar(hints = footerHints)
+                FooterHints(hints = footerHints)
             }
         }
     }
@@ -123,7 +122,7 @@ fun CenteredModal(
                 .width(modalWidth)
                 .background(
                     MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
+                    RoundedCornerShape(Dimens.radiusPanel)
                 )
                 .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
                 .padding(Dimens.spacingLg),
@@ -139,8 +138,7 @@ fun CenteredModal(
             content()
 
             if (footerHints != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingMd))
-                FooterBar(hints = footerHints)
+                FooterHints(hints = footerHints)
             }
         }
     }
@@ -173,7 +171,7 @@ fun NestedModal(
                 .width(modalWidth)
                 .background(
                     MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
+                    RoundedCornerShape(Dimens.radiusPanel)
                 )
                 .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
                 .padding(Dimens.spacingLg),
@@ -189,8 +187,7 @@ fun NestedModal(
             content()
 
             if (footerHints != null) {
-                Spacer(modifier = Modifier.height(Dimens.spacingLg))
-                FooterBar(hints = footerHints)
+                FooterHints(hints = footerHints)
             }
         }
     }

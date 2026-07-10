@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.input.GamepadEvent
@@ -54,7 +53,9 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.icons.InputIcons
+import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import kotlinx.coroutines.launch
 
 private sealed class InputMappingState {
@@ -465,18 +466,19 @@ private fun ControllerRow(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        theme.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
     val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
+        theme.focusAccent
     } else {
         MaterialTheme.colorScheme.outlineVariant
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(theme.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -603,18 +605,19 @@ private fun ButtonMappingRow(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     val backgroundColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        theme.focusAccent.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
     val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
+        theme.focusAccent
     } else {
         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
     val contentColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(theme.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -718,14 +721,10 @@ private fun RecordingOverlay(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (isCancelling) {
-                    LinearProgressIndicator(
-                        progress = { cancelProgress },
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp)),
-                        color = MaterialTheme.colorScheme.error,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    ArgosyProgressBar(
+                        progress = cancelProgress,
+                        modifier = Modifier.fillMaxWidth(0.6f),
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             }

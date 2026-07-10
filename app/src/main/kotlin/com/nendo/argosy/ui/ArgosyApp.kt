@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
@@ -37,6 +38,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nendo.argosy.ui.components.BackgroundSyncConflictDialog
+import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.FooterHost
+import com.nendo.argosy.ui.components.FooterHostController
+import com.nendo.argosy.ui.components.LocalFooterHost
 import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.ui.components.MainDrawer
 import com.nendo.argosy.ui.components.QuickSettingsPanel
@@ -261,6 +266,8 @@ fun ArgosyApp(
         )
     }
 
+    val footerHostController = remember { FooterHostController() }
+
     val rootFocusRequester = remember { FocusRequester() }
     var resumeCount by remember { mutableStateOf(0) }
 
@@ -284,6 +291,15 @@ fun ArgosyApp(
         LaunchedEffect(isRolesSwapped, companionActive, swappedGameActive) {
             inputDispatcher.resetToMainView()
             inputDispatcher.clearPendingViewSubscription()
+            activity?.let { a ->
+                if (a.isOverlayFocused) {
+                    a.isOverlayFocused = false
+                    a.dualScreenManager.companionHost?.onOverlayClosed()
+                }
+            }
+            viewModel.setDrawerOpen(false)
+            viewModel.setQuickSettingsOpen(false)
+            quickMenuViewModel.hide()
         }
     }
 
@@ -375,14 +391,18 @@ fun ArgosyApp(
         }
     }
 
-    // Quick menu input handler
     val quickMenuInputHandler = remember(quickMenuViewModel, navController, closeQuickMenu) {
         QuickMenuInputHandler(
             viewModel = quickMenuViewModel,
             onGameSelect = { gameId ->
                 closeQuickMenu()
-                navController.navigate(Screen.GameDetail.createRoute(gameId)) {
-                    launchSingleTop = true
+                val dsm = (context as? com.nendo.argosy.MainActivity)?.dualScreenManager
+                if (dsm?.isRolesSwapped?.value == true) {
+                    dsm.selectGameSwapped(gameId)
+                } else {
+                    navController.navigate(Screen.GameDetail.createRoute(gameId)) {
+                        launchSingleTop = true
+                    }
                 }
             },
             onDismiss = { closeQuickMenu() }
@@ -847,12 +867,28 @@ fun ArgosyApp(
         viewModel.gamepadInputHandler.eventFlow().collect { input ->
             val result = inputDispatcher.dispatch(input)
             val event = input.event
-            if (!result.handled) {
+            if (!result.handled && !inputDispatcher.hasActiveModal()) {
                 if (showSwappedInteractive) {
                     when (event) {
                         GamepadEvent.Menu -> {
                             (context as? com.nendo.argosy.MainActivity)
                                 ?.dualScreenManager?.broadcastOpenOverlay("drawer")
+                        }
+                        GamepadEvent.RightStickClick -> {
+                            if (isQuickSettingsOpen) {
+                                closeQuickSettings()
+                            } else {
+                                if (quickMenuState.isVisible) closeQuickMenu()
+                                openQuickSettings()
+                            }
+                        }
+                        GamepadEvent.LeftStickClick -> {
+                            if (quickMenuState.isVisible) {
+                                closeQuickMenu()
+                            } else {
+                                if (isQuickSettingsOpen) closeQuickSettings()
+                                openQuickMenu()
+                            }
                         }
                         else -> {}
                     }
@@ -939,6 +975,7 @@ fun ArgosyApp(
         LocalABIconsSwapped provides uiState.abIconsSwapped,
         LocalXYIconsSwapped provides uiState.xyIconsSwapped,
         LocalSwapStartSelect provides uiState.swapStartSelect,
+        LocalFooterHost provides footerHostController,
         com.nendo.argosy.ui.common.LocalImageCacheManager provides viewModel.imageCacheManager
     ) {
         if (uiState.isLoading) {
@@ -976,6 +1013,7 @@ fun ArgosyApp(
                         items = viewModel.drawerItems,
                         currentRoute = currentRoute,
                         drawerState = drawerUiState,
+                        isOpen = isDrawerOpen,
                         onNavigate = { route ->
                             inputDispatcher.unsubscribeDrawer()
                             viewModel.setDrawerOpen(false)
@@ -998,6 +1036,12 @@ fun ArgosyApp(
                             viewModel.setDrawerOpen(false)
                             scope.launch { drawerState.close() }
                             viewModel.joinFriendNetplaySession(friend)
+                        },
+                        onSelectTab = { tab ->
+                            when (tab) {
+                                DrawerTab.NAVIGATION -> viewModel.switchToNavTab()
+                                DrawerTab.FRIENDS -> viewModel.switchToFriendsTab()
+                            }
                         }
                     )
                 }
@@ -1090,12 +1134,15 @@ fun ArgosyApp(
                                 activity?.dismissDualModal()
                             },
                             footerHints = {
-                                com.nendo.argosy.ui.components.FooterBar(
+                                FooterHints(
                                     hints = listOf(
                                         com.nendo.argosy.ui.components.InputButton.LB_RB to "Tab",
                                         com.nendo.argosy.ui.components.InputButton.A to "Select",
                                         com.nendo.argosy.ui.components.InputButton.B to "Back"
                                     )
+                                )
+                                androidx.compose.foundation.layout.Spacer(
+                                    modifier = Modifier.height(Dimens.footerHeight)
                                 )
                             },
                             modifier = Modifier.blur(contentBlur)
@@ -1104,12 +1151,15 @@ fun ArgosyApp(
                         DualCollectionShowcase(
                             state = collectionShowcaseState,
                             footerHints = {
-                                com.nendo.argosy.ui.components.FooterBar(
+                                FooterHints(
                                     hints = listOf(
                                         com.nendo.argosy.ui.components.InputButton.DPAD to "Navigate",
                                         com.nendo.argosy.ui.components.InputButton.A to "Open",
                                         com.nendo.argosy.ui.components.InputButton.B to "Back"
                                     )
+                                )
+                                androidx.compose.foundation.layout.Spacer(
+                                    modifier = Modifier.height(Dimens.footerHeight)
                                 )
                             },
                             modifier = Modifier.blur(contentBlur)
@@ -1119,7 +1169,7 @@ fun ArgosyApp(
                             state = showcaseState,
                             footerHints = {
                                 val actionLabel = if (showcaseState.isDownloaded) "Play" else "Download"
-                                com.nendo.argosy.ui.components.FooterBar(
+                                FooterHints(
                                     hints = when (viewMode) {
                                         "COLLECTION_GAMES" -> listOf(
                                             com.nendo.argosy.ui.components.InputButton.DPAD to "Navigate",
@@ -1240,7 +1290,6 @@ fun ArgosyApp(
                                 onSelectGame = { gameId ->
                                     dualScreenManager.selectGameSwapped(gameId)
                                 },
-                                onOpenOverlay = { },
                                 onLaunchApp = { packageName ->
                                     val launchIntent = context.packageManager
                                         .getLaunchIntentForPackage(packageName)
@@ -1672,8 +1721,13 @@ fun ArgosyApp(
                 viewModel = quickMenuViewModel,
                 onGameSelect = { gameId ->
                     closeQuickMenu()
-                    navController.navigate(Screen.GameDetail.createRoute(gameId)) {
-                        launchSingleTop = true
+                    val dsm = activity?.dualScreenManager
+                    if (dsm?.isRolesSwapped?.value == true) {
+                        dsm.selectGameSwapped(gameId)
+                    } else {
+                        navController.navigate(Screen.GameDetail.createRoute(gameId)) {
+                            launchSingleTop = true
+                        }
                     }
                 },
                 closeQuickMenu = closeQuickMenu
@@ -1780,6 +1834,11 @@ fun ArgosyApp(
                     onDismiss = { viewModel.steamDownloadPromptController.dismiss() }
                 )
             }
+
+            FooterHost(
+                controller = footerHostController,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
             }
         }
     }

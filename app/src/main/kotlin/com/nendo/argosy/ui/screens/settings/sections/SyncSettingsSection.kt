@@ -34,6 +34,7 @@ import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.ImageCachePreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
+import com.nendo.argosy.ui.screens.settings.SYNC_REGION_MODE_PICKER_KEY
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.PlatformFiltersModal
@@ -53,6 +54,7 @@ internal sealed class SyncSettingsItem(val key: String, val section: String) {
     data object MetadataFilters : SyncSettingsItem("metadataFilters", "filters")
     data object MediaHeader : SyncSettingsItem("mediaHeader", "media")
     data object CacheScreenshots : SyncSettingsItem("cacheScreenshots", "media")
+    data object CacheBoxArt : SyncSettingsItem("cacheBoxArt", "media")
     data object UploadScreenshots : SyncSettingsItem("uploadScreenshots", "media")
     data object ImageCacheLocation : SyncSettingsItem("imageCacheLocation", "media")
     data object ImageCacheProgressIndicator : SyncSettingsItem("imageCacheProgress", "media")
@@ -64,6 +66,7 @@ private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Boolean>(
         SyncSettingsItem.MetadataFilters,
         SyncSettingsItem.MediaHeader,
         SyncSettingsItem.CacheScreenshots,
+        SyncSettingsItem.CacheBoxArt,
         SyncSettingsItem.UploadScreenshots,
         SyncSettingsItem.ImageCacheLocation,
         SyncSettingsItem.ImageCacheProgressIndicator
@@ -122,6 +125,7 @@ fun SyncSettingsSection(
             focusToListIndex = { syncSettingsLayout.focusToListIndex(it, isProcessing) },
             itemKey = { it.key },
             isNavItem = { false },
+            isHeader = { it is SyncSettingsItem.MediaHeader },
             onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
             modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd).blur(modalBlur),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
@@ -160,6 +164,15 @@ fun SyncSettingsSection(
                             isEnabled = uiState.server.syncScreenshotsEnabled,
                             isFocused = isFocused(item),
                             onToggle = { viewModel.toggleSyncScreenshots() }
+                        )
+                    }
+                    SyncSettingsItem.CacheBoxArt -> {
+                        SwitchPreference(
+                            title = "Cache 3D Box Art",
+                            subtitle = "Download box back and spine scans for 3D box displays",
+                            isEnabled = uiState.server.boxArtCacheEnabled,
+                            isFocused = isFocused(item),
+                            onToggle = { viewModel.toggleBoxArtCache() }
                         )
                     }
                     SyncSettingsItem.UploadScreenshots -> {
@@ -239,7 +252,12 @@ fun SyncSettingsSection(
                 focusIndex = uiState.syncSettings.syncFiltersModalFocusIndex,
                 showRegionPicker = uiState.syncSettings.showRegionPicker,
                 regionPickerFocusIndex = uiState.syncSettings.regionPickerFocusIndex,
+                regionPickerRegions = uiState.syncSettings.syncFilters.pickerDisplayOrder,
+                regionPickerHeldRegion = uiState.syncSettings.regionPickerHeldRegion,
                 onToggleRegion = { viewModel.toggleRegion(it) },
+                onLiftRegion = { viewModel.liftRegionAt(it) },
+                onMoveRegionTo = { region, index -> viewModel.moveRegionTo(region, index) },
+                onDropRegion = { viewModel.dropHeldRegion() },
                 onToggleRegionMode = { viewModel.toggleRegionMode() },
                 onToggleExcludeBeta = { viewModel.setExcludeBeta(it) },
                 onToggleExcludePrototype = { viewModel.setExcludePrototype(it) },
@@ -248,7 +266,8 @@ fun SyncSettingsSection(
                 onToggleDeleteOrphans = { viewModel.setDeleteOrphans(it) },
                 onShowRegionPicker = { viewModel.showRegionPicker() },
                 onDismissRegionPicker = { viewModel.dismissRegionPicker() },
-                onDismiss = { viewModel.dismissSyncFiltersModal() }
+                onDismiss = { viewModel.dismissSyncFiltersModal() },
+                regionModePickerToken = if (uiState.enumPickerKey == SYNC_REGION_MODE_PICKER_KEY) uiState.enumPickerToken else 0
             )
         }
     }

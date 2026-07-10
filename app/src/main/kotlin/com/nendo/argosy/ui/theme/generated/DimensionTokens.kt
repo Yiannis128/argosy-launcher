@@ -21,12 +21,15 @@ object DimensionTokens {
         const val md = 8
         const val lg = 12
         const val xl = 16
+        const val panel = 6
+        const val control = 8
+        const val pill = 999
     }
 
     object Border {
         const val thin = 1
         const val medium = 2
-        const val thick = 4
+        const val thick = 2
     }
 
     object Icon {
@@ -45,10 +48,16 @@ object DimensionTokens {
     object Layout {
         const val gameCardWidth = 180
         const val gameCardHeight = 240
-        const val settingsItemMinHeight = 56
+        const val settingsItemMinHeight = 40
+        const val menuRowHeight = 40
+        const val menuRowHeightLg = 52
+        const val listGap = 8
+        const val buttonHeight = 44
+        const val buttonPaddingH = 16
+        const val buttonPaddingV = 10
         const val headerHeight = 72
         const val headerHeightLg = 140
-        const val footerHeight = 50
+        const val footerHeight = 44
         const val modalWidth = 400
         const val modalWidthLg = 520
         const val modalWidthXl = 575

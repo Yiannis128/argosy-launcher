@@ -52,12 +52,19 @@ class InputDispatcher(
     }
 
     fun pushModal(handler: InputHandler) {
+        modalStack.remove(handler)
         modalStack.add(handler)
         processPendingEvent()
     }
 
     fun popModal() {
         modalStack.removeLastOrNull()
+    }
+
+    fun hasActiveModal(): Boolean = modalStack.isNotEmpty()
+
+    fun removeModal(handler: InputHandler) {
+        modalStack.remove(handler)
     }
 
     fun clearModals() {

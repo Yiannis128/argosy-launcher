@@ -31,7 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
@@ -41,7 +44,9 @@ import com.nendo.argosy.ui.screens.settings.ShaderParamDef
 import com.nendo.argosy.ui.screens.settings.ShaderStackEntry
 import com.nendo.argosy.ui.screens.settings.ShaderStackState
 import com.nendo.argosy.ui.screens.settings.components.ShaderPickerModal
+import com.nendo.argosy.ui.primitives.StepperControl
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.ui.util.clickableNoFocus
 
@@ -107,7 +112,11 @@ fun ShaderStackSection(
                                     paramDef = paramDef,
                                     currentValue = currentValue,
                                     isFocused = shaderStack.paramFocusIndex == index,
-                                    onClick = { manager.moveShaderParamFocus(index - shaderStack.paramFocusIndex) }
+                                    onClick = { manager.moveShaderParamFocus(index - shaderStack.paramFocusIndex) },
+                                    onAdjust = { delta ->
+                                        if (shaderStack.paramFocusIndex == index) manager.adjustShaderParam(delta)
+                                        else manager.moveShaderParamFocus(index - shaderStack.paramFocusIndex)
+                                    }
                                 )
                             }
                         }
@@ -179,13 +188,14 @@ private fun ShaderTabBar(
     ) {
         entries.forEachIndexed { index, entry ->
             val isSelected = index == selectedIndex
+            val focusAccent = LocalArgosyTheme.current.focusAccent
             val bgColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
+                focusAccent.copy(alpha = 0.15f)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             }
             val textColor = if (isSelected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
+                lerp(focusAccent, Color.White, 0.45f)
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             }
@@ -214,22 +224,19 @@ private fun ShaderParamItem(
     paramDef: ShaderParamDef,
     currentValue: Float,
     isFocused: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAdjust: (Int) -> Unit
 ) {
     val bgColor = if (isFocused) {
-        MaterialTheme.colorScheme.primaryContainer
+        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
+            .compositeOver(MaterialTheme.colorScheme.surface)
     } else {
         MaterialTheme.colorScheme.surface
     }
     val textColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
     } else {
         MaterialTheme.colorScheme.onSurface
-    }
-    val valueColor = if (isFocused) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.primary
     }
 
     val displayValue = formatParamValue(currentValue, paramDef.step)
@@ -239,7 +246,7 @@ private fun ShaderParamItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .clip(RoundedCornerShape(Dimens.radiusControl))
             .background(bgColor)
             .clickableNoFocus(onClick = onClick)
             .padding(Dimens.spacingMd),
@@ -254,10 +261,12 @@ private fun ShaderParamItem(
             modifier = Modifier.weight(1f)
         )
         if (!isSectionLabel) {
-            Text(
-                text = "< $displayValue >",
-                style = MaterialTheme.typography.bodyMedium,
-                color = valueColor
+            StepperControl(
+                display = displayValue,
+                focused = isFocused,
+                onDecrement = { onAdjust(-1) },
+                onIncrement = { onAdjust(1) },
+                numericValue = if (paramDef.step > 0f) kotlin.math.round(currentValue / paramDef.step).toInt() else null
             )
         }
     }

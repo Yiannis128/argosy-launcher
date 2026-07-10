@@ -2,6 +2,8 @@ package com.nendo.argosy.ui.components
 
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.focusBackground
+import androidx.compose.ui.graphics.compositeOver
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,7 +49,7 @@ fun ExpandablePreference(
             .fillMaxWidth()
             .heightIn(min = Dimens.settingsItemMinHeight)
             .clip(preferenceShape)
-            .focusBackground(isFocused, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface, preferenceShape)
+            .focusBackground(isFocused, LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface), MaterialTheme.colorScheme.surface, preferenceShape)
             .clickableNoFocus(onClick = onToggle)
             .padding(Dimens.spacingMd),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -99,7 +101,7 @@ fun ExpandedChildItem(
             .padding(start = Dimens.spacingLg)
             .heightIn(min = Dimens.settingsItemMinHeight)
             .clip(preferenceShape)
-            .focusBackground(isFocused, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), preferenceShape)
+            .focusBackground(isFocused, LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface), MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), preferenceShape)
             .clickableNoFocus(onClick = onClick)
             .padding(Dimens.spacingMd),
         horizontalArrangement = Arrangement.SpaceBetween,
