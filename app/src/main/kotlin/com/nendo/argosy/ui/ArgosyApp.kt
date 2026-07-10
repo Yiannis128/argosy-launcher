@@ -391,14 +391,18 @@ fun ArgosyApp(
         }
     }
 
-    // Quick menu input handler
     val quickMenuInputHandler = remember(quickMenuViewModel, navController, closeQuickMenu) {
         QuickMenuInputHandler(
             viewModel = quickMenuViewModel,
             onGameSelect = { gameId ->
                 closeQuickMenu()
-                navController.navigate(Screen.GameDetail.createRoute(gameId)) {
-                    launchSingleTop = true
+                val dsm = (context as? com.nendo.argosy.MainActivity)?.dualScreenManager
+                if (dsm?.isRolesSwapped?.value == true) {
+                    dsm.selectGameSwapped(gameId)
+                } else {
+                    navController.navigate(Screen.GameDetail.createRoute(gameId)) {
+                        launchSingleTop = true
+                    }
                 }
             },
             onDismiss = { closeQuickMenu() }
@@ -874,7 +878,16 @@ fun ArgosyApp(
                             if (isQuickSettingsOpen) {
                                 closeQuickSettings()
                             } else {
+                                if (quickMenuState.isVisible) closeQuickMenu()
                                 openQuickSettings()
+                            }
+                        }
+                        GamepadEvent.LeftStickClick -> {
+                            if (quickMenuState.isVisible) {
+                                closeQuickMenu()
+                            } else {
+                                if (isQuickSettingsOpen) closeQuickSettings()
+                                openQuickMenu()
                             }
                         }
                         else -> {}
@@ -1277,7 +1290,6 @@ fun ArgosyApp(
                                 onSelectGame = { gameId ->
                                     dualScreenManager.selectGameSwapped(gameId)
                                 },
-                                onOpenOverlay = { },
                                 onLaunchApp = { packageName ->
                                     val launchIntent = context.packageManager
                                         .getLaunchIntentForPackage(packageName)
@@ -1709,8 +1721,13 @@ fun ArgosyApp(
                 viewModel = quickMenuViewModel,
                 onGameSelect = { gameId ->
                     closeQuickMenu()
-                    navController.navigate(Screen.GameDetail.createRoute(gameId)) {
-                        launchSingleTop = true
+                    val dsm = activity?.dualScreenManager
+                    if (dsm?.isRolesSwapped?.value == true) {
+                        dsm.selectGameSwapped(gameId)
+                    } else {
+                        navController.navigate(Screen.GameDetail.createRoute(gameId)) {
+                            launchSingleTop = true
+                        }
                     }
                 },
                 closeQuickMenu = closeQuickMenu
