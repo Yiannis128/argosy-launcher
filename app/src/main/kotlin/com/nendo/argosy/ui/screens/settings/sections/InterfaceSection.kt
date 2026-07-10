@@ -310,7 +310,7 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.cycleDisplayRoleOverride() },
                     onPrev = { viewModel.cycleDisplayRoleOverride(-1) },
                     options = remember { DisplayRoleOverride.entries.map { it.displayName } },
-                    onSelect = { viewModel.cycleDisplayRoleOverride(it - display.displayRoleOverride.ordinal) },
+                    onSelect = { viewModel.setDisplayRoleOverride(DisplayRoleOverride.entries[it]) },
                     pickerRequestToken = pickerToken(item)
                 )
 

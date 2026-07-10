@@ -859,6 +859,9 @@ class SettingsViewModel @Inject constructor(
 
     fun cycleDisplayRoleOverride(direction: Int = 1) = routeCycleDisplayRoleOverride(this, direction)
 
+    fun setDisplayRoleOverride(value: com.nendo.argosy.data.preferences.DisplayRoleOverride) =
+        routeSetDisplayRoleOverride(this, value)
+
     fun setSoundVolume(volume: Int) = soundsDelegate.setSoundVolume(viewModelScope, volume)
 
     fun adjustSoundVolume(delta: Int) = routeAdjustSoundVolume(this, delta)

@@ -17,6 +17,7 @@ import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.emulator.DiscOption
 import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -475,6 +476,9 @@ class DualScreenManager(
 
         emulatorDisplayId = null
         sessionStateStore.setDisplayRoleOverride("AUTO")
+        scope.launch {
+            preferencesRepository.setDisplayRoleOverride(DisplayRoleOverride.AUTO)
+        }
         _isRolesSwapped.value = false
         sessionStateStore.setRolesSwapped(false)
 
@@ -1830,12 +1834,16 @@ class DualScreenManager(
             }
         }
         sessionStateStore.setDisplayRoleOverride(newOverride)
+        scope.launch {
+            preferencesRepository.setDisplayRoleOverride(DisplayRoleOverride.fromString(newOverride))
+        }
         val newSwapped = newOverride == "SWAPPED" ||
             (newOverride == "AUTO" && displayAffinityHelper.secondaryDisplayType == SecondaryDisplayType.EXTERNAL)
         _isRolesSwapped.value = newSwapped
         sessionStateStore.setRolesSwapped(newSwapped)
         onRoleSwapped?.invoke(newSwapped)
         companionHost?.onRoleSwapped(newSwapped)
+        if (!newSwapped) companionHost?.refocusSelf()
     }
 
     fun selectGameSwapped(gameId: Long) {

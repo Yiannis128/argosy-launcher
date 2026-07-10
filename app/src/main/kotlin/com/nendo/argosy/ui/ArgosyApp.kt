@@ -291,6 +291,15 @@ fun ArgosyApp(
         LaunchedEffect(isRolesSwapped, companionActive, swappedGameActive) {
             inputDispatcher.resetToMainView()
             inputDispatcher.clearPendingViewSubscription()
+            activity?.let { a ->
+                if (a.isOverlayFocused) {
+                    a.isOverlayFocused = false
+                    a.dualScreenManager.companionHost?.onOverlayClosed()
+                }
+            }
+            viewModel.setDrawerOpen(false)
+            viewModel.setQuickSettingsOpen(false)
+            quickMenuViewModel.hide()
         }
     }
 
@@ -860,6 +869,13 @@ fun ArgosyApp(
                         GamepadEvent.Menu -> {
                             (context as? com.nendo.argosy.MainActivity)
                                 ?.dualScreenManager?.broadcastOpenOverlay("drawer")
+                        }
+                        GamepadEvent.RightStickClick -> {
+                            if (isQuickSettingsOpen) {
+                                closeQuickSettings()
+                            } else {
+                                openQuickSettings()
+                            }
                         }
                         else -> {}
                     }

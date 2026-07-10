@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Devices
@@ -271,7 +272,7 @@ fun AppsScreen(
                     else -> listOf(
                         InputButton.A to "Open",
                         InputButton.B to "Back",
-                        InputButton.Y to "Reorder",
+                        InputButton.Y to if (uiState.hasSecondaryDisplay) "Open on Top" else "Reorder",
                         InputButton.SELECT to "Options",
                         InputButton.X to if (uiState.showHiddenApps) "Show Apps" else "Show Hidden"
                     )
@@ -287,7 +288,7 @@ fun AppsScreen(
                         when (button) {
                             InputButton.A -> uiState.focusedApp?.let { viewModel.launchAppAt(uiState.focusedIndex) }
                             InputButton.B -> onBack()
-                            InputButton.Y -> viewModel.enterReorderMode()
+                            InputButton.Y -> viewModel.handleSecondaryAction()
                             InputButton.SELECT -> viewModel.showContextMenuAt(uiState.focusedIndex)
                             InputButton.X -> viewModel.toggleShowHidden()
                             else -> {}
@@ -376,6 +377,7 @@ private fun ContextMenuItem(
         } else {
             Icons.Default.VisibilityOff to "Hide"
         }
+        AppContextMenuItem.REORDER -> Icons.Default.SwapVert to "Reorder Apps"
         AppContextMenuItem.UNINSTALL -> Icons.Default.Delete to "Uninstall"
     }
 
