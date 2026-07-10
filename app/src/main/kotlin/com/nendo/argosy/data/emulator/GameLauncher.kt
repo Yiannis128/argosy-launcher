@@ -87,7 +87,9 @@ class GameLauncher @Inject constructor(
     private val coreSystemDataManager: CoreSystemDataManager,
     private val gameFileDao: GameFileDao,
     private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository,
-    private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+    private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry,
+    private val libretroStatePathResolver: LibretroStatePathResolver,
+    private val notificationManager: com.nendo.argosy.core.notification.NotificationManager
 ) {
     private val shellAmAvailable: Boolean by lazy {
         try {
@@ -521,7 +523,9 @@ class GameLauncher @Inject constructor(
         val builtinBesideRom = emulatorSaveConfigRepository.getByEmulator("builtin")?.savesBesideRom == true
         val effectiveSavePath = if (builtinBesideRom) romFile.parent
             else platformLibretroOverride?.savePath ?: builtinSettings.customSavePath
-        val effectiveStatePath = platformLibretroOverride?.statePath ?: builtinSettings.customStatePath
+        val effectiveStatePath = libretroStatePathResolver
+            .liveStateBaseDir(platformLibretroOverride?.statePath, builtinSettings.customStatePath)
+            .absolutePath
         return Intent(context, LibretroActivity::class.java).apply {
             putExtra(LibretroActivity.EXTRA_ROM_PATH, romFile.absolutePath)
             putExtra(LibretroActivity.EXTRA_VARIANT_FILE_ID, variantFileId ?: -1L)
@@ -535,7 +539,7 @@ class GameLauncher @Inject constructor(
             putExtra(LibretroActivity.EXTRA_CORE_VAR_KEYS, coreVariables.map { it.key }.toTypedArray())
             putExtra(LibretroActivity.EXTRA_CORE_VAR_VALUES, coreVariables.map { it.value }.toTypedArray())
             effectiveSavePath?.let { putExtra(LibretroActivity.EXTRA_SAVES_DIR, it) }
-            effectiveStatePath?.let { putExtra(LibretroActivity.EXTRA_STATES_DIR, it) }
+            putExtra(LibretroActivity.EXTRA_STATES_DIR, effectiveStatePath)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
@@ -1061,11 +1065,13 @@ class GameLauncher @Inject constructor(
     private suspend fun resolveBuiltinCoreId(game: GameEntity): String? {
         val validCoreIds = com.nendo.argosy.libretro.LibretroCoreRegistry
             .getCoresForPlatform(game.platformSlug).map { it.coreId }.toSet()
+        var rejectedCore: String? = null
 
         fun accept(coreId: String?, source: String): String? {
             if (coreId.isNullOrBlank()) return null
             if (coreId !in validCoreIds) {
                 Logger.warn(TAG, "[BuiltIn] ignoring unknown core '$coreId' from $source for ${game.platformSlug}")
+                if (rejectedCore == null) rejectedCore = coreId
                 return null
             }
             Logger.debug(TAG, "[BuiltIn] core selection: $source -> $coreId")
@@ -1079,6 +1085,16 @@ class GameLauncher @Inject constructor(
         val default = com.nendo.argosy.libretro.LibretroCoreRegistry
             .getDefaultCoreForPlatform(game.platformSlug)?.coreId
         Logger.debug(TAG, "[BuiltIn] core selection: registry default -> $default")
+
+        val rejected = rejectedCore
+        if (rejected != null && default != null) {
+            val registry = com.nendo.argosy.libretro.LibretroCoreRegistry
+            notificationManager.show(
+                title = "Failed to load ${registry.displayNameFor(rejected)}, " +
+                    "using ${registry.displayNameFor(default)} instead",
+                type = com.nendo.argosy.core.notification.NotificationType.WARNING
+            )
+        }
         return default
     }
 

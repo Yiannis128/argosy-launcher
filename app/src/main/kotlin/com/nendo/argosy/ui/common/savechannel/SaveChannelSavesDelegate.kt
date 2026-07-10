@@ -361,7 +361,13 @@ class SaveChannelSavesDelegate @Inject constructor(
                         )
                         val label = channelName ?: "Auto Save"
                         notificationManager.showSuccess("Using save slot: $label")
-                        _state.update { it.copy(isVisible = false, activeSaveCacheId = entry.localCacheId) }
+                        _state.update {
+                            it.copy(
+                                activeSaveTimestamp = entryTimestamp,
+                                activeSaveCacheId = entry.localCacheId
+                            )
+                        }
+                        refreshEntries()
                         onRestored()
                     }
                     is RestoreCachedSaveUseCase.Result.Error -> {
@@ -453,12 +459,13 @@ class SaveChannelSavesDelegate @Inject constructor(
                         skipAutoState = true
                     )
                     if (game?.localPath != null) {
-                        stateCacheManager.deleteAutoStateFromDisk(
+                        stateCacheManager.deleteAutoResumeStatesFromDisk(
                             emulatorId = emulatorId,
                             romPath = game.localPath,
                             platformSlug = game.platformSlug,
                             emulatorPackage = emulatorPackage,
-                            coreId = state.currentCoreId
+                            coreId = state.currentCoreId,
+                            gameId = currentGameId
                         )
                     }
                 }
@@ -468,7 +475,6 @@ class SaveChannelSavesDelegate @Inject constructor(
             _state.update {
                 it.copy(
                     showRestoreConfirmation = false,
-                    isVisible = false,
                     activeChannel = targetChannel,
                     activeSaveTimestamp = targetTimestamp,
                     activeSaveCacheId = entry.localCacheId
@@ -490,6 +496,7 @@ class SaveChannelSavesDelegate @Inject constructor(
                         "Restored to $targetChannel"
                     } else "Save restored"
                     notificationManager.showSuccess(msg)
+                    refreshEntries()
                     onRestored()
                 }
                 is RestoreCachedSaveUseCase.Result.RestoredAndSynced -> {
@@ -499,6 +506,7 @@ class SaveChannelSavesDelegate @Inject constructor(
                         "Restored to $targetChannel and synced"
                     } else "Save restored and synced"
                     notificationManager.showSuccess(msg)
+                    refreshEntries()
                     onRestored()
                 }
                 is RestoreCachedSaveUseCase.Result.Error -> {
@@ -740,6 +748,18 @@ class SaveChannelSavesDelegate @Inject constructor(
         }
     }
 
+    /**
+     * Delete every copy of a save channel -- local cache entries AND their server saves. Deleting
+     * only the local cache lets a server-only (or synced) save survive and re-sync back on refresh.
+     */
+    private suspend fun deleteChannelEverywhere(channelName: String) {
+        val entries = holder.rawEntries.filter { it.channelName == channelName }
+        entries.mapNotNull { it.serverSaveId }
+            .takeIf { it.isNotEmpty() }
+            ?.let { saveSyncRepository.deleteServerSaves(it) }
+        entries.forEach { entry -> entry.localCacheId?.let { saveCacheManager.deleteSave(it) } }
+    }
+
     fun confirmDeleteChannel(
         scope: CoroutineScope,
         onSaveStatusChanged: (SaveStatusEvent) -> Unit
@@ -749,7 +769,7 @@ class SaveChannelSavesDelegate @Inject constructor(
         val channelName = entry.channelName ?: return
 
         scope.launch {
-            entry.localCacheId?.let { saveCacheManager.deleteSave(it) }
+            deleteChannelEverywhere(channelName)
 
             if (state.activeChannel == channelName) {
                 gameRepository.updateActiveSaveChannel(currentGameId, null)
@@ -877,15 +897,7 @@ class SaveChannelSavesDelegate @Inject constructor(
         val channelName = state.deleteLegacyChannelName ?: return
 
         scope.launch {
-            val entries = holder.rawEntries.filter { it.channelName == channelName }
-
-            val serverIds = entries.mapNotNull { it.serverSaveId }
-            if (serverIds.isNotEmpty()) {
-                saveSyncRepository.deleteServerSaves(serverIds)
-            }
-            for (entry in entries) {
-                entry.localCacheId?.let { saveCacheManager.deleteSave(it) }
-            }
+            deleteChannelEverywhere(channelName)
 
             refreshEntries()
             _state.update {

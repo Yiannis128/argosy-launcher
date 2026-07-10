@@ -203,6 +203,7 @@ class LibretroActivity : ComponentActivity() {
     private var activeMenuHandler: InputHandler? = null
 
     private var restoredSram: ByteArray? = null
+    private var casualSaveInHardcore: Boolean = false
     private var hardcoreMode by mutableStateOf(false)
     private var launchMode = LaunchMode.RESUME
     private var statesSupported = true
@@ -489,6 +490,7 @@ class LibretroActivity : ComponentActivity() {
             saveStateManager.restoreSaveForLaunchMode(launchMode)
         }
         restoredSram = restoreResult.sramData
+        casualSaveInHardcore = restoreResult.casualSaveInHardcore
         if (restoreResult.switchToHardcore) {
             hardcoreMode = true
         }
@@ -636,6 +638,12 @@ class LibretroActivity : ComponentActivity() {
                             Log.i(TAG, "[Startup] First frame rendered - emulation running successfully")
                             Log.d(TAG, "[Startup] gameId=$gameId, core=$coreName, hardcore=$hardcoreMode")
                             checkStateSupport()
+                            if (retroView.sramLoadFailed) {
+                                Log.w(TAG, "[Startup] SRAM failed to load (size mismatch); booting with a fresh save")
+                                inGameMessage = "Failed to load save, using new save instead"
+                            } else if (casualSaveInHardcore) {
+                                inGameMessage = "Continuing casual save in hardcore"
+                            }
                             attemptAutoRestore()
                             netplay.triggerPendingNetplayJoin()
                         }
@@ -1521,6 +1529,9 @@ class LibretroActivity : ComponentActivity() {
                     try {
                         withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
                             performAutoSaveState()
+                            if (!isGuestJoinedSession) {
+                                saveStateManager.saveSram(retroView)
+                            }
                             try {
                                 playSessionTracker.cacheCurrentSessionForQuit()
                             } catch (e: Exception) {
@@ -1530,9 +1541,6 @@ class LibretroActivity : ComponentActivity() {
                                 playSessionTracker.cacheCurrentSessionStatesForQuit()
                             } catch (e: Exception) {
                                 Log.w(TAG, "Pre-quit state cache failed", e)
-                            }
-                            if (!isGuestJoinedSession) {
-                                saveStateManager.saveSram(retroView)
                             }
                             coreDestroyed = true
                             retroView.destroyNative()

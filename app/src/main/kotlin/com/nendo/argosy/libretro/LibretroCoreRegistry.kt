@@ -91,6 +91,13 @@ object LibretroCoreRegistry {
             estimatedSizeBytes = 2_000_000L,
             requiresBios = listOf("gba_bios.bin")
         ),
+        CoreInfo(
+            coreId = "vba_next",
+            fileName = "vba_next_libretro_android.so",
+            displayName = "VBA Next",
+            platforms = setOf("gba"),
+            estimatedSizeBytes = 2_000_000L
+        ),
 
         // Nintendo 64
         CoreInfo(
@@ -504,6 +511,9 @@ object LibretroCoreRegistry {
     )
 
     fun getCoreById(coreId: String): CoreInfo? = cores.find { it.coreId == coreId }
+
+    /** Human-readable name for a core id, falling back to the raw id when the core is unknown. */
+    fun displayNameFor(coreId: String): String = getCoreById(coreId)?.displayName ?: coreId
 
     private val hardwareRenderedCores = setOf(
         "dolphin", "flycast", "mupen64plus_next_gles3", "mupen64plus_next_gles2",

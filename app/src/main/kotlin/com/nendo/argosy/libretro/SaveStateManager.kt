@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.swordfish.libretrodroid.GLRetroView
 import java.io.File
@@ -21,19 +22,19 @@ class SaveStateManager(
     private val gameDao: GameDao,
     private val saveCacheManager: SaveCacheManager,
     private val usesExternalMemcard: Boolean = false,
-    channelName: String? = null,
+    private val channelName: String? = null,
     private val isVariant: Boolean = false
 ) {
     private var lastSramHash: String? = null
     var hasQuickSave by mutableStateOf(false)
         private set
 
-    private val channelDir: File = resolveChannelDir(channelName)
     private val romBaseName: String = File(romPath).nameWithoutExtension
 
     data class RestoreResult(
         val sramData: ByteArray?,
-        val switchToHardcore: Boolean = false
+        val switchToHardcore: Boolean = false,
+        val casualSaveInHardcore: Boolean = false
     )
 
     data class SlotInfo(
@@ -46,18 +47,18 @@ class SaveStateManager(
 
     fun initializeFromExistingSave(existingSram: ByteArray?) {
         lastSramHash = existingSram?.let { hashBytes(it) }
-        migrateExistingFlatFiles()
-        channelDir.mkdirs()
+        migrateChannelStatesToFlat()
+        statesDir.mkdirs()
         hasQuickSave = quickRingEntries().isNotEmpty()
     }
 
     fun getSlotFile(slotNumber: Int): File {
         val fileName = buildSlotFileName(slotNumber)
-        return File(channelDir, fileName)
+        return File(statesDir, fileName)
     }
 
     fun getSlotScreenshotFile(slotNumber: Int): File {
-        return File(channelDir, "${buildSlotFileName(slotNumber)}.png")
+        return File(statesDir, "${buildSlotFileName(slotNumber)}.png")
     }
 
     fun getSramFile(): File {
@@ -94,6 +95,13 @@ class SaveStateManager(
         return slots
     }
 
+    /**
+     * Resolves the SRAM to load for [launchMode], writes it to the live .srm, and returns the bytes
+     * plus mode hints. Two non-obvious rules: an explicit save-management restore (activeSaveApplied)
+     * wins over the default resume pick; and RESUME_HARDCORE falls back to the active save when no
+     * hardcore save exists, because RetroAchievements forbids only save states in hardcore, not SRAM
+     * battery saves (that fallback is flagged casualSaveInHardcore so the UI can surface it).
+     */
     suspend fun restoreSaveForLaunchMode(launchMode: LaunchMode): RestoreResult {
         if (usesExternalMemcard) {
             Log.d(TAG, "External memcard (GCI folder) - skipping flat .srm restore")
@@ -113,6 +121,21 @@ class SaveStateManager(
             Log.w(TAG, "No valid gameId, using existing save")
             val bytes = getSramFile().takeIf { it.exists() }?.readBytes()
             return RestoreResult(bytes)
+        }
+
+        val game = if (launchMode == LaunchMode.RESUME || launchMode == LaunchMode.RESUME_HARDCORE) {
+            gameDao.getById(gameId)
+        } else {
+            null
+        }
+
+        if (game?.activeSaveApplied == true) {
+            val sramFile = getSramFile()
+            if (sramFile.exists()) {
+                val bytes = sramFile.readBytes()
+                Log.i(TAG, "Honoring explicit restore (activeSaveApplied): on-disk .srm ${bytes.size} bytes")
+                return RestoreResult(bytes)
+            }
         }
 
         return when (launchMode) {
@@ -154,16 +177,20 @@ class SaveStateManager(
                     }
                     RestoreResult(bytes)
                 } else {
-                    Log.w(TAG, "No hardcore save found, starting fresh")
-                    RestoreResult(null)
+                    Log.d(TAG, "No hardcore save; using active save for hardcore session")
+                    val fallback = restoreResumeSave(game)
+                    if (fallback.sramData != null && !fallback.switchToHardcore) {
+                        fallback.copy(casualSaveInHardcore = true)
+                    } else {
+                        fallback
+                    }
                 }
             }
-            LaunchMode.RESUME -> restoreResumeSave()
+            LaunchMode.RESUME -> restoreResumeSave(game)
         }
     }
 
-    private suspend fun restoreResumeSave(): RestoreResult {
-        val game = gameDao.getById(gameId)
+    private suspend fun restoreResumeSave(game: GameEntity?): RestoreResult {
         val activeSaveTimestamp = game?.activeSaveTimestamp
         val activeChannel = game?.activeSaveChannel
 
@@ -260,7 +287,7 @@ class SaveStateManager(
 
     fun performSlotSave(slotNumber: Int, stateData: ByteArray, screenshot: Bitmap? = null): Boolean {
         return try {
-            channelDir.mkdirs()
+            statesDir.mkdirs()
             val stateFile = getSlotFile(slotNumber)
             stateFile.writeBytes(stateData)
 
@@ -352,37 +379,25 @@ class SaveStateManager(
         hasQuickSave = false
     }
 
-    private fun buildSlotFileName(slotNumber: Int): String {
-        return when (slotNumber) {
-            AUTO_SLOT -> "$romBaseName.state.auto"
-            RESUME_SLOT -> "$romBaseName.state.resume"
-            in QUICK_SLOT_BASE until QUICK_SLOT_BASE + QUICK_RING_SIZE -> "$romBaseName.state.q${slotNumber - QUICK_SLOT_BASE}"
-            0 -> "$romBaseName.state"
-            else -> "$romBaseName.state$slotNumber"
-        }
-    }
+    private fun buildSlotFileName(slotNumber: Int): String =
+        LibretroStateSlots.fileName(romBaseName, slotNumber)
 
-    private fun resolveChannelDir(channelName: String?): File {
-        val dirName = channelName ?: "default"
-        return File(statesDir, dirName)
-    }
-
-    private fun migrateExistingFlatFiles() {
-        val flatStateFile = File(statesDir, "$romBaseName.state")
-        if (flatStateFile.exists() && flatStateFile.parentFile == statesDir) {
-            val defaultDir = File(statesDir, "default")
-            defaultDir.mkdirs()
-
-            val filesToMigrate = statesDir.listFiles { file ->
-                file.isFile && file.name.startsWith("$romBaseName.state")
-            } ?: return
-
-            for (file in filesToMigrate) {
-                val target = File(defaultDir, file.name)
-                if (!target.exists()) {
-                    file.renameTo(target)
-                    Log.d(TAG, "Migrated ${file.name} to default/")
-                }
+    /**
+     * One-shot migration: live states are now flat under statesDir (mirroring SRAM and external
+     * emulators), with channels living only in the cache. Lifts this game's active-channel states out
+     * of the legacy {statesDir}/{channel}/ subdir up to the flat statesDir; named channels not
+     * migrated here are re-materialized from the cache on channel switch.
+     */
+    private fun migrateChannelStatesToFlat() {
+        val legacyChannelDir = File(statesDir, channelName ?: "default")
+        if (legacyChannelDir == statesDir || !legacyChannelDir.isDirectory) return
+        val files = legacyChannelDir.listFiles { file ->
+            file.isFile && file.name.startsWith("$romBaseName.state")
+        } ?: return
+        for (file in files) {
+            val target = File(statesDir, file.name)
+            if (!target.exists() && file.renameTo(target)) {
+                Log.d(TAG, "Migrated ${file.name} from ${legacyChannelDir.name}/ to flat")
             }
         }
     }
@@ -394,11 +409,11 @@ class SaveStateManager(
 
     companion object {
         private const val TAG = "SaveStateManager"
-        const val AUTO_SLOT = -1
-        const val RESUME_SLOT = -2
-        const val MAX_SLOT = 9
-        const val QUICK_SLOT_BASE = 100
-        const val QUICK_RING_SIZE = 10
+        const val AUTO_SLOT = LibretroStateSlots.AUTO_SLOT
+        const val RESUME_SLOT = LibretroStateSlots.RESUME_SLOT
+        const val MAX_SLOT = LibretroStateSlots.MAX_SLOT
+        const val QUICK_SLOT_BASE = LibretroStateSlots.QUICK_SLOT_BASE
+        const val QUICK_RING_SIZE = LibretroStateSlots.QUICK_RING_SIZE
         private const val SCREENSHOT_MAX_WIDTH = 480
     }
 }

@@ -144,6 +144,7 @@ sealed class LibretroSettingDef(
         key = "autoSaveState",
         section = "saving",
         title = "Save State on Exit",
+        subtitle = "Applies to casual games only",
         type = SettingType.Switch
     )
 
@@ -151,6 +152,7 @@ sealed class LibretroSettingDef(
         key = "autoRestoreState",
         section = "saving",
         title = "Restore State on Launch",
+        subtitle = "Applies to casual games only",
         type = SettingType.Switch
     )
 
@@ -158,7 +160,15 @@ sealed class LibretroSettingDef(
         key = "hwCoreSaveStates",
         section = "saving",
         title = "Hardware-Core Save States",
-        subtitle = "Experimental; cores like Dolphin may black-screen or fail to resume",
+        subtitle = "Experimental; cores like Dolphin may black-screen or fail to resume. Applies to casual games only",
+        type = SettingType.Switch
+    )
+
+    data object DefaultToHardcore : LibretroSettingDef(
+        key = "defaultToHardcore",
+        section = "saving",
+        title = "Default to Hardcore",
+        subtitle = "When launching a game, default to hardcore instead of casual",
         type = SettingType.Switch
     )
 
@@ -183,7 +193,8 @@ sealed class LibretroSettingDef(
             AudioVolume,
             AutoSaveState,
             AutoRestoreState,
-            HwCoreSaveStates
+            HwCoreSaveStates,
+            DefaultToHardcore
         )
 
         val SECTIONS: Map<String, String> = mapOf(

@@ -112,7 +112,8 @@ class GameLaunchDelegate @Inject constructor(
     private val saveSyncRepository: SaveSyncRepository,
     private val saveCacheManager: SaveCacheManager,
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
-    private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository
+    private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository,
+    private val retroAchievementsRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository
 ) {
     companion object {
         private const val EMULATOR_KILL_DELAY_MS = 500L
@@ -123,6 +124,23 @@ class GameLaunchDelegate @Inject constructor(
         val save = saveCacheManager.getMostRecentInChannel(gameId, activeChannel)
         return save?.isHardcore == true
     }
+
+    /**
+     * "Default to Hardcore": a built-in game resumes in hardcore by default when the setting is on
+     * and RetroAchievements is signed in. Centralized here so every launch entry point (home,
+     * library, game detail, dual-screen) honors it uniformly. Requires the game to actually have
+     * achievements: hardcore mode disables save states, rewind, and cheats regardless of whether an
+     * RA session resolves, so forcing it on an achievement-less game only removes features (and its
+     * hardcore-tagged save would then ratchet future resumes into hardcore).
+     */
+    private suspend fun shouldDefaultToHardcore(
+        emulatorPackage: String?,
+        game: com.nendo.argosy.data.local.entity.GameEntity
+    ): Boolean =
+        emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE &&
+            game.achievementCount > 0 &&
+            preferencesRepository.getBuiltinEmulatorSettings().first().defaultToHardcore &&
+            retroAchievementsRepository.isLoggedIn()
 
     private val _syncOverlayState = MutableStateFlow<SyncOverlayState?>(null)
     val syncOverlayState: StateFlow<SyncOverlayState?> = _syncOverlayState.asStateFlow()
@@ -350,6 +368,7 @@ class GameLaunchDelegate @Inject constructor(
                     hardcoreConflictChoice == HardcoreConflictChoice.KEEP_HARDCORE -> LaunchMode.RESUME_HARDCORE
                     overrideLaunchMode != null -> overrideLaunchMode
                     isActiveSaveHardcore(gameId) -> LaunchMode.RESUME_HARDCORE
+                    shouldDefaultToHardcore(emulatorPackage, game) -> LaunchMode.RESUME_HARDCORE
                     else -> null
                 }
 
