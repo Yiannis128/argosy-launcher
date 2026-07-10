@@ -36,6 +36,7 @@ fun SpeedrunPanel(
     state: SpeedrunRunState,
     modifier: Modifier = Modifier
 ) {
+    @Suppress("ProduceStateDoesNotAssignValue")
     val elapsedMs by produceState(0L, state) {
         value = state.elapsedAt(SystemClock.elapsedRealtime())
         if (state.phase == SpeedrunPhase.RUNNING) {
