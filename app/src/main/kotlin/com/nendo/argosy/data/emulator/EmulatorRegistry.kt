@@ -680,7 +680,7 @@ object EmulatorRegistry {
         EmulatorDef(
             id = "armsx2",
             packageName = "come.nanodata.armsx2",
-            displayName = "ARMSX2 (Legacy)",
+            displayName = "ARMSX2 (Play Store)",
             supportedPlatforms = setOf("ps2"),
             launchConfig = LaunchConfig.Custom(
                 activityClass = "kr.co.iefriends.pcsx2.activities.MainActivity"

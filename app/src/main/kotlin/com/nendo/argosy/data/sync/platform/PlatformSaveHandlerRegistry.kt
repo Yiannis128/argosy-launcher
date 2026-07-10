@@ -327,6 +327,22 @@ private class Ps2FolderHandler(
         private const val TAG = "Ps2FolderHandler"
         private const val BA_PREFIX = "BA"
         private const val CARD_SUFFIX = ".ps2"
+        private const val SUPERBLOCK_FILE = "_pcsx2_superblock"
+    }
+
+    override fun ensureContainerPrepared(targetFolder: File) {
+        var dir: File? = targetFolder
+        while (dir != null && !dir.name.endsWith(CARD_SUFFIX, ignoreCase = true)) {
+            dir = dir.parentFile
+        }
+        val card = dir ?: return
+        val superblock = File(card, SUPERBLOCK_FILE)
+        if (!superblock.exists()) {
+            val created = runCatching { superblock.createNewFile() }.getOrDefault(false)
+            if (created) {
+                Logger.debug(TAG, "ensureContainerPrepared: wrote $SUPERBLOCK_FILE | card=${card.path}")
+            }
+        }
     }
 
     override fun findSaveFolderBySaveId(basePath: String, saveId: String): String? {
@@ -398,23 +414,36 @@ private class Ps2FolderHandler(
     }
 
     fun listFolderMemcards(basePath: String): List<MemcardInfo> {
-        if (!fal.exists(basePath) || !fal.isDirectory(basePath)) return emptyList()
+        if (!fal.exists(basePath) || !fal.isDirectory(basePath)) {
+            Logger.debug(TAG, "listFolderMemcards: base path missing or not a directory | path=$basePath, exists=${fal.exists(basePath)}")
+            return emptyList()
+        }
         if (isFolderCard(basePath)) return listOf(memcardInfoFor(basePath))
-        return listCardDirsIn(basePath)
+        val cards = listCardDirsIn(basePath)
+        Logger.debug(TAG, "listFolderMemcards: found ${cards.size} card(s) | path=$basePath, names=${cards.map { it.name }}")
+        if (cards.isEmpty()) {
+            val children = fal.listFilesUnion(basePath)
+            Logger.debug(TAG, "listFolderMemcards: raw children | count=${children.size}, names=${children.take(20).map { it.name + if (it.isDirectory) "/" else "" }}")
+        }
+        return cards
             .map { memcardInfoFor(it.path) }
             .sortedByDescending { it.lastModified }
     }
 
-    private fun isFolderCard(path: String): Boolean =
-        path.trimEnd('/').endsWith(CARD_SUFFIX, ignoreCase = true) && fal.isDirectory(path)
+    private fun isFolderCard(path: String): Boolean {
+        if (!fal.isDirectory(path)) return false
+        if (path.trimEnd('/').endsWith(CARD_SUFFIX, ignoreCase = true)) return true
+        return fal.exists("${path.trimEnd('/')}/$SUPERBLOCK_FILE")
+    }
 
     private fun listCardDirsIn(parent: String) =
-        fal.listFiles(parent)?.filter {
-            it.isDirectory && it.name.endsWith(CARD_SUFFIX, ignoreCase = true)
-        } ?: emptyList()
+        fal.listFilesUnion(parent).filter {
+            it.isDirectory &&
+                (it.name.endsWith(CARD_SUFFIX, ignoreCase = true) || fal.exists("${it.path}/$SUPERBLOCK_FILE"))
+        }
 
     private fun findInCard(cardPath: String, saveId: String): String? {
-        val folders = fal.listFiles(cardPath)?.filter { it.isDirectory } ?: emptyList()
+        val folders = fal.listFilesUnion(cardPath).filter { it.isDirectory }
         val match = folders.firstOrNull { matchesFolderName(it.name, saveId) }
         return match?.path
     }

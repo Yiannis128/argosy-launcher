@@ -194,6 +194,7 @@ object SavePathRegistry {
         "azahar" to SavePathConfig(
             emulatorId = "azahar",
             defaultPaths = listOf(
+                "{anyStorage}/Azahar/sdmc/Nintendo 3DS",
                 "{extStorage}/Android/data/org.azahar_emu.azahar/files/sdmc/Nintendo 3DS",
                 "{extStorage}/Android/data/io.github.lime3ds.android/files/sdmc/Nintendo 3DS",
                 "{extStorage}/Android/data/io.github.azahar_emu.azahar/files/sdmc/Nintendo 3DS"
@@ -573,11 +574,13 @@ object SavePathRegistry {
         "dev.eden" to "eden",
         "dev.legacy.eden" to "eden",
         "org.eden" to "eden",
-        "xyz.aethersx2" to "nethersx2"
+        "xyz.aethersx2" to "nethersx2",
+        "com.armsx2" to "armsx2_refresh",
+        "come.nanodata.armsx2" to "armsx2"
     )
 
     fun getConfig(emulatorId: String): SavePathConfig? {
-        val config = configs[emulatorId] ?: return null
+        val config = configs[emulatorId] ?: familyFallbackConfig(emulatorId) ?: return null
         return if (config.supported) config else null
     }
 
@@ -591,18 +594,37 @@ object SavePathRegistry {
             ?: packagePrefixToConfigId.entries.firstOrNull { packageName.startsWith(it.key) }?.value
     }
 
-    fun getConfigIncludingUnsupported(emulatorId: String): SavePathConfig? = configs[emulatorId]
+    fun getConfigIncludingUnsupported(emulatorId: String): SavePathConfig? =
+        configs[emulatorId] ?: familyFallbackConfig(emulatorId)
 
     fun getConfigIncludingUnsupportedByPackage(packageName: String): SavePathConfig? {
         val configId = resolveConfigIdForPackage(packageName) ?: return null
         return getConfigIncludingUnsupported(configId)
     }
 
+    /** Stable config id for save-config persistence; collapses family-variant ids to their canonical config. */
+    fun canonicalConfigId(emulatorId: String, packageName: String? = null): String =
+        (packageName?.let { getConfigIncludingUnsupportedByPackage(it) }
+            ?: getConfigIncludingUnsupported(emulatorId))?.emulatorId ?: emulatorId
+
+    /** Family-variant ids are `<baseId>_<package>` (EmulatorRegistry.createDefFromFamily); recover the base config. */
+    private fun familyBaseIdFor(emulatorId: String): String? =
+        EmulatorRegistry.getEmulatorFamilies()
+            .filter { emulatorId.length > it.baseId.length + 1 && emulatorId.startsWith(it.baseId + "_") }
+            .maxByOrNull { it.baseId.length }
+            ?.baseId
+
+    private fun familyFallbackConfig(emulatorId: String): SavePathConfig? =
+        familyBaseIdFor(emulatorId)?.let { configs[it] }
+
     fun getConfigForPlatform(emulatorId: String, platformSlug: String): SavePathConfig? {
         val canonicalSlug = PlatformDefinitions.getCanonicalSlug(platformSlug)
         return configs["${emulatorId}_$canonicalSlug"]
             ?: configs["${emulatorId}_$platformSlug"]
             ?: configs[emulatorId]
+            ?: familyBaseIdFor(emulatorId)?.let { base ->
+                configs["${base}_$canonicalSlug"] ?: configs["${base}_$platformSlug"] ?: configs[base]
+            }
     }
 
     fun getConfigForPlatformByPackage(packageName: String, platformSlug: String): SavePathConfig? {

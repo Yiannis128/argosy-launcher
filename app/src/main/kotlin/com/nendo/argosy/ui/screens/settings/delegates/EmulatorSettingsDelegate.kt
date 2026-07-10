@@ -892,10 +892,12 @@ class EmulatorSettingsDelegate @Inject constructor(
         emulatorId: String,
         emulatorPackage: String?
     ): List<com.nendo.argosy.data.sync.platform.MemcardInfo> {
-        val userConfig = emulatorSaveConfigRepository.getByEmulator(emulatorId)
+        val canonicalId = com.nendo.argosy.data.emulator.SavePathRegistry
+            .canonicalConfigId(emulatorId, emulatorPackage)
+        val userConfig = emulatorSaveConfigRepository.getByEmulator(canonicalId)
         val basePathOverride = if (userConfig?.isUserOverride == true) userConfig.savePathPattern else null
         return saveHandlerRegistry.listPs2FolderMemcardsForEmulator(
-            emulatorId = emulatorId,
+            emulatorId = canonicalId,
             emulatorPackage = emulatorPackage,
             basePathOverride = basePathOverride
         )
@@ -909,15 +911,17 @@ class EmulatorSettingsDelegate @Inject constructor(
         platformName: String
     ) {
         scope.launch {
-            val cards = listPs2FolderMemcardsForEmulator(emulatorId, emulatorPackage)
-            val userConfig = emulatorSaveConfigRepository.getByEmulator(emulatorId)
+            val canonicalId = com.nendo.argosy.data.emulator.SavePathRegistry
+                .canonicalConfigId(emulatorId, emulatorPackage)
+            val cards = listPs2FolderMemcardsForEmulator(canonicalId, emulatorPackage)
+            val userConfig = emulatorSaveConfigRepository.getByEmulator(canonicalId)
             val selectedPath = userConfig?.selectedMemcardPath
             val initialFocus = cards.indexOfFirst { it.path == selectedPath }.coerceAtLeast(0)
             _state.update {
                 it.copy(
                     showMemcardPicker = true,
                     memcardPickerInfo = MemcardPickerInfo(
-                        emulatorId = emulatorId,
+                        emulatorId = canonicalId,
                         emulatorName = emulatorName,
                         platformName = platformName,
                         cards = cards,
@@ -969,7 +973,9 @@ class EmulatorSettingsDelegate @Inject constructor(
         onLoadSettings: suspend () -> Unit
     ) {
         scope.launch {
-            emulatorSaveConfigRepository.clearMemcardPath(emulatorId)
+            emulatorSaveConfigRepository.clearMemcardPath(
+                com.nendo.argosy.data.emulator.SavePathRegistry.canonicalConfigId(emulatorId)
+            )
             onLoadSettings()
         }
     }
