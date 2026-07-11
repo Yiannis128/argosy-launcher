@@ -74,11 +74,12 @@ class RomMApiClient @Inject constructor(
     suspend fun downloadRom(
         romId: Long,
         fileName: String,
-        rangeHeader: String? = null
+        rangeHeader: String? = null,
+        fileIds: String? = null
     ): RomMResult<DownloadResponse> {
         val currentApi = api ?: return RomMResult.Error("Not connected")
         return try {
-            val response = currentApi.downloadRom(romId, fileName, rangeHeader)
+            val response = currentApi.downloadRom(romId, fileName, rangeHeader, fileIds)
             interpretDownloadResponse(response, "ROM")
         } catch (e: Exception) {
             RomMResult.Error(downloadErrorMessage(e))

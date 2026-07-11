@@ -71,7 +71,8 @@ data class DownloadProgress(
     val extractionTotalBytes: Long = 0,
     val isMultiFileRom: Boolean = false,
     val bytesPerSecond: Long = 0,
-    val statusMessage: String? = null
+    val statusMessage: String? = null,
+    val selectedFileIds: List<Long>? = null
 ) {
     val progressPercent: Float
         get() = if (totalBytes > 0) bytesDownloaded.toFloat() / totalBytes else 0f
@@ -355,8 +356,10 @@ class DownloadManager @Inject constructor(
         platformSlug: String,
         coverPath: String?,
         expectedSizeBytes: Long = 0,
-        isMultiFileRom: Boolean = false
+        isMultiFileRom: Boolean = false,
+        selectedFileIds: List<Long>? = null
     ) {
+        val effectiveMultiFile = isMultiFileRom || (selectedFileIds?.size ?: 0) > 1
         val currentState = _state.value
         if (currentState.activeDownloads.any { it.gameId == gameId }) return
         if (currentState.queue.any { it.gameId == gameId }) return
@@ -387,7 +390,8 @@ class DownloadManager @Inject constructor(
             errorReason = null,
             tempFilePath = tempFilePath,
             createdAt = Instant.now(),
-            isMultiFileRom = isMultiFileRom
+            isMultiFileRom = effectiveMultiFile,
+            selectedFileIds = selectedFileIds?.joinToString(",")
         )
 
         val id = downloadQueueDao.insert(entity)
@@ -408,7 +412,8 @@ class DownloadManager @Inject constructor(
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
             state = DownloadState.QUEUED,
-            isMultiFileRom = isMultiFileRom
+            isMultiFileRom = effectiveMultiFile,
+            selectedFileIds = selectedFileIds
         )
 
         if (isInstantDownload(expectedSizeBytes)) {
@@ -751,7 +756,10 @@ class DownloadManager @Inject constructor(
                 val downloadCall = if (progress.isGameFileDownload) {
                     romMRepository.downloadRomFile(progress.rommId, progress.fileName, rangeHeader)
                 } else {
-                    romMRepository.downloadRom(progress.rommId, progress.fileName, rangeHeader)
+                    romMRepository.downloadRom(
+                        progress.rommId, progress.fileName, rangeHeader,
+                        fileIds = progress.selectedFileIds?.joinToString(",")
+                    )
                 }
                 when (val result = downloadCall) {
                     is RomMResult.Success -> {
@@ -949,6 +957,9 @@ class DownloadManager @Inject constructor(
             }
             else -> {
                 gameDao.updateLocalPath(progress.gameId, finalPath, GameSource.ROMM_SYNCED)
+                if (progress.selectedFileIds != null) {
+                    mapSelectedFilesToDisk(progress.gameId, progress.selectedFileIds, File(finalPath))
+                }
             }
         }
 
@@ -1316,7 +1327,8 @@ class DownloadManager @Inject constructor(
                     platformSlug = item.platformSlug,
                     coverPath = item.coverPath,
                     expectedSizeBytes = item.totalBytes,
-                    isMultiFileRom = item.isMultiFileRom
+                    isMultiFileRom = item.isMultiFileRom,
+                    selectedFileIds = item.selectedFileIds
                 )
             }
         }
@@ -1426,6 +1438,21 @@ class DownloadManager @Inject constructor(
         }
     }
 
+    private suspend fun mapSelectedFilesToDisk(
+        gameId: Long,
+        selectedRommFileIds: List<Long>,
+        finalTarget: File
+    ) {
+        val gameFolder = finalTarget.parentFile ?: return
+        val onDisk = gameFolder.walkTopDown().filter { it.isFile }.toList()
+        for (rommFileId in selectedRommFileIds) {
+            val row = gameFileDao.getByRommFileId(rommFileId) ?: continue
+            if (row.gameId != gameId || row.localPath != null) continue
+            val match = onDisk.firstOrNull { it.name == row.fileName } ?: continue
+            gameFileDao.updateLocalPath(row.id, match.absolutePath, Instant.now())
+        }
+    }
+
     private fun DownloadQueueEntity.toDownloadProgress(): DownloadProgress {
         return DownloadProgress(
             id = id,
@@ -1448,7 +1475,10 @@ class DownloadManager @Inject constructor(
                 DownloadState.QUEUED
             },
             errorReason = errorReason,
-            isMultiFileRom = isMultiFileRom
+            isMultiFileRom = isMultiFileRom,
+            selectedFileIds = selectedFileIds
+                ?.split(",")?.mapNotNull { it.trim().toLongOrNull() }
+                ?.takeIf { it.isNotEmpty() }
         )
     }
 }

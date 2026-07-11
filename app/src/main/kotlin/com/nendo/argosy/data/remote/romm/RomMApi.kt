@@ -80,7 +80,8 @@ interface RomMApi {
     suspend fun downloadRom(
         @Path("id") romId: Long,
         @Path("fileName", encoded = true) fileName: String,
-        @Header("Range") range: String? = null
+        @Header("Range") range: String? = null,
+        @Query("file_ids") fileIds: String? = null
     ): Response<ResponseBody>
 
     @Streaming

@@ -1974,3 +1974,9 @@ object Migration_134_135 : Migration(134, 135) {
         )
     }
 }
+
+object Migration_135_136 : Migration(135, 136) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `download_queue` ADD COLUMN `selectedFileIds` TEXT")
+    }
+}

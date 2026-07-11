@@ -88,8 +88,9 @@ class RomMRepository @Inject constructor(
     suspend fun downloadRom(
         romId: Long,
         fileName: String,
-        rangeHeader: String? = null
-    ): RomMResult<DownloadResponse> = apiClient.downloadRom(romId, fileName, rangeHeader)
+        rangeHeader: String? = null,
+        fileIds: String? = null
+    ): RomMResult<DownloadResponse> = apiClient.downloadRom(romId, fileName, rangeHeader, fileIds)
 
     suspend fun downloadRomFile(
         fileId: Long,
