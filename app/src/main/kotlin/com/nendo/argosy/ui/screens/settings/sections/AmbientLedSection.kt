@@ -42,6 +42,7 @@ internal sealed class AmbientLedItem(
         visibleWhen = { it.ambientLedEnabled })
     data object CustomColorHue : AmbientLedItem("customColorHue", "general",
         visibleWhen = { it.ambientLedEnabled && it.ambientLedCustomColor })
+    data object AchievementFlash : AmbientLedItem("achievementFlash", "general")
 
     // Cover Art
     data object CoverArtColors : AmbientLedItem("coverArtColors", "coverArt",
@@ -72,7 +73,7 @@ internal sealed class AmbientLedItem(
 
         val ALL: List<AmbientLedItem> = listOf(
             GeneralHeader,
-            Enable, Brightness, CustomColor, CustomColorHue,
+            Enable, Brightness, CustomColor, CustomColorHue, AchievementFlash,
             CoverArtHeader,
             CoverArtColors, TransitionSpeed,
             ReactiveAudioHeader,
@@ -190,6 +191,14 @@ fun AmbientLedSection(
                     onHueChange = { hue ->
                         viewModel.setAmbientLedCustomColorHue(hue?.toInt() ?: 200)
                     }
+                )
+
+                AmbientLedItem.AchievementFlash -> SwitchPreference(
+                    title = "Achievement Flash",
+                    subtitle = "Flash the thumbsticks when an achievement unlocks",
+                    isEnabled = display.ambientLedAchievementFlash,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setAmbientLedAchievementFlash(!display.ambientLedAchievementFlash) }
                 )
 
                 AmbientLedItem.CoverArtColors -> SwitchPreference(

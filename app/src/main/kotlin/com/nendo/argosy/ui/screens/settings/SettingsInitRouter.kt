@@ -460,6 +460,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             ambientLedCustomColorHue = prefs.ambientLedCustomColorHue,
             ambientLedTransitionMs = prefs.ambientLedTransitionMs,
             ambientLedScreenEnabled = prefs.ambientLedScreenEnabled,
+            ambientLedAchievementFlash = prefs.ambientLedAchievementFlash,
             ambientLedAvailable = vm.displayDelegate.isAmbientLedAvailable(),
             hasScreenCapturePermission = vm.displayDelegate.hasScreenCapturePermission(),
             hasSecondaryDisplay = vm.displayAffinityHelper.hasSecondaryDisplay,

@@ -842,6 +842,7 @@ class SettingsViewModel @Inject constructor(
     fun cycleAmbientLedTransitionMsWrap() = displayDelegate.cycleAmbientLedTransitionMsWrap(viewModelScope)
     fun setAmbientLedTransitionMs(ms: Int) = displayDelegate.setAmbientLedTransitionMs(viewModelScope, ms)
     fun setAmbientLedScreenEnabled(enabled: Boolean) = displayDelegate.setAmbientLedScreenEnabled(viewModelScope, enabled)
+    fun setAmbientLedAchievementFlash(enabled: Boolean) = displayDelegate.setAmbientLedAchievementFlash(viewModelScope, enabled)
     fun setInstalledOnlyHome(enabled: Boolean) = displayDelegate.setInstalledOnlyHome(viewModelScope, enabled)
 
     fun loadPreviewGames() = routeLoadPreviewGames(this)

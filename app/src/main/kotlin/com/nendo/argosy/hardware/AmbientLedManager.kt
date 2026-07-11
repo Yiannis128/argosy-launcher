@@ -73,6 +73,7 @@ class AmbientLedManager @Inject constructor(
         private set
     private var screenEnabled = false
     private var transitionMs = 250L
+    private var achievementFlashEnabled = true
 
     private var smoothedBass = 0f
     private var smoothedMid = 0f
@@ -112,6 +113,7 @@ class AmbientLedManager @Inject constructor(
                 coverArtEnabled = prefs.ambientLedCoverArtEnabled
                 screenEnabled = prefs.ambientLedScreenEnabled
                 transitionMs = prefs.ambientLedTransitionMs.toLong()
+                achievementFlashEnabled = prefs.ambientLedAchievementFlash
 
                 if (isEnabled && !wasEnabled) {
                     start()
@@ -301,7 +303,7 @@ class AmbientLedManager @Inject constructor(
     private var flashJob: Job? = null
 
     fun flashAchievement(isHardcore: Boolean) {
-        if (!ledController.isAvailable) return
+        if (!ledController.isAvailable || !achievementFlashEnabled) return
 
         flashJob?.cancel()
         flashJob = scope.launch {

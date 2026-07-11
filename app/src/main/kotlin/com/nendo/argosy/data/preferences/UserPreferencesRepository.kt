@@ -169,6 +169,7 @@ class UserPreferencesRepository @Inject constructor(
             ambientLedCustomColorHue = display.ambientLedCustomColorHue,
             ambientLedScreenEnabled = display.ambientLedScreenEnabled,
             ambientLedTransitionMs = display.ambientLedTransitionMs,
+            ambientLedAchievementFlash = display.ambientLedAchievementFlash,
             androidDataSafUri = sync.androidDataSafUri,
             builtinLibretroEnabled = builtinEnabled,
             appAffinityEnabled = app.appAffinityEnabled,
@@ -255,6 +256,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setAmbientLedCustomColorHue(hue: Int) = displayPrefs.setAmbientLedCustomColorHue(hue)
     suspend fun setAmbientLedTransitionMs(ms: Int) = displayPrefs.setAmbientLedTransitionMs(ms)
     suspend fun setAmbientLedScreenEnabled(enabled: Boolean) = displayPrefs.setAmbientLedScreenEnabled(enabled)
+    suspend fun setAmbientLedAchievementFlash(enabled: Boolean) = displayPrefs.setAmbientLedAchievementFlash(enabled)
     suspend fun setScreenDimmerEnabled(enabled: Boolean) = displayPrefs.setScreenDimmerEnabled(enabled)
     suspend fun setScreenDimmerTimeoutMinutes(minutes: Int) = displayPrefs.setScreenDimmerTimeoutMinutes(minutes)
     suspend fun setScreenDimmerLevel(level: Int) = displayPrefs.setScreenDimmerLevel(level)
@@ -662,6 +664,7 @@ data class UserPreferences(
     val ambientLedCustomColorHue: Int = 200,
     val ambientLedScreenEnabled: Boolean = false,
     val ambientLedTransitionMs: Int = 250,
+    val ambientLedAchievementFlash: Boolean = true,
     val androidDataSafUri: String? = null,
     val builtinLibretroEnabled: Boolean = true,
     val appAffinityEnabled: Boolean = false,

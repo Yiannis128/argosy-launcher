@@ -528,6 +528,7 @@ private fun routeAmbientLedConfirm(vm: SettingsViewModel, state: SettingsUiState
     when (ambientLedItemAtFocusIndex(state.focusedIndex, state.display)) {
         AmbientLedItem.Enable -> vm.setAmbientLedEnabled(!state.display.ambientLedEnabled)
         AmbientLedItem.CustomColor -> vm.setAmbientLedCustomColor(!state.display.ambientLedCustomColor)
+        AmbientLedItem.AchievementFlash -> vm.setAmbientLedAchievementFlash(!state.display.ambientLedAchievementFlash)
         AmbientLedItem.CoverArtColors -> vm.setAmbientLedCoverArtEnabled(!state.display.ambientLedCoverArtEnabled)
         AmbientLedItem.TransitionSpeed -> {
             vm.requestEnumPicker(AmbientLedItem.TransitionSpeed.key)

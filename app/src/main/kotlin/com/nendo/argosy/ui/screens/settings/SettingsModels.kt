@@ -224,6 +224,7 @@ data class DisplayState(
     val ambientLedCustomColorHue: Int = 200,
     val ambientLedTransitionMs: Int = 250,
     val ambientLedScreenEnabled: Boolean = false,
+    val ambientLedAchievementFlash: Boolean = true,
     val ambientLedAvailable: Boolean = false,
     val hasScreenCapturePermission: Boolean = true,
     val hasSecondaryDisplay: Boolean = false,
