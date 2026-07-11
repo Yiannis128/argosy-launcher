@@ -40,11 +40,17 @@ data class PickerModalState(
 
     val showVariantPicker: Boolean = false,
     val variantPickerOptions: List<com.nendo.argosy.data.emulator.VariantOption> = emptyList(),
-    val variantPickerFocusIndex: Int = 0
+    val variantPickerFocusIndex: Int = 0,
+
+    val showFilePicker: Boolean = false,
+    val filePickerRows: List<com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow> = emptyList(),
+    val filePickerSelected: Set<Long> = emptySet(),
+    val filePickerSelectedVersions: Set<Long> = emptySet(),
+    val filePickerFocusIndex: Int = 0
 ) {
     val hasAnyPickerOpen: Boolean
         get() = showEmulatorPicker || showCorePicker || showSteamLauncherPicker ||
-                showDiscPicker || showUpdatesPicker || showVariantPicker
+                showDiscPicker || showUpdatesPicker || showVariantPicker || showFilePicker
 }
 
 sealed class PickerSelection {
@@ -340,6 +346,94 @@ class PickerModalDelegate @Inject constructor(
         if (!focusedFile.isDownloaded && focusedFile.gameFileId != null) {
             _selection.value = PickerSelection.UpdateFile(focusedFile)
         }
+    }
+
+    // endregion
+
+    // region File Picker
+
+    fun showFilePicker(
+        rows: List<com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow>,
+        preselectedFileIds: Set<Long>,
+        preselectedVersionIds: Set<Long>
+    ) {
+        _state.update {
+            it.copy(
+                showFilePicker = true,
+                filePickerRows = rows,
+                filePickerSelected = preselectedFileIds,
+                filePickerSelectedVersions = preselectedVersionIds,
+                filePickerFocusIndex = 0
+            )
+        }
+        soundManager.play(SoundType.OPEN_MODAL)
+    }
+
+    fun dismissFilePicker() {
+        _state.update { it.copy(showFilePicker = false) }
+        soundManager.play(SoundType.CLOSE_MODAL)
+    }
+
+    fun moveFilePickerFocus(delta: Int) {
+        _state.update { st ->
+            val maxIndex = (st.filePickerRows.size - 1).coerceAtLeast(0)
+            st.copy(filePickerFocusIndex = (st.filePickerFocusIndex + delta).coerceIn(0, maxIndex))
+        }
+    }
+
+    fun jumpFilePickerGroup(direction: Int) {
+        _state.update { st ->
+            val headers = st.filePickerRows.withIndex().filter { it.value.isHeader }.map { it.index }
+            if (headers.isEmpty()) return@update st
+            val target = if (direction > 0) {
+                headers.firstOrNull { it > st.filePickerFocusIndex }
+            } else {
+                headers.lastOrNull { it < st.filePickerFocusIndex }
+            } ?: return@update st
+            st.copy(filePickerFocusIndex = target)
+        }
+    }
+
+    fun toggleFilePickerRow(row: com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow) {
+        _state.update { st ->
+            var selected = st.filePickerSelected
+            var versions = st.filePickerSelectedVersions
+            if (row.isHeader) {
+                val members = st.filePickerRows.filter { !it.isHeader && it.groupKey == row.groupKey && !it.isLocked }
+                val fileIds = members.mapNotNull { it.rommFileId }
+                val versionIds = members.mapNotNull { it.versionRommId }
+                val allSelected = fileIds.all { it in selected } && versionIds.all { it in versions }
+                if (allSelected) {
+                    selected = selected - fileIds.toSet()
+                    versions = versions - versionIds.toSet()
+                    if (versionIds.isNotEmpty() && versions.isEmpty()) {
+                        versions = setOf(versionIds.first())
+                    }
+                } else {
+                    selected = selected + fileIds
+                    versions = versions + versionIds
+                }
+            } else if (row.versionRommId != null) {
+                versions = if (row.versionRommId in versions) {
+                    (versions - row.versionRommId).ifEmpty { versions }
+                } else {
+                    versions + row.versionRommId
+                }
+            } else if (row.rommFileId != null && !row.isLocked) {
+                selected = if (row.rommFileId in selected) {
+                    selected - row.rommFileId
+                } else {
+                    selected + row.rommFileId
+                }
+            }
+            st.copy(filePickerSelected = selected, filePickerSelectedVersions = versions)
+        }
+        soundManager.play(SoundType.TOGGLE)
+    }
+
+    fun toggleFocusedFilePickerRow() {
+        val st = _state.value
+        st.filePickerRows.getOrNull(st.filePickerFocusIndex)?.let { toggleFilePickerRow(it) }
     }
 
     // endregion

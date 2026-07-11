@@ -91,6 +91,7 @@ import com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionsModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingsStatusModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.PermissionRequiredModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
+import com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.UpdatesPickerModal
 import com.nendo.argosy.ui.common.savechannel.SaveChannelModal
 import com.nendo.argosy.ui.components.AddToCollectionModal
@@ -911,6 +912,36 @@ private fun GameDetailModals(
             focusIndex = pickerState.updatesPickerFocusIndex,
             onDownload = viewModel::downloadUpdateFile,
             onDismiss = viewModel.pickerModalDelegate::dismissUpdatesPicker
+        )
+    }
+
+    AnimatedVisibility(
+        visible = pickerState.showFilePicker,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        val fileRows = pickerState.filePickerRows
+        val selectedCount = fileRows.count { row ->
+            !row.isHeader && (row.versionRommId
+                ?.let { it in pickerState.filePickerSelectedVersions }
+                ?: (row.rommFileId in pickerState.filePickerSelected))
+        }
+        val selectedBytes = fileRows.filter { row ->
+            !row.isHeader && (row.versionRommId
+                ?.let { it in pickerState.filePickerSelectedVersions }
+                ?: (row.rommFileId in pickerState.filePickerSelected))
+        }.sumOf { it.sizeBytes }
+        FilePickerModal(
+            gameTitle = uiState.game?.title ?: "",
+            title = "Choose files",
+            rows = fileRows,
+            selectedIds = pickerState.filePickerSelected,
+            selectedVersionIds = pickerState.filePickerSelectedVersions,
+            focusIndex = pickerState.filePickerFocusIndex,
+            summary = "$selectedCount of ${fileRows.count { !it.isHeader }} · ${com.nendo.argosy.util.formatBytes(selectedBytes)} selected",
+            onToggleRow = viewModel::toggleFilePickerRow,
+            onConfirm = viewModel::confirmFilePicker,
+            onDismiss = viewModel::dismissFilePicker
         )
     }
 

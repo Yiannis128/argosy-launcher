@@ -771,6 +771,37 @@ class GameDetailViewModel @Inject constructor(
 
     fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
 
+    fun promptOrDownload() {
+        viewModelScope.launch {
+            val built = downloadDelegate.buildFilePickerRows(currentGameId)
+            if (built == null) {
+                downloadGame()
+            } else {
+                val (rows, files, versions) = built
+                pickerModalDelegate.showFilePicker(rows, files, versions)
+            }
+        }
+    }
+
+    fun confirmFilePicker() {
+        val picker = pickerModalDelegate.state.value
+        if (!picker.showFilePicker) return
+        pickerModalDelegate.dismissFilePicker()
+        downloadDelegate.downloadWithSelection(
+            viewModelScope,
+            currentGameId,
+            picker.filePickerSelected,
+            picker.filePickerSelectedVersions
+        )
+    }
+
+    fun dismissFilePicker() = pickerModalDelegate.dismissFilePicker()
+    fun moveFilePickerFocus(delta: Int) = pickerModalDelegate.moveFilePickerFocus(delta)
+    fun jumpFilePickerGroup(direction: Int) = pickerModalDelegate.jumpFilePickerGroup(direction)
+    fun toggleFocusedFilePickerRow() = pickerModalDelegate.toggleFocusedFilePickerRow()
+    fun toggleFilePickerRow(row: com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow) =
+        pickerModalDelegate.toggleFilePickerRow(row)
+
     fun downloadSteamGame() {
         steamDownloadPromptController.requestSteamDownload(currentGameId)
     }
@@ -817,7 +848,7 @@ class GameDetailViewModel @Inject constructor(
                 if (game != null && game.isSteamGame) {
                     downloadSteamGame()
                 } else {
-                    downloadGame()
+                    promptOrDownload()
                 }
             }
             GameDownloadStatus.PAUSED, GameDownloadStatus.WAITING_FOR_STORAGE ->
@@ -1629,6 +1660,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> { changeStatusValue(-1); InputResult.HANDLED }
                 state.showMissingDiscPrompt -> InputResult.UNHANDLED
                 state.showExtractionFailedPrompt -> InputResult.HANDLED
+                pickerState.showFilePicker -> { moveFilePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showCorePicker -> { moveCorePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(-1); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(-1); InputResult.HANDLED }
@@ -1659,6 +1691,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> { changeStatusValue(1); InputResult.HANDLED }
                 state.showMissingDiscPrompt -> InputResult.UNHANDLED
                 state.showExtractionFailedPrompt -> InputResult.HANDLED
+                pickerState.showFilePicker -> { moveFilePickerFocus(1); InputResult.HANDLED }
                 pickerState.showCorePicker -> { moveCorePickerFocus(1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(1); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(1); InputResult.HANDLED }
@@ -1726,6 +1759,7 @@ class GameDetailViewModel @Inject constructor(
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
+            if (pickerState.showFilePicker) { jumpFilePickerGroup(-1); return InputResult.HANDLED }
             if (saveState.isVisible) {
                 if (saveState.supportsStates) {
                     val newTab = if (saveState.selectedTab == com.nendo.argosy.ui.common.savechannel.SaveTab.STATES)
@@ -1744,6 +1778,7 @@ class GameDetailViewModel @Inject constructor(
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
+            if (pickerState.showFilePicker) { jumpFilePickerGroup(1); return InputResult.HANDLED }
             if (saveState.isVisible) {
                 if (saveState.supportsStates) {
                     val newTab = if (saveState.selectedTab == com.nendo.argosy.ui.common.savechannel.SaveTab.SAVES)
@@ -1782,6 +1817,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> confirmStatus()
                 state.showMissingDiscPrompt -> repairAndPlay()
                 state.showExtractionFailedPrompt -> confirmExtractionPromptSelection()
+                pickerState.showFilePicker -> toggleFocusedFilePickerRow()
                 pickerState.showCorePicker -> confirmCoreSelection()
                 pickerState.showDiscPicker -> selectFocusedDisc()
                 pickerState.showVariantPicker -> pickerModalDelegate.confirmVariantSelection()
@@ -1820,6 +1856,7 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> dismissStatusPicker()
                 state.showMissingDiscPrompt -> dismissMissingDiscPrompt()
                 state.showExtractionFailedPrompt -> dismissExtractionPrompt()
+                pickerState.showFilePicker -> dismissFilePicker()
                 pickerState.showCorePicker -> dismissCorePicker()
                 pickerState.showDiscPicker -> dismissDiscPicker()
                 pickerState.showVariantPicker -> pickerModalDelegate.dismissVariantPicker()
@@ -1873,6 +1910,7 @@ class GameDetailViewModel @Inject constructor(
         override fun onContextMenu(): InputResult {
             val state = _uiState.value
             val saveState = state.saveChannel
+            if (pickerModalDelegate.state.value.showFilePicker) { confirmFilePicker(); return InputResult.HANDLED }
             if (saveState.isVisible && !saveState.showRestoreConfirmation && !saveState.showRenameDialog && !saveState.showDeleteConfirmation && !saveState.showMigrateConfirmation && !saveState.showDeleteLegacyConfirmation) {
                 saveChannelTertiaryAction(); return InputResult.HANDLED
             }
