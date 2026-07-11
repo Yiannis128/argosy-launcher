@@ -120,6 +120,14 @@ class SecondaryHomeActivity :
         if (existing != null) {
             dsm = existing
             initializeCompanion()
+        } else if (!com.nendo.argosy.util.SecondaryHomeComponent.isDefaultHome(this) &&
+            !SessionStateStore(applicationContext).hasActiveSession()
+        ) {
+            android.util.Log.i("SecondaryHome", "Respawned without a running Argosy and not default home, releasing secondary display")
+            com.nendo.argosy.util.SecondaryHomeComponent.setEnabled(this, false)
+            CompanionGuardService.stop(this)
+            finish()
+            return
         } else {
             android.util.Log.w("SecondaryHome", "DSM not available, launching MainActivity")
             startActivity(

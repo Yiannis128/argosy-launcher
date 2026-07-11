@@ -1,10 +1,8 @@
 package com.nendo.argosy
 
 import android.hardware.display.DisplayManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import com.nendo.argosy.data.download.DownloadManager
@@ -126,19 +124,11 @@ class DualScreenManager(
     }
 
     private fun setSecondaryHomeComponentEnabled(enabled: Boolean) {
-        val state = if (enabled) {
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        } else {
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        }
-        val component = ComponentName(appContext, SecondaryHomeActivity::class.java)
-        if (appContext.packageManager.getComponentEnabledSetting(component) == state) return
-        appContext.packageManager.setComponentEnabledSetting(
-            component, state, PackageManager.DONT_KILL_APP
-        )
+        com.nendo.argosy.util.SecondaryHomeComponent.setEnabled(appContext, enabled)
     }
 
     fun teardownCompanion() {
+        stopStartupGuard()
         companionLaunchJob?.cancel()
         companionLaunchJob = null
         companionWatchdogJob?.cancel()
@@ -1951,6 +1941,7 @@ class DualScreenManager(
 
     fun ensureCompanionLaunched(allowDuringSession: Boolean = false) {
         if (!displayAffinityHelper.hasSecondaryDisplay) return
+        if (sessionStateStore.isDualScreenEnabled()) setSecondaryHomeComponentEnabled(true)
         if (_isCompanionActive.value) return
         if (!allowDuringSession && sessionStateStore.hasActiveSession()) return
         if (sessionStateStore.isForeignAppOnSecondary()) return
