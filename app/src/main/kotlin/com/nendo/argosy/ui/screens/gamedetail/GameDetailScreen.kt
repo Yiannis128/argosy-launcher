@@ -1028,8 +1028,10 @@ private fun GameDetailModals(
         com.nendo.argosy.ui.screens.gamedetail.modals.VariantPickerModal(
             variants = pickerState.variantPickerOptions,
             focusIndex = pickerState.variantPickerFocusIndex,
-            onSelectVariant = { viewModel.pickerModalDelegate.confirmVariantSelection() },
+            onSelectVariant = { fileId -> viewModel.pickerModalDelegate.confirmVariantSelection(fileId) },
             onDownloadVariant = { fileId -> viewModel.downloadVariant(fileId) },
+            activeFileId = pickerState.variantPickerActiveFileId,
+            showActiveMarker = true,
             onDismiss = viewModel.pickerModalDelegate::dismissVariantPicker
         )
     }

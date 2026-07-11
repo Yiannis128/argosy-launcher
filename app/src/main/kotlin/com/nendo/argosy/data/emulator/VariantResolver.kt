@@ -5,8 +5,13 @@ import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.model.VersionGroups
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private fun pathOnDisk(path: String?): Boolean = path != null && File(path).exists()
+
+private val GameFileEntity.isOnDisk: Boolean get() = pathOnDisk(localPath)
 
 data class VariantOption(
     val fileId: Long?,
@@ -26,14 +31,14 @@ class VariantResolver @Inject constructor(
 
         game.activeVariantFileId?.let { fileId ->
             val file = gameFileDao.getById(fileId)
-            if (file != null && file.localPath != null &&
+            if (file != null && file.isOnDisk &&
                 (!excluded || file.versionGroup != null)
             ) return file
         }
 
         game.lastPlayedFileId?.let { fileId ->
             val file = gameFileDao.getById(fileId)
-            if (file != null && file.localPath != null &&
+            if (file != null && file.isOnDisk &&
                 (!excluded || file.versionGroup != null)
             ) return file
         }
@@ -53,7 +58,7 @@ class VariantResolver @Inject constructor(
                 fileName = groupFiles.firstOrNull { it.regions != null }?.regions
                     ?: launch.fileName,
                 category = VariantCategory.GAME.key,
-                isDownloaded = launch.localPath != null,
+                isDownloaded = launch.isOnDisk,
                 isMultiDisc = groupFiles.any { it.isMultiDisc },
                 fileSizeBytes = groupFiles.sumOf { it.fileSize }
             )
@@ -74,7 +79,7 @@ class VariantResolver @Inject constructor(
                     fileId = null,
                     fileName = primaryFileName ?: game.title,
                     category = VariantCategory.GAME.key,
-                    isDownloaded = game.localPath != null,
+                    isDownloaded = pathOnDisk(game.localPath),
                     isMultiDisc = game.isMultiDisc,
                     fileSizeBytes = game.fileSizeBytes ?: 0
                 )
@@ -86,7 +91,7 @@ class VariantResolver @Inject constructor(
                 fileId = file.id,
                 fileName = file.fileName,
                 category = file.category,
-                isDownloaded = file.localPath != null,
+                isDownloaded = file.isOnDisk,
                 isMultiDisc = file.isMultiDisc,
                 fileSizeBytes = file.fileSize
             )

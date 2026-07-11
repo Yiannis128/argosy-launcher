@@ -281,9 +281,18 @@ class GameRepository @Inject constructor(
                 Log.d(TAG, "Invalidated game ${info.id}: path no longer valid ($path)")
             }
         }
+        var invalidatedFiles = 0
+        for (row in gameFileDao.getAllWithLocalPath()) {
+            val path = row.localPath ?: continue
+            if (!File(path).exists()) {
+                gameFileDao.clearLocalPath(row.id)
+                invalidatedFiles++
+                Log.d(TAG, "Invalidated file row ${row.id} (${row.fileName}): path no longer valid ($path)")
+            }
+        }
         val elapsed = System.currentTimeMillis() - startTime
-        Log.d(TAG, "Validation complete: checked ${gamesWithPaths.size} games, $invalidated invalidated in ${elapsed}ms")
-        invalidated
+        Log.d(TAG, "Validation complete: $invalidated of ${gamesWithPaths.size} games and $invalidatedFiles file rows invalidated in ${elapsed}ms")
+        invalidated + invalidatedFiles
     }
 
     suspend fun repairFolderRomPointers(): Int = withContext(Dispatchers.IO) {

@@ -41,6 +41,7 @@ data class PickerModalState(
     val showVariantPicker: Boolean = false,
     val variantPickerOptions: List<com.nendo.argosy.data.emulator.VariantOption> = emptyList(),
     val variantPickerFocusIndex: Int = 0,
+    val variantPickerActiveFileId: Long? = null,
 
     val showFilePicker: Boolean = false,
     val filePickerRows: List<com.nendo.argosy.data.model.FilePickerRow> = emptyList(),
@@ -267,13 +268,14 @@ class PickerModalDelegate @Inject constructor(
 
     // region Variant Picker
 
-    fun showVariantPicker(options: List<com.nendo.argosy.data.emulator.VariantOption>) {
+    fun showVariantPicker(options: List<com.nendo.argosy.data.emulator.VariantOption>, activeFileId: Long? = null) {
         val sorted = options.sortedBy { com.nendo.argosy.data.model.VariantCategory.fromKey(it.category).sortOrder }
         _state.update {
             it.copy(
                 showVariantPicker = true,
                 variantPickerOptions = sorted,
-                variantPickerFocusIndex = 0
+                variantPickerFocusIndex = 0,
+                variantPickerActiveFileId = activeFileId
             )
         }
         soundManager.play(SoundType.OPEN_MODAL)
@@ -301,6 +303,15 @@ class PickerModalDelegate @Inject constructor(
     fun confirmVariantSelection() {
         val state = _state.value
         val variant = state.variantPickerOptions.getOrNull(state.variantPickerFocusIndex) ?: return
+        confirmVariant(variant)
+    }
+
+    fun confirmVariantSelection(fileId: Long?) {
+        val variant = _state.value.variantPickerOptions.firstOrNull { it.fileId == fileId } ?: return
+        confirmVariant(variant)
+    }
+
+    private fun confirmVariant(variant: com.nendo.argosy.data.emulator.VariantOption) {
         _selection.value = PickerSelection.Variant(variant.fileId)
         _state.update {
             it.copy(

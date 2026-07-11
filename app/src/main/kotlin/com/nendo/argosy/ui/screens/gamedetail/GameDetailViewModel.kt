@@ -1309,7 +1309,16 @@ class GameDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val game = gameRepository.getById(currentGameId) ?: return@launch
             val options = variantResolver.getVariantOptions(game) ?: return@launch
-            pickerModalDelegate.showVariantPicker(options)
+            pickerModalDelegate.showVariantPicker(options, game.activeVariantFileId)
+        }
+    }
+
+    private fun confirmOrDownloadFocusedVariant() {
+        val pickerState = pickerModalDelegate.state.value
+        val variant = pickerState.variantPickerOptions.getOrNull(pickerState.variantPickerFocusIndex) ?: return
+        when {
+            variant.isDownloaded -> pickerModalDelegate.confirmVariantSelection()
+            variant.fileId != null -> downloadVariant(variant.fileId)
         }
     }
 
@@ -1843,7 +1852,7 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showFilePicker -> toggleFocusedFilePickerRow()
                 pickerState.showCorePicker -> confirmCoreSelection()
                 pickerState.showDiscPicker -> selectFocusedDisc()
-                pickerState.showVariantPicker -> pickerModalDelegate.confirmVariantSelection()
+                pickerState.showVariantPicker -> confirmOrDownloadFocusedVariant()
                 pickerState.showUpdatesPicker -> confirmUpdatesSelection()
                 pickerState.showEmulatorPicker -> confirmEmulatorSelection()
                 pickerState.showSteamLauncherPicker -> confirmSteamLauncherSelection()

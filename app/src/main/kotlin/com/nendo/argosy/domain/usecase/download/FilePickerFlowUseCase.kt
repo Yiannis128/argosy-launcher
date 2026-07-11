@@ -8,8 +8,11 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.model.FilePickerRow
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private fun pathOnDisk(path: String?): Boolean = path != null && File(path).exists()
 
 data class FilePickerSetup(
     val rows: List<FilePickerRow>,
@@ -57,7 +60,7 @@ class FilePickerFlowUseCase @Inject constructor(
                     label = label,
                     versionRommId = memberRommId,
                     sizeBytes = files.sumOf { it.fileSize },
-                    isDownloaded = files.any { it.localPath != null },
+                    isDownloaded = files.any { pathOnDisk(it.localPath) },
                     isDefaultVersion = isDefault
                 )
                 if (isDefault) preselectedVersions += memberRommId
@@ -98,7 +101,7 @@ class FilePickerFlowUseCase @Inject constructor(
                         else -> defaults[key] ?: false
                     }
                     files.sortedBy { it.fileName }.forEach { f ->
-                        val downloaded = dbRows.firstOrNull { it.rommFileId == f.id }?.localPath != null
+                        val downloaded = pathOnDisk(dbRows.firstOrNull { it.rommFileId == f.id }?.localPath)
                         rows += FilePickerRow(
                             isHeader = false,
                             groupKey = key,
