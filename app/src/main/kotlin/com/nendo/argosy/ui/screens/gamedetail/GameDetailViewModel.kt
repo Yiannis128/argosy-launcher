@@ -819,7 +819,7 @@ class GameDetailViewModel @Inject constructor(
     fun moveFilePickerFocus(delta: Int) = pickerModalDelegate.moveFilePickerFocus(delta)
     fun jumpFilePickerGroup(direction: Int) = pickerModalDelegate.jumpFilePickerGroup(direction)
     fun toggleFocusedFilePickerRow() = pickerModalDelegate.toggleFocusedFilePickerRow()
-    fun toggleFilePickerRow(row: com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow) =
+    fun toggleFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow) =
         pickerModalDelegate.toggleFilePickerRow(row)
 
     fun downloadSteamGame() {

@@ -799,6 +799,12 @@ class SecondaryHomeInputHandler(
                 }
                 return InputResult.HANDLED
             }
+            ActiveModal.FILE_PICKER -> {
+                if (event == GamepadEvent.Back) {
+                    broadcasts.broadcastModalClose()
+                }
+                return InputResult.HANDLED
+            }
             ActiveModal.STEAM_INSTALL -> {
                 when (event) {
                     GamepadEvent.Up -> {

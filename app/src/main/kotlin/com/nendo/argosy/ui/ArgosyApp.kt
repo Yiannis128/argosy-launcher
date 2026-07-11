@@ -593,6 +593,7 @@ fun ArgosyApp(
                     ActiveModal.VARIANT_PICKER -> activity?.moveDualVariantFocus(-1)
                     ActiveModal.COLLECTION -> activity?.moveDualCollectionFocus(-1)
                     ActiveModal.STEAM_INSTALL -> activity?.moveDualSteamInstallFocus(-1)
+                    ActiveModal.FILE_PICKER -> activity?.moveDualFilePickerFocus(-1)
                     else -> {}
                 }
                 return InputResult.HANDLED
@@ -607,6 +608,7 @@ fun ArgosyApp(
                     ActiveModal.VARIANT_PICKER -> activity?.moveDualVariantFocus(1)
                     ActiveModal.COLLECTION -> activity?.moveDualCollectionFocus(1)
                     ActiveModal.STEAM_INSTALL -> activity?.moveDualSteamInstallFocus(1)
+                    ActiveModal.FILE_PICKER -> activity?.moveDualFilePickerFocus(1)
                     else -> {}
                 }
                 return InputResult.HANDLED
@@ -623,7 +625,28 @@ fun ArgosyApp(
                     ActiveModal.COLLECTION -> activity?.toggleDualCollectionAtFocus()
                     ActiveModal.STEAM_INSTALL -> activity?.confirmDualSteamInstallSelection()
                     ActiveModal.SAVE_NAME -> activity?.confirmDualSaveName()
+                    ActiveModal.FILE_PICKER -> activity?.toggleDualFilePickerRow()
                     else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            override fun onContextMenu(): InputResult {
+                val state = activity?.dualGameDetailState?.value
+                if (state?.modalType == ActiveModal.FILE_PICKER) {
+                    activity?.confirmDualFilePicker()
+                    return InputResult.HANDLED
+                }
+                return InputResult.HANDLED
+            }
+            override fun onPrevSection(): InputResult {
+                if (activity?.dualGameDetailState?.value?.modalType == ActiveModal.FILE_PICKER) {
+                    activity?.jumpDualFilePickerGroup(-1)
+                }
+                return InputResult.HANDLED
+            }
+            override fun onNextSection(): InputResult {
+                if (activity?.dualGameDetailState?.value?.modalType == ActiveModal.FILE_PICKER) {
+                    activity?.jumpDualFilePickerGroup(1)
                 }
                 return InputResult.HANDLED
             }
@@ -638,9 +661,6 @@ fun ArgosyApp(
             }
             override fun onMenu(): InputResult = InputResult.HANDLED
             override fun onSecondaryAction(): InputResult = InputResult.HANDLED
-            override fun onContextMenu(): InputResult = InputResult.HANDLED
-            override fun onPrevSection(): InputResult = InputResult.HANDLED
-            override fun onNextSection(): InputResult = InputResult.HANDLED
             override fun onPrevTrigger(): InputResult = InputResult.HANDLED
             override fun onNextTrigger(): InputResult = InputResult.HANDLED
             override fun onSelect(): InputResult = InputResult.HANDLED
@@ -1132,6 +1152,12 @@ fun ArgosyApp(
                             },
                             onModalDismiss = {
                                 activity?.dismissDualModal()
+                            },
+                            onFilePickerToggle = { row ->
+                                activity?.toggleDualFilePickerRow(row)
+                            },
+                            onFilePickerConfirm = {
+                                activity?.confirmDualFilePicker()
                             },
                             footerHints = {
                                 FooterHints(

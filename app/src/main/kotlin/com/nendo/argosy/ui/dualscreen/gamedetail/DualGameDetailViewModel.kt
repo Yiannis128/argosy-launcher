@@ -286,6 +286,7 @@ class DualGameDetailViewModel(
             ActiveModal.SAVE_NAME, ActiveModal.UPDATES_DLC,
             ActiveModal.DISC_PICKER, ActiveModal.VARIANT_PICKER,
             ActiveModal.STEAM_INSTALL -> return
+            ActiveModal.FILE_PICKER -> {}
             ActiveModal.NONE -> return
         }
         _activeModal.value = ActiveModal.NONE

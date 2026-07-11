@@ -96,6 +96,7 @@ class DualScreenManager(
     internal val repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase? = null,
     internal val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
     internal val gradientExtractionDelegate: com.nendo.argosy.ui.screens.common.GradientExtractionDelegate,
+    private val filePickerFlow: com.nendo.argosy.domain.usecase.download.FilePickerFlowUseCase,
     initialRolesSwapped: Boolean = false
 ) {
 
@@ -1502,6 +1503,7 @@ class DualScreenManager(
     }
 
     private fun handleDualDownload(gameId: Long) {
+        val detailOpen = _dualGameDetailState.value?.gameId == gameId
         scope.launch(Dispatchers.IO) {
             val game = gameDao.getById(gameId) ?: return@launch
             if (game.steamAppId != null) {
@@ -1510,9 +1512,102 @@ class DualScreenManager(
                     return@launch
                 }
                 steamContentManager.queueDownloadOptimistic(game.steamAppId, game.title, game.coverPath)
+            } else if (detailOpen) {
+                promptDualFilePicker(gameId)
             } else {
                 gameActionsDelegate.queueDownload(gameId)
             }
+        }
+    }
+
+    fun promptDualFilePicker(gameId: Long) {
+        scope.launch(Dispatchers.IO) {
+            val setup = filePickerFlow.buildRows(gameId)
+            if (setup == null) {
+                gameActionsDelegate.queueDownload(gameId)
+                return@launch
+            }
+            _dualGameDetailState.update { state ->
+                state?.takeIf { it.gameId == gameId }?.copy(
+                    modalType = ActiveModal.FILE_PICKER,
+                    filePickerRows = setup.rows,
+                    filePickerSelected = setup.preselectedFileIds,
+                    filePickerSelectedVersions = setup.preselectedVersionIds,
+                    filePickerFocusIndex = 0
+                ) ?: state
+            }
+            refocusMain()
+        }
+    }
+
+    fun moveDualFilePickerFocus(delta: Int) {
+        _dualGameDetailState.update { state ->
+            if (state == null) return@update null
+            val maxIndex = (state.filePickerRows.size - 1).coerceAtLeast(0)
+            state.copy(filePickerFocusIndex = (state.filePickerFocusIndex + delta).coerceIn(0, maxIndex))
+        }
+    }
+
+    fun jumpDualFilePickerGroup(direction: Int) {
+        _dualGameDetailState.update { state ->
+            if (state == null) return@update null
+            val headers = state.filePickerRows.withIndex().filter { it.value.isHeader }.map { it.index }
+            if (headers.isEmpty()) return@update state
+            val target = if (direction > 0) {
+                headers.firstOrNull { it > state.filePickerFocusIndex }
+            } else {
+                headers.lastOrNull { it < state.filePickerFocusIndex }
+            } ?: return@update state
+            state.copy(filePickerFocusIndex = target)
+        }
+    }
+
+    fun toggleDualFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow? = null) {
+        _dualGameDetailState.update { state ->
+            if (state == null) return@update null
+            val target = row ?: state.filePickerRows.getOrNull(state.filePickerFocusIndex)
+                ?: return@update state
+            var selected = state.filePickerSelected
+            var versions = state.filePickerSelectedVersions
+            if (target.isHeader) {
+                val members = state.filePickerRows.filter { !it.isHeader && it.groupKey == target.groupKey && !it.isLocked }
+                val fileIds = members.mapNotNull { it.rommFileId }
+                val versionIds = members.mapNotNull { it.versionRommId }
+                val allSelected = fileIds.all { it in selected } && versionIds.all { it in versions }
+                if (allSelected) {
+                    selected = selected - fileIds.toSet()
+                    versions = versions - versionIds.toSet()
+                    if (versionIds.isNotEmpty() && versions.isEmpty()) versions = setOf(versionIds.first())
+                } else {
+                    selected = selected + fileIds
+                    versions = versions + versionIds
+                }
+            } else if (target.versionRommId != null) {
+                versions = if (target.versionRommId in versions) {
+                    (versions - target.versionRommId).ifEmpty { versions }
+                } else {
+                    versions + target.versionRommId
+                }
+            } else if (target.rommFileId != null && !target.isLocked) {
+                selected = if (target.rommFileId in selected) selected - target.rommFileId
+                else selected + target.rommFileId
+            }
+            state.copy(filePickerSelected = selected, filePickerSelectedVersions = versions)
+        }
+    }
+
+    fun confirmDualFilePicker() {
+        val state = _dualGameDetailState.value ?: return
+        if (state.modalType != ActiveModal.FILE_PICKER) return
+        val gameId = state.gameId
+        val files = state.filePickerSelected
+        val versions = state.filePickerSelectedVersions
+        _dualGameDetailState.update { it?.copy(modalType = ActiveModal.NONE) }
+        companionHost?.refocusSelf()
+        scope.launch(Dispatchers.IO) {
+            val (queued, errors) = filePickerFlow.downloadSelection(gameId, files, versions)
+            errors.forEach { notificationManager.showError(it) }
+            if (queued > 1) notificationManager.showSuccess("Queued " + queued + " downloads")
         }
     }
 

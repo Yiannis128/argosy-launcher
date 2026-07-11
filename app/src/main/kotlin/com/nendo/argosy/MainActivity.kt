@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var presenceManager: com.nendo.argosy.data.social.PresenceManager
     @Inject lateinit var discordPresenceManager: com.nendo.argosy.data.social.discord.DiscordPresenceManager
     @Inject lateinit var gradientExtractionDelegate: com.nendo.argosy.ui.screens.common.GradientExtractionDelegate
+    @Inject lateinit var filePickerFlowUseCase: com.nendo.argosy.domain.usecase.download.FilePickerFlowUseCase
 
     private val sessionStateStore by lazy {
         com.nendo.argosy.data.preferences.SessionStateStore(this)
@@ -164,6 +165,11 @@ class MainActivity : ComponentActivity() {
     fun setDualVariantFocus(index: Int) = dualScreenManager.setDualVariantFocus(index)
     fun moveDualVariantFocus(delta: Int) = dualScreenManager.moveDualVariantFocus(delta)
     fun confirmDualVariantSelection() = dualScreenManager.confirmDualVariantSelection()
+    fun moveDualFilePickerFocus(delta: Int) = dualScreenManager.moveDualFilePickerFocus(delta)
+    fun jumpDualFilePickerGroup(direction: Int) = dualScreenManager.jumpDualFilePickerGroup(direction)
+    fun toggleDualFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow? = null) =
+        dualScreenManager.toggleDualFilePickerRow(row)
+    fun confirmDualFilePicker() = dualScreenManager.confirmDualFilePicker()
     fun moveDualCollectionFocus(delta: Int) = dualScreenManager.moveDualCollectionFocus(delta)
     fun toggleDualCollectionAtFocus() = dualScreenManager.toggleDualCollectionAtFocus()
     fun showDualCollectionCreateDialog() = dualScreenManager.showDualCollectionCreateDialog()
@@ -274,6 +280,7 @@ class MainActivity : ComponentActivity() {
                 repairImageCacheUseCase = repairImageCacheUseCase,
                 downloadFileStatusRepository = downloadFileStatusRepository,
                 gradientExtractionDelegate = gradientExtractionDelegate,
+                filePickerFlow = filePickerFlowUseCase,
                 initialRolesSwapped = initialSwapped
             )
             DualScreenManagerHolder.instance = dualScreenManager

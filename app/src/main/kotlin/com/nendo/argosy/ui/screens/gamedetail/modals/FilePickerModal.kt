@@ -30,23 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.nendo.argosy.data.model.FilePickerRow
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.util.formatBytes
-
-data class FilePickerRow(
-    val isHeader: Boolean,
-    val groupKey: String,
-    val label: String,
-    val rommFileId: Long? = null,
-    val versionRommId: Long? = null,
-    val sizeBytes: Long = 0,
-    val isDownloaded: Boolean = false,
-    val isDefaultVersion: Boolean = false,
-    val isLocked: Boolean = false
-)
 
 enum class GroupCheckState { ALL, NONE, PARTIAL }
 

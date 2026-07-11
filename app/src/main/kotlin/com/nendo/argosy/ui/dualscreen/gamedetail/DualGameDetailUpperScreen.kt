@@ -98,6 +98,8 @@ fun DualGameDetailUpperScreen(
     onDiscSelect: (Int) -> Unit = {},
     onModalSteamInstallSelect: (Int) -> Unit = {},
     onModalDismiss: () -> Unit = {},
+    onFilePickerToggle: (com.nendo.argosy.data.model.FilePickerRow) -> Unit = {},
+    onFilePickerConfirm: () -> Unit = {},
     footerHints: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -209,6 +211,32 @@ fun DualGameDetailUpperScreen(
                 onSelect = onModalSteamInstallSelect,
                 onDismiss = onModalDismiss
             )
+            ActiveModal.FILE_PICKER -> {
+                val selectedCount = state.filePickerRows.count { row ->
+                    !row.isHeader && (row.versionRommId
+                        ?.let { it in state.filePickerSelectedVersions }
+                        ?: (row.rommFileId in state.filePickerSelected))
+                }
+                val selectedBytes = state.filePickerRows.filter { row ->
+                    !row.isHeader && (row.versionRommId
+                        ?.let { it in state.filePickerSelectedVersions }
+                        ?: (row.rommFileId in state.filePickerSelected))
+                }.sumOf { it.sizeBytes }
+                com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerModal(
+                    gameTitle = state.title,
+                    title = "Choose files",
+                    rows = state.filePickerRows,
+                    selectedIds = state.filePickerSelected,
+                    selectedVersionIds = state.filePickerSelectedVersions,
+                    focusIndex = state.filePickerFocusIndex,
+                    summary = selectedCount.toString() + " of " +
+                        state.filePickerRows.count { !it.isHeader } + " · " +
+                        com.nendo.argosy.util.formatBytes(selectedBytes) + " selected",
+                    onToggleRow = onFilePickerToggle,
+                    onConfirm = onFilePickerConfirm,
+                    onDismiss = onModalDismiss
+                )
+            }
             ActiveModal.VARIANT_PICKER -> {}
             ActiveModal.NONE -> {}
         }

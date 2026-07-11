@@ -197,6 +197,9 @@ class DualGameDetailInputHandler(
                 }
                 return InputResult.HANDLED
             }
+            ActiveModal.FILE_PICKER -> {
+                return InputResult.HANDLED
+            }
             ActiveModal.CORE -> {
                 when (event) {
                     GamepadEvent.Up -> {

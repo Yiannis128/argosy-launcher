@@ -20,7 +20,7 @@ enum class DualGameDetailTab {
     OPTIONS
 }
 
-enum class ActiveModal { NONE, RATING, DIFFICULTY, STATUS, EMULATOR, CORE, COLLECTION, SAVE_NAME, UPDATES_DLC, DISC_PICKER, VARIANT_PICKER, STEAM_INSTALL }
+enum class ActiveModal { NONE, RATING, DIFFICULTY, STATUS, EMULATOR, CORE, COLLECTION, SAVE_NAME, UPDATES_DLC, DISC_PICKER, VARIANT_PICKER, STEAM_INSTALL, FILE_PICKER }
 
 enum class GameDetailOption {
     PLAY,
@@ -163,7 +163,11 @@ data class DualGameDetailUpperState(
     val steamInstallOptionNames: List<String> = emptyList(),
     val steamInstallOptionPackages: List<String> = emptyList(),
     val steamInstallFocusIndex: Int = 0,
-    val isHomeChooser: Boolean = false
+    val isHomeChooser: Boolean = false,
+    val filePickerRows: List<com.nendo.argosy.data.model.FilePickerRow> = emptyList(),
+    val filePickerSelected: Set<Long> = emptySet(),
+    val filePickerSelectedVersions: Set<Long> = emptySet(),
+    val filePickerFocusIndex: Int = 0
 )
 
 data class SaveEntryData(

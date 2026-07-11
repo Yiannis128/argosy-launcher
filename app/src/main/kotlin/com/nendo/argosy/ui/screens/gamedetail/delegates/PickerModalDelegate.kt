@@ -43,7 +43,7 @@ data class PickerModalState(
     val variantPickerFocusIndex: Int = 0,
 
     val showFilePicker: Boolean = false,
-    val filePickerRows: List<com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow> = emptyList(),
+    val filePickerRows: List<com.nendo.argosy.data.model.FilePickerRow> = emptyList(),
     val filePickerSelected: Set<Long> = emptySet(),
     val filePickerSelectedVersions: Set<Long> = emptySet(),
     val filePickerFocusIndex: Int = 0,
@@ -354,7 +354,7 @@ class PickerModalDelegate @Inject constructor(
     // region File Picker
 
     fun showFilePicker(
-        rows: List<com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow>,
+        rows: List<com.nendo.argosy.data.model.FilePickerRow>,
         preselectedFileIds: Set<Long>,
         preselectedVersionIds: Set<Long>,
         manageMode: Boolean = false
@@ -397,7 +397,7 @@ class PickerModalDelegate @Inject constructor(
         }
     }
 
-    fun toggleFilePickerRow(row: com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow) {
+    fun toggleFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow) {
         _state.update { st ->
             var selected = st.filePickerSelected
             var versions = st.filePickerSelectedVersions
