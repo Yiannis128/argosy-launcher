@@ -798,7 +798,8 @@ object EmulatorRegistry {
             launchConfig = LaunchConfig.Custom(
                 activityClass = "org.uoyabause.android.Yabause",
                 intentExtras = mapOf(
-                    "org.uoyabause.android.FileNameEx" to ExtraValue.FilePath
+                    "org.uoyabause.android.FileNameEx" to ExtraValue.FilePath,
+                    "org.uoyabause.android.FileNameUri" to ExtraValue.FileUriString
                 )
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=org.devmiyax.yabasanshioro2"
@@ -811,7 +812,8 @@ object EmulatorRegistry {
             launchConfig = LaunchConfig.Custom(
                 activityClass = "org.uoyabause.android.Yabause",
                 intentExtras = mapOf(
-                    "org.uoyabause.android.FileNameEx" to ExtraValue.FilePath
+                    "org.uoyabause.android.FileNameEx" to ExtraValue.FilePath,
+                    "org.uoyabause.android.FileNameUri" to ExtraValue.FileUriString
                 )
             )
         ),
