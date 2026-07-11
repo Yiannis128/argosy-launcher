@@ -51,6 +51,7 @@ class MoreOptionsDelegate @Inject constructor(
         hasVariants: Boolean,
         isSteamGame: Boolean,
         hasUpdates: Boolean,
+        hasManageableFiles: Boolean,
         platformSlug: String?
     ) {
         val canTrackProgress = isRommGame || isAndroidApp
@@ -68,6 +69,7 @@ class MoreOptionsDelegate @Inject constructor(
         if (isMultiDisc) optionCount++
         if (hasVariants && isEmulatedGame) optionCount++
         if (hasUpdates) optionCount++
+        if (hasManageableFiles && isDownloaded) optionCount++
         if (isDownloaded || isAndroidApp) optionCount++
 
         val maxIndex = optionCount - 1
@@ -87,6 +89,7 @@ class MoreOptionsDelegate @Inject constructor(
         hasVariants: Boolean,
         isSteamGame: Boolean,
         hasUpdates: Boolean,
+        hasManageableFiles: Boolean,
         platformSlug: String?
     ): MoreOptionAction? {
         val canTrackProgress = isRommGame || isAndroidApp
@@ -106,6 +109,7 @@ class MoreOptionsDelegate @Inject constructor(
         val discIdx = if (isMultiDisc) currentIdx++ else -1
         val variantIdx = if (hasVariants && isEmulatedGame) currentIdx++ else -1
         val updatesIdx = if (hasUpdates) currentIdx++ else -1
+        val manageFilesIdx = if (hasManageableFiles && isDownloaded) currentIdx++ else -1
         val refreshIdx = if (canTrackProgress) currentIdx++ else -1
         val addToCollectionIdx = currentIdx++
         val deleteIdx = if (isDownloaded || isAndroidApp) currentIdx++ else -1
@@ -122,6 +126,7 @@ class MoreOptionsDelegate @Inject constructor(
             discIdx -> MoreOptionAction.SelectDisc
             variantIdx -> MoreOptionAction.SelectVariant
             updatesIdx -> MoreOptionAction.UpdatesDlc
+            manageFilesIdx -> MoreOptionAction.ManageFiles
             refreshIdx -> MoreOptionAction.RefreshData
             addToCollectionIdx -> MoreOptionAction.AddToCollection
             deleteIdx -> MoreOptionAction.Delete

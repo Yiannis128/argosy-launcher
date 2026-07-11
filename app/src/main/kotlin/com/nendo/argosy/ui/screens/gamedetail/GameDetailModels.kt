@@ -140,6 +140,7 @@ sealed class MoreOptionAction {
     data object SelectDisc : MoreOptionAction()
     data object SelectVariant : MoreOptionAction()
     data object UpdatesDlc : MoreOptionAction()
+    data object ManageFiles : MoreOptionAction()
     data object RefreshData : MoreOptionAction()
     data object AddToCollection : MoreOptionAction()
     data object RefreshTitleId : MoreOptionAction()
@@ -169,6 +170,7 @@ data class GameDetailUiState(
     val isLoading: Boolean = true,
     val isRefreshingGameData: Boolean = false,
     val downloadStatus: GameDownloadStatus = GameDownloadStatus.NOT_DOWNLOADED,
+    val hasManageableFiles: Boolean = false,
     val downloadProgress: Float = 0f,
     val downloadSizeBytes: Long? = null,
     val selectedCoreId: String? = null,

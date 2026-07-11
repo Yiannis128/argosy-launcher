@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Timer
@@ -51,6 +52,7 @@ fun MoreOptionsModal(
     isDownloaded: Boolean,
     hasVariants: Boolean = false,
     updateCount: Int = 0,
+    hasManageableFiles: Boolean = false,
     onAction: (MoreOptionAction) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -89,6 +91,9 @@ fun MoreOptionsModal(
         }
         if (hasUpdates) {
             add(MoreMenuEntry.Option(Icons.Default.SystemUpdate, "Updates/DLC", value = "$updateCount", action = MoreOptionAction.UpdatesDlc))
+        }
+        if (hasManageableFiles && isDownloaded) {
+            add(MoreMenuEntry.Option(Icons.Default.Checklist, "Manage Files", action = MoreOptionAction.ManageFiles))
         }
         if (canTrackProgress) {
             add(MoreMenuEntry.Option(Icons.Default.Refresh, "Refresh Game Data", action = MoreOptionAction.RefreshData))

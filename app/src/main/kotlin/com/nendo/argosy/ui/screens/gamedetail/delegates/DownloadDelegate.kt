@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 data class DownloadUiState(
@@ -270,6 +271,108 @@ class DownloadDelegate @Inject constructor(
         if (rows.none { !it.isHeader }) return null
         if (versionGroups.size <= 1 && romFiles.size <= 1) return null
         return Triple(rows, preselectedFiles, preselectedVersions)
+    }
+
+    /**
+     * Manage-mode rows come from the database only: every known file with its
+     * downloaded state preselected. Rows backing the game's own localPath are
+     * locked (whole-game delete owns those).
+     */
+    suspend fun buildManageRows(gameId: Long): Triple<List<FilePickerRow>, Set<Long>, Set<Long>>? {
+        val game = gameRepository.getById(gameId) ?: return null
+        val dbRows = gameFileDao.getFilesForGame(gameId)
+        if (dbRows.isEmpty()) return null
+
+        val rows = mutableListOf<FilePickerRow>()
+        val preselected = mutableSetOf<Long>()
+        val rootLen = dbRows.minOf { it.filePath.length }
+        val grouped = dbRows.groupBy { f ->
+            val cat = VariantCategory.fromKey(f.category)
+            when {
+                cat == VariantCategory.GAME -> "game"
+                cat != VariantCategory.UNKNOWN -> cat.key
+                f.filePath.length > rootLen -> "folder:${f.filePath.substringAfterLast('/')}"
+                else -> "game"
+            }
+        }
+        grouped.entries
+            .sortedBy { (key, _) -> if (key == "game") -1 else VariantCategory.fromKey(key).sortOrder }
+            .forEach { (key, files) ->
+                val label = when {
+                    key == "game" -> "Game"
+                    key.startsWith("folder:") -> key.removePrefix("folder:")
+                    else -> VariantCategory.fromKey(key).displayLabel
+                }
+                rows += FilePickerRow(isHeader = true, groupKey = key, label = label)
+                files.sortedBy { it.fileName }.forEach { f ->
+                    val rommFileId = f.rommFileId ?: return@forEach
+                    val isBase = f.localPath != null && f.localPath == game.localPath
+                    rows += FilePickerRow(
+                        isHeader = false,
+                        groupKey = key,
+                        label = f.regions?.let { "${f.fileName} ($it)" } ?: f.fileName,
+                        rommFileId = rommFileId,
+                        sizeBytes = f.fileSize,
+                        isDownloaded = f.localPath != null,
+                        isLocked = isBase
+                    )
+                    if (f.localPath != null) preselected += rommFileId
+                }
+            }
+        if (rows.none { !it.isHeader && !it.isLocked }) return null
+        return Triple(rows, preselected, emptySet())
+    }
+
+    /** Checked-but-missing files get queued; unchecked-but-present files get deleted. */
+    fun applyManagedFiles(
+        scope: CoroutineScope,
+        gameId: Long,
+        rows: List<FilePickerRow>,
+        selected: Set<Long>
+    ) {
+        scope.launch {
+            val dbRows = gameFileDao.getFilesForGame(gameId)
+            val byRommId = dbRows.associateBy { it.rommFileId }
+            var added = 0
+            var removed = 0
+            for (row in rows) {
+                val rommFileId = row.rommFileId ?: continue
+                if (row.isHeader || row.isLocked) continue
+                val db = byRommId[rommFileId] ?: continue
+                val wantIt = rommFileId in selected
+                val haveIt = db.localPath != null
+                when {
+                    wantIt && !haveIt -> {
+                        val game = gameRepository.getById(gameId) ?: continue
+                        downloadManager.enqueueGameFileDownload(
+                            gameId = gameId,
+                            gameFileId = db.id,
+                            rommFileId = rommFileId,
+                            fileName = db.fileName,
+                            category = db.category,
+                            gameTitle = game.title,
+                            platformSlug = game.platformSlug,
+                            coverPath = game.coverPath,
+                            expectedSizeBytes = db.fileSize,
+                            gameFolderName = game.rommFileName
+                        )
+                        added++
+                    }
+                    !wantIt && haveIt -> {
+                        val path = db.localPath
+                        if (path != null && File(path).delete()) {
+                            gameFileDao.clearLocalPath(db.id)
+                            removed++
+                        }
+                    }
+                }
+            }
+            val parts = buildList {
+                if (added > 0) add("$added queued")
+                if (removed > 0) add("$removed removed")
+            }
+            if (parts.isNotEmpty()) notificationManager.showSuccess(parts.joinToString(", "))
+        }
     }
 
     fun downloadWithSelection(

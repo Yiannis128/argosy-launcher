@@ -857,6 +857,7 @@ private fun GameDetailModals(
             isDownloaded = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED,
             hasVariants = uiState.hasVariants,
             updateCount = uiState.updateFiles.size + uiState.dlcFiles.size,
+            hasManageableFiles = uiState.hasManageableFiles,
             onAction = { action -> viewModel.handleMoreOptionAction(action, onBack, onNavigateToPlatformSettings) },
             onDismiss = viewModel::toggleMoreOptions
         )
@@ -933,7 +934,7 @@ private fun GameDetailModals(
         }.sumOf { it.sizeBytes }
         FilePickerModal(
             gameTitle = uiState.game?.title ?: "",
-            title = "Choose files",
+            title = if (pickerState.filePickerManageMode) "Manage files" else "Choose files",
             rows = fileRows,
             selectedIds = pickerState.filePickerSelected,
             selectedVersionIds = pickerState.filePickerSelectedVersions,

@@ -496,6 +496,7 @@ class GameDetailViewModel @Inject constructor(
 
             variantScanner.scanForVariants(game)
             val hasVariants = variantResolver.getVariantOptions(game) != null
+            val manageableFileCount = gameFileDao.getFilesForGame(gameId).size
 
             val downloadSizeBytes = when {
                 game.isMultiDisc -> gameDiscDao.getTotalFileSize(gameId)
@@ -530,6 +531,7 @@ class GameDetailViewModel @Inject constructor(
                     saveStatusInfo = saveStatusInfo,
                     updateFiles = updateFilesUi,
                     dlcFiles = dlcFilesUi,
+                    hasManageableFiles = manageableFileCount > 0,
                     hasVariants = hasVariants,
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
@@ -771,6 +773,15 @@ class GameDetailViewModel @Inject constructor(
 
     fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
 
+    fun showManageFilesPicker() {
+        toggleMoreOptions()
+        viewModelScope.launch {
+            val built = downloadDelegate.buildManageRows(currentGameId) ?: return@launch
+            val (rows, files, versions) = built
+            pickerModalDelegate.showFilePicker(rows, files, versions, manageMode = true)
+        }
+    }
+
     fun promptOrDownload() {
         viewModelScope.launch {
             val built = downloadDelegate.buildFilePickerRows(currentGameId)
@@ -787,12 +798,21 @@ class GameDetailViewModel @Inject constructor(
         val picker = pickerModalDelegate.state.value
         if (!picker.showFilePicker) return
         pickerModalDelegate.dismissFilePicker()
-        downloadDelegate.downloadWithSelection(
-            viewModelScope,
-            currentGameId,
-            picker.filePickerSelected,
-            picker.filePickerSelectedVersions
-        )
+        if (picker.filePickerManageMode) {
+            downloadDelegate.applyManagedFiles(
+                viewModelScope,
+                currentGameId,
+                picker.filePickerRows,
+                picker.filePickerSelected
+            )
+        } else {
+            downloadDelegate.downloadWithSelection(
+                viewModelScope,
+                currentGameId,
+                picker.filePickerSelected,
+                picker.filePickerSelectedVersions
+            )
+        }
     }
 
     fun dismissFilePicker() = pickerModalDelegate.dismissFilePicker()
@@ -987,6 +1007,7 @@ class GameDetailViewModel @Inject constructor(
             hasVariants = state.hasVariants,
             isSteamGame = state.game?.isSteamGame == true,
             hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
+            hasManageableFiles = state.hasManageableFiles,
             platformSlug = state.game?.platformSlug
         )
     }
@@ -1013,6 +1034,7 @@ class GameDetailViewModel @Inject constructor(
             MoreOptionAction.SelectDisc -> showDiscPicker()
             MoreOptionAction.SelectVariant -> showVariantPickerFromMenu()
             MoreOptionAction.UpdatesDlc -> showUpdatesPicker()
+            MoreOptionAction.ManageFiles -> showManageFilesPicker()
             MoreOptionAction.RefreshData -> refreshAndroidOrRommData()
             MoreOptionAction.RefreshTitleId -> refreshTitleId()
             MoreOptionAction.SpeedrunSplits -> {
@@ -1057,6 +1079,7 @@ class GameDetailViewModel @Inject constructor(
             hasVariants = state.hasVariants,
             isSteamGame = state.game?.isSteamGame == true,
             hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
+            hasManageableFiles = state.hasManageableFiles,
             platformSlug = state.game?.platformSlug
         )
         if (action != null) {

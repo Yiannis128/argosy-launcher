@@ -46,7 +46,8 @@ data class PickerModalState(
     val filePickerRows: List<com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow> = emptyList(),
     val filePickerSelected: Set<Long> = emptySet(),
     val filePickerSelectedVersions: Set<Long> = emptySet(),
-    val filePickerFocusIndex: Int = 0
+    val filePickerFocusIndex: Int = 0,
+    val filePickerManageMode: Boolean = false
 ) {
     val hasAnyPickerOpen: Boolean
         get() = showEmulatorPicker || showCorePicker || showSteamLauncherPicker ||
@@ -355,7 +356,8 @@ class PickerModalDelegate @Inject constructor(
     fun showFilePicker(
         rows: List<com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerRow>,
         preselectedFileIds: Set<Long>,
-        preselectedVersionIds: Set<Long>
+        preselectedVersionIds: Set<Long>,
+        manageMode: Boolean = false
     ) {
         _state.update {
             it.copy(
@@ -363,7 +365,8 @@ class PickerModalDelegate @Inject constructor(
                 filePickerRows = rows,
                 filePickerSelected = preselectedFileIds,
                 filePickerSelectedVersions = preselectedVersionIds,
-                filePickerFocusIndex = 0
+                filePickerFocusIndex = 0,
+                filePickerManageMode = manageMode
             )
         }
         soundManager.play(SoundType.OPEN_MODAL)
