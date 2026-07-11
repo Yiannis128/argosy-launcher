@@ -507,8 +507,12 @@ class DownloadManager @Inject constructor(
         val gameFolder = resolveAddonFolder(gameId, platformSlug, gameFolderName, gameTitle)
         val useExtcontent = ZipExtractor.isNswPlatform(platformSlug) &&
             isEdenEmulator(gameId, platformSlug)
-        val categoryFolder = File(gameFolder, if (useExtcontent) "extcontent" else category)
-            .apply { mkdirs() }
+        val serverRelativeDir = if (!useExtcontent) resolveServerRelativeDir(gameId, gameFileId) else null
+        val categoryFolder = when {
+            useExtcontent -> File(gameFolder, "extcontent")
+            serverRelativeDir != null -> File(gameFolder, serverRelativeDir)
+            else -> File(gameFolder, category)
+        }.apply { mkdirs() }
         val tempFilePath = File(categoryFolder, "${fileName}.tmp").absolutePath
         Logger.info(
             TAG,
@@ -572,6 +576,15 @@ class DownloadManager @Inject constructor(
         return File(platformDir, sanitizedTitle).apply { mkdirs() }
     }
 
+    /** Server dir of this file relative to the rom root, or null for root files. */
+    private suspend fun resolveServerRelativeDir(gameId: Long, gameFileId: Long): String? {
+        val row = gameFileDao.getById(gameFileId) ?: return null
+        val rootLen = gameFileDao.getFilesForGame(gameId)
+            .minOfOrNull { it.filePath.length } ?: return null
+        return row.filePath.takeIf { it.length > rootLen }
+            ?.substring(rootLen)?.trim('/')?.takeIf { it.isNotEmpty() }
+    }
+
     private suspend fun resolveAddonFolder(
         gameId: Long,
         platformSlug: String,
@@ -579,14 +592,31 @@ class DownloadManager @Inject constructor(
         gameTitle: String
     ): File {
         val platformDir = getDownloadDir(platformSlug)
-        val baseParent = gameDao.getById(gameId)?.localPath?.let { File(it).parentFile }
-        return if (baseParent != null && baseParent.isDirectory &&
+        val game = gameDao.getById(gameId)
+        val basePath = game?.localPath
+        val baseParent = basePath?.let { File(it).parentFile }
+        if (baseParent != null && baseParent.isDirectory &&
             baseParent.absolutePath != platformDir.absolutePath
         ) {
-            baseParent
-        } else {
-            getGameFolder(platformSlug, gameFolderName ?: gameTitle)
+            return baseParent
         }
+        val gameFolder = getGameFolder(platformSlug, gameFolderName ?: gameTitle)
+        val baseFile = basePath?.let { File(it) }
+        if (baseFile != null && baseFile.isFile &&
+            baseFile.parentFile?.absolutePath == platformDir.absolutePath
+        ) {
+            val moved = File(gameFolder, baseFile.name)
+            if (baseFile.renameTo(moved)) {
+                gameDao.updateLocalPath(gameId, moved.absolutePath, game.source)
+                gameFileDao.getByLocalPath(basePath)?.let { row ->
+                    gameFileDao.updateLocalPath(row.id, moved.absolutePath, row.downloadedAt ?: Instant.now())
+                }
+                Logger.info(TAG, "resolveAddonFolder: moved flat base ${baseFile.name} into ${gameFolder.name}")
+            } else {
+                Logger.warn(TAG, "resolveAddonFolder: failed to move ${baseFile.name} into ${gameFolder.name}")
+            }
+        }
+        return gameFolder
     }
 
     private suspend fun processQueue() {
