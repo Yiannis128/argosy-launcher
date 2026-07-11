@@ -133,7 +133,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.SpeedrunSegmentEntity::class,
         com.nendo.argosy.data.local.entity.SpeedrunAttemptEntity::class
     ],
-    version = 134,
+    version = 135,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -179,5 +179,6 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun pendingConflictDao(): PendingConflictDao
     abstract fun touchLayoutOverrideDao(): com.nendo.argosy.data.local.dao.TouchLayoutOverrideDao
     abstract fun speedrunDao(): com.nendo.argosy.data.local.dao.SpeedrunDao
+    abstract fun gameAbsorptionDao(): com.nendo.argosy.data.local.dao.GameAbsorptionDao
 
 }

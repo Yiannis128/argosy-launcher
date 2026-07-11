@@ -1739,6 +1739,17 @@ class GameLauncher @Inject constructor(
 
     /** An update or DLC file is unbootable alone, so redirect to the base rom and persist it; excluded (title-id) platforms always re-elect the base, other platforms only when the launch target is provably update/dlc content, preferring an m3u so multi-disc folders keep their playlist. */
     private suspend fun resolveBaseRomFile(game: GameEntity, romFile: File): File {
+        game.activeVariantFileId?.let { fileId ->
+            val chosen = gameFileDao.getById(fileId)
+            val chosenPath = chosen?.localPath
+            if (chosen?.versionGroup != null && chosenPath != null && File(chosenPath).exists()) {
+                if (chosenPath != romFile.absolutePath) {
+                    Logger.info(TAG, "resolveBaseRomFile: honoring active version ${chosen.fileName} for ${game.title}")
+                    gameDao.updateLocalPath(game.id, chosenPath, game.source)
+                }
+                return File(chosenPath)
+            }
+        }
         val excluded = game.platformSlug in VariantCategory.TITLE_ID_PLATFORMS
         val parent = romFile.parentFile ?: return romFile
         val inContentSubfolder = parent.name.lowercase() in EXTCONTENT_SOURCE_NAMES

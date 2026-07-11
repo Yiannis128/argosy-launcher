@@ -138,7 +138,8 @@ data class RomMSibling(
     @Json(name = "id") val id: Long,
     @Json(name = "name") val name: String? = null,
     @Json(name = "fs_name_no_tags") val fileNameNoTags: String,
-    @Json(name = "fs_name_no_ext") val fileNameNoExt: String
+    @Json(name = "fs_name_no_ext") val fileNameNoExt: String,
+    @Json(name = "is_main_sibling") val isMainSibling: Boolean? = null
 ) {
     val discNumber: Int?
         get() = DISC_NUMBER_REGEX.find(

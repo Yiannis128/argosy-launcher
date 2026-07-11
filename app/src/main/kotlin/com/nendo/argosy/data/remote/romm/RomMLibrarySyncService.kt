@@ -21,7 +21,8 @@ import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.InstalledAppResolver
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.data.platform.PlatformDefinitions
-import com.nendo.argosy.data.preferences.RegionFilterMode
+import com.nendo.argosy.data.model.VariantCategory
+import com.nendo.argosy.data.model.VersionGroups
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.BiosRepository
@@ -195,6 +196,7 @@ class RomMLibrarySyncService @Inject constructor(
     ): Int {
         var gamesDeleted = 0
 
+        absorbConsolidatedGames(result.absorptionPairs)
         consolidateMultiDiscGames(api, result.multiDiscGroups)
 
         if (result.error == null) {
@@ -423,7 +425,7 @@ class RomMLibrarySyncService @Inject constructor(
         }
     }
 
-    private suspend fun syncRom(rom: RomMRom): Pair<Boolean, GameEntity> {
+    private suspend fun syncRom(rom: RomMRom, syncFiles: Boolean = true): Pair<Boolean, GameEntity> {
         val platformSlug = platformDao.getById(rom.platformId)?.slug
             ?: PlatformDefinitions.resolveImportSlug(rom.platformSlug, rom.platformName)
         val platformId = if (platformSlug == ANDROID_SLUG) LocalPlatformIds.ANDROID else rom.platformId
@@ -598,7 +600,7 @@ class RomMLibrarySyncService @Inject constructor(
         }
 
         val savedGame = gameDao.getByRommId(rom.id)
-        if (savedGame != null) {
+        if (savedGame != null && syncFiles) {
             syncGameFiles(savedGame.id, rom, platformSlug)
         }
 
@@ -649,15 +651,13 @@ class RomMLibrarySyncService @Inject constructor(
         val added: Int,
         val updated: Int,
         val multiDiscGroups: List<MultiDiscGroup>,
-        val error: String? = null
+        val error: String? = null,
+        val absorptionPairs: List<Pair<Long, Long>> = emptyList()
     )
 
-    private class RegionDedupGroup {
-        var hasExisting = false
-        var hasDownloaded = false
-        var bestSyncedRank = Int.MAX_VALUE
-        var bestCandidate: RomMRom? = null
-        var bestCandidateRank = Int.MAX_VALUE
+    private class SiblingGroup {
+        val memberRoms = mutableListOf<RomMRom>()
+        var mainSiblingId: Long? = null
     }
 
     private suspend fun syncPlatformRoms(
@@ -671,11 +671,23 @@ class RomMLibrarySyncService @Inject constructor(
         val multiDiscGroups = mutableListOf<MultiDiscGroup>()
         val processedDiscIds = mutableSetOf<Long>()
         val skipIndividualDiscIds = mutableSetOf<Long>()
-        val regionPriorityMode = filters.regionMode == RegionFilterMode.INCLUDE &&
-            filters.enabledRegions.isNotEmpty()
-        val regionGroups = mutableMapOf<String, RegionDedupGroup>()
+        val siblingGroups = mutableMapOf<Long, SiblingGroup>()
+        val absorptionPairs = mutableListOf<Pair<Long, Long>>()
         var offset = 0
         var totalFetched = 0
+
+        fun groupFor(rom: RomMRom): SiblingGroup {
+            val ids = listOf(rom.id) +
+                rom.effectiveSiblings.filter { !it.isDiscVariant }.map { it.id }
+            val existingGroups = ids.mapNotNull { siblingGroups[it] }.distinct()
+            val group = existingGroups.firstOrNull() ?: SiblingGroup()
+            existingGroups.drop(1).forEach { other ->
+                group.memberRoms.addAll(other.memberRoms)
+                if (group.mainSiblingId == null) group.mainSiblingId = other.mainSiblingId
+            }
+            ids.forEach { siblingGroups[it] = group }
+            return group
+        }
 
         fun trackSiblingMultiDisc(rom: RomMRom) {
             val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
@@ -742,32 +754,18 @@ class RomMLibrarySyncService @Inject constructor(
                     }
                 }
 
-                val dedupKey = RomMUtils.getDedupKey(rom)
-                if (dedupKey != null) {
-                    if (regionPriorityMode && rom.hasNonDiscSiblings) {
-                        val group = regionGroups.getOrPut(dedupKey) { RegionDedupGroup() }
-                        val rank = filters.regionRank(rom.regions)
-                        val existing = gameDao.getByRommId(rom.id)
-                        if (existing == null) {
-                            if (group.bestCandidate == null || rank < group.bestCandidateRank) {
-                                group.bestCandidate?.let {
-                                    Logger.info(TAG, "syncPlatformRoms: region priority prefers ${rom.name} (${rom.regions}) over ${it.name} (${it.regions})")
-                                }
-                                group.bestCandidate = rom
-                                group.bestCandidateRank = rank
-                            } else {
-                                Logger.info(TAG, "syncPlatformRoms: region priority skipping ${rom.name} (${rom.regions})")
-                            }
-                            continue
-                        }
-                        group.hasExisting = true
-                        if (existing.localPath != null) group.hasDownloaded = true
-                        if (rank < group.bestSyncedRank) group.bestSyncedRank = rank
-                        seenDedupKeys.add(dedupKey)
-                    } else {
-                        if (!seenDedupKeys.add(dedupKey)) continue
+                if (rom.hasNonDiscSiblings) {
+                    groupFor(rom).let { group ->
+                        group.memberRoms.add(rom)
+                        rom.effectiveSiblings
+                            .firstOrNull { !it.isDiscVariant && it.isMainSibling == true }
+                            ?.let { group.mainSiblingId = it.id }
                     }
+                    continue
                 }
+
+                val dedupKey = RomMUtils.getDedupKey(rom)
+                if (dedupKey != null && !seenDedupKeys.add(dedupKey)) continue
 
                 try {
                     val (isNew, _) = syncRom(rom)
@@ -782,25 +780,109 @@ class RomMLibrarySyncService @Inject constructor(
             offset += SYNC_PAGE_SIZE
         }
 
-        for (group in regionGroups.values) {
-            val winner = group.bestCandidate ?: continue
-            val betterThanSynced = !group.hasExisting || group.bestCandidateRank < group.bestSyncedRank
-            val allowedToAdd = !group.hasExisting || group.hasDownloaded
-            if (!betterThanSynced || !allowedToAdd) {
-                Logger.info(TAG, "syncPlatformRoms: region priority not adding ${winner.name} (betterThanSynced=$betterThanSynced, allowedToAdd=$allowedToAdd)")
-                continue
-            }
+        for (group in siblingGroups.values.distinct()) {
+            val members = group.memberRoms
+            if (members.isEmpty()) continue
+            val winner = members.firstOrNull { it.id == group.mainSiblingId }
+                ?: members.minByOrNull { filters.regionRank(it.regions) }
+                ?: continue
             try {
-                val (isNew, _) = syncRom(winner)
+                val (isNew, _) = syncRom(winner, syncFiles = false)
                 if (isNew) added++ else updated++
                 trackSiblingMultiDisc(winner)
-                Logger.info(TAG, "syncPlatformRoms: region priority added ${winner.name} (${winner.regions})")
+                val gameId = gameDao.getByRommId(winner.id)?.id ?: continue
+                val validFileIds = mutableListOf<Long>()
+                for (member in members) {
+                    validFileIds += syncVersionFiles(gameId, member, platform.slug)
+                    if (member.id != winner.id) {
+                        gameDao.getByRommId(member.id)?.let { loser ->
+                            absorptionPairs.add(loser.id to gameId)
+                        }
+                    }
+                }
+                if (validFileIds.isNotEmpty()) {
+                    gameFileDao.deleteInvalidFiles(gameId, validFileIds)
+                }
+                Logger.info(TAG, "syncPlatformRoms: consolidated ${members.size} sibling versions under ${winner.name} (${winner.regions})")
             } catch (e: Exception) {
-                Logger.warn(TAG, "syncPlatformRoms: failed to sync region winner ${winner.id} (${winner.name}): ${e.message}")
+                Logger.warn(TAG, "syncPlatformRoms: failed to consolidate sibling group for ${winner.name}: ${e.message}")
             }
         }
 
-        return PlatformSyncResult(added, updated, multiDiscGroups)
+        return PlatformSyncResult(added, updated, multiDiscGroups, absorptionPairs = absorptionPairs)
+    }
+
+    private suspend fun absorbConsolidatedGames(pairs: List<Pair<Long, Long>>) {
+        for ((loserId, winnerId) in pairs) {
+            if (loserId == winnerId) continue
+            val loser = gameDao.getById(loserId) ?: continue
+            val versionGroup = loser.rommId?.let { VersionGroups.groupKey(it) } ?: continue
+            val channelPrefix = loser.regions
+                ?.split(",")?.firstOrNull()?.trim()?.takeIf { it.isNotBlank() }
+                ?: "Version ${loser.rommId}"
+            try {
+                database.gameAbsorptionDao().absorb(
+                    loserId = loserId,
+                    winnerId = winnerId,
+                    channelPrefix = channelPrefix,
+                    versionGroup = versionGroup,
+                    loserLocalPath = loser.localPath,
+                    loserDownloadedAtEpoch = loser.addedAt.toEpochMilli(),
+                    playTimeMinutes = loser.playTimeMinutes,
+                    playCount = loser.playCount,
+                    isFavorite = loser.isFavorite,
+                    userRating = loser.userRating,
+                    userDifficulty = loser.userDifficulty,
+                    status = loser.status
+                )
+                Logger.info(TAG, "absorbConsolidatedGames: absorbed ${loser.title} ($loserId) into game $winnerId as '$channelPrefix'")
+            } catch (e: Exception) {
+                Logger.warn(TAG, "absorbConsolidatedGames: failed for $loserId -> $winnerId: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun syncVersionFiles(
+        gameId: Long,
+        member: RomMRom,
+        platformSlug: String
+    ): List<Long> {
+        val files = member.files
+            ?.filter { !it.fileName.startsWith(".") }
+            ?.takeIf { it.isNotEmpty() }
+            ?: return emptyList()
+        val rootPathLength = files.minOf { it.filePath.length }
+        val groupKey = VersionGroups.groupKey(member.id)
+        val regions = member.regions?.joinToString(",")?.takeIf { it.isNotBlank() }
+
+        val entities = files.map { file ->
+            val existing = gameFileDao.getByRommFileId(file.id)
+            val isNested = file.filePath.length > rootPathLength
+            val category = when {
+                file.category != null -> VariantCategory.fromKey(file.category)
+                isNested -> VariantCategory.UNKNOWN
+                else -> VariantCategory.GAME
+            }
+            GameFileEntity(
+                id = existing?.id ?: 0,
+                gameId = gameId,
+                rommFileId = file.id,
+                romId = file.romId,
+                fileName = file.fileName,
+                filePath = file.filePath,
+                category = category.key,
+                fileSize = file.fileSizeBytes,
+                localPath = existing?.localPath,
+                downloadedAt = existing?.downloadedAt,
+                isLaunchTarget = category.isLaunchTarget && !(isNested && file.category == null),
+                isMultiDisc = existing?.isMultiDisc ?: false,
+                m3uPath = existing?.m3uPath,
+                regions = regions,
+                versionGroup = groupKey
+            )
+        }
+        gameFileDao.insertAll(entities)
+        return files.mapNotNull { if (it.id > 0) it.id else null }
     }
 
     private suspend fun consolidateMultiDiscGames(

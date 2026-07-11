@@ -1963,3 +1963,14 @@ object Migration_133_134 : Migration(133, 134) {
         )
     }
 }
+
+object Migration_134_135 : Migration(134, 135) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `game_files` ADD COLUMN `regions` TEXT")
+        db.execSQL("ALTER TABLE `game_files` ADD COLUMN `versionGroup` TEXT")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_game_files_gameId_versionGroup` " +
+                "ON `game_files` (`gameId`, `versionGroup`)"
+        )
+    }
+}
