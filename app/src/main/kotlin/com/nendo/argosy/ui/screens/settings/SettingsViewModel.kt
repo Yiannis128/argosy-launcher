@@ -1170,8 +1170,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setRommConfigUrl(url: String) = serverDelegate.setRommConfigUrl(url)
     fun commitRommUrl() = serverDelegate.commitRommUrl(viewModelScope)
-    fun setRommConfigUsername(username: String) = serverDelegate.setRommConfigUsername(username)
-    fun setRommConfigPassword(password: String) = serverDelegate.setRommConfigPassword(password)
     fun setRommConfigPairingCode(code: String) = serverDelegate.setRommConfigPairingCode(code)
     fun setRommAuthMethod(method: RomMAuthMethod) = serverDelegate.setRommAuthMethod(method)
     fun showRommScanner() = serverDelegate.showScanner()
@@ -1179,7 +1177,6 @@ class SettingsViewModel @Inject constructor(
     fun handleRommScanResult(origin: String, code: String) = serverDelegate.handleScanResult(origin, code, viewModelScope) { loadSettings() }
     fun clearRommFocusField() = serverDelegate.clearRommFocusField()
 
-    fun setRommConfigFocusIndex(index: Int) = setFocusIndex(index)
     fun connectToRomm() = routeConnectToRomm(this)
     fun showRALoginForm() = routeShowRALoginForm(this)
     fun hideRALoginForm() = routeHideRALoginForm(this)

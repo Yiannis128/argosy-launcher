@@ -46,8 +46,8 @@ class RomMRepository @Inject constructor(
     suspend fun connect(url: String, token: String? = null): RomMResult<String> =
         connectionManager.connect(url, token)
 
-    suspend fun login(username: String, password: String): RomMResult<String> =
-        connectionManager.login(username, password)
+    suspend fun probeServerVersion(url: String): RomMResult<String> =
+        connectionManager.probeServerVersion(url)
 
     suspend fun connectWithToken(url: String, token: String): RomMResult<String> =
         connectionManager.connectWithToken(url, token)
@@ -65,7 +65,7 @@ class RomMRepository @Inject constructor(
 
     fun disconnect() = connectionManager.disconnect()
 
-    suspend fun checkConnection(retryCount: Int = 2) = connectionManager.checkConnection(retryCount)
+    suspend fun checkConnection() = connectionManager.checkConnection()
 
     fun getCurrentDeviceId(): String? = connectionManager.getDeviceId()
 

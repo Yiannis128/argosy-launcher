@@ -83,7 +83,6 @@ private fun rommConfigMaxIndex(server: ServerState): Int {
     return when (server.rommAuthMethod) {
         RomMAuthMethod.DEVICE -> 3
         RomMAuthMethod.PAIRING_CODE -> if (server.rommHasCamera) 5 else 4
-        RomMAuthMethod.PASSWORD -> 5
     }
 }
 
@@ -97,13 +96,11 @@ private fun rommConfigIndices(server: ServerState): RommConfigIndices = when (se
     RomMAuthMethod.DEVICE -> RommConfigIndices(2, null, 3)
     RomMAuthMethod.PAIRING_CODE ->
         if (server.rommHasCamera) RommConfigIndices(3, 4, 5) else RommConfigIndices(3, null, 4)
-    RomMAuthMethod.PASSWORD -> RommConfigIndices(4, null, 5)
 }
 
 private fun nextRommAuthMethod(current: RomMAuthMethod): RomMAuthMethod = when (current) {
     RomMAuthMethod.DEVICE -> RomMAuthMethod.PAIRING_CODE
-    RomMAuthMethod.PAIRING_CODE -> RomMAuthMethod.PASSWORD
-    RomMAuthMethod.PASSWORD -> RomMAuthMethod.DEVICE
+    RomMAuthMethod.PAIRING_CODE -> RomMAuthMethod.DEVICE
 }
 
 internal fun routeConfirm(vm: SettingsViewModel): InputResult {
@@ -873,21 +870,7 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
         val isConnected = state.server.connectionStatus == ConnectionStatus.ONLINE ||
             state.server.connectionStatus == ConnectionStatus.OFFLINE
         val maxIndex = computeMaxFocusIndex(vm, state, isConnected)
-        val newIndex = if (state.currentSection == SettingsSection.SERVER && state.server.rommConfiguring) {
-            if (state.server.rommAuthMethod == RomMAuthMethod.PASSWORD && !state.server.rommDevicePairing) {
-                when {
-                    delta > 0 && state.focusedIndex == 1 -> 2
-                    delta > 0 && (state.focusedIndex == 2 || state.focusedIndex == 3) -> 4
-                    delta < 0 && state.focusedIndex == 4 -> 2
-                    delta < 0 && (state.focusedIndex == 2 || state.focusedIndex == 3) -> 1
-                    else -> computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
-                }
-            } else {
-                computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
-            }
-        } else {
-            computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
-        }
+        val newIndex = computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
         state.copy(focusedIndex = newIndex)
     }
     if (vm._uiState.value.currentSection == SettingsSection.PLATFORMS) {

@@ -247,12 +247,6 @@ data class RomMRARefreshRequest(
 )
 
 @JsonClass(generateAdapter = true)
-data class RomMTokenResponse(
-    @Json(name = "access_token") val accessToken: String,
-    @Json(name = "token_type") val tokenType: String
-)
-
-@JsonClass(generateAdapter = true)
 data class RomMHeartbeatResponse(
     @Json(name = "SYSTEM") val system: RomMSystem? = null,
     @Json(name = "METADATA_SOURCES") val metadataSources: RomMMetadataSources? = null

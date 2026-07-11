@@ -6,8 +6,6 @@ import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
@@ -24,14 +22,6 @@ interface RomMApi {
 
     @GET("api/heartbeat")
     suspend fun heartbeat(): Response<RomMHeartbeatResponse>
-
-    @FormUrlEncoded
-    @POST("api/token")
-    suspend fun login(
-        @Field("username") username: String,
-        @Field("password") password: String,
-        @Field("scope") scope: String = "me.read me.write platforms.read roms.read assets.read assets.write roms.user.read roms.user.write collections.read collections.write"
-    ): Response<RomMTokenResponse>
 
     @POST("api/client-tokens/exchange")
     suspend fun exchangePairingCode(

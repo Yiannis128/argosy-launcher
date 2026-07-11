@@ -93,8 +93,7 @@ enum class ConnectionStatus {
 
 enum class RomMAuthMethod {
     DEVICE,
-    PAIRING_CODE,
-    PASSWORD
+    PAIRING_CODE
 }
 
 internal const val ROMM_AUTH_METHOD_PICKER_KEY = "rommAuthMethod"
@@ -669,8 +668,6 @@ data class ServerState(
     val rommConfiguring: Boolean = false,
     val rommAuthMethod: RomMAuthMethod = RomMAuthMethod.PAIRING_CODE,
     val rommConfigUrl: String = "",
-    val rommConfigUsername: String = "",
-    val rommConfigPassword: String = "",
     val rommConfigPairingCode: String = "",
     val rommShowScanner: Boolean = false,
     val rommHasCamera: Boolean = false,
