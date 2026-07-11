@@ -391,7 +391,9 @@ data class PlatformDetailState(
     val isUserStatePathOverride: Boolean = false,
     val supportsStatePath: Boolean = false,
     val isScanning: Boolean = false,
-    val downloadedSizeBytes: Long = 0
+    val downloadedSizeBytes: Long = 0,
+    val downloadOverrides: Map<String, Boolean> = emptyMap(),
+    val globalDownloadDefaults: Map<String, Boolean> = emptyMap()
 ) {
     val playTimeFormatted: String get() {
         if (totalPlayTimeMs <= 0) return "--"
@@ -693,6 +695,7 @@ data class PlatformFilterItem(
 )
 
 data class SyncSettingsState(
+    val downloadDefaults: Map<String, Boolean> = emptyMap(),
     val syncFilters: SyncFilterPreferences = SyncFilterPreferences(),
     val showSyncFiltersModal: Boolean = false,
     val syncFiltersModalFocusIndex: Int = 0,

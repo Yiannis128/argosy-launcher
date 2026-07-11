@@ -91,6 +91,9 @@ internal sealed class PlatformDetailItem(
     data object BiosInstall : PlatformDetailItem("bios_install", "bios", { it.hasBios && it.biosDownloaded && it.canDistribute })
     data object BiosCopy : PlatformDetailItem("bios_copy", "bios", { it.hasBios && it.biosDownloaded })
 
+    class DownloadDefault(val categoryKey: String) :
+        PlatformDetailItem("dl_$categoryKey", "downloads")
+
     companion object {
         val ALL: List<PlatformDetailItem> = listOf(
             Header("header_emulator", "emulator", "Emulator"),
@@ -103,8 +106,10 @@ internal sealed class PlatformDetailItem(
             Header("header_sync", "sync", "Storage & Sync"),
             SyncToggle, SyncNow, InfoItem("info_package_path", "sync", { it.showSavePath && !it.isBuiltin && !it.isRetroArch }),
             RomPath, SavePath, MemoryCard, StatePath,
-            RemoveFiles
-        )
+            RemoveFiles,
+            Header("header_downloads", "downloads", "Download Defaults")
+        ) + com.nendo.argosy.data.preferences.DownloadDefaults.CONFIGURABLE_KEYS
+            .map { DownloadDefault(it) }
     }
 }
 
@@ -164,6 +169,7 @@ private fun createPlatformDetailLayout() = SettingsLayout<PlatformDetailItem, Pl
             "platform" -> "Platform"
             "bios" -> "BIOS"
             "sync" -> "Storage & Sync"
+            "downloads" -> "Download Defaults"
             else -> null
         }
     }
@@ -544,6 +550,29 @@ fun PlatformDetailSection(
                     isDangerous = true,
                     onClick = { viewModel.requestRemoveLocalFiles() }
                 )
+
+                is PlatformDetailItem.DownloadDefault -> {
+                    val override = detail.downloadOverrides[item.categoryKey]
+                    val globalOn = detail.globalDownloadDefaults[item.categoryKey] ?: false
+                    val cycleOptions = remember(globalOn) {
+                        listOf("Inherit (${if (globalOn) "On" else "Off"})", "Include", "Exclude")
+                    }
+                    val currentIndex = when (override) {
+                        null -> 0
+                        true -> 1
+                        false -> 2
+                    }
+                    CyclePreference(
+                        title = downloadCategoryLabel(item.categoryKey),
+                        value = cycleOptions[currentIndex],
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.cyclePlatformDownloadOverride(config.platform.slug, item.categoryKey, 1) },
+                        onPrev = { viewModel.cyclePlatformDownloadOverride(config.platform.slug, item.categoryKey, -1) },
+                        options = cycleOptions,
+                        onSelect = { viewModel.cyclePlatformDownloadOverride(config.platform.slug, item.categoryKey, it - currentIndex) },
+                        pickerRequestToken = pickerToken(item)
+                    )
+                }
 
                 // -- BIOS section --
                 PlatformDetailItem.BiosStatus -> {} // rendered as InfoItem

@@ -103,6 +103,47 @@ class SyncPreferencesRepository @Inject constructor(
         val SAVE_SYNC_LOCAL_REKEY_DONE = booleanPreferencesKey("save_sync_local_rekey_done")
         val SAVE_PATH_CACHE_PURGED = booleanPreferencesKey("save_path_cache_purged")
         val LAST_NEGOTIATE_AT = stringPreferencesKey("last_negotiate_at")
+        val DOWNLOAD_CATEGORY_DEFAULTS = stringPreferencesKey("download_category_defaults")
+        val DOWNLOAD_CATEGORY_PLATFORM_OVERRIDES = stringPreferencesKey("download_category_platform_overrides")
+    }
+
+    val downloadCategoryDefaults: Flow<Map<String, Boolean>> =
+        dataStore.data.map { DownloadDefaults.deserialize(it[Keys.DOWNLOAD_CATEGORY_DEFAULTS]) }
+
+    val downloadCategoryPlatformOverrides: Flow<Map<String, Map<String, Boolean>>> =
+        dataStore.data.map {
+            DownloadDefaults.deserializeOverrides(it[Keys.DOWNLOAD_CATEGORY_PLATFORM_OVERRIDES])
+        }
+
+    suspend fun setDownloadCategoryDefault(categoryKey: String, include: Boolean) {
+        dataStore.edit { prefs ->
+            val current = DownloadDefaults.deserialize(prefs[Keys.DOWNLOAD_CATEGORY_DEFAULTS])
+            prefs[Keys.DOWNLOAD_CATEGORY_DEFAULTS] =
+                DownloadDefaults.serialize(current + (categoryKey to include))
+        }
+    }
+
+    suspend fun setDownloadCategoryPlatformOverride(
+        platformSlug: String,
+        categoryKey: String,
+        include: Boolean?
+    ) {
+        dataStore.edit { prefs ->
+            val all = DownloadDefaults
+                .deserializeOverrides(prefs[Keys.DOWNLOAD_CATEGORY_PLATFORM_OVERRIDES])
+                .toMutableMap()
+            val platform = (all[platformSlug] ?: emptyMap()).toMutableMap()
+            if (include == null) platform.remove(categoryKey) else platform[categoryKey] = include
+            if (platform.isEmpty()) all.remove(platformSlug) else all[platformSlug] = platform
+            prefs[Keys.DOWNLOAD_CATEGORY_PLATFORM_OVERRIDES] =
+                DownloadDefaults.serializeOverrides(all)
+        }
+    }
+
+    suspend fun getEffectiveDownloadDefaults(platformSlug: String): Map<String, Boolean> {
+        val global = downloadCategoryDefaults.first()
+        val override = downloadCategoryPlatformOverrides.first()[platformSlug] ?: emptyMap()
+        return DownloadDefaults.resolve(global, override)
     }
 
     suspend fun getLastNegotiateAt(): Instant? =

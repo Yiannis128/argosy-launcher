@@ -309,6 +309,9 @@ class SettingsViewModel @Inject constructor(
                 }
             }
 
+            val globalDefaults = preferencesRepository.getGlobalDownloadDefaults()
+            val overrides = preferencesRepository.getDownloadPlatformOverrides(platformSlug)
+
             _uiState.update { it.copy(
                 platformDetail = it.platformDetail.copy(
                     totalGames = config.platform.gameCount,
@@ -318,7 +321,9 @@ class SettingsViewModel @Inject constructor(
                     packagePathAccessible = packagePathAccessible,
                     biosTotal = biosStatus?.totalFiles ?: 0,
                     biosDownloaded = biosStatus?.downloadedFiles ?: 0,
-                    hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0
+                    hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0,
+                    downloadOverrides = overrides,
+                    globalDownloadDefaults = globalDefaults
                 )
             ) }
         }
@@ -969,6 +974,30 @@ class SettingsViewModel @Inject constructor(
     fun toggleSyncScreenshots() = routeToggleSyncScreenshots(this)
     fun toggleUploadScreenshots() = routeToggleUploadScreenshots(this)
     fun toggleBoxArtCache() = routeToggleBoxArtCache(this)
+    fun setDownloadCategoryDefault(categoryKey: String, include: Boolean) =
+        syncDelegate.setDownloadCategoryDefault(viewModelScope, categoryKey, include)
+
+    fun cyclePlatformDownloadOverride(platformSlug: String, categoryKey: String, direction: Int) {
+        val current = _uiState.value.platformDetail.downloadOverrides[categoryKey]
+        val currentIndex = when (current) {
+            null -> 0
+            true -> 1
+            false -> 2
+        }
+        val next = when ((currentIndex + direction).mod(3)) {
+            0 -> null
+            1 -> true
+            else -> false
+        }
+        _uiState.update { st ->
+            val overrides = st.platformDetail.downloadOverrides.toMutableMap()
+            if (next == null) overrides.remove(categoryKey) else overrides[categoryKey] = next
+            st.copy(platformDetail = st.platformDetail.copy(downloadOverrides = overrides.toMap()))
+        }
+        viewModelScope.launch {
+            preferencesRepository.setDownloadCategoryPlatformOverride(platformSlug, categoryKey, next)
+        }
+    }
 
     fun enableSaveSync() = syncDelegate.enableSaveSync(viewModelScope)
     fun toggleSaveSync() = syncDelegate.toggleSaveSync(viewModelScope)

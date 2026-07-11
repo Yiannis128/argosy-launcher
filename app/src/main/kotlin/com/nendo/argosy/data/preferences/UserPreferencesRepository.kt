@@ -7,6 +7,7 @@ import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -268,6 +269,16 @@ class UserPreferencesRepository @Inject constructor(
     // --- Sync delegates ---
 
     suspend fun setRommConfig(url: String?, username: String?) = syncPrefs.setRommConfig(url, username)
+    suspend fun setDownloadCategoryDefault(categoryKey: String, include: Boolean) =
+        syncPrefs.setDownloadCategoryDefault(categoryKey, include)
+    suspend fun setDownloadCategoryPlatformOverride(platformSlug: String, categoryKey: String, include: Boolean?) =
+        syncPrefs.setDownloadCategoryPlatformOverride(platformSlug, categoryKey, include)
+    suspend fun getGlobalDownloadDefaults(): Map<String, Boolean> =
+        DownloadDefaults.FACTORY + syncPrefs.downloadCategoryDefaults.first()
+    suspend fun getDownloadPlatformOverrides(platformSlug: String): Map<String, Boolean> =
+        syncPrefs.downloadCategoryPlatformOverrides.first()[platformSlug] ?: emptyMap()
+    suspend fun getEffectiveDownloadDefaults(platformSlug: String): Map<String, Boolean> =
+        syncPrefs.getEffectiveDownloadDefaults(platformSlug)
     suspend fun setRomMCredentials(baseUrl: String, token: String, username: String? = null) = syncPrefs.setRomMCredentials(baseUrl, token, username)
     suspend fun clearRomMCredentials() = syncPrefs.clearRomMCredentials()
     suspend fun setRommDeviceId(deviceId: String, clientVersion: String) = syncPrefs.setRommDeviceId(deviceId, clientVersion)

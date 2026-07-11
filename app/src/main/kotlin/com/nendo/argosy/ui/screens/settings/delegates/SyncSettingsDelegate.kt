@@ -68,6 +68,15 @@ class SyncSettingsDelegate @Inject constructor(
         _state.value = newState
     }
 
+    fun setDownloadCategoryDefault(scope: CoroutineScope, categoryKey: String, include: Boolean) {
+        _state.update {
+            it.copy(downloadDefaults = it.downloadDefaults + (categoryKey to include))
+        }
+        scope.launch {
+            preferencesRepository.setDownloadCategoryDefault(categoryKey, include)
+        }
+    }
+
     fun loadLibrarySettings(scope: CoroutineScope) {
         scope.launch {
             val prefs = preferencesRepository.preferences.first()
@@ -77,8 +86,10 @@ class SyncSettingsDelegate @Inject constructor(
             val enabledPlatformCount = platformRepository.getEnabledPlatformCount()
             val totalPlatformCount = platformRepository.getTotalPlatformCount()
             val cacheCounts = saveCacheRepository.getCounts()
+            val downloadDefaults = preferencesRepository.getGlobalDownloadDefaults()
             _state.update {
                 it.copy(
+                    downloadDefaults = downloadDefaults,
                     syncFilters = prefs.syncFilters,
                     saveSyncEnabled = prefs.saveSyncEnabled,
                     saveCacheLimit = prefs.saveCacheLimit,

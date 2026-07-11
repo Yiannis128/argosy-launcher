@@ -215,7 +215,15 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
                         }
                     }
                 }
-                SyncSettingsItem.MediaHeader, SyncSettingsItem.ImageCacheProgressIndicator, null -> {}
+                is SyncSettingsItem.CategoryDefault -> {
+                    val item = syncSettingsItemAtFocusIndex(state.focusedIndex) as SyncSettingsItem.CategoryDefault
+                    val current = state.syncSettings.downloadDefaults[item.categoryKey]
+                        ?: (com.nendo.argosy.data.preferences.DownloadDefaults.FACTORY[item.categoryKey] ?: false)
+                    vm.setDownloadCategoryDefault(item.categoryKey, !current)
+                    return InputResult.handled(SoundType.TOGGLE)
+                }
+                SyncSettingsItem.MediaHeader, SyncSettingsItem.ImageCacheProgressIndicator,
+                SyncSettingsItem.DownloadDefaultsHeader, null -> {}
             }
             InputResult.HANDLED
         }
@@ -967,6 +975,10 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
         }
         PlatformDetailItem.DisplayTarget -> {
             vm.requestEnumPicker(PlatformDetailItem.DisplayTarget.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        is PlatformDetailItem.DownloadDefault -> {
+            vm.requestEnumPicker(item.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
         PlatformDetailItem.LegacyMode -> vm.toggleLegacyMode(config)
