@@ -128,6 +128,9 @@ class DualScreenManager(
         com.nendo.argosy.util.SecondaryHomeComponent.setEnabled(appContext, enabled)
     }
 
+    /** Live in-memory session check; unlike SessionStateStore.hasActiveSession this flips false the moment session teardown begins, not after save sync completes. */
+    fun hasLiveSession(): Boolean = playSessionTracker.activeSession.value != null
+
     fun teardownCompanion() {
         stopStartupGuard()
         companionLaunchJob?.cancel()

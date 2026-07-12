@@ -68,10 +68,13 @@ class CompanionGuardService : Service() {
         super.onTaskRemoved(rootIntent)
         if (rootIntent?.component?.className != MainActivity::class.java.name) return
         if (SecondaryHomeComponent.isDefaultHome(this)) return
-        if (SessionStateStore(applicationContext).hasActiveSession()) return
+        val dsm = DualScreenManagerHolder.instance
+        val sessionLive = dsm?.hasLiveSession()
+            ?: SessionStateStore(applicationContext).hasActiveSession()
+        if (sessionLive) return
         Log.i(TAG, "Main task removed while not default home, releasing secondary display")
         SecondaryHomeComponent.setEnabled(this, false)
-        DualScreenManagerHolder.instance?.teardownCompanion()
+        dsm?.teardownCompanion()
         stopSelf()
     }
 
