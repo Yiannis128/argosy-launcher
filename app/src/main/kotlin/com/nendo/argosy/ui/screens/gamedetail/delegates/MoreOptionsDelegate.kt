@@ -2,6 +2,8 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.data.preferences.MenuWrapMode
+import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.screens.gamedetail.GameDownloadStatus
 import com.nendo.argosy.ui.screens.gamedetail.MoreOptionAction
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,8 @@ class MoreOptionsDelegate @Inject constructor(
 ) {
     private val _state = MutableStateFlow(MoreOptionsState())
     val state: StateFlow<MoreOptionsState> = _state.asStateFlow()
+
+    var menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP
 
     fun reset() {
         _state.value = MoreOptionsState()
@@ -68,13 +72,12 @@ class MoreOptionsDelegate @Inject constructor(
         if (usesTitleId && isEmulatedGame) optionCount++
         if (isMultiDisc) optionCount++
         if (hasVariants && isEmulatedGame) optionCount++
-        if (hasUpdates) optionCount++
-        if (hasManageableFiles && isDownloaded) optionCount++
+        if ((hasManageableFiles || hasUpdates) && isDownloaded) optionCount++
         if (isDownloaded || isAndroidApp) optionCount++
 
         val maxIndex = optionCount - 1
         _state.update { state ->
-            val newIndex = (state.moreOptionsFocusIndex + delta).coerceIn(0, maxIndex)
+            val newIndex = computeWrappedIndex(state.moreOptionsFocusIndex, delta, maxIndex, menuWrapMode)
             state.copy(moreOptionsFocusIndex = newIndex)
         }
     }
@@ -108,8 +111,7 @@ class MoreOptionsDelegate @Inject constructor(
         val titleIdIdx = if (usesTitleId && isEmulatedGame) currentIdx++ else -1
         val discIdx = if (isMultiDisc) currentIdx++ else -1
         val variantIdx = if (hasVariants && isEmulatedGame) currentIdx++ else -1
-        val updatesIdx = if (hasUpdates) currentIdx++ else -1
-        val manageFilesIdx = if (hasManageableFiles && isDownloaded) currentIdx++ else -1
+        val filesIdx = if ((hasManageableFiles || hasUpdates) && isDownloaded) currentIdx++ else -1
         val refreshIdx = if (canTrackProgress) currentIdx++ else -1
         val addToCollectionIdx = currentIdx++
         val deleteIdx = if (isDownloaded || isAndroidApp) currentIdx++ else -1
@@ -125,8 +127,7 @@ class MoreOptionsDelegate @Inject constructor(
             titleIdIdx -> MoreOptionAction.RefreshTitleId
             discIdx -> MoreOptionAction.SelectDisc
             variantIdx -> MoreOptionAction.SelectVariant
-            updatesIdx -> MoreOptionAction.UpdatesDlc
-            manageFilesIdx -> MoreOptionAction.ManageFiles
+            filesIdx -> MoreOptionAction.Files
             refreshIdx -> MoreOptionAction.RefreshData
             addToCollectionIdx -> MoreOptionAction.AddToCollection
             deleteIdx -> MoreOptionAction.Delete

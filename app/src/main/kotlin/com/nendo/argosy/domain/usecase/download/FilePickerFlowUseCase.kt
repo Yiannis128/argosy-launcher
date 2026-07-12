@@ -30,7 +30,8 @@ class FilePickerFlowUseCase @Inject constructor(
     private val gameFileDao: GameFileDao,
     private val romMRepository: RomMRepository,
     private val preferencesRepository: UserPreferencesRepository,
-    private val downloadGameUseCase: DownloadGameUseCase
+    private val downloadGameUseCase: DownloadGameUseCase,
+    private val downloadManager: com.nendo.argosy.data.download.DownloadManager
 ) {
 
     /** Null when there is nothing to choose: callers fall back to a plain download. */
@@ -89,12 +90,13 @@ class FilePickerFlowUseCase @Inject constructor(
                 }
                 .forEach { (key, files) ->
                     val isGame = key == "game"
-                    val label = when {
-                        isGame -> "Game"
-                        key.startsWith("folder:") -> key.removePrefix("folder:")
-                        else -> VariantCategory.fromKey(key).displayLabel
+                    if (!isGame) {
+                        val label = when {
+                            key.startsWith("folder:") -> key.removePrefix("folder:")
+                            else -> VariantCategory.fromKey(key).displayLabel
+                        }
+                        rows += FilePickerRow(isHeader = true, groupKey = key, label = label)
                     }
-                    rows += FilePickerRow(isHeader = true, groupKey = key, label = label)
                     val includeDefault = when {
                         isGame -> true
                         key.startsWith("folder:") -> defaults[DownloadDefaults.OTHER_KEY] ?: false
@@ -119,6 +121,116 @@ class FilePickerFlowUseCase @Inject constructor(
         if (rows.none { !it.isHeader }) return null
         if (versionGroups.size <= 1 && romFiles.size <= 1) return null
         return FilePickerSetup(rows, preselectedFiles, preselectedVersions)
+    }
+
+    /**
+     * Manage-mode rows come from the database only: every known file with its
+     * on-disk state preselected, plus a locked row for the base game file.
+     */
+    suspend fun buildManageRows(gameId: Long): FilePickerSetup? {
+        val game = gameDao.getById(gameId) ?: return null
+        val dbRows = gameFileDao.getFilesForGame(gameId)
+        if (dbRows.isEmpty()) return null
+
+        val rows = mutableListOf<FilePickerRow>()
+        val preselected = mutableSetOf<Long>()
+        val rootLen = dbRows.minOf { it.filePath.length }
+
+        val basePath = game.localPath
+        val baseInDb = basePath != null && dbRows.any { it.localPath == basePath }
+        if (basePath != null && !baseInDb && File(basePath).exists()) {
+            rows += FilePickerRow(
+                isHeader = false,
+                groupKey = "game",
+                label = basePath.substringAfterLast('/'),
+                sizeBytes = game.fileSizeBytes ?: 0,
+                isDownloaded = true,
+                isLocked = true
+            )
+        }
+
+        val grouped = dbRows.groupBy { f ->
+            val cat = VariantCategory.fromKey(f.category)
+            when {
+                cat == VariantCategory.GAME -> "game"
+                cat != VariantCategory.UNKNOWN -> cat.key
+                f.filePath.length > rootLen -> "folder:${f.filePath.substringAfterLast('/')}"
+                else -> "game"
+            }
+        }
+        grouped.entries
+            .sortedBy { (key, _) -> if (key == "game") -1 else VariantCategory.fromKey(key).sortOrder }
+            .forEach { (key, files) ->
+                if (key != "game") {
+                    val label = when {
+                        key.startsWith("folder:") -> key.removePrefix("folder:")
+                        else -> VariantCategory.fromKey(key).displayLabel
+                    }
+                    rows += FilePickerRow(isHeader = true, groupKey = key, label = label)
+                }
+                files.sortedBy { it.fileName }.forEach { f ->
+                    val rommFileId = f.rommFileId ?: return@forEach
+                    val onDisk = f.localPath != null && File(f.localPath).exists()
+                    val isBase = onDisk && f.localPath == game.localPath
+                    rows += FilePickerRow(
+                        isHeader = false,
+                        groupKey = key,
+                        label = f.regions?.let { "${f.fileName} ($it)" } ?: f.fileName,
+                        rommFileId = rommFileId,
+                        sizeBytes = f.fileSize,
+                        isDownloaded = onDisk,
+                        isLocked = isBase
+                    )
+                    if (onDisk) preselected += rommFileId
+                }
+            }
+        if (rows.none { !it.isHeader && !it.isLocked }) return null
+        return FilePickerSetup(rows, preselected, emptySet())
+    }
+
+    /** Checked-but-missing files get queued; unchecked-but-present files get deleted. Returns added to removed. */
+    suspend fun applyManagedSelection(
+        gameId: Long,
+        rows: List<FilePickerRow>,
+        selected: Set<Long>
+    ): Pair<Int, Int> {
+        val dbRows = gameFileDao.getFilesForGame(gameId)
+        val byRommId = dbRows.associateBy { it.rommFileId }
+        var added = 0
+        var removed = 0
+        for (row in rows) {
+            val rommFileId = row.rommFileId ?: continue
+            if (row.isHeader || row.isLocked) continue
+            val db = byRommId[rommFileId] ?: continue
+            val wantIt = rommFileId in selected
+            val haveIt = db.localPath != null
+            when {
+                wantIt && !haveIt -> {
+                    val game = gameDao.getById(gameId) ?: continue
+                    downloadManager.enqueueGameFileDownload(
+                        gameId = gameId,
+                        gameFileId = db.id,
+                        rommFileId = rommFileId,
+                        fileName = db.fileName,
+                        category = db.category,
+                        gameTitle = game.title,
+                        platformSlug = game.platformSlug,
+                        coverPath = game.coverPath,
+                        expectedSizeBytes = db.fileSize,
+                        gameFolderName = game.rommFileName
+                    )
+                    added++
+                }
+                !wantIt && haveIt -> {
+                    val path = db.localPath
+                    if (path != null && File(path).delete()) {
+                        gameFileDao.clearLocalPath(db.id)
+                        removed++
+                    }
+                }
+            }
+        }
+        return added to removed
     }
 
     /** Returns queued count; errors surface through the returned messages. */

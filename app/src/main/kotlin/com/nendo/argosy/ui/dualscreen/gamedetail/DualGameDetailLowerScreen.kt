@@ -43,7 +43,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Whatshot
@@ -873,8 +873,8 @@ private fun OptionsTabContent(
         GameDetailOption.SELECT_DISC -> OptionEntry(
             option, Icons.Filled.Album, "Select Disc"
         )
-        GameDetailOption.UPDATES_DLC -> OptionEntry(
-            option, Icons.Filled.SystemUpdate, "Updates & DLC"
+        GameDetailOption.FILES -> OptionEntry(
+            option, Icons.Filled.Checklist, "Files"
         )
         GameDetailOption.ADD_TO_COLLECTION -> OptionEntry(
             option, Icons.Filled.FolderSpecial, "Add to Collection"
@@ -903,7 +903,7 @@ private fun OptionsTabContent(
         GameDetailOption.CHANGE_CORE,
         GameDetailOption.SELECT_VARIANT,
         GameDetailOption.SELECT_DISC,
-        GameDetailOption.UPDATES_DLC,
+        GameDetailOption.FILES,
         GameDetailOption.ADD_TO_COLLECTION,
         GameDetailOption.REFRESH_METADATA
     )

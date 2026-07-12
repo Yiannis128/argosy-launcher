@@ -392,7 +392,10 @@ data class PlatformDetailState(
     val isScanning: Boolean = false,
     val downloadedSizeBytes: Long = 0,
     val downloadOverrides: Map<String, Boolean> = emptyMap(),
-    val globalDownloadDefaults: Map<String, Boolean> = emptyMap()
+    val globalDownloadDefaults: Map<String, Boolean> = emptyMap(),
+    val showDownloadDefaults: Boolean = false,
+    val downloadDefaultsFocusIndex: Int = 0,
+    val downloadDefaultsSlug: String? = null
 ) {
     val playTimeFormatted: String get() {
         if (totalPlayTimeMs <= 0) return "--"

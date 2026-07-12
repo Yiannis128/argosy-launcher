@@ -175,6 +175,13 @@ class GameDetailViewModel @Inject constructor(
         viewModelScope.launch { emulatorDetector.detectEmulators() }
 
         viewModelScope.launch {
+            preferencesRepository.userPreferences.collect { prefs ->
+                pickerModalDelegate.menuWrapMode = prefs.menuWrapMode
+                moreOptionsDelegate.menuWrapMode = prefs.menuWrapMode
+            }
+        }
+
+        viewModelScope.launch {
             saveManagement.saveChannelDelegate.state.collect { saveState ->
                 _uiState.update { it.copy(saveChannel = saveState) }
             }
@@ -365,13 +372,6 @@ class GameDetailViewModel @Inject constructor(
                     gameId = currentGameId,
                     selectedDiscPath = selection.discPath,
                     callbacks = makeLaunchCallbacks()
-                )
-            }
-            is PickerSelection.UpdateFile -> {
-                val game = _uiState.value.game ?: return
-                downloadDelegate.downloadUpdateFile(
-                    viewModelScope, currentGameId, selection.file,
-                    game.title, game.platformSlug, game.coverPath, game.rommFileName
                 )
             }
             is PickerSelection.Variant -> {
@@ -773,7 +773,7 @@ class GameDetailViewModel @Inject constructor(
 
     fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
 
-    fun showManageFilesPicker() {
+    fun showFilesPicker() {
         toggleMoreOptions()
         viewModelScope.launch {
             val built = downloadDelegate.buildManageRows(currentGameId) ?: return@launch
@@ -819,16 +819,21 @@ class GameDetailViewModel @Inject constructor(
     fun moveFilePickerFocus(delta: Int) = pickerModalDelegate.moveFilePickerFocus(delta)
     fun jumpFilePickerGroup(direction: Int) = pickerModalDelegate.jumpFilePickerGroup(direction)
     fun toggleFocusedFilePickerRow() = pickerModalDelegate.toggleFocusedFilePickerRow()
+
+    fun activateFocusedFilePickerItem() {
+        val st = pickerModalDelegate.state.value
+        val rowCount = st.visibleFilePickerRows.size
+        when {
+            st.filePickerFocusIndex < rowCount -> pickerModalDelegate.toggleFocusedFilePickerRow()
+            st.filePickerFocusIndex == rowCount -> dismissFilePicker()
+            else -> confirmFilePicker()
+        }
+    }
     fun toggleFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow) =
         pickerModalDelegate.toggleFilePickerRow(row)
 
     fun downloadSteamGame() {
         steamDownloadPromptController.requestSteamDownload(currentGameId)
-    }
-
-    fun downloadUpdateFile(file: UpdateFileUi) {
-        val game = _uiState.value.game ?: return
-        downloadDelegate.downloadUpdateFile(viewModelScope, currentGameId, file, game.title, game.platformSlug, game.coverPath, game.rommFileName)
     }
 
     fun dismissExtractionPrompt() = downloadDelegate.dismissExtractionPrompt()
@@ -1033,8 +1038,7 @@ class GameDetailViewModel @Inject constructor(
             MoreOptionAction.ChangeCore -> showCorePicker()
             MoreOptionAction.SelectDisc -> showDiscPicker()
             MoreOptionAction.SelectVariant -> showVariantPickerFromMenu()
-            MoreOptionAction.UpdatesDlc -> showUpdatesPicker()
-            MoreOptionAction.ManageFiles -> showManageFilesPicker()
+            MoreOptionAction.Files -> showFilesPicker()
             MoreOptionAction.RefreshData -> refreshAndroidOrRommData()
             MoreOptionAction.RefreshTitleId -> refreshTitleId()
             MoreOptionAction.SpeedrunSplits -> {
@@ -1385,25 +1389,6 @@ class GameDetailViewModel @Inject constructor(
     fun moveCorePickerFocus(delta: Int) = pickerModalDelegate.moveCorePickerFocus(delta)
     fun confirmCoreSelection() = pickerModalDelegate.confirmCoreSelection()
 
-    fun showUpdatesPicker() {
-        val state = _uiState.value
-        if (state.updateFiles.isEmpty() && state.dlcFiles.isEmpty()) return
-        moreOptionsDelegate.reset()
-        pickerModalDelegate.showUpdatesPicker()
-    }
-
-    fun dismissUpdatesPicker() = pickerModalDelegate.dismissUpdatesPicker()
-
-    fun moveUpdatesPickerFocus(delta: Int) {
-        pickerModalDelegate.moveUpdatesPickerFocus(delta, _uiState.value.updateFiles, _uiState.value.dlcFiles)
-    }
-
-    private fun confirmUpdatesSelection() {
-        pickerModalDelegate.confirmUpdatesSelection(_uiState.value.updateFiles, _uiState.value.dlcFiles)
-    }
-
-    fun installAllUpdatesAndDlc() { pickerModalDelegate.dismissUpdatesPicker(); playGame() }
-
     // --- Game actions ---
 
     fun toggleFavorite() {
@@ -1696,7 +1681,6 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showCorePicker -> { moveCorePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(-1); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(-1); InputResult.HANDLED }
-                pickerState.showUpdatesPicker -> { moveUpdatesPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showEmulatorPicker -> { moveEmulatorPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(-1); InputResult.HANDLED }
                 state.showAddToCollectionModal -> { moveCollectionFocusUp(); InputResult.HANDLED }
@@ -1727,7 +1711,6 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showCorePicker -> { moveCorePickerFocus(1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(1); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(1); InputResult.HANDLED }
-                pickerState.showUpdatesPicker -> { moveUpdatesPickerFocus(1); InputResult.HANDLED }
                 pickerState.showEmulatorPicker -> { moveEmulatorPickerFocus(1); InputResult.HANDLED }
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(1); InputResult.HANDLED }
                 state.showAddToCollectionModal -> { moveCollectionFocusDown(); InputResult.HANDLED }
@@ -1758,6 +1741,12 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> return InputResult.HANDLED
                 state.showAchievementList -> return InputResult.HANDLED
                 state.showExtractionFailedPrompt -> { moveExtractionPromptFocus(-1); return InputResult.HANDLED }
+                pickerState.showFilePicker -> {
+                    if (!pickerModalDelegate.moveFilePickerButtonFocus(-1)) {
+                        pickerModalDelegate.setFocusedFilePickerGroupCollapsed(collapse = true)
+                    }
+                    return InputResult.HANDLED
+                }
                 state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
                 else -> { onSectionLeft(); return InputResult.HANDLED }
             }
@@ -1782,6 +1771,12 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> return InputResult.HANDLED
                 state.showAchievementList -> return InputResult.HANDLED
                 state.showExtractionFailedPrompt -> { moveExtractionPromptFocus(1); return InputResult.HANDLED }
+                pickerState.showFilePicker -> {
+                    if (!pickerModalDelegate.moveFilePickerButtonFocus(1)) {
+                        pickerModalDelegate.setFocusedFilePickerGroupCollapsed(collapse = false)
+                    }
+                    return InputResult.HANDLED
+                }
                 state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
                 else -> { onSectionRight(); return InputResult.HANDLED }
             }
@@ -1849,11 +1844,10 @@ class GameDetailViewModel @Inject constructor(
                 state.showStatusPicker -> confirmStatus()
                 state.showMissingDiscPrompt -> repairAndPlay()
                 state.showExtractionFailedPrompt -> confirmExtractionPromptSelection()
-                pickerState.showFilePicker -> toggleFocusedFilePickerRow()
+                pickerState.showFilePicker -> activateFocusedFilePickerItem()
                 pickerState.showCorePicker -> confirmCoreSelection()
                 pickerState.showDiscPicker -> selectFocusedDisc()
                 pickerState.showVariantPicker -> confirmOrDownloadFocusedVariant()
-                pickerState.showUpdatesPicker -> confirmUpdatesSelection()
                 pickerState.showEmulatorPicker -> confirmEmulatorSelection()
                 pickerState.showSteamLauncherPicker -> confirmSteamLauncherSelection()
                 state.showAddToCollectionModal -> confirmCollectionSelection()
@@ -1892,7 +1886,6 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showCorePicker -> dismissCorePicker()
                 pickerState.showDiscPicker -> dismissDiscPicker()
                 pickerState.showVariantPicker -> pickerModalDelegate.dismissVariantPicker()
-                pickerState.showUpdatesPicker -> dismissUpdatesPicker()
                 pickerState.showEmulatorPicker -> dismissEmulatorPicker()
                 pickerState.showSteamLauncherPicker -> dismissSteamLauncherPicker()
                 state.showPermissionModal -> dismissPermissionModal()
@@ -1921,7 +1914,6 @@ class GameDetailViewModel @Inject constructor(
             if (state.showStatusPicker) { dismissStatusPicker(); return InputResult.UNHANDLED }
             if (state.showMissingDiscPrompt) { dismissMissingDiscPrompt(); return InputResult.UNHANDLED }
             if (pickerState.showCorePicker) { dismissCorePicker(); return InputResult.UNHANDLED }
-            if (pickerState.showUpdatesPicker) { dismissUpdatesPicker(); return InputResult.UNHANDLED }
             if (state.showPlayOptions) { dismissPlayOptions(); return InputResult.UNHANDLED }
             if (state.showMoreOptions) { toggleMoreOptions(); return InputResult.UNHANDLED }
             if (pickerState.showEmulatorPicker) { dismissEmulatorPicker(); return InputResult.UNHANDLED }

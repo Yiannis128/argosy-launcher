@@ -129,14 +129,6 @@ class DualGameDetailViewModel(
     val collectionItems: StateFlow<List<DualCollectionItem>> =
         _collectionItems.asStateFlow()
 
-    private val _updateFiles = MutableStateFlow<List<UpdateFileUi>>(emptyList())
-    val updateFiles: StateFlow<List<UpdateFileUi>> = _updateFiles.asStateFlow()
-
-    private val _dlcFiles = MutableStateFlow<List<UpdateFileUi>>(emptyList())
-    val dlcFiles: StateFlow<List<UpdateFileUi>> = _dlcFiles.asStateFlow()
-
-    private val _updatesPickerFocusIndex = MutableStateFlow(0)
-    val updatesPickerFocusIndex: StateFlow<Int> = _updatesPickerFocusIndex.asStateFlow()
 
     private val _emulatorPickerFocusIndex = MutableStateFlow(0)
     val emulatorPickerFocusIndex: StateFlow<Int> = _emulatorPickerFocusIndex.asStateFlow()
@@ -283,7 +275,7 @@ class DualGameDetailViewModel(
                 }
             }
             ActiveModal.EMULATOR, ActiveModal.CORE, ActiveModal.COLLECTION,
-            ActiveModal.SAVE_NAME, ActiveModal.UPDATES_DLC,
+            ActiveModal.SAVE_NAME,
             ActiveModal.DISC_PICKER, ActiveModal.VARIANT_PICKER,
             ActiveModal.STEAM_INSTALL -> return
             ActiveModal.FILE_PICKER -> {}
@@ -1070,92 +1062,6 @@ class DualGameDetailViewModel(
         _activeModal.value = ActiveModal.NONE
     }
 
-    suspend fun openUpdatesModal() {
-        val gameId = _uiState.value.gameId
-        if (gameId < 0) return
-        val game = gameRepository.getById(gameId) ?: return
-        val platformSlug = game.platformSlug
-        val localPath = game.localPath
-        val remoteFiles = gameRepository.getGameFilesForGame(gameId)
-
-        val localUpdateFileNames = if (localPath != null) {
-            ZipExtractor.listAllUpdateFiles(localPath, platformSlug)
-                .map { it.name }.toSet()
-        } else emptySet()
-
-        val localDlcFileNames = if (localPath != null) {
-            ZipExtractor.listAllDlcFiles(localPath, platformSlug)
-                .map { it.name }.toSet()
-        } else emptySet()
-
-        val dbUpdates = remoteFiles.filter { it.category == "update" }.map { file ->
-            val downloaded = file.isLocallyPresent() || file.fileName in localUpdateFileNames
-            UpdateFileUi(
-                fileName = file.fileName, filePath = file.filePath,
-                sizeBytes = file.fileSize, type = UpdateFileType.UPDATE,
-                isDownloaded = downloaded,
-                gameFileId = file.id, rommFileId = file.rommFileId,
-                romId = file.romId
-            )
-        }
-
-        val dbDlc = remoteFiles.filter { it.category == "dlc" }.map { file ->
-            val downloaded = file.isLocallyPresent() || file.fileName in localDlcFileNames
-            UpdateFileUi(
-                fileName = file.fileName, filePath = file.filePath,
-                sizeBytes = file.fileSize, type = UpdateFileType.DLC,
-                isDownloaded = downloaded,
-                gameFileId = file.id, rommFileId = file.rommFileId,
-                romId = file.romId
-            )
-        }
-
-        val localUpdates = if (localPath != null) {
-            ZipExtractor.listAllUpdateFiles(localPath, platformSlug)
-                .filter { file -> dbUpdates.none { it.fileName == file.name } }
-                .map { file ->
-                    UpdateFileUi(
-                        fileName = file.name, filePath = file.absolutePath,
-                        sizeBytes = file.length(), type = UpdateFileType.UPDATE,
-                        isDownloaded = true
-                    )
-                }
-        } else emptyList()
-
-        val localDlc = if (localPath != null) {
-            ZipExtractor.listAllDlcFiles(localPath, platformSlug)
-                .filter { file -> dbDlc.none { it.fileName == file.name } }
-                .map { file ->
-                    UpdateFileUi(
-                        fileName = file.name, filePath = file.absolutePath,
-                        sizeBytes = file.length(), type = UpdateFileType.DLC,
-                        isDownloaded = true
-                    )
-                }
-        } else emptyList()
-
-        val sortedUpdates = (dbUpdates + localUpdates).sortedWith(UpdateFileVersionSort.LATEST_FIRST)
-        _updateFiles.value = sortedUpdates
-        _dlcFiles.value = dbDlc + localDlc
-        _updatesPickerFocusIndex.value = 0
-        _activeModal.value = ActiveModal.UPDATES_DLC
-    }
-
-    fun dismissUpdatesModal() {
-        _activeModal.value = ActiveModal.NONE
-        _updateFiles.value = emptyList()
-        _dlcFiles.value = emptyList()
-        _updatesPickerFocusIndex.value = 0
-    }
-
-    fun moveUpdatesFocus(delta: Int) {
-        val total = _updateFiles.value.size + _dlcFiles.value.size
-        val max = (total - 1).coerceAtLeast(0)
-        _updatesPickerFocusIndex.update { (it + delta).coerceIn(0, max) }
-    }
-
-    fun getUpdatesFileCount(): Int =
-        _updateFiles.value.size + _dlcFiles.value.size
 
     fun moveEmulatorPickerFocus(delta: Int) {
         val total = _emulatorPickerList.value.size + 1
@@ -1167,11 +1073,6 @@ class DualGameDetailViewModel(
         val total = _collectionItems.value.size + 1
         val max = (total).coerceAtLeast(0)
         _collectionPickerFocusIndex.update { (it + delta).coerceIn(0, max) }
-    }
-
-    fun getDownloadableFiles(): List<UpdateFileUi> {
-        val allFiles = _updateFiles.value + _dlcFiles.value
-        return allFiles.filter { !it.isDownloaded && it.gameFileId != null }
     }
 
     fun openDiscPicker(discs: List<DiscOption>) {

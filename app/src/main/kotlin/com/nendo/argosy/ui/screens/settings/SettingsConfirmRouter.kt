@@ -960,8 +960,8 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
             vm.requestEnumPicker(PlatformDetailItem.DisplayTarget.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
-        is PlatformDetailItem.DownloadDefault -> {
-            vm.requestEnumPicker(item.key)
+        PlatformDetailItem.DownloadDefaults -> {
+            vm.openPlatformDownloadDefaults(config.platform.slug)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
         PlatformDetailItem.LegacyMode -> vm.toggleLegacyMode(config)

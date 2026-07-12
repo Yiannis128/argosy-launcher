@@ -93,12 +93,6 @@ class SecondaryHomeBroadcastHelper(
         dsm.openSteamChooserForHome(gameId)
     }
 
-    fun broadcastUpdatesModalOpen(vm: DualGameDetailViewModel) {
-        val updates = vm.updateFiles.value
-        val dlc = vm.dlcFiles.value
-        dsm.openUpdatesModal(updates + dlc)
-    }
-
     fun broadcastDiscModalOpen(discs: List<com.nendo.argosy.data.emulator.DiscOption>) {
         dsm.openDiscModal(discs)
     }

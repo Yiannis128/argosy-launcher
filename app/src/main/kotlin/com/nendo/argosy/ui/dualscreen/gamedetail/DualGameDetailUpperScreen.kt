@@ -70,7 +70,6 @@ import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.screens.gamedetail.RatingType
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.StatusPickerModal
-import com.nendo.argosy.ui.screens.gamedetail.modals.UpdatesPickerModal
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -100,6 +99,7 @@ fun DualGameDetailUpperScreen(
     onModalDismiss: () -> Unit = {},
     onFilePickerToggle: (com.nendo.argosy.data.model.FilePickerRow) -> Unit = {},
     onFilePickerConfirm: () -> Unit = {},
+    onFilePickerToggleCollapse: (String) -> Unit = {},
     footerHints: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -193,12 +193,6 @@ fun DualGameDetailUpperScreen(
                 onConfirm = onSaveNameConfirm,
                 onDismiss = onModalDismiss
             )
-            ActiveModal.UPDATES_DLC -> UpdatesPickerModal(
-                files = state.updateFiles + state.dlcFiles,
-                focusIndex = state.updatesPickerFocusIndex,
-                onDownload = {},
-                onDismiss = onModalDismiss
-            )
             ActiveModal.DISC_PICKER -> DualDiscPickerContent(
                 discs = state.discPickerOptions,
                 focusIndex = state.discPickerFocusIndex,
@@ -212,32 +206,44 @@ fun DualGameDetailUpperScreen(
                 onDismiss = onModalDismiss
             )
             ActiveModal.FILE_PICKER -> {
-                val selectedCount = state.filePickerRows.count { row ->
-                    !row.isHeader && (row.versionRommId
+                val isSelected = { row: com.nendo.argosy.data.model.FilePickerRow ->
+                    row.versionRommId
                         ?.let { it in state.filePickerSelectedVersions }
-                        ?: (row.rommFileId in state.filePickerSelected))
+                        ?: (row.rommFileId in state.filePickerSelected)
                 }
-                val selectedBytes = state.filePickerRows.filter { row ->
-                    !row.isHeader && (row.versionRommId
-                        ?.let { it in state.filePickerSelectedVersions }
-                        ?: (row.rommFileId in state.filePickerSelected))
-                }.sumOf { it.sizeBytes }
+                val summary = if (state.filePickerManageMode) {
+                    val adds = state.filePickerRows.filter { !it.isHeader && !it.isLocked && !it.isDownloaded && isSelected(it) }
+                    val removes = state.filePickerRows.filter { !it.isHeader && !it.isLocked && it.isDownloaded && !isSelected(it) }
+                    when {
+                        adds.isEmpty() && removes.isEmpty() -> "No changes"
+                        else -> buildList {
+                            if (adds.isNotEmpty()) add("+" + adds.size + " · " + com.nendo.argosy.util.formatBytes(adds.sumOf { it.sizeBytes }))
+                            if (removes.isNotEmpty()) add("-" + removes.size + " · " + com.nendo.argosy.util.formatBytes(removes.sumOf { it.sizeBytes }))
+                        }.joinToString("   ")
+                    }
+                } else {
+                    val selected = state.filePickerRows.filter { !it.isHeader && isSelected(it) }
+                    selected.size.toString() + " of " +
+                        state.filePickerRows.count { !it.isHeader } + " · " +
+                        com.nendo.argosy.util.formatBytes(selected.sumOf { it.sizeBytes }) + " selected"
+                }
                 com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerModal(
                     gameTitle = state.title,
-                    title = "Choose files",
-                    rows = state.filePickerRows,
+                    title = if (state.filePickerManageMode) "Files" else "Choose files",
+                    rows = state.visibleFilePickerRows,
                     selectedIds = state.filePickerSelected,
                     selectedVersionIds = state.filePickerSelectedVersions,
                     focusIndex = state.filePickerFocusIndex,
-                    summary = selectedCount.toString() + " of " +
-                        state.filePickerRows.count { !it.isHeader } + " · " +
-                        com.nendo.argosy.util.formatBytes(selectedBytes) + " selected",
+                    summary = summary,
                     onToggleRow = onFilePickerToggle,
                     onConfirm = onFilePickerConfirm,
-                    onDismiss = onModalDismiss
+                    onDismiss = onModalDismiss,
+                    allRows = state.filePickerRows,
+                    collapsedGroups = state.filePickerCollapsed,
+                    onToggleCollapse = onFilePickerToggleCollapse,
+                    manageMode = state.filePickerManageMode
                 )
             }
-            ActiveModal.VARIANT_PICKER -> {}
             ActiveModal.NONE -> {}
         }
     }

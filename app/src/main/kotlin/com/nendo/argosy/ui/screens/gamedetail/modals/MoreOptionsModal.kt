@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
@@ -89,11 +88,8 @@ fun MoreOptionsModal(
         if (hasVariants && isEmulatedGame) {
             add(MoreMenuEntry.Option(Icons.Default.SwapHoriz, "Select Variant", action = MoreOptionAction.SelectVariant))
         }
-        if (hasUpdates) {
-            add(MoreMenuEntry.Option(Icons.Default.SystemUpdate, "Updates/DLC", value = "$updateCount", action = MoreOptionAction.UpdatesDlc))
-        }
-        if (hasManageableFiles && isDownloaded) {
-            add(MoreMenuEntry.Option(Icons.Default.Checklist, "Manage Files", action = MoreOptionAction.ManageFiles))
+        if ((hasManageableFiles || hasUpdates) && isDownloaded) {
+            add(MoreMenuEntry.Option(Icons.Default.Checklist, "Files", action = MoreOptionAction.Files))
         }
         if (canTrackProgress) {
             add(MoreMenuEntry.Option(Icons.Default.Refresh, "Refresh Game Data", action = MoreOptionAction.RefreshData))

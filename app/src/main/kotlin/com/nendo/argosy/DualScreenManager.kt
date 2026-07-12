@@ -254,6 +254,7 @@ class DualScreenManager(
     init {
         scope.launch {
             preferencesRepository.userPreferences.collect { prefs ->
+                menuWrapMode = prefs.menuWrapMode
                 _dualScreenShowcase.update {
                     it.copy(
                         useGameBackground = prefs.useGameBackground,
@@ -263,6 +264,9 @@ class DualScreenManager(
             }
         }
     }
+
+    @Volatile private var menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode =
+        com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP
 
     private val _dualSyncOverlay = MutableStateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?>(null)
     val dualSyncOverlay: StateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?> = _dualSyncOverlay
@@ -687,7 +691,7 @@ class DualScreenManager(
     fun openModal(type: ActiveModal, value: Int = 0, statusSelected: String? = null, statusCurrent: String? = null) {
         when (type) {
             ActiveModal.EMULATOR, ActiveModal.CORE, ActiveModal.COLLECTION,
-            ActiveModal.SAVE_NAME, ActiveModal.UPDATES_DLC,
+            ActiveModal.SAVE_NAME,
             ActiveModal.DISC_PICKER, ActiveModal.VARIANT_PICKER,
             ActiveModal.STEAM_INSTALL -> return
             else -> handleDualModalOpen(type, value, statusSelected, statusCurrent)
@@ -728,21 +732,6 @@ class DualScreenManager(
                 saveNamePromptAction = actionType,
                 saveNameCacheId = cacheId,
                 saveNameText = ""
-            )
-        }
-        refocusMain()
-    }
-
-    fun openUpdatesModal(allFiles: List<UpdateFileUi>) {
-        val updateFiles = allFiles.filter { it.type == UpdateFileType.UPDATE }
-        val dlcFiles = allFiles.filter { it.type == UpdateFileType.DLC }
-        Log.d("UpdatesDLC", "openUpdatesModal: ${updateFiles.size} updates, ${dlcFiles.size} dlc")
-        _dualGameDetailState.update { state ->
-            state?.copy(
-                modalType = ActiveModal.UPDATES_DLC,
-                updateFiles = updateFiles,
-                dlcFiles = dlcFiles,
-                updatesPickerFocusIndex = 0
             )
         }
         refocusMain()
@@ -871,6 +860,7 @@ class DualScreenManager(
             }
             "SELECT_DISC" -> handleSelectDisc(gameId)
             "PLAY_DISC" -> handleDualPlayDisc(gameId, channelName)
+            "FILES" -> promptDualManageFilePicker(gameId)
         }
     }
 
@@ -879,7 +869,6 @@ class DualScreenManager(
             "rating" -> _dualGameDetailState.update { s -> s?.copy(rating = intValue.takeIf { it > 0 }) }
             "difficulty" -> _dualGameDetailState.update { s -> s?.copy(userDifficulty = intValue) }
             "status" -> _dualGameDetailState.update { s -> s?.copy(status = stringValue) }
-            "updates_focus" -> _dualGameDetailState.update { s -> s?.copy(updatesPickerFocusIndex = intValue) }
             "modal_rating" -> _dualGameDetailState.update { s -> s?.copy(modalRatingValue = intValue) }
             "modal_status" -> _dualGameDetailState.update { s -> s?.copy(modalStatusSelected = stringValue) }
             "emulator_focus" -> _dualGameDetailState.update { s -> s?.copy(emulatorFocusIndex = intValue) }
@@ -1147,8 +1136,9 @@ class DualScreenManager(
         _dualGameDetailState.update { state ->
             val max = state?.emulatorNames?.size ?: 0
             state?.copy(
-                emulatorFocusIndex = (state.emulatorFocusIndex + delta)
-                    .coerceIn(0, max)
+                emulatorFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.emulatorFocusIndex, delta, max, menuWrapMode
+                )
             )
         }
     }
@@ -1186,8 +1176,9 @@ class DualScreenManager(
         _dualGameDetailState.update { state ->
             val max = state?.coreNames?.size ?: 0
             state?.copy(
-                coreFocusIndex = (state.coreFocusIndex + delta)
-                    .coerceIn(0, max)
+                coreFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.coreFocusIndex, delta, max, menuWrapMode
+                )
             )
         }
     }
@@ -1231,8 +1222,9 @@ class DualScreenManager(
         _dualGameDetailState.update { state ->
             val max = state?.variantNames?.size ?: 0
             state?.copy(
-                variantFocusIndex = (state.variantFocusIndex + delta)
-                    .coerceIn(0, max)
+                variantFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.variantFocusIndex, delta, max, menuWrapMode
+                )
             )
         }
     }
@@ -1263,8 +1255,9 @@ class DualScreenManager(
         _dualGameDetailState.update { state ->
             val max = state?.collectionItems?.size ?: 0
             state?.copy(
-                collectionFocusIndex = (state.collectionFocusIndex + delta)
-                    .coerceIn(0, max)
+                collectionFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.collectionFocusIndex, delta, max, menuWrapMode
+                )
             )
         }
     }
@@ -1364,8 +1357,9 @@ class DualScreenManager(
         _dualGameDetailState.update { state ->
             val max = state?.steamInstallOptionNames?.size ?: 0
             state?.copy(
-                steamInstallFocusIndex = (state.steamInstallFocusIndex + delta)
-                    .coerceIn(0, max)
+                steamInstallFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.steamInstallFocusIndex, delta, max, menuWrapMode
+                )
             )
         }
     }
@@ -1533,7 +1527,27 @@ class DualScreenManager(
                     filePickerRows = setup.rows,
                     filePickerSelected = setup.preselectedFileIds,
                     filePickerSelectedVersions = setup.preselectedVersionIds,
-                    filePickerFocusIndex = 0
+                    filePickerFocusIndex = 0,
+                    filePickerCollapsed = emptySet(),
+                    filePickerManageMode = false
+                ) ?: state
+            }
+            refocusMain()
+        }
+    }
+
+    fun promptDualManageFilePicker(gameId: Long) {
+        scope.launch(Dispatchers.IO) {
+            val setup = filePickerFlow.buildManageRows(gameId) ?: return@launch
+            _dualGameDetailState.update { state ->
+                state?.takeIf { it.gameId == gameId }?.copy(
+                    modalType = ActiveModal.FILE_PICKER,
+                    filePickerRows = setup.rows,
+                    filePickerSelected = setup.preselectedFileIds,
+                    filePickerSelectedVersions = setup.preselectedVersionIds,
+                    filePickerFocusIndex = 0,
+                    filePickerCollapsed = emptySet(),
+                    filePickerManageMode = true
                 ) ?: state
             }
             refocusMain()
@@ -1543,15 +1557,35 @@ class DualScreenManager(
     fun moveDualFilePickerFocus(delta: Int) {
         _dualGameDetailState.update { state ->
             if (state == null) return@update null
-            val maxIndex = (state.filePickerRows.size - 1).coerceAtLeast(0)
-            state.copy(filePickerFocusIndex = (state.filePickerFocusIndex + delta).coerceIn(0, maxIndex))
+            val maxIndex = state.visibleFilePickerRows.size + 1
+            state.copy(filePickerFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(state.filePickerFocusIndex, delta, maxIndex, menuWrapMode))
+        }
+    }
+
+    fun moveDualFilePickerButtonFocus(delta: Int): Boolean {
+        val state = _dualGameDetailState.value ?: return false
+        val buttonStart = state.visibleFilePickerRows.size
+        if (state.filePickerFocusIndex < buttonStart) return false
+        _dualGameDetailState.update {
+            it?.copy(filePickerFocusIndex = (it.filePickerFocusIndex + delta).coerceIn(buttonStart, buttonStart + 1))
+        }
+        return true
+    }
+
+    fun activateDualFilePickerFocused() {
+        val state = _dualGameDetailState.value ?: return
+        val rowCount = state.visibleFilePickerRows.size
+        when {
+            state.filePickerFocusIndex < rowCount -> toggleDualFilePickerRow()
+            state.filePickerFocusIndex == rowCount -> dismissDualModal()
+            else -> confirmDualFilePicker()
         }
     }
 
     fun jumpDualFilePickerGroup(direction: Int) {
         _dualGameDetailState.update { state ->
             if (state == null) return@update null
-            val headers = state.filePickerRows.withIndex().filter { it.value.isHeader }.map { it.index }
+            val headers = state.visibleFilePickerRows.withIndex().filter { it.value.isHeader }.map { it.index }
             if (headers.isEmpty()) return@update state
             val target = if (direction > 0) {
                 headers.firstOrNull { it > state.filePickerFocusIndex }
@@ -1562,10 +1596,42 @@ class DualScreenManager(
         }
     }
 
+    fun toggleDualFilePickerGroupCollapse(groupKey: String) {
+        _dualGameDetailState.update { state ->
+            if (state == null) return@update null
+            val oldVisible = state.visibleFilePickerRows
+            val focusedRow = oldVisible.getOrNull(state.filePickerFocusIndex)
+            val newCollapsed = if (groupKey in state.filePickerCollapsed) {
+                state.filePickerCollapsed - groupKey
+            } else {
+                state.filePickerCollapsed + groupKey
+            }
+            val newVisible = state.filePickerRows.filter { it.isHeader || it.groupKey !in newCollapsed }
+            val newIndex = when {
+                state.filePickerFocusIndex >= oldVisible.size ->
+                    newVisible.size + (state.filePickerFocusIndex - oldVisible.size)
+                focusedRow != null ->
+                    newVisible.indexOf(focusedRow).takeIf { it >= 0 }
+                        ?: newVisible.indexOfFirst { it.isHeader && it.groupKey == focusedRow.groupKey }.coerceAtLeast(0)
+                else -> 0
+            }
+            state.copy(filePickerCollapsed = newCollapsed, filePickerFocusIndex = newIndex.coerceAtLeast(0))
+        }
+    }
+
+    fun setDualFocusedFilePickerGroupCollapsed(collapse: Boolean) {
+        val state = _dualGameDetailState.value ?: return
+        val row = state.visibleFilePickerRows.getOrNull(state.filePickerFocusIndex) ?: return
+        if (!row.isHeader) return
+        val isCollapsed = row.groupKey in state.filePickerCollapsed
+        if (collapse == isCollapsed) return
+        toggleDualFilePickerGroupCollapse(row.groupKey)
+    }
+
     fun toggleDualFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow? = null) {
         _dualGameDetailState.update { state ->
             if (state == null) return@update null
-            val target = row ?: state.filePickerRows.getOrNull(state.filePickerFocusIndex)
+            val target = row ?: state.visibleFilePickerRows.getOrNull(state.filePickerFocusIndex)
                 ?: return@update state
             var selected = state.filePickerSelected
             var versions = state.filePickerSelectedVersions
@@ -1602,12 +1668,23 @@ class DualScreenManager(
         val gameId = state.gameId
         val files = state.filePickerSelected
         val versions = state.filePickerSelectedVersions
+        val manageMode = state.filePickerManageMode
+        val rows = state.filePickerRows
         _dualGameDetailState.update { it?.copy(modalType = ActiveModal.NONE) }
         companionHost?.refocusSelf()
         scope.launch(Dispatchers.IO) {
-            val (queued, errors) = filePickerFlow.downloadSelection(gameId, files, versions)
-            errors.forEach { notificationManager.showError(it) }
-            if (queued > 1) notificationManager.showSuccess("Queued " + queued + " downloads")
+            if (manageMode) {
+                val (added, removed) = filePickerFlow.applyManagedSelection(gameId, rows, files)
+                val parts = buildList {
+                    if (added > 0) add("$added queued")
+                    if (removed > 0) add("$removed removed")
+                }
+                if (parts.isNotEmpty()) notificationManager.showSuccess(parts.joinToString(", "))
+            } else {
+                val (queued, errors) = filePickerFlow.downloadSelection(gameId, files, versions)
+                errors.forEach { notificationManager.showError(it) }
+                if (queued > 1) notificationManager.showSuccess("Queued " + queued + " downloads")
+            }
         }
     }
 

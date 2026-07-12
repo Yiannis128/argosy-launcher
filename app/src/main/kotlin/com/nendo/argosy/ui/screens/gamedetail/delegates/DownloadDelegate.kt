@@ -24,7 +24,6 @@ import com.nendo.argosy.ui.screens.common.GameActionsDelegate
 import com.nendo.argosy.ui.screens.gamedetail.ExtractionFailedInfo
 import com.nendo.argosy.ui.screens.gamedetail.GameDownloadStatus
 import com.nendo.argosy.ui.screens.gamedetail.LaunchEvent
-import com.nendo.argosy.ui.screens.gamedetail.UpdateFileUi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -185,57 +184,11 @@ class DownloadDelegate @Inject constructor(
         return Triple(setup.rows, setup.preselectedFileIds, setup.preselectedVersionIds)
     }
 
-    /**
-     * Manage-mode rows come from the database only: every known file with its
-     * downloaded state preselected. Rows backing the game's own localPath are
-     * locked (whole-game delete owns those).
-     */
     suspend fun buildManageRows(gameId: Long): Triple<List<FilePickerRow>, Set<Long>, Set<Long>>? {
-        val game = gameRepository.getById(gameId) ?: return null
-        val dbRows = gameFileDao.getFilesForGame(gameId)
-        if (dbRows.isEmpty()) return null
-
-        val rows = mutableListOf<FilePickerRow>()
-        val preselected = mutableSetOf<Long>()
-        val rootLen = dbRows.minOf { it.filePath.length }
-        val grouped = dbRows.groupBy { f ->
-            val cat = VariantCategory.fromKey(f.category)
-            when {
-                cat == VariantCategory.GAME -> "game"
-                cat != VariantCategory.UNKNOWN -> cat.key
-                f.filePath.length > rootLen -> "folder:${f.filePath.substringAfterLast('/')}"
-                else -> "game"
-            }
-        }
-        grouped.entries
-            .sortedBy { (key, _) -> if (key == "game") -1 else VariantCategory.fromKey(key).sortOrder }
-            .forEach { (key, files) ->
-                val label = when {
-                    key == "game" -> "Game"
-                    key.startsWith("folder:") -> key.removePrefix("folder:")
-                    else -> VariantCategory.fromKey(key).displayLabel
-                }
-                rows += FilePickerRow(isHeader = true, groupKey = key, label = label)
-                files.sortedBy { it.fileName }.forEach { f ->
-                    val rommFileId = f.rommFileId ?: return@forEach
-                    val isBase = f.localPath != null && f.localPath == game.localPath
-                    rows += FilePickerRow(
-                        isHeader = false,
-                        groupKey = key,
-                        label = f.regions?.let { "${f.fileName} ($it)" } ?: f.fileName,
-                        rommFileId = rommFileId,
-                        sizeBytes = f.fileSize,
-                        isDownloaded = f.localPath != null,
-                        isLocked = isBase
-                    )
-                    if (f.localPath != null) preselected += rommFileId
-                }
-            }
-        if (rows.none { !it.isHeader && !it.isLocked }) return null
-        return Triple(rows, preselected, emptySet())
+        val setup = filePickerFlow.buildManageRows(gameId) ?: return null
+        return Triple(setup.rows, setup.preselectedFileIds, setup.preselectedVersionIds)
     }
 
-    /** Checked-but-missing files get queued; unchecked-but-present files get deleted. */
     fun applyManagedFiles(
         scope: CoroutineScope,
         gameId: Long,
@@ -243,42 +196,7 @@ class DownloadDelegate @Inject constructor(
         selected: Set<Long>
     ) {
         scope.launch {
-            val dbRows = gameFileDao.getFilesForGame(gameId)
-            val byRommId = dbRows.associateBy { it.rommFileId }
-            var added = 0
-            var removed = 0
-            for (row in rows) {
-                val rommFileId = row.rommFileId ?: continue
-                if (row.isHeader || row.isLocked) continue
-                val db = byRommId[rommFileId] ?: continue
-                val wantIt = rommFileId in selected
-                val haveIt = db.localPath != null
-                when {
-                    wantIt && !haveIt -> {
-                        val game = gameRepository.getById(gameId) ?: continue
-                        downloadManager.enqueueGameFileDownload(
-                            gameId = gameId,
-                            gameFileId = db.id,
-                            rommFileId = rommFileId,
-                            fileName = db.fileName,
-                            category = db.category,
-                            gameTitle = game.title,
-                            platformSlug = game.platformSlug,
-                            coverPath = game.coverPath,
-                            expectedSizeBytes = db.fileSize,
-                            gameFolderName = game.rommFileName
-                        )
-                        added++
-                    }
-                    !wantIt && haveIt -> {
-                        val path = db.localPath
-                        if (path != null && File(path).delete()) {
-                            gameFileDao.clearLocalPath(db.id)
-                            removed++
-                        }
-                    }
-                }
-            }
+            val (added, removed) = filePickerFlow.applyManagedSelection(gameId, rows, selected)
             val parts = buildList {
                 if (added > 0) add("$added queued")
                 if (removed > 0) add("$removed removed")
@@ -414,35 +332,6 @@ class DownloadDelegate @Inject constructor(
                 is DownloadResult.Error -> notificationManager.showError(result.message)
                 is DownloadResult.ExtractionFailed -> { }
             }
-        }
-    }
-
-    fun downloadUpdateFile(
-        scope: CoroutineScope,
-        gameId: Long,
-        file: UpdateFileUi,
-        gameTitle: String,
-        platformSlug: String,
-        coverPath: String?,
-        gameFolderName: String? = null
-    ) {
-        val gameFileId = file.gameFileId ?: return
-        val rommFileId = file.rommFileId ?: return
-
-        scope.launch {
-            downloadManager.enqueueGameFileDownload(
-                gameId = gameId,
-                gameFileId = gameFileId,
-                rommFileId = rommFileId,
-                fileName = file.fileName,
-                category = file.type.name.lowercase(),
-                gameTitle = gameTitle,
-                platformSlug = platformSlug,
-                coverPath = coverPath,
-                expectedSizeBytes = file.sizeBytes,
-                gameFolderName = gameFolderName
-            )
-            notificationManager.showSuccess("Download queued: ${file.fileName}")
         }
     }
 

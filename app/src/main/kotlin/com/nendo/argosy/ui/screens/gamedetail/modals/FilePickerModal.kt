@@ -17,9 +17,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
-import androidx.compose.material.icons.filled.IndeterminateCheckBox
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,7 +32,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.nendo.argosy.data.model.FilePickerRow
+import com.nendo.argosy.ui.components.ArgosyCheckState
+import com.nendo.argosy.ui.components.ArgosyCheckbox
 import com.nendo.argosy.ui.components.FocusedScroll
+import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
@@ -40,8 +44,8 @@ import com.nendo.argosy.util.formatBytes
 enum class GroupCheckState { ALL, NONE, PARTIAL }
 
 /**
- * Cherry-pick file selection for a download. Renders no footer of its own;
- * hints ride the global footer bar while this modal holds input.
+ * Cherry-pick file selection for a download. Focus indices rows.size and
+ * rows.size + 1 land on the Cancel and confirm footer buttons.
  */
 @Composable
 fun FilePickerModal(
@@ -54,10 +58,34 @@ fun FilePickerModal(
     summary: String,
     onToggleRow: (FilePickerRow) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    allRows: List<FilePickerRow> = rows,
+    collapsedGroups: Set<String> = emptySet(),
+    onToggleCollapse: ((String) -> Unit)? = null,
+    manageMode: Boolean = false
 ) {
     val theme = LocalArgosyTheme.current
     val listState = rememberLazyListState()
+
+    val isRowSelected = { row: FilePickerRow ->
+        (row.isLocked && row.isDownloaded) ||
+            (row.versionRommId?.let { it in selectedVersionIds } ?: (row.rommFileId in selectedIds))
+    }
+    val pendingAdds = if (manageMode) {
+        allRows.count { !it.isHeader && !it.isLocked && !it.isDownloaded && isRowSelected(it) }
+    } else 0
+    val pendingRemoves = if (manageMode) {
+        allRows.count { !it.isHeader && !it.isLocked && it.isDownloaded && !isRowSelected(it) }
+    } else 0
+    val confirmLabel = when {
+        !manageMode -> "Download"
+        pendingAdds > 0 && pendingRemoves == 0 -> "Download $pendingAdds"
+        pendingRemoves > 0 && pendingAdds == 0 -> "Remove $pendingRemoves"
+        pendingAdds > 0 && pendingRemoves > 0 -> "Apply Changes"
+        else -> "No Changes"
+    }
+    val confirmEnabled = !manageMode || pendingAdds + pendingRemoves > 0
+    val confirmTint = if (manageMode && pendingRemoves > 0) theme.destructive else theme.focusAccent
 
     Box(
         modifier = Modifier
@@ -94,7 +122,7 @@ fun FilePickerModal(
                 )
                 Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-                FocusedScroll(listState = listState, focusedIndex = focusIndex)
+                FocusedScroll(listState = listState, focusedIndex = focusIndex.coerceAtMost((rows.size - 1).coerceAtLeast(0)))
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
@@ -104,21 +132,44 @@ fun FilePickerModal(
                         if (row.isHeader) {
                             FilePickerGroupHeader(
                                 row = row,
-                                checkState = groupCheckState(row.groupKey, rows, selectedIds, selectedVersionIds),
+                                checkState = groupCheckState(row.groupKey, allRows, selectedIds, selectedVersionIds),
                                 isFocused = focusIndex == index,
-                                onClick = { onToggleRow(row) }
+                                isCollapsed = row.groupKey in collapsedGroups,
+                                onClick = { onToggleRow(row) },
+                                onToggleCollapse = onToggleCollapse?.let { toggle -> { toggle(row.groupKey) } }
                             )
                         } else {
                             FilePickerFileRow(
                                 row = row,
-                                isSelected = row.versionRommId
-                                    ?.let { it in selectedVersionIds }
-                                    ?: (row.rommFileId in selectedIds),
+                                isSelected = isRowSelected(row),
                                 isFocused = focusIndex == index,
+                                manageMode = manageMode,
                                 onClick = { onToggleRow(row) }
                             )
                         }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(Dimens.spacingMd))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm, Alignment.End)
+                ) {
+                    ModalActionButton(
+                        label = "Cancel",
+                        tint = theme.focusAccent,
+                        restLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focused = focusIndex == rows.size,
+                        onClick = onDismiss
+                    )
+                    ModalActionButton(
+                        label = confirmLabel,
+                        tint = confirmTint,
+                        restLabelColor = MaterialTheme.colorScheme.onSurface,
+                        focused = focusIndex == rows.size + 1,
+                        onClick = onConfirm,
+                        enabled = confirmEnabled
+                    )
                 }
             }
         }
@@ -134,7 +185,8 @@ private fun groupCheckState(
     val members = rows.filter { !it.isHeader && it.groupKey == groupKey }
     if (members.isEmpty()) return GroupCheckState.NONE
     val selectedCount = members.count { row ->
-        row.versionRommId?.let { it in selectedVersionIds } ?: (row.rommFileId in selectedIds)
+        (row.isLocked && row.isDownloaded) ||
+            (row.versionRommId?.let { it in selectedVersionIds } ?: (row.rommFileId in selectedIds))
     }
     return when (selectedCount) {
         0 -> GroupCheckState.NONE
@@ -148,7 +200,9 @@ private fun FilePickerGroupHeader(
     row: FilePickerRow,
     checkState: GroupCheckState,
     isFocused: Boolean,
-    onClick: () -> Unit
+    isCollapsed: Boolean,
+    onClick: () -> Unit,
+    onToggleCollapse: (() -> Unit)?
 ) {
     val theme = LocalArgosyTheme.current
     Row(
@@ -163,24 +217,29 @@ private fun FilePickerGroupHeader(
             .clickableNoFocus { onClick() }
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
     ) {
-        Icon(
-            imageVector = when (checkState) {
-                GroupCheckState.ALL -> Icons.Default.Check
-                GroupCheckState.PARTIAL -> Icons.Default.IndeterminateCheckBox
-                GroupCheckState.NONE -> Icons.Default.CheckBoxOutlineBlank
-            },
-            contentDescription = null,
-            tint = if (checkState == GroupCheckState.NONE)
-                MaterialTheme.colorScheme.onSurfaceVariant
-            else theme.focusAccent
+        ArgosyCheckbox(
+            state = when (checkState) {
+                GroupCheckState.ALL -> ArgosyCheckState.CHECKED
+                GroupCheckState.PARTIAL -> ArgosyCheckState.PARTIAL
+                GroupCheckState.NONE -> ArgosyCheckState.UNCHECKED
+            }
         )
         Spacer(modifier = Modifier.width(Dimens.spacingSm))
         Text(
             text = row.label.uppercase(),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
         )
+        if (onToggleCollapse != null) {
+            Icon(
+                imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickableNoFocus { onToggleCollapse() }
+            )
+        }
     }
 }
 
@@ -189,9 +248,12 @@ private fun FilePickerFileRow(
     row: FilePickerRow,
     isSelected: Boolean,
     isFocused: Boolean,
+    manageMode: Boolean,
     onClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
+    val pendingAdd = manageMode && !row.isLocked && !row.isDownloaded && isSelected
+    val pendingRemove = manageMode && !row.isLocked && row.isDownloaded && !isSelected
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -204,14 +266,9 @@ private fun FilePickerFileRow(
             .clickableNoFocus(enabled = !row.isLocked) { onClick() }
             .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
     ) {
-        Icon(
-            imageVector = if (isSelected) Icons.Default.Check else Icons.Default.CheckBoxOutlineBlank,
-            contentDescription = null,
-            tint = when {
-                row.isLocked -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                isSelected -> theme.focusAccent
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            }
+        ArgosyCheckbox(
+            state = if (isSelected) ArgosyCheckState.CHECKED else ArgosyCheckState.UNCHECKED,
+            enabled = !row.isLocked
         )
         Spacer(modifier = Modifier.width(Dimens.spacingSm))
         Column(modifier = Modifier.weight(1f)) {
@@ -233,8 +290,18 @@ private fun FilePickerFileRow(
                     )
                 }
             }
-            if (row.isDownloaded) {
-                Text(
+            when {
+                pendingRemove -> Text(
+                    text = "Will be removed",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = theme.destructive
+                )
+                pendingAdd -> Text(
+                    text = "Will download",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = theme.focusAccent
+                )
+                row.isDownloaded -> Text(
                     text = "On device",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -242,6 +309,15 @@ private fun FilePickerFileRow(
             }
         }
         Spacer(modifier = Modifier.width(Dimens.spacingMd))
+        if (pendingAdd || pendingRemove) {
+            Icon(
+                imageVector = if (pendingAdd) Icons.Default.Download else Icons.Default.Delete,
+                contentDescription = null,
+                tint = if (pendingAdd) theme.focusAccent else theme.destructive,
+                modifier = Modifier.width(Dimens.iconSm)
+            )
+            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+        }
         Text(
             text = formatBytes(row.sizeBytes),
             style = MaterialTheme.typography.bodySmall,

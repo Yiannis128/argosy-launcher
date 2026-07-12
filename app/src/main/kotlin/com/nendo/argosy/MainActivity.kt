@@ -169,6 +169,12 @@ class MainActivity : ComponentActivity() {
     fun jumpDualFilePickerGroup(direction: Int) = dualScreenManager.jumpDualFilePickerGroup(direction)
     fun toggleDualFilePickerRow(row: com.nendo.argosy.data.model.FilePickerRow? = null) =
         dualScreenManager.toggleDualFilePickerRow(row)
+    fun setDualFilePickerGroupCollapsed(collapse: Boolean) =
+        dualScreenManager.setDualFocusedFilePickerGroupCollapsed(collapse)
+    fun toggleDualFilePickerGroupCollapse(groupKey: String) =
+        dualScreenManager.toggleDualFilePickerGroupCollapse(groupKey)
+    fun moveDualFilePickerButtonFocus(delta: Int) = dualScreenManager.moveDualFilePickerButtonFocus(delta)
+    fun activateDualFilePickerFocused() = dualScreenManager.activateDualFilePickerFocused()
     fun confirmDualFilePicker() = dualScreenManager.confirmDualFilePicker()
     fun moveDualCollectionFocus(delta: Int) = dualScreenManager.moveDualCollectionFocus(delta)
     fun toggleDualCollectionAtFocus() = dualScreenManager.toggleDualCollectionAtFocus()

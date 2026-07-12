@@ -126,10 +126,6 @@ internal class PlatformDetailSectionInput(
                 viewModel.cycleDisplayTarget(config, direction)
                 InputResult.HANDLED
             }
-            is PlatformDetailItem.DownloadDefault -> {
-                viewModel.cyclePlatformDownloadOverride(config.platform.slug, item.categoryKey, direction)
-                InputResult.HANDLED
-            }
             else -> InputResult.UNHANDLED
         }
     }

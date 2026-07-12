@@ -4,6 +4,7 @@
 package com.nendo.argosy.ui.dualscreen.gamedetail
 
 import com.nendo.argosy.data.emulator.DiscOption
+import com.nendo.argosy.data.model.visibleWithCollapsed
 import com.nendo.argosy.domain.model.UnifiedSaveEntry
 import com.nendo.argosy.domain.model.UnifiedStateEntry
 import com.nendo.argosy.ui.common.savechannel.SaveFocusColumn
@@ -20,7 +21,7 @@ enum class DualGameDetailTab {
     OPTIONS
 }
 
-enum class ActiveModal { NONE, RATING, DIFFICULTY, STATUS, EMULATOR, CORE, COLLECTION, SAVE_NAME, UPDATES_DLC, DISC_PICKER, VARIANT_PICKER, STEAM_INSTALL, FILE_PICKER }
+enum class ActiveModal { NONE, RATING, DIFFICULTY, STATUS, EMULATOR, CORE, COLLECTION, SAVE_NAME, DISC_PICKER, VARIANT_PICKER, STEAM_INSTALL, FILE_PICKER }
 
 enum class GameDetailOption {
     PLAY,
@@ -32,7 +33,7 @@ enum class GameDetailOption {
     CHANGE_CORE,
     SELECT_VARIANT,
     SELECT_DISC,
-    UPDATES_DLC,
+    FILES,
     ADD_TO_COLLECTION,
     REFRESH_METADATA,
     DELETE,
@@ -103,7 +104,7 @@ fun DualGameDetailUiState.visibleOptions(): List<GameDetailOption> {
         if (hasMultipleCores && isEmulated) add(GameDetailOption.CHANGE_CORE)
         if (hasMultipleVariants && isEmulated) add(GameDetailOption.SELECT_VARIANT)
         if (isMultiDisc && isEmulated) add(GameDetailOption.SELECT_DISC)
-        if (isDownloaded && !isDeleting) add(GameDetailOption.UPDATES_DLC)
+        if (isDownloaded && !isDeleting) add(GameDetailOption.FILES)
         add(GameDetailOption.ADD_TO_COLLECTION)
         if (isRommGame || isAndroidApp) add(GameDetailOption.REFRESH_METADATA)
         if ((isDownloaded || isAndroidApp) && !isDeleting) add(GameDetailOption.DELETE)
@@ -155,7 +156,6 @@ data class DualGameDetailUpperState(
     val saveNameText: String = "",
     val updateFiles: List<UpdateFileUi> = emptyList(),
     val dlcFiles: List<UpdateFileUi> = emptyList(),
-    val updatesPickerFocusIndex: Int = 0,
     val focusedStateEntry: UnifiedStateEntry? = null,
     val statePreviewScreenshotPath: String? = null,
     val discPickerOptions: List<DiscOption> = emptyList(),
@@ -167,8 +167,13 @@ data class DualGameDetailUpperState(
     val filePickerRows: List<com.nendo.argosy.data.model.FilePickerRow> = emptyList(),
     val filePickerSelected: Set<Long> = emptySet(),
     val filePickerSelectedVersions: Set<Long> = emptySet(),
-    val filePickerFocusIndex: Int = 0
-)
+    val filePickerFocusIndex: Int = 0,
+    val filePickerCollapsed: Set<String> = emptySet(),
+    val filePickerManageMode: Boolean = false
+) {
+    val visibleFilePickerRows: List<com.nendo.argosy.data.model.FilePickerRow>
+        get() = filePickerRows.visibleWithCollapsed(filePickerCollapsed)
+}
 
 data class SaveEntryData(
     val localCacheId: Long?,

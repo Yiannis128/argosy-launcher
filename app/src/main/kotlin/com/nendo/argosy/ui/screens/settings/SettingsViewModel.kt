@@ -977,25 +977,73 @@ class SettingsViewModel @Inject constructor(
     fun setDownloadCategoryDefault(categoryKey: String, include: Boolean) =
         syncDelegate.setDownloadCategoryDefault(viewModelScope, categoryKey, include)
 
-    fun cyclePlatformDownloadOverride(platformSlug: String, categoryKey: String, direction: Int) {
-        val current = _uiState.value.platformDetail.downloadOverrides[categoryKey]
-        val currentIndex = when (current) {
-            null -> 0
-            true -> 1
-            false -> 2
+    fun openPlatformDownloadDefaults(platformSlug: String) {
+        _uiState.update {
+            it.copy(platformDetail = it.platformDetail.copy(
+                showDownloadDefaults = true,
+                downloadDefaultsFocusIndex = 0,
+                downloadDefaultsSlug = platformSlug
+            ))
         }
-        val next = when ((currentIndex + direction).mod(3)) {
-            0 -> null
-            1 -> true
-            else -> false
+    }
+
+    fun dismissPlatformDownloadDefaults() {
+        _uiState.update {
+            it.copy(platformDetail = it.platformDetail.copy(showDownloadDefaults = false))
         }
+    }
+
+    fun movePlatformDownloadDefaultsFocus(delta: Int) {
         _uiState.update { st ->
-            val overrides = st.platformDetail.downloadOverrides.toMutableMap()
-            if (next == null) overrides.remove(categoryKey) else overrides[categoryKey] = next
-            st.copy(platformDetail = st.platformDetail.copy(downloadOverrides = overrides.toMap()))
+            val maxIndex = com.nendo.argosy.data.preferences.DownloadDefaults.CONFIGURABLE_KEYS.size
+            val newIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                st.platformDetail.downloadDefaultsFocusIndex, delta, maxIndex, st.controls.menuWrapMode
+            )
+            st.copy(platformDetail = st.platformDetail.copy(downloadDefaultsFocusIndex = newIndex))
+        }
+    }
+
+    fun setPlatformDownloadDefault(categoryKey: String, include: Boolean) {
+        val slug = _uiState.value.platformDetail.downloadDefaultsSlug ?: return
+        _uiState.update { st ->
+            val overrides = st.platformDetail.downloadOverrides + (categoryKey to include)
+            st.copy(platformDetail = st.platformDetail.copy(downloadOverrides = overrides))
         }
         viewModelScope.launch {
-            preferencesRepository.setDownloadCategoryPlatformOverride(platformSlug, categoryKey, next)
+            preferencesRepository.setDownloadCategoryPlatformOverride(slug, categoryKey, include)
+        }
+    }
+
+    fun setFocusedPlatformDownloadDefault(include: Boolean) {
+        val keys = com.nendo.argosy.data.preferences.DownloadDefaults.CONFIGURABLE_KEYS
+        val key = keys.getOrNull(_uiState.value.platformDetail.downloadDefaultsFocusIndex) ?: return
+        setPlatformDownloadDefault(key, include)
+    }
+
+    fun activatePlatformDownloadDefaultsRow() {
+        val detail = _uiState.value.platformDetail
+        val keys = com.nendo.argosy.data.preferences.DownloadDefaults.CONFIGURABLE_KEYS
+        val idx = detail.downloadDefaultsFocusIndex
+        if (idx < keys.size) {
+            val key = keys[idx]
+            val effective = detail.downloadOverrides[key]
+                ?: detail.globalDownloadDefaults[key]
+                ?: (com.nendo.argosy.data.preferences.DownloadDefaults.FACTORY[key] ?: false)
+            setPlatformDownloadDefault(key, !effective)
+        } else {
+            resetPlatformDownloadDefaults()
+        }
+    }
+
+    fun resetPlatformDownloadDefaults() {
+        val detail = _uiState.value.platformDetail
+        val slug = detail.downloadDefaultsSlug ?: return
+        val keys = detail.downloadOverrides.keys.toList()
+        _uiState.update { st ->
+            st.copy(platformDetail = st.platformDetail.copy(downloadOverrides = emptyMap()))
+        }
+        viewModelScope.launch {
+            keys.forEach { preferencesRepository.setDownloadCategoryPlatformOverride(slug, it, null) }
         }
     }
 

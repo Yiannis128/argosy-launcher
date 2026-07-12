@@ -11,3 +11,6 @@ data class FilePickerRow(
     val isDefaultVersion: Boolean = false,
     val isLocked: Boolean = false
 )
+
+fun List<FilePickerRow>.visibleWithCollapsed(collapsed: Set<String>): List<FilePickerRow> =
+    filter { it.isHeader || it.groupKey !in collapsed }

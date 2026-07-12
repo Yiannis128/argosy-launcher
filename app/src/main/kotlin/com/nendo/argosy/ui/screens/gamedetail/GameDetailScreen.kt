@@ -92,7 +92,6 @@ import com.nendo.argosy.ui.screens.gamedetail.modals.RatingsStatusModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.PermissionRequiredModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerModal
-import com.nendo.argosy.ui.screens.gamedetail.modals.UpdatesPickerModal
 import com.nendo.argosy.ui.common.savechannel.SaveChannelModal
 import com.nendo.argosy.ui.components.AddToCollectionModal
 import com.nendo.argosy.ui.components.CollectionItem
@@ -904,45 +903,45 @@ private fun GameDetailModals(
     }
 
     AnimatedVisibility(
-        visible = pickerState.showUpdatesPicker,
-        enter = fadeIn(),
-        exit = fadeOut()
-    ) {
-        UpdatesPickerModal(
-            files = uiState.updateFiles + uiState.dlcFiles,
-            focusIndex = pickerState.updatesPickerFocusIndex,
-            onDownload = viewModel::downloadUpdateFile,
-            onDismiss = viewModel.pickerModalDelegate::dismissUpdatesPicker
-        )
-    }
-
-    AnimatedVisibility(
         visible = pickerState.showFilePicker,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
         val fileRows = pickerState.filePickerRows
-        val selectedCount = fileRows.count { row ->
-            !row.isHeader && (row.versionRommId
+        val isSelected = { row: com.nendo.argosy.data.model.FilePickerRow ->
+            row.versionRommId
                 ?.let { it in pickerState.filePickerSelectedVersions }
-                ?: (row.rommFileId in pickerState.filePickerSelected))
+                ?: (row.rommFileId in pickerState.filePickerSelected)
         }
-        val selectedBytes = fileRows.filter { row ->
-            !row.isHeader && (row.versionRommId
-                ?.let { it in pickerState.filePickerSelectedVersions }
-                ?: (row.rommFileId in pickerState.filePickerSelected))
-        }.sumOf { it.sizeBytes }
+        val summary = if (pickerState.filePickerManageMode) {
+            val adds = fileRows.filter { !it.isHeader && !it.isLocked && !it.isDownloaded && isSelected(it) }
+            val removes = fileRows.filter { !it.isHeader && !it.isLocked && it.isDownloaded && !isSelected(it) }
+            when {
+                adds.isEmpty() && removes.isEmpty() -> "No changes"
+                else -> buildList {
+                    if (adds.isNotEmpty()) add("+${adds.size} · ${com.nendo.argosy.util.formatBytes(adds.sumOf { it.sizeBytes })}")
+                    if (removes.isNotEmpty()) add("-${removes.size} · ${com.nendo.argosy.util.formatBytes(removes.sumOf { it.sizeBytes })}")
+                }.joinToString("   ")
+            }
+        } else {
+            val selected = fileRows.filter { !it.isHeader && isSelected(it) }
+            "${selected.size} of ${fileRows.count { !it.isHeader }} · ${com.nendo.argosy.util.formatBytes(selected.sumOf { it.sizeBytes })} selected"
+        }
         FilePickerModal(
             gameTitle = uiState.game?.title ?: "",
-            title = if (pickerState.filePickerManageMode) "Manage files" else "Choose files",
-            rows = fileRows,
+            title = if (pickerState.filePickerManageMode) "Files" else "Choose files",
+            rows = pickerState.visibleFilePickerRows,
             selectedIds = pickerState.filePickerSelected,
             selectedVersionIds = pickerState.filePickerSelectedVersions,
             focusIndex = pickerState.filePickerFocusIndex,
-            summary = "$selectedCount of ${fileRows.count { !it.isHeader }} · ${com.nendo.argosy.util.formatBytes(selectedBytes)} selected",
+            summary = summary,
             onToggleRow = viewModel::toggleFilePickerRow,
             onConfirm = viewModel::confirmFilePicker,
-            onDismiss = viewModel::dismissFilePicker
+            onDismiss = viewModel::dismissFilePicker,
+            allRows = fileRows,
+            collapsedGroups = pickerState.filePickerCollapsed,
+            onToggleCollapse = viewModel.pickerModalDelegate::toggleFilePickerGroupCollapse,
+            manageMode = pickerState.filePickerManageMode
         )
     }
 

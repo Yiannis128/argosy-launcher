@@ -385,11 +385,8 @@ class SecondaryHomeInputHandler(
                     broadcasts.broadcastCollectionModalOpen(vm)
                 }
             }
-            GameDetailOption.UPDATES_DLC -> {
-                lifecycleLaunch {
-                    vm.openUpdatesModal()
-                    broadcasts.broadcastUpdatesModalOpen(vm)
-                }
+            GameDetailOption.FILES -> {
+                broadcasts.broadcastDirectAction("FILES", gameId)
             }
             GameDetailOption.REFRESH_METADATA -> {
                 broadcasts.broadcastDirectAction("REFRESH_METADATA", gameId)
@@ -994,58 +991,6 @@ class SecondaryHomeInputHandler(
                     }
                     GamepadEvent.Back -> {
                         vm.dismissPicker()
-                        broadcasts.broadcastModalClose()
-                    }
-                    else -> {}
-                }
-                return InputResult.HANDLED
-            }
-            ActiveModal.UPDATES_DLC -> {
-                Log.d("UpdatesDLC", "handleModalInput: event=$event")
-                when (event) {
-                    GamepadEvent.Up -> {
-                        vm.moveUpdatesFocus(-1)
-                        broadcasts.broadcastInlineUpdate(
-                            "updates_focus",
-                            vm.updatesPickerFocusIndex.value
-                        )
-                    }
-                    GamepadEvent.Down -> {
-                        vm.moveUpdatesFocus(1)
-                        broadcasts.broadcastInlineUpdate(
-                            "updates_focus",
-                            vm.updatesPickerFocusIndex.value
-                        )
-                    }
-                    GamepadEvent.Confirm -> {
-                        val allFiles = vm.updateFiles.value + vm.dlcFiles.value
-                        val idx = vm.updatesPickerFocusIndex.value
-                        val file = allFiles.getOrNull(idx)
-                        if (file != null && !file.isDownloaded && file.gameFileId != null) {
-                            val gameId = vm.uiState.value.gameId
-                            broadcasts.broadcastDirectAction(
-                                "DOWNLOAD_UPDATE_FILE",
-                                gameId,
-                                file.gameFileId.toString()
-                            )
-                        }
-                    }
-                    GamepadEvent.SecondaryAction -> {
-                        val allFiles = vm.updateFiles.value + vm.dlcFiles.value
-                        val gameId = vm.uiState.value.gameId
-                        val downloadable = allFiles.filter {
-                            !it.isDownloaded && it.gameFileId != null
-                        }
-                        for (file in downloadable) {
-                            broadcasts.broadcastDirectAction(
-                                "DOWNLOAD_UPDATE_FILE",
-                                gameId,
-                                file.gameFileId.toString()
-                            )
-                        }
-                    }
-                    GamepadEvent.Back -> {
-                        vm.dismissUpdatesModal()
                         broadcasts.broadcastModalClose()
                     }
                     else -> {}

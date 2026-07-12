@@ -571,6 +571,10 @@ fun ArgosyApp(
                     state?.modalType == ActiveModal.DIFFICULTY
                 ) {
                     activity?.adjustDualModalRating(-1)
+                } else if (state?.modalType == ActiveModal.FILE_PICKER) {
+                    if (activity?.moveDualFilePickerButtonFocus(-1) != true) {
+                        activity?.setDualFilePickerGroupCollapsed(collapse = true)
+                    }
                 }
                 return InputResult.HANDLED
             }
@@ -580,6 +584,10 @@ fun ArgosyApp(
                     state?.modalType == ActiveModal.DIFFICULTY
                 ) {
                     activity?.adjustDualModalRating(1)
+                } else if (state?.modalType == ActiveModal.FILE_PICKER) {
+                    if (activity?.moveDualFilePickerButtonFocus(1) != true) {
+                        activity?.setDualFilePickerGroupCollapsed(collapse = false)
+                    }
                 }
                 return InputResult.HANDLED
             }
@@ -625,7 +633,7 @@ fun ArgosyApp(
                     ActiveModal.COLLECTION -> activity?.toggleDualCollectionAtFocus()
                     ActiveModal.STEAM_INSTALL -> activity?.confirmDualSteamInstallSelection()
                     ActiveModal.SAVE_NAME -> activity?.confirmDualSaveName()
-                    ActiveModal.FILE_PICKER -> activity?.toggleDualFilePickerRow()
+                    ActiveModal.FILE_PICKER -> activity?.activateDualFilePickerFocused()
                     else -> {}
                 }
                 return InputResult.HANDLED
@@ -1158,6 +1166,9 @@ fun ArgosyApp(
                             },
                             onFilePickerConfirm = {
                                 activity?.confirmDualFilePicker()
+                            },
+                            onFilePickerToggleCollapse = { groupKey ->
+                                activity?.toggleDualFilePickerGroupCollapse(groupKey)
                             },
                             footerHints = {
                                 FooterHints(
@@ -1692,12 +1703,8 @@ fun ArgosyApp(
                                             )
                                         }
                                     }
-                                    GameDetailOption.UPDATES_DLC -> {
-                                        scope.launch {
-                                            vm.openUpdatesModal()
-                                            val allFiles = vm.updateFiles.value + vm.dlcFiles.value
-                                            dualScreenManager.openUpdatesModal(allFiles)
-                                        }
+                                    GameDetailOption.FILES -> {
+                                        dualScreenManager.handleDirectAction("FILES", gameId)
                                     }
                                     GameDetailOption.SELECT_DISC -> {
                                         dualScreenManager.handleDirectAction("SELECT_DISC", gameId)
