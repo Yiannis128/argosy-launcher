@@ -287,16 +287,14 @@ class SecondaryHomeActivity :
         isSaveDirty = store.isSaveDirty()
         broadcasts.broadcastCompanionResumed()
 
-        if (isGameActive && dsm.emulatorDisplayId != null && !dsm.isLaunchingGame) {
-            val emulatorPkg = dsm.sessionStateStore.getEmulatorPackage()
-            if (emulatorPkg != null) {
-                val helper = com.nendo.argosy.util.PermissionHelper()
-                if (!helper.isPackageInForeground(this, emulatorPkg, withinMs = 15_000)) {
-                    android.util.Log.d("SecondaryHome", "Emulator exited on secondary display, ending session")
-                    dsm.emulatorDisplayId = null
-                    dsm.playSessionTracker.endSessionInBackground()
-                    dsm.broadcastSessionCleared()
-                }
+        if (isGameActive && !dsm.isLaunchingGame) {
+            val emulatorDisplay = dsm.emulatorDisplayId
+            val ownDisplay = window.decorView.display?.displayId
+            if (emulatorDisplay != null && ownDisplay != null && emulatorDisplay == ownDisplay) {
+                android.util.Log.d("SecondaryHome", "Companion resumed on the emulator's display, ending session")
+                dsm.emulatorDisplayId = null
+                dsm.playSessionTracker.endSessionInBackground()
+                dsm.broadcastSessionCleared()
             }
         }
     }
@@ -384,7 +382,7 @@ class SecondaryHomeActivity :
         isArgosyForeground = isForeground
         if (isForeground && isGameActive) {
             val outOfGame = if (isShowcaseRole) {
-                !dsm.sessionStateStore.hasActiveSession()
+                !dsm.hasLiveSession()
             } else {
                 true
             }

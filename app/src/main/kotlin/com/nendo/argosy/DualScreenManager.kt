@@ -2225,6 +2225,12 @@ class DualScreenManager(
         emulatorDisplayId = displayId
     }
 
+    /** Fallback for launch paths that never assigned a display; the launch path's write wins. */
+    fun assignEmulatorDisplayForSessionStart() {
+        if (emulatorDisplayId != null) return
+        emulatorDisplayId = displayAffinityHelper.getEmulatorDisplayId(_isRolesSwapped.value)
+    }
+
     fun startStartupGuard() {
         startupGuardJob?.cancel()
         startupGuardJob = scope.launch {

@@ -15,7 +15,6 @@ import androidx.core.app.NotificationCompat
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.MainActivity
 import com.nendo.argosy.R
-import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.util.SecondaryHomeComponent
 
 class CompanionGuardService : Service() {
@@ -69,8 +68,7 @@ class CompanionGuardService : Service() {
         if (rootIntent?.component?.className != MainActivity::class.java.name) return
         if (SecondaryHomeComponent.isDefaultHome(this)) return
         val dsm = DualScreenManagerHolder.instance
-        val sessionLive = dsm?.hasLiveSession()
-            ?: SessionStateStore(applicationContext).hasActiveSession()
+        val sessionLive = dsm?.hasLiveSession() == true
         if (sessionLive) return
         Log.i(TAG, "Main task removed while not default home, releasing secondary display")
         SecondaryHomeComponent.setEnabled(this, false)

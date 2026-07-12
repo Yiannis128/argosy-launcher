@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var ambientLedManager: AmbientLedManager
     @Inject lateinit var screenCaptureManager: ScreenCaptureManager
     @Inject lateinit var displayAffinityHelper: DisplayAffinityHelper
+    @Inject lateinit var permissionHelper: com.nendo.argosy.util.PermissionHelper
     @Inject lateinit var gameActionsDelegate: GameActionsDelegate
     @Inject lateinit var gameLaunchDelegate: GameLaunchDelegate
     @Inject lateinit var saveCacheManager: SaveCacheManager
@@ -620,10 +621,12 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * The launcher UI returning to the foreground means the session on this display
-     * is over: end it and restore the companion immediately. Only a session running
-     * on a different display (swapped roles / per-game display target) survives,
-     * since the game and the launcher UI legitimately coexist there.
+     * On dual-screen devices the launcher UI returning to the foreground means the
+     * session on this display is over: end it and restore the companion immediately.
+     * Only a session on a different display (swapped roles / per-game display target)
+     * survives, since the game and the launcher UI legitimately coexist there.
+     * Single-screen devices keep the resume-friendly grace: a session whose emulator
+     * was foregrounded within the last 15s stays alive so relaunching resumes it.
      */
     private fun cleanupStaleSession() {
         activityScope.launch {
@@ -632,6 +635,12 @@ class MainActivity : ComponentActivity() {
             val emulatorDisplay = dualScreenManager.emulatorDisplayId
             val ownDisplay = window.decorView.display?.displayId
             if (emulatorDisplay != null && ownDisplay != null && emulatorDisplay != ownDisplay) return@launch
+            if (!displayAffinityHelper.hasSecondaryDisplay && emulatorDisplay != null) {
+                val emulatorPkg = sessionStateStore.getEmulatorPackage()
+                if (emulatorPkg != null &&
+                    permissionHelper.isPackageInForeground(this@MainActivity, emulatorPkg, 15_000)
+                ) return@launch
+            }
             if (playSessionTracker.activeSession.value == null &&
                 preferencesRepository.getPersistedSession() == null
             ) return@launch

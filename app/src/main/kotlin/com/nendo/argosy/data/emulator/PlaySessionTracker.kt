@@ -448,12 +448,7 @@ class PlaySessionTracker @Inject constructor(
                 variantFileId = variantFileId
             )
 
-            val displayId = if (sessionStateStore.isRolesSwapped()) {
-                android.view.Display.DEFAULT_DISPLAY + 1
-            } else {
-                android.view.Display.DEFAULT_DISPLAY
-            }
-            DualScreenManagerHolder.instance?.setEmulatorDisplay(displayId)
+            DualScreenManagerHolder.instance?.assignEmulatorDisplayForSessionStart()
 
             broadcastSessionChanged(gameId, channelName, isHardcore)
 
