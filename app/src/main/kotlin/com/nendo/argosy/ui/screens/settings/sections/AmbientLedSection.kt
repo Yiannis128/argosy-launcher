@@ -42,7 +42,8 @@ internal sealed class AmbientLedItem(
         visibleWhen = { it.ambientLedEnabled })
     data object CustomColorHue : AmbientLedItem("customColorHue", "general",
         visibleWhen = { it.ambientLedEnabled && it.ambientLedCustomColor })
-    data object AchievementFlash : AmbientLedItem("achievementFlash", "general")
+    data object AchievementFlash : AmbientLedItem("achievementFlash", "general",
+        visibleWhen = { it.ambientLedEnabled })
 
     // Cover Art
     data object CoverArtColors : AmbientLedItem("coverArtColors", "coverArt",

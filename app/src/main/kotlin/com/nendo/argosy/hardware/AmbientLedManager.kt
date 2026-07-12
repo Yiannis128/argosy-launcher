@@ -145,6 +145,8 @@ class AmbientLedManager @Inject constructor(
     fun stop() {
         Log.i(TAG, "Stopping ambient LED manager")
         stopAudioCapture()
+        flashJob?.cancel()
+        flashActive = false
         ledController.setEnabled(false)
     }
 
@@ -301,36 +303,38 @@ class AmbientLedManager @Inject constructor(
     }
 
     private var flashJob: Job? = null
+    @Volatile private var flashActive = false
 
     fun flashAchievement(isHardcore: Boolean) {
-        if (!ledController.isAvailable || !achievementFlashEnabled) return
+        if (!ledController.isAvailable || !isEnabled || !achievementFlashEnabled) return
 
         flashJob?.cancel()
         flashJob = scope.launch {
-            val flashColor = if (isHardcore) {
-                Color(0xFFFFE566) // Bright gold/yellow for hardcore
-            } else {
-                Color(0xFFFFAA44) // Bright orange for casual
-            }
+            flashActive = true
+            val flashColor = if (isHardcore) HARDCORE_FLASH_COLOR else CASUAL_FLASH_COLOR
+            val peak = brightnessScalar
+            val dim = 0.2f * brightnessScalar
 
             repeat(3) {
                 ledController.setColor(flashColor)
-                ledController.setBrightness(1f)
+                ledController.setBrightness(peak)
                 delay(150)
-                ledController.setBrightness(0.2f)
+                ledController.setBrightness(dim)
                 delay(100)
             }
 
-            ledController.setBrightness(1f)
-            delay(50)
-
+            flashActive = false
+            writerCacheStale = true
             if (isEnabled) {
                 updateLeds()
+            } else {
+                ledController.setEnabled(false)
             }
         }
     }
 
     private fun updateLeds() {
+        if (flashActive) return
         val currentState = _state.value
         val (leftColor, rightColor) = when (currentState.context) {
             AmbientLedContext.ARGOSY_UI, AmbientLedContext.GAME_HOVER -> {
@@ -357,12 +361,20 @@ class AmbientLedManager @Inject constructor(
         ledFrames.trySend(LedFrame(leftColor, rightColor, brightness))
     }
 
+    @Volatile private var writerCacheStale = false
+
     private fun startLedWriter() {
         scope.launch(Dispatchers.IO) {
             var lastLeft: Color? = null
             var lastRight: Color? = null
             var lastBrightness = -1f
             for (frame in ledFrames) {
+                if (writerCacheStale) {
+                    writerCacheStale = false
+                    lastLeft = null
+                    lastRight = null
+                    lastBrightness = -1f
+                }
                 val colorChanged = lastLeft == null || lastRight == null ||
                     colorDelta(lastLeft, frame.left) > COLOR_EPSILON ||
                     colorDelta(lastRight, frame.right) > COLOR_EPSILON
@@ -513,5 +525,7 @@ class AmbientLedManager @Inject constructor(
         private const val MIN_WRITE_INTERVAL_MS = 33L
         private const val COLOR_EPSILON = 0.012f
         private const val BRIGHTNESS_EPSILON = 0.01f
+        private val HARDCORE_FLASH_COLOR = Color(0xFFFFE566)
+        private val CASUAL_FLASH_COLOR = Color(0xFFFFAA44)
     }
 }
