@@ -257,6 +257,8 @@ fun ShowcaseRoleContent(
                         onModalStatusSelect = showcaseViewModel::onModalStatusSelect,
                         onModalEmulatorSelect = showcaseViewModel::onModalEmulatorSelect,
                         onModalCoreSelect = showcaseViewModel::onModalCoreSelect,
+                        onModalSavePathSelect = showcaseViewModel::onModalSavePathSelect,
+                        onModalDisplayTargetSelect = showcaseViewModel::onModalDisplayTargetSelect,
                         onModalVariantSelect = showcaseViewModel::onModalVariantSelect,
                         onModalCollectionToggle = showcaseViewModel::onModalCollectionToggle,
                         onModalCollectionShowCreate = showcaseViewModel::onModalCollectionShowCreate,

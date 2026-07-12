@@ -539,6 +539,16 @@ class SecondaryHomeActivity :
                 else vm.dismissPicker()
                 refocusSelf()
             }
+            ActiveModal.SAVE_PATH.name -> {
+                if (selectedIndex >= 0) vm.confirmSavePathByIndex(selectedIndex)
+                else vm.dismissPicker()
+                refocusSelf()
+            }
+            ActiveModal.DISPLAY_TARGET.name -> {
+                if (selectedIndex >= 0) vm.confirmDisplayTargetByIndex(selectedIndex)
+                else vm.dismissPicker()
+                refocusSelf()
+            }
             ActiveModal.VARIANT_PICKER.name -> {
                 if (selectedIndex >= 0) vm.confirmVariantByIndex(selectedIndex)
                 else vm.dismissPicker()
@@ -684,7 +694,8 @@ class SecondaryHomeActivity :
             configureEmulatorUseCase = dsm.configureEmulatorUseCase,
             steamContentManager = dsm.steamContentManager,
             displayAffinityHelper = affinityHelper,
-            downloadFileStatusRepository = dsm.downloadFileStatusRepository
+            downloadFileStatusRepository = dsm.downloadFileStatusRepository,
+            preferencesRepository = dsm.preferencesRepository
         )
 
         inputHandler = SecondaryHomeInputHandler(

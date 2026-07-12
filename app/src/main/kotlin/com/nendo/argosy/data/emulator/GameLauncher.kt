@@ -526,10 +526,11 @@ class GameLauncher @Inject constructor(
 
         Logger.info(TAG, "[BuiltIn] Launching: rom=${romFile.name}, core=$coreName, romSize=${romFile.length()}b, coreVars=${coreVariables.size}")
         val builtinSettings = userPreferencesRepository.getBuiltinEmulatorSettings().first()
-        // Per-platform builtin save/state overrides (Video & Performance in platform context).
         val platformLibretroOverride = platformLibretroSettingsDao.getByPlatformId(game.platformId)
         val builtinBesideRom = emulatorSaveConfigRepository.getByEmulator("builtin")?.savesBesideRom == true
-        val effectiveSavePath = if (builtinBesideRom) romFile.parent
+        val perGameSavePath = emulatorConfigDao.getSavePathForGame(game.id)?.takeIf { it.isNotBlank() }
+        val effectiveSavePath = perGameSavePath
+            ?: if (builtinBesideRom) romFile.parent
             else platformLibretroOverride?.savePath ?: builtinSettings.customSavePath
         val effectiveStatePath = libretroStatePathResolver
             .liveStateBaseDir(platformLibretroOverride?.statePath, builtinSettings.customStatePath)

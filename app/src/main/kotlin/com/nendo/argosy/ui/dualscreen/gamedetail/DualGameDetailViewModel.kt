@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.entity.CollectionEntity
+import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.data.repository.CollectionRepository
 import com.nendo.argosy.data.repository.DownloadQueueRepository
@@ -43,6 +44,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -61,6 +63,7 @@ class DualGameDetailViewModel(
     private val displayAffinityHelper: DisplayAffinityHelper,
     private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
     private val sessionStateStore: SessionStateStore,
+    private val preferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository,
     private val context: Context
 ) : ViewModel() {
 
@@ -137,6 +140,12 @@ class DualGameDetailViewModel(
 
     private val _corePickerFocusIndex = MutableStateFlow(0)
     val corePickerFocusIndex: StateFlow<Int> = _corePickerFocusIndex.asStateFlow()
+
+    private val _savePathPickerFocusIndex = MutableStateFlow(0)
+    val savePathPickerFocusIndex: StateFlow<Int> = _savePathPickerFocusIndex.asStateFlow()
+
+    private val _displayTargetPickerFocusIndex = MutableStateFlow(0)
+    val displayTargetPickerFocusIndex: StateFlow<Int> = _displayTargetPickerFocusIndex.asStateFlow()
 
     private val _variantPickerList = MutableStateFlow<List<GameFileEntity>>(emptyList())
 
@@ -275,6 +284,7 @@ class DualGameDetailViewModel(
                 }
             }
             ActiveModal.EMULATOR, ActiveModal.CORE, ActiveModal.COLLECTION,
+            ActiveModal.SAVE_PATH, ActiveModal.DISPLAY_TARGET,
             ActiveModal.SAVE_NAME,
             ActiveModal.DISC_PICKER, ActiveModal.VARIANT_PICKER,
             ActiveModal.STEAM_INSTALL -> return
@@ -328,10 +338,22 @@ class DualGameDetailViewModel(
 
             val gameSpecificConfig = emulatorConfigDao.getByGameId(game.id)
             val platformDefaultConfig = emulatorConfigDao.getDefaultForPlatform(game.platformId)
-            val emulatorConfig = gameSpecificConfig ?: platformDefaultConfig
+            val configuredEmulatorPackage = gameSpecificConfig?.packageName ?: platformDefaultConfig?.packageName
+            val configuredEmulatorName = gameSpecificConfig?.displayName ?: platformDefaultConfig?.displayName
+
+            val detector = com.nendo.argosy.data.emulator.getSharedEmulatorDetector(context)
+            if (detector.installedEmulators.value.isEmpty()) detector.detectEmulators()
+            val builtinEnabled = preferencesRepository.userPreferences.first().builtinLibretroEnabled
+            val effectiveSavePackage = configuredEmulatorPackage
+                ?: detector.getPreferredEmulator(game.platformSlug, builtinEnabled)?.def?.packageName
+            val saveConfig = effectiveSavePackage?.let {
+                com.nendo.argosy.data.emulator.SavePathRegistry.getConfigForPlatformByPackage(it, game.platformSlug)
+            }
+            val hasFileBasedSaves = com.nendo.argosy.data.emulator.SavePathRegistry
+                .supportsPerGameSavePath(saveConfig, game.platformSlug)
 
             val platformCores = EmulatorRegistry.getCoresForPlatform(game.platformSlug)
-            val emulatorDef = emulatorConfig?.packageName?.let { pkg ->
+            val emulatorDef = configuredEmulatorPackage?.let { pkg ->
                 EmulatorRegistry.getByPackage(pkg)
             }
             // emulatorDef == null means we haven't resolved an emulator yet (auto-pick); still show core picker if cores exist.
@@ -386,10 +408,15 @@ class DualGameDetailViewModel(
                 isDownloaded = isDownloaded,
                 platformSlug = game.platformSlug,
                 platformId = game.platformId,
-                emulatorName = emulatorConfig?.displayName,
+                emulatorName = configuredEmulatorName,
                 hasMultipleCores = hasMultipleCores,
                 selectedCoreName = selectedCoreName,
                 selectedCoreId = selectedCoreId,
+                hasFileBasedSaves = hasFileBasedSaves,
+                savePathOverride = gameSpecificConfig?.savePath?.takeIf { it.isNotBlank() },
+                hasSecondaryDisplay = displayAffinityHelper.hasSecondaryDisplay,
+                displayTargetName = gameSpecificConfig?.displayTarget,
+                platformDisplayTargetName = platformDefaultConfig?.displayTarget,
                 hasMultipleVariants = hasMultipleVariants,
                 selectedVariantName = selectedVariantName,
                 activeChannel = activeChannel,
@@ -924,7 +951,11 @@ class DualGameDetailViewModel(
         viewModelScope.launch {
             configureEmulatorUseCase.setForGame(state.gameId, state.platformId, state.platformSlug, selected)
             _uiState.update {
-                it.copy(emulatorName = selected?.def?.displayName)
+                it.copy(
+                    emulatorName = selected?.def?.displayName,
+                    savePathOverride = null,
+                    displayTargetName = null
+                )
             }
         }
         _activeModal.value = ActiveModal.NONE
@@ -957,6 +988,47 @@ class DualGameDetailViewModel(
         val total = _corePickerList.value.size + 1
         val max = (total - 1).coerceAtLeast(0)
         _corePickerFocusIndex.update { (it + delta).coerceIn(0, max) }
+    }
+
+    fun openSavePathPicker() {
+        _savePathPickerFocusIndex.value = 0
+        _activeModal.value = ActiveModal.SAVE_PATH
+    }
+
+    fun moveSavePathPickerFocus(delta: Int) {
+        val max = if (_uiState.value.savePathOverride != null) 1 else 0
+        _savePathPickerFocusIndex.update { (it + delta).coerceIn(0, max) }
+    }
+
+    fun confirmSavePathByIndex(index: Int) {
+        val state = _uiState.value
+        if (index == 0 && state.savePathOverride != null) {
+            viewModelScope.launch {
+                configureEmulatorUseCase.clearSavePathForGame(state.gameId)
+                _uiState.update { it.copy(savePathOverride = null) }
+            }
+        }
+        _activeModal.value = ActiveModal.NONE
+    }
+
+    fun openDisplayTargetPicker() {
+        _displayTargetPickerFocusIndex.value = 0
+        _activeModal.value = ActiveModal.DISPLAY_TARGET
+    }
+
+    fun moveDisplayTargetPickerFocus(delta: Int) {
+        val max = EmulatorDisplayTarget.entries.size
+        _displayTargetPickerFocusIndex.update { (it + delta).coerceIn(0, max) }
+    }
+
+    fun confirmDisplayTargetByIndex(index: Int) {
+        val selected = if (index == 0) null else EmulatorDisplayTarget.entries.getOrNull(index - 1)
+        val state = _uiState.value
+        viewModelScope.launch {
+            configureEmulatorUseCase.setDisplayTargetForGame(state.gameId, selected?.name)
+            _uiState.update { it.copy(displayTargetName = selected?.name) }
+        }
+        _activeModal.value = ActiveModal.NONE
     }
 
     suspend fun getDownloadedVariants(): List<GameFileEntity> {

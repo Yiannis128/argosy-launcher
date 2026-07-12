@@ -2,6 +2,7 @@ package com.nendo.argosy.hardware
 
 import android.util.Log
 import com.nendo.argosy.data.emulator.EmulatorDetector
+import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.ui.common.savechannel.SaveFocusColumn
 import com.nendo.argosy.DualScreenManager
 import com.nendo.argosy.ui.dualscreen.gamedetail.ActiveModal
@@ -368,6 +369,21 @@ class SecondaryHomeInputHandler(
                         cores, vm.uiState.value.selectedCoreName
                     )
                 }
+            }
+            GameDetailOption.SAVE_PATH -> {
+                vm.openSavePathPicker()
+                broadcasts.broadcastSavePathModalOpen(vm.uiState.value.savePathOverride)
+            }
+            GameDetailOption.DISPLAY_TARGET -> {
+                vm.openDisplayTargetPicker()
+                val state = vm.uiState.value
+                broadcasts.broadcastDisplayTargetModalOpen(
+                    EmulatorDisplayTarget.entries.map { it.displayName },
+                    state.displayTargetName?.let {
+                        EmulatorDisplayTarget.fromString(it).displayName
+                    },
+                    EmulatorDisplayTarget.fromString(state.platformDisplayTargetName).displayName
+                )
             }
             GameDetailOption.SELECT_VARIANT -> {
                 lifecycleLaunch {
@@ -852,6 +868,68 @@ class SecondaryHomeInputHandler(
                     GamepadEvent.Confirm -> {
                         val idx = vm.corePickerFocusIndex.value
                         vm.confirmCoreByIndex(idx)
+                        broadcasts.broadcastModalConfirmResult(
+                            modal, idx, null
+                        )
+                    }
+                    GamepadEvent.Back -> {
+                        vm.dismissPicker()
+                        broadcasts.broadcastModalClose()
+                    }
+                    else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            ActiveModal.SAVE_PATH -> {
+                when (event) {
+                    GamepadEvent.Up -> {
+                        vm.moveSavePathPickerFocus(-1)
+                        broadcasts.broadcastInlineUpdate(
+                            "save_path_focus",
+                            vm.savePathPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Down -> {
+                        vm.moveSavePathPickerFocus(1)
+                        broadcasts.broadcastInlineUpdate(
+                            "save_path_focus",
+                            vm.savePathPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Confirm -> {
+                        val idx = vm.savePathPickerFocusIndex.value
+                        vm.confirmSavePathByIndex(idx)
+                        broadcasts.broadcastModalConfirmResult(
+                            modal, idx, null
+                        )
+                    }
+                    GamepadEvent.Back -> {
+                        vm.dismissPicker()
+                        broadcasts.broadcastModalClose()
+                    }
+                    else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            ActiveModal.DISPLAY_TARGET -> {
+                when (event) {
+                    GamepadEvent.Up -> {
+                        vm.moveDisplayTargetPickerFocus(-1)
+                        broadcasts.broadcastInlineUpdate(
+                            "display_target_focus",
+                            vm.displayTargetPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Down -> {
+                        vm.moveDisplayTargetPickerFocus(1)
+                        broadcasts.broadcastInlineUpdate(
+                            "display_target_focus",
+                            vm.displayTargetPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Confirm -> {
+                        val idx = vm.displayTargetPickerFocusIndex.value
+                        vm.confirmDisplayTargetByIndex(idx)
                         broadcasts.broadcastModalConfirmResult(
                             modal, idx, null
                         )

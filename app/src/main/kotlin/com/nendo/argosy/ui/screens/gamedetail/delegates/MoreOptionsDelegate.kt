@@ -50,7 +50,6 @@ class MoreOptionsDelegate @Inject constructor(
         isRommGame: Boolean,
         isAndroidApp: Boolean,
         canManageSaves: Boolean,
-        hasMultipleCores: Boolean,
         isMultiDisc: Boolean,
         hasVariants: Boolean,
         isSteamGame: Boolean,
@@ -66,9 +65,8 @@ class MoreOptionsDelegate @Inject constructor(
         var optionCount = 2
         if (canManageSaves) optionCount++
         if (canTrackProgress) optionCount += 2
-        if (isSteamGame || isEmulatedGame) optionCount++
-        if (hasMultipleCores && isEmulatedGame) optionCount++
-        if (isEmulatedGame) optionCount += 2
+        if (isSteamGame) optionCount++
+        if (isEmulatedGame) optionCount++
         if (usesTitleId && isEmulatedGame) optionCount++
         if (isMultiDisc) optionCount++
         if (hasVariants && isEmulatedGame) optionCount++
@@ -87,7 +85,6 @@ class MoreOptionsDelegate @Inject constructor(
         isRommGame: Boolean,
         isAndroidApp: Boolean,
         canManageSaves: Boolean,
-        hasMultipleCores: Boolean,
         isMultiDisc: Boolean,
         hasVariants: Boolean,
         isSteamGame: Boolean,
@@ -104,9 +101,7 @@ class MoreOptionsDelegate @Inject constructor(
         var currentIdx = 0
         val saveCacheIdx = if (canManageSaves) currentIdx++ else -1
         val ratingsStatusIdx = if (canTrackProgress) currentIdx++ else -1
-        val emulatorOrLauncherIdx = if (isSteamGame || isEmulatedGame) currentIdx++ else -1
-        val coreIdx = if (hasMultipleCores && isEmulatedGame) currentIdx++ else -1
-        val platformSettingsIdx = if (isEmulatedGame) currentIdx++ else -1
+        val launcherIdx = if (isSteamGame) currentIdx++ else -1
         val speedrunSplitsIdx = if (isEmulatedGame) currentIdx++ else -1
         val titleIdIdx = if (usesTitleId && isEmulatedGame) currentIdx++ else -1
         val discIdx = if (isMultiDisc) currentIdx++ else -1
@@ -120,9 +115,7 @@ class MoreOptionsDelegate @Inject constructor(
         return when (index) {
             saveCacheIdx -> MoreOptionAction.ManageSaves
             ratingsStatusIdx -> MoreOptionAction.RatingsStatus
-            emulatorOrLauncherIdx -> if (isSteamGame) MoreOptionAction.ChangeSteamLauncher else MoreOptionAction.ChangeEmulator
-            coreIdx -> MoreOptionAction.ChangeCore
-            platformSettingsIdx -> MoreOptionAction.PlatformSettings
+            launcherIdx -> MoreOptionAction.ChangeSteamLauncher
             speedrunSplitsIdx -> MoreOptionAction.SpeedrunSplits
             titleIdIdx -> MoreOptionAction.RefreshTitleId
             discIdx -> MoreOptionAction.SelectDisc

@@ -691,6 +691,7 @@ class DualScreenManager(
     fun openModal(type: ActiveModal, value: Int = 0, statusSelected: String? = null, statusCurrent: String? = null) {
         when (type) {
             ActiveModal.EMULATOR, ActiveModal.CORE, ActiveModal.COLLECTION,
+            ActiveModal.SAVE_PATH, ActiveModal.DISPLAY_TARGET,
             ActiveModal.SAVE_NAME,
             ActiveModal.DISC_PICKER, ActiveModal.VARIANT_PICKER,
             ActiveModal.STEAM_INSTALL -> return
@@ -799,6 +800,14 @@ class DualScreenManager(
                 confirmDualCoreSelection()
                 return
             }
+            ActiveModal.SAVE_PATH -> {
+                confirmDualSavePathSelection()
+                return
+            }
+            ActiveModal.DISPLAY_TARGET -> {
+                confirmDualDisplayTargetSelection()
+                return
+            }
             ActiveModal.VARIANT_PICKER -> {
                 confirmDualVariantSelection()
                 return
@@ -888,6 +897,27 @@ class DualScreenManager(
                         coreCurrentName = if (intValue == 0) null else s.coreNames.getOrNull(intValue - 1)
                     )
                 }
+            }
+            "save_path_focus" -> _dualGameDetailState.update { s -> s?.copy(savePathFocusIndex = intValue) }
+            "save_path_confirm" -> {
+                _dualGameDetailState.update { s ->
+                    s?.copy(
+                        modalType = ActiveModal.NONE,
+                        savePathOverride = if (intValue == 0) null else s.savePathOverride
+                    )
+                }
+                _swappedGameDetailViewModel?.confirmSavePathByIndex(intValue)
+            }
+            "display_target_focus" -> _dualGameDetailState.update { s -> s?.copy(displayTargetFocusIndex = intValue) }
+            "display_target_confirm" -> {
+                _dualGameDetailState.update { s ->
+                    s?.copy(
+                        modalType = ActiveModal.NONE,
+                        displayTargetCurrentName = if (intValue == 0) null
+                        else s.displayTargetNames.getOrNull(intValue - 1)
+                    )
+                }
+                _swappedGameDetailViewModel?.confirmDisplayTargetByIndex(intValue)
             }
             "variant_focus" -> _dualGameDetailState.update { s -> s?.copy(variantFocusIndex = intValue) }
             "variant_confirm" -> {
@@ -1070,6 +1100,14 @@ class DualScreenManager(
                 confirmDualCoreSelection()
                 return
             }
+            ActiveModal.SAVE_PATH -> {
+                confirmDualSavePathSelection()
+                return
+            }
+            ActiveModal.DISPLAY_TARGET -> {
+                confirmDualDisplayTargetSelection()
+                return
+            }
             ActiveModal.VARIANT_PICKER -> {
                 confirmDualVariantSelection()
                 return
@@ -1203,6 +1241,97 @@ class DualScreenManager(
     fun setDualCoreFocus(index: Int) {
         _dualGameDetailState.update { state ->
             state?.copy(coreFocusIndex = index)
+        }
+    }
+
+    fun openSavePathModal(overridePath: String?) {
+        _dualGameDetailState.update { state ->
+            state?.copy(
+                modalType = ActiveModal.SAVE_PATH,
+                savePathOverride = overridePath,
+                savePathFocusIndex = 0
+            )
+        }
+        refocusMain()
+    }
+
+    fun moveDualSavePathFocus(delta: Int) {
+        _dualGameDetailState.update { state ->
+            val max = if (state?.savePathOverride != null) 1 else 0
+            state?.copy(
+                savePathFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.savePathFocusIndex, delta, max, menuWrapMode
+                )
+            )
+        }
+    }
+
+    fun setDualSavePathFocus(index: Int) {
+        _dualGameDetailState.update { state ->
+            state?.copy(savePathFocusIndex = index)
+        }
+    }
+
+    fun confirmDualSavePathSelection() {
+        val state = _dualGameDetailState.value ?: return
+        val index = state.savePathFocusIndex
+        companionHost?.onModalResult(
+            dismissed = false, type = ActiveModal.SAVE_PATH.name,
+            value = 0, statusSelected = null, selectedIndex = index,
+            collectionToggleId = -1, collectionCreateName = null
+        )
+        _dualGameDetailState.update {
+            it?.copy(
+                modalType = ActiveModal.NONE,
+                savePathOverride = if (index == 0) null else it.savePathOverride
+            )
+        }
+    }
+
+    fun openDisplayTargetModal(names: List<String>, current: String?, inherited: String?) {
+        _dualGameDetailState.update { state ->
+            state?.copy(
+                modalType = ActiveModal.DISPLAY_TARGET,
+                displayTargetNames = names,
+                displayTargetFocusIndex = 0,
+                displayTargetCurrentName = current,
+                displayTargetInheritedName = inherited
+            )
+        }
+        refocusMain()
+    }
+
+    fun moveDualDisplayTargetFocus(delta: Int) {
+        _dualGameDetailState.update { state ->
+            val max = state?.displayTargetNames?.size ?: 0
+            state?.copy(
+                displayTargetFocusIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+                    state.displayTargetFocusIndex, delta, max, menuWrapMode
+                )
+            )
+        }
+    }
+
+    fun setDualDisplayTargetFocus(index: Int) {
+        _dualGameDetailState.update { state ->
+            state?.copy(displayTargetFocusIndex = index)
+        }
+    }
+
+    fun confirmDualDisplayTargetSelection() {
+        val state = _dualGameDetailState.value ?: return
+        val index = state.displayTargetFocusIndex
+        companionHost?.onModalResult(
+            dismissed = false, type = ActiveModal.DISPLAY_TARGET.name,
+            value = 0, statusSelected = null, selectedIndex = index,
+            collectionToggleId = -1, collectionCreateName = null
+        )
+        _dualGameDetailState.update {
+            it?.copy(
+                modalType = ActiveModal.NONE,
+                displayTargetCurrentName = if (index == 0) null
+                else state.displayTargetNames.getOrNull(index - 1)
+            )
         }
     }
 
@@ -1434,7 +1563,7 @@ class DualScreenManager(
                 ?: swappedDualHomeViewModel?.uiState?.value?.selectedGame?.platformId
                 ?: gameDao.getById(gameId)?.platformId
             val effectiveSwapped = if (platformId != null) {
-                resolveEmulatorDisplaySwapped(platformId)
+                resolveEmulatorDisplaySwapped(gameId, platformId)
             } else {
                 _isRolesSwapped.value
             }
@@ -1472,10 +1601,11 @@ class DualScreenManager(
         }
     }
 
-    private suspend fun resolveEmulatorDisplaySwapped(platformId: Long): Boolean {
+    private suspend fun resolveEmulatorDisplaySwapped(gameId: Long, platformId: Long): Boolean {
         if (!displayAffinityHelper.hasSecondaryDisplay) return _isRolesSwapped.value
         val target = EmulatorDisplayTarget.fromString(
-            emulatorConfigDao.getDisplayTargetForPlatform(platformId)
+            emulatorConfigDao.getDisplayTargetForGame(gameId)
+                ?: emulatorConfigDao.getDisplayTargetForPlatform(platformId)
         )
         return when (target) {
             EmulatorDisplayTarget.HERO -> _isRolesSwapped.value
@@ -2021,6 +2151,7 @@ class DualScreenManager(
             displayAffinityHelper = displayAffinityHelper,
             downloadFileStatusRepository = downloadFileStatusRepository,
             sessionStateStore = sessionStateStore,
+            preferencesRepository = preferencesRepository,
             context = appContext
         )
         vm.loadGame(gameId)

@@ -133,7 +133,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.SpeedrunSegmentEntity::class,
         com.nendo.argosy.data.local.entity.SpeedrunAttemptEntity::class
     ],
-    version = 136,
+    version = 137,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

@@ -598,6 +598,8 @@ fun ArgosyApp(
                     ActiveModal.STATUS -> activity?.moveDualModalStatus(-1)
                     ActiveModal.EMULATOR -> activity?.moveDualEmulatorFocus(-1)
                     ActiveModal.CORE -> activity?.moveDualCoreFocus(-1)
+                    ActiveModal.SAVE_PATH -> activity?.moveDualSavePathFocus(-1)
+                    ActiveModal.DISPLAY_TARGET -> activity?.moveDualDisplayTargetFocus(-1)
                     ActiveModal.VARIANT_PICKER -> activity?.moveDualVariantFocus(-1)
                     ActiveModal.COLLECTION -> activity?.moveDualCollectionFocus(-1)
                     ActiveModal.STEAM_INSTALL -> activity?.moveDualSteamInstallFocus(-1)
@@ -613,6 +615,8 @@ fun ArgosyApp(
                     ActiveModal.STATUS -> activity?.moveDualModalStatus(1)
                     ActiveModal.EMULATOR -> activity?.moveDualEmulatorFocus(1)
                     ActiveModal.CORE -> activity?.moveDualCoreFocus(1)
+                    ActiveModal.SAVE_PATH -> activity?.moveDualSavePathFocus(1)
+                    ActiveModal.DISPLAY_TARGET -> activity?.moveDualDisplayTargetFocus(1)
                     ActiveModal.VARIANT_PICKER -> activity?.moveDualVariantFocus(1)
                     ActiveModal.COLLECTION -> activity?.moveDualCollectionFocus(1)
                     ActiveModal.STEAM_INSTALL -> activity?.moveDualSteamInstallFocus(1)
@@ -629,6 +633,8 @@ fun ArgosyApp(
                     ActiveModal.STATUS -> activity?.confirmDualModal()
                     ActiveModal.EMULATOR -> activity?.confirmDualEmulatorSelection()
                     ActiveModal.CORE -> activity?.confirmDualCoreSelection()
+                    ActiveModal.SAVE_PATH -> activity?.confirmDualSavePathSelection()
+                    ActiveModal.DISPLAY_TARGET -> activity?.confirmDualDisplayTargetSelection()
                     ActiveModal.VARIANT_PICKER -> activity?.confirmDualVariantSelection()
                     ActiveModal.COLLECTION -> activity?.toggleDualCollectionAtFocus()
                     ActiveModal.STEAM_INSTALL -> activity?.confirmDualSteamInstallSelection()
@@ -1116,6 +1122,18 @@ fun ArgosyApp(
                                     a.confirmDualCoreSelection()
                                 }
                             },
+                            onModalSavePathSelect = { index ->
+                                activity?.let { a ->
+                                    a.setDualSavePathFocus(index)
+                                    a.confirmDualSavePathSelection()
+                                }
+                            },
+                            onModalDisplayTargetSelect = { index ->
+                                activity?.let { a ->
+                                    a.setDualDisplayTargetFocus(index)
+                                    a.confirmDualDisplayTargetSelection()
+                                }
+                            },
                             onModalVariantSelect = { index ->
                                 activity?.let { a ->
                                     a.setDualVariantFocus(index)
@@ -1402,6 +1420,12 @@ fun ArgosyApp(
                                         currentName
                                     )
                                 },
+                                onBroadcastSavePathModalOpen = { overridePath ->
+                                    dualScreenManager.openSavePathModal(overridePath)
+                                },
+                                onBroadcastDisplayTargetModalOpen = { names, currentName, inheritedName ->
+                                    dualScreenManager.openDisplayTargetModal(names, currentName, inheritedName)
+                                },
                                 onBroadcastVariantModalOpen = { variantNames, currentName ->
                                     dualScreenManager.openVariantModal(
                                         variantNames,
@@ -1680,6 +1704,22 @@ fun ArgosyApp(
                                                 vm.uiState.value.selectedCoreName
                                             )
                                         }
+                                    }
+                                    GameDetailOption.SAVE_PATH -> {
+                                        vm.openSavePathPicker()
+                                        dualScreenManager.openSavePathModal(vm.uiState.value.savePathOverride)
+                                    }
+                                    GameDetailOption.DISPLAY_TARGET -> {
+                                        vm.openDisplayTargetPicker()
+                                        val detailUi = vm.uiState.value
+                                        dualScreenManager.openDisplayTargetModal(
+                                            com.nendo.argosy.data.preferences.EmulatorDisplayTarget.entries.map { it.displayName },
+                                            detailUi.displayTargetName?.let {
+                                                com.nendo.argosy.data.preferences.EmulatorDisplayTarget.fromString(it).displayName
+                                            },
+                                            com.nendo.argosy.data.preferences.EmulatorDisplayTarget
+                                                .fromString(detailUi.platformDisplayTargetName).displayName
+                                        )
                                     }
                                     GameDetailOption.SELECT_VARIANT -> {
                                         scope.launch {

@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -69,14 +68,8 @@ fun MoreOptionsModal(
         }
         if (game.isSteamGame) {
             add(MoreMenuEntry.Option(label = "Change Launcher", value = game.steamLauncherName ?: "Auto", action = MoreOptionAction.ChangeSteamLauncher))
-        } else if (isEmulatedGame) {
-            add(MoreMenuEntry.Option(label = "Change Emulator", value = game.emulatorName ?: "Default", action = MoreOptionAction.ChangeEmulator))
-        }
-        if (game.hasMultipleCores && isEmulatedGame) {
-            add(MoreMenuEntry.Option(label = "Change Core", value = game.selectedCoreName ?: "Default", action = MoreOptionAction.ChangeCore))
         }
         if (isEmulatedGame) {
-            add(MoreMenuEntry.Option(Icons.Default.Tune, "Platform Settings", value = game.platformSlug, action = MoreOptionAction.PlatformSettings))
             add(MoreMenuEntry.Option(Icons.Default.Timer, "Speedrun Splits", action = MoreOptionAction.SpeedrunSplits))
         }
         if (usesTitleId && isEmulatedGame) {

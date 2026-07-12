@@ -46,6 +46,8 @@ import com.nendo.argosy.core.event.GameUpdateBus
 import com.nendo.argosy.ui.screens.gamedetail.delegates.AchievementDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.DownloadDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.MoreOptionsDelegate
+import com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsDelegate
+import com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsRow
 import com.nendo.argosy.ui.screens.gamedetail.delegates.PickerModalDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.PickerSelection
 import com.nendo.argosy.ui.screens.gamedetail.delegates.PlayOptionsDelegate
@@ -103,6 +105,7 @@ class GameDetailViewModel @Inject constructor(
     private val ratingsStatus: RatingsStatusDelegate,
     private val playOptionsDelegate: PlayOptionsDelegate,
     private val moreOptionsDelegate: MoreOptionsDelegate,
+    private val perGameSettingsDelegate: PerGameSettingsDelegate,
     val speedrunSplitsDelegate: com.nendo.argosy.ui.screens.gamedetail.delegates.SpeedrunSplitsDelegate,
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
@@ -178,6 +181,7 @@ class GameDetailViewModel @Inject constructor(
             preferencesRepository.userPreferences.collect { prefs ->
                 pickerModalDelegate.menuWrapMode = prefs.menuWrapMode
                 moreOptionsDelegate.menuWrapMode = prefs.menuWrapMode
+                perGameSettingsDelegate.menuWrapMode = prefs.menuWrapMode
             }
         }
 
@@ -302,6 +306,12 @@ class GameDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            perGameSettingsDelegate.state.collect { pgState ->
+                _uiState.update { it.copy(perGameSettings = pgState) }
+            }
+        }
+
+        viewModelScope.launch {
             achievementDelegate.achievements.collect { achievements ->
                 _uiState.update { state ->
                     if (state.game?.achievements == achievements) state
@@ -352,10 +362,12 @@ class GameDetailViewModel @Inject constructor(
                 val game = gameRepository.getById(gameId) ?: return
                 configureEmulatorUseCase.setForGame(gameId, game.platformId, game.platformSlug, selection.emulator)
                 loadGame(gameId)
+                perGameSettingsDelegate.refresh(gameId)
             }
             is PickerSelection.Core -> {
                 configureEmulatorUseCase.setCoreForGame(currentGameId, selection.coreId)
                 loadGame(currentGameId)
+                perGameSettingsDelegate.refresh(currentGameId)
             }
             is PickerSelection.SteamLauncher -> {
                 val launcher = selection.launcher
@@ -402,14 +414,15 @@ class GameDetailViewModel @Inject constructor(
 
             val gameSpecificConfig = emulatorConfigDao.getByGameId(gameId)
             val platformDefaultConfig = emulatorConfigDao.getDefaultForPlatform(game.platformId)
-            val emulatorConfig = gameSpecificConfig ?: platformDefaultConfig
 
             val prefs = preferencesRepository.userPreferences.first()
 
-            val emulatorName = emulatorConfig?.displayName
+            val emulatorName = gameSpecificConfig?.displayName
+                ?: platformDefaultConfig?.displayName
                 ?: emulatorDetector.getPreferredEmulator(game.platformSlug, prefs.builtinLibretroEnabled)?.def?.displayName
 
-            val emulatorDef = emulatorConfig?.packageName?.let { emulatorDetector.getByPackage(it) }
+            val configuredPackage = gameSpecificConfig?.packageName ?: platformDefaultConfig?.packageName
+            val emulatorDef = configuredPackage?.let { emulatorDetector.getByPackage(it) }
                 ?: emulatorDetector.getPreferredEmulator(game.platformSlug, prefs.builtinLibretroEnabled)?.def
             val isCoreSelectable = emulatorDef?.launchConfig?.isCoreSelectable == true
             val isBuiltInEmulator = emulatorDef?.launchConfig is LaunchConfig.BuiltIn
@@ -1007,7 +1020,6 @@ class GameDetailViewModel @Inject constructor(
             isRommGame = state.game?.isRommGame == true,
             isAndroidApp = state.game?.isAndroidApp == true,
             canManageSaves = state.game?.canManageSaves == true,
-            hasMultipleCores = state.game?.hasMultipleCores == true,
             isMultiDisc = state.game?.isMultiDisc == true,
             hasVariants = state.hasVariants,
             isSteamGame = state.game?.isSteamGame == true,
@@ -1078,7 +1090,6 @@ class GameDetailViewModel @Inject constructor(
             isRommGame = state.game?.isRommGame == true,
             isAndroidApp = state.game?.isAndroidApp == true,
             canManageSaves = state.game?.canManageSaves == true,
-            hasMultipleCores = state.game?.hasMultipleCores == true,
             isMultiDisc = state.game?.isMultiDisc == true,
             hasVariants = state.hasVariants,
             isSteamGame = state.game?.isSteamGame == true,
@@ -1292,6 +1303,131 @@ class GameDetailViewModel @Inject constructor(
         }
     }
 
+    // --- Per-game settings ---
+
+    fun showPerGameSettings() {
+        viewModelScope.launch { perGameSettingsDelegate.show(currentGameId) }
+    }
+
+    fun dismissPerGameSettings() = perGameSettingsDelegate.dismiss()
+
+    fun movePerGameSettingsFocus(delta: Int) = perGameSettingsDelegate.moveFocus(delta)
+
+    fun openPerGameSavePathBrowser() = perGameSettingsDelegate.openPathBrowser()
+
+    fun dismissPerGameSavePathBrowser() = perGameSettingsDelegate.dismissPathBrowser()
+
+    fun setPerGameSavePath(path: String) {
+        perGameSettingsDelegate.dismissPathBrowser()
+        viewModelScope.launch { perGameSettingsDelegate.setSavePath(currentGameId, path) }
+    }
+
+    fun clearPerGameSavePath() {
+        viewModelScope.launch { perGameSettingsDelegate.clearSavePath(currentGameId) }
+    }
+
+    fun cyclePerGameDisplayTarget(direction: Int) {
+        viewModelScope.launch { perGameSettingsDelegate.cycleDisplayTarget(currentGameId, direction) }
+    }
+
+    fun cyclePerGameExtension(direction: Int) {
+        viewModelScope.launch { perGameSettingsDelegate.cycleExtension(currentGameId, direction) }
+    }
+
+    fun confirmPerGameSetting(onNavigateToPlatformSettings: (Long) -> Unit) {
+        val st = _uiState.value.perGameSettings
+        when (st.focusedRow) {
+            PerGameSettingsRow.EMULATOR -> showEmulatorPicker()
+            PerGameSettingsRow.CORE -> showCorePicker()
+            PerGameSettingsRow.SAVE_PATH -> {
+                if (st.pathButtonIndex == 1 && st.isSavePathOverride) clearPerGameSavePath()
+                else openPerGameSavePathBrowser()
+            }
+            PerGameSettingsRow.DISPLAY_TARGET -> cyclePerGameDisplayTarget(1)
+            PerGameSettingsRow.EXTENSION -> cyclePerGameExtension(1)
+            PerGameSettingsRow.PLATFORM_SETTINGS -> {
+                dismissPerGameSettings()
+                _uiState.value.game?.platformId?.let(onNavigateToPlatformSettings)
+            }
+            null -> {}
+        }
+    }
+
+    private fun adjustPerGameSetting(direction: Int) {
+        val st = _uiState.value.perGameSettings
+        when (st.focusedRow) {
+            PerGameSettingsRow.SAVE_PATH -> perGameSettingsDelegate.movePathButton(-direction)
+            PerGameSettingsRow.DISPLAY_TARGET -> cyclePerGameDisplayTarget(direction)
+            PerGameSettingsRow.EXTENSION -> cyclePerGameExtension(direction)
+            else -> {}
+        }
+    }
+
+    fun createPerGameSettingsInputHandler(
+        onNavigateToPlatformSettings: (Long) -> Unit
+    ): InputHandler = object : InputHandler {
+        override fun onUp(): InputResult {
+            val picker = pickerModalDelegate.state.value
+            when {
+                picker.showEmulatorPicker -> moveEmulatorPickerFocus(-1)
+                picker.showCorePicker -> moveCorePickerFocus(-1)
+                else -> movePerGameSettingsFocus(-1)
+            }
+            return InputResult.HANDLED
+        }
+
+        override fun onDown(): InputResult {
+            val picker = pickerModalDelegate.state.value
+            when {
+                picker.showEmulatorPicker -> moveEmulatorPickerFocus(1)
+                picker.showCorePicker -> moveCorePickerFocus(1)
+                else -> movePerGameSettingsFocus(1)
+            }
+            return InputResult.HANDLED
+        }
+
+        override fun onLeft(): InputResult {
+            if (!pickerModalDelegate.state.value.hasAnyPickerOpen) adjustPerGameSetting(-1)
+            return InputResult.HANDLED
+        }
+
+        override fun onRight(): InputResult {
+            if (!pickerModalDelegate.state.value.hasAnyPickerOpen) adjustPerGameSetting(1)
+            return InputResult.HANDLED
+        }
+
+        override fun onConfirm(): InputResult {
+            val picker = pickerModalDelegate.state.value
+            when {
+                picker.showEmulatorPicker -> confirmEmulatorSelection()
+                picker.showCorePicker -> confirmCoreSelection()
+                else -> confirmPerGameSetting(onNavigateToPlatformSettings)
+            }
+            return InputResult.HANDLED
+        }
+
+        override fun onBack(): InputResult {
+            val picker = pickerModalDelegate.state.value
+            when {
+                picker.showEmulatorPicker -> dismissEmulatorPicker()
+                picker.showCorePicker -> dismissCorePicker()
+                else -> dismissPerGameSettings()
+            }
+            return InputResult.HANDLED
+        }
+
+        override fun onMenu(): InputResult = InputResult.HANDLED
+        override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+        override fun onContextMenu(): InputResult = InputResult.HANDLED
+        override fun onPrevSection(): InputResult = InputResult.HANDLED
+        override fun onNextSection(): InputResult = InputResult.HANDLED
+
+        override fun onSelect(): InputResult {
+            dismissAllModals()
+            return InputResult.HANDLED
+        }
+    }
+
     // --- Picker delegate forwarding ---
 
     fun showEmulatorPicker() {
@@ -1466,7 +1602,9 @@ class GameDetailViewModel @Inject constructor(
             hasAchievements = game?.achievements?.isNotEmpty() == true,
             hasSocialAccount = state.hasSocialAccount,
             hasSaveSync = hasSaveSync,
-            hasRelated = state.relatedGames.isNotEmpty()
+            hasRelated = state.relatedGames.isNotEmpty(),
+            hasPerGameSettings = game != null && !game.isSteamGame && !game.isAndroidApp &&
+                state.downloadStatus == GameDownloadStatus.DOWNLOADED
         )
     }
 
@@ -1492,6 +1630,7 @@ class GameDetailViewModel @Inject constructor(
             MenuItem.Saves -> syncSavesNow()
             MenuItem.Favorite -> toggleFavorite()
             MenuItem.Privacy -> togglePrivacy()
+            MenuItem.PerGameSettings -> showPerGameSettings()
             MenuItem.Options -> toggleMoreOptions()
             MenuItem.Details -> {}
             MenuItem.Description -> {}
@@ -1629,6 +1768,7 @@ class GameDetailViewModel @Inject constructor(
     private fun resetAllModals() {
         pickerModalDelegate.reset()
         moreOptionsDelegate.reset()
+        perGameSettingsDelegate.reset()
         ratingsStatus.reset()
         playOptionsDelegate.reset()
         screenshotDelegate.reset()

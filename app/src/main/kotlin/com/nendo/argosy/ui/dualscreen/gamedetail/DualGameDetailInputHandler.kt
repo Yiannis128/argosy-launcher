@@ -19,6 +19,8 @@ class DualGameDetailInputHandler(
     private val onBroadcastDirectAction: (String, Long, String?) -> Unit,
     private val onBroadcastEmulatorModalOpen: (List<com.nendo.argosy.data.emulator.InstalledEmulator>, String?) -> Unit,
     private val onBroadcastCoreModalOpen: (List<com.nendo.argosy.data.emulator.RetroArchCore>, String?) -> Unit,
+    private val onBroadcastSavePathModalOpen: (String?) -> Unit,
+    private val onBroadcastDisplayTargetModalOpen: (List<String>, String?, String?) -> Unit,
     private val onBroadcastVariantModalOpen: (List<String>, String?) -> Unit,
     private val onBroadcastCollectionModalOpen: (DualGameDetailViewModel) -> Unit,
     private val onBroadcastSteamInstallModalOpen: (DualGameDetailViewModel) -> Unit,
@@ -220,6 +222,64 @@ class DualGameDetailInputHandler(
                         val idx = vm.corePickerFocusIndex.value
                         vm.confirmCoreByIndex(idx)
                         onBroadcastModalConfirm(ActiveModal.CORE, idx, null)
+                    }
+                    GamepadEvent.Back -> {
+                        vm.dismissPicker()
+                        onBroadcastModalClose()
+                    }
+                    else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            ActiveModal.SAVE_PATH -> {
+                when (event) {
+                    GamepadEvent.Up -> {
+                        vm.moveSavePathPickerFocus(-1)
+                        onBroadcastInlineUpdate(
+                            "save_path_focus",
+                            vm.savePathPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Down -> {
+                        vm.moveSavePathPickerFocus(1)
+                        onBroadcastInlineUpdate(
+                            "save_path_focus",
+                            vm.savePathPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Confirm -> {
+                        val idx = vm.savePathPickerFocusIndex.value
+                        vm.confirmSavePathByIndex(idx)
+                        onBroadcastModalConfirm(ActiveModal.SAVE_PATH, idx, null)
+                    }
+                    GamepadEvent.Back -> {
+                        vm.dismissPicker()
+                        onBroadcastModalClose()
+                    }
+                    else -> {}
+                }
+                return InputResult.HANDLED
+            }
+            ActiveModal.DISPLAY_TARGET -> {
+                when (event) {
+                    GamepadEvent.Up -> {
+                        vm.moveDisplayTargetPickerFocus(-1)
+                        onBroadcastInlineUpdate(
+                            "display_target_focus",
+                            vm.displayTargetPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Down -> {
+                        vm.moveDisplayTargetPickerFocus(1)
+                        onBroadcastInlineUpdate(
+                            "display_target_focus",
+                            vm.displayTargetPickerFocusIndex.value
+                        )
+                    }
+                    GamepadEvent.Confirm -> {
+                        val idx = vm.displayTargetPickerFocusIndex.value
+                        vm.confirmDisplayTargetByIndex(idx)
+                        onBroadcastModalConfirm(ActiveModal.DISPLAY_TARGET, idx, null)
                     }
                     GamepadEvent.Back -> {
                         vm.dismissPicker()
@@ -504,6 +564,22 @@ class DualGameDetailInputHandler(
                     vm.openCorePicker(cores)
                     onBroadcastCoreModalOpen(cores, vm.uiState.value.selectedCoreName)
                 }
+            }
+            GameDetailOption.SAVE_PATH -> {
+                vm.openSavePathPicker()
+                onBroadcastSavePathModalOpen(vm.uiState.value.savePathOverride)
+            }
+            GameDetailOption.DISPLAY_TARGET -> {
+                vm.openDisplayTargetPicker()
+                val state = vm.uiState.value
+                onBroadcastDisplayTargetModalOpen(
+                    com.nendo.argosy.data.preferences.EmulatorDisplayTarget.entries.map { it.displayName },
+                    state.displayTargetName?.let {
+                        com.nendo.argosy.data.preferences.EmulatorDisplayTarget.fromString(it).displayName
+                    },
+                    com.nendo.argosy.data.preferences.EmulatorDisplayTarget
+                        .fromString(state.platformDisplayTargetName).displayName
+                )
             }
             GameDetailOption.SELECT_VARIANT -> {
                 lifecycleLaunch {

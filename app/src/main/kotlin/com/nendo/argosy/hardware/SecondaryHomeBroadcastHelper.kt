@@ -65,6 +65,18 @@ class SecondaryHomeBroadcastHelper(
         dsm.openCoreModal(cores.map { it.displayName }, currentName)
     }
 
+    fun broadcastSavePathModalOpen(overridePath: String?) {
+        dsm.openSavePathModal(overridePath)
+    }
+
+    fun broadcastDisplayTargetModalOpen(
+        names: List<String>,
+        currentName: String?,
+        inheritedName: String?
+    ) {
+        dsm.openDisplayTargetModal(names, currentName, inheritedName)
+    }
+
     fun broadcastVariantModalOpen(
         variantNames: List<String>,
         currentName: String?

@@ -30,7 +30,8 @@ class SecondaryHomeStateManager(
     private val configureEmulatorUseCase: com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager? = null,
     private val displayAffinityHelper: DisplayAffinityHelper,
-    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
+    private val preferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository
 ) {
 
     lateinit var sessionStateStore: SessionStateStore
@@ -125,6 +126,7 @@ class SecondaryHomeStateManager(
                 displayAffinityHelper = affinityHelper,
                 downloadFileStatusRepository = downloadFileStatusRepository,
                 sessionStateStore = sessionStateStore,
+                preferencesRepository = preferencesRepository,
                 context = context
             )
             vm.loadGame(savedDetailGameId)
@@ -212,6 +214,7 @@ class SecondaryHomeStateManager(
             displayAffinityHelper = affinityHelper,
             downloadFileStatusRepository = downloadFileStatusRepository,
             sessionStateStore = sessionStateStore,
+            preferencesRepository = preferencesRepository,
             context = context
         )
     }

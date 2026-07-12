@@ -219,7 +219,9 @@ data class GameDetailUiState(
     val achievementListFocusIndex: Int = 0,
     val hasVariants: Boolean = false,
     val hasSocialAccount: Boolean = false,
-    val isPrivate: Boolean = false
+    val isPrivate: Boolean = false,
+    val perGameSettings: com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsState =
+        com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsState()
 ) {
     val hasPreviousGame: Boolean get() = currentGameIndex > 0
     val hasNextGame: Boolean get() = currentGameIndex >= 0 && currentGameIndex < siblingGameIds.size - 1

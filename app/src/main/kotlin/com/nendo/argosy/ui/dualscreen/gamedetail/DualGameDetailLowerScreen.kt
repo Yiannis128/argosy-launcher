@@ -35,8 +35,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -72,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.domain.model.CompletionStatus
 import com.nendo.argosy.ui.common.color
 import com.nendo.argosy.domain.model.UnifiedStateEntry
@@ -165,6 +168,9 @@ fun DualGameDetailLowerScreen(
                         status = state.status,
                         emulatorName = state.emulatorName,
                         coreName = state.selectedCoreName,
+                        savePathOverride = state.savePathOverride,
+                        displayTargetName = state.displayTargetName,
+                        platformDisplayTargetName = state.platformDisplayTargetName,
                         variantName = state.selectedVariantName,
                         activeChannel = state.activeChannel,
                         activeSaveTimestamp = state.activeSaveTimestamp,
@@ -734,6 +740,9 @@ private fun OptionsTabContent(
     status: String?,
     emulatorName: String?,
     coreName: String?,
+    savePathOverride: String?,
+    displayTargetName: String?,
+    platformDisplayTargetName: String?,
     variantName: String?,
     activeChannel: String?,
     activeSaveTimestamp: Long?,
@@ -745,6 +754,9 @@ private fun OptionsTabContent(
     val theme = LocalArgosyTheme.current
     val emulatorText = emulatorName ?: "Platform Default"
     val coreText = coreName ?: "Default"
+    val savePathText = if (savePathOverride != null) "Custom" else "Default"
+    val displayTargetText = EmulatorDisplayTarget
+        .fromString(displayTargetName ?: platformDisplayTargetName).displayName
     val variantText = variantName ?: "Default"
     val completionStatus = CompletionStatus.fromApiValue(status)
 
@@ -867,6 +879,13 @@ private fun OptionsTabContent(
         GameDetailOption.CHANGE_CORE -> OptionEntry(
             option, Icons.Filled.Settings, "Change Core", coreText
         )
+        GameDetailOption.SAVE_PATH -> OptionEntry(
+            option, Icons.Filled.Folder, "Save Path", savePathText,
+            subLabel = savePathOverride
+        )
+        GameDetailOption.DISPLAY_TARGET -> OptionEntry(
+            option, Icons.Filled.Tv, "Display Target", displayTargetText
+        )
         GameDetailOption.SELECT_VARIANT -> OptionEntry(
             option, Icons.Filled.Settings, "Select Variant", variantText
         )
@@ -901,6 +920,8 @@ private fun OptionsTabContent(
     val managementGroup = setOf(
         GameDetailOption.CHANGE_EMULATOR,
         GameDetailOption.CHANGE_CORE,
+        GameDetailOption.SAVE_PATH,
+        GameDetailOption.DISPLAY_TARGET,
         GameDetailOption.SELECT_VARIANT,
         GameDetailOption.SELECT_DISC,
         GameDetailOption.FILES,
