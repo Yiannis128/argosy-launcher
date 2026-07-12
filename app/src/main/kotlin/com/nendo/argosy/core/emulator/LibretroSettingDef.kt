@@ -164,14 +164,6 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
-    data object DefaultToHardcore : LibretroSettingDef(
-        key = "defaultToHardcore",
-        section = "saving",
-        title = "RetroAchievements Mode",
-        subtitle = "Preferred mode when launching a game",
-        type = SettingType.Cycle(listOf("Ask", "Default to Casual", "Default to Hardcore"))
-    )
-
     companion object {
         val ALL: List<LibretroSettingDef> = listOf(
             Shader,
