@@ -149,22 +149,6 @@ fun SettingsScreen(
         }
     }
 
-    val audioFilePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: SecurityException) {
-                // Ignore if permission can't be persisted
-            }
-            viewModel.setAmbientAudioUri(it.toString())
-        }
-    }
-
     var pendingFontSlot by remember { mutableStateOf<FontSlot?>(null) }
     val fontPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -304,21 +288,8 @@ fun SettingsScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.openAudioFilePickerEvent.collect {
-            audioFilePickerLauncher.launch(arrayOf("audio/*"))
-        }
-    }
-
-    var showAudioFileBrowser by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        viewModel.openAudioFileBrowserEvent.collect {
-            showAudioFileBrowser = true
-        }
-    }
-
     var showBgmPlaylistManager by remember { mutableStateOf(false) }
+    var showBgmAddMusicBrowser by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.openBgmPlaylistManagerEvent.collect {
@@ -782,25 +753,25 @@ fun SettingsScreen(
         )
     }
 
-    if (showAudioFileBrowser) {
-        FileBrowserScreen(
-            mode = FileBrowserMode.FILE_OR_FOLDER_SELECTION,
-            fileFilter = FileFilter.AUDIO,
-            onPathSelected = { path ->
-                showAudioFileBrowser = false
-                viewModel.setAmbientAudioFilePath(path)
-            },
-            onDismiss = {
-                showAudioFileBrowser = false
-            }
+    if (showBgmPlaylistManager) {
+        BgmPlaylistManagerScreen(
+            onAddMusic = { showBgmAddMusicBrowser = true },
+            onDismiss = { showBgmPlaylistManager = false }
         )
     }
 
-    if (showBgmPlaylistManager) {
-        BgmPlaylistManagerScreen(
-            isActiveSource = uiState.ambientAudio.isPlaylistSource,
-            onSetActive = { viewModel.setBgmPlaylistAsSource() },
-            onDismiss = { showBgmPlaylistManager = false }
+    if (showBgmAddMusicBrowser) {
+        FileBrowserScreen(
+            mode = FileBrowserMode.FILE_OR_FOLDER_SELECTION,
+            fileFilter = FileFilter.AUDIO,
+            title = "Add Music",
+            onPathSelected = { path ->
+                showBgmAddMusicBrowser = false
+                viewModel.addBgmPlaylistEntry(path)
+            },
+            onDismiss = {
+                showBgmAddMusicBrowser = false
+            }
         )
     }
 

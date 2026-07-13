@@ -3,15 +3,18 @@ package com.nendo.argosy.ui.audio
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
-import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.net.Uri
 import android.util.Log
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,26 +22,25 @@ import javax.inject.Singleton
 private const val TAG = "AmbientAudio"
 
 @Singleton
-class AmbientAudioManager @Inject constructor(
-    @ApplicationContext private val context: Context
-) {
+class AmbientAudioManager @Inject constructor() {
     companion object {
         const val AMBIENT_SOURCE_PLAYLIST = "playlist:"
-        private val AUDIO_EXTENSIONS = setOf("mp3", "ogg", "wav", "flac", "m4a", "aac", "opus", "wma")
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     private var mediaPlayer: MediaPlayer? = null
-    private var currentUri: String? = null
     private var enabled = false
     private var targetVolume = 0.5f
     private var fadeAnimator: ValueAnimator? = null
     private var fadeOutCancelled = false
     private var suspended = false
 
-    private var isPlaylistMode = false
-    private var isExplicitPlaylist = false
-    private var explicitPaths: List<String> = emptyList()
-    private var folderPath: String? = null
+    private var sourceSet = false
+    private var sourcePaths: List<String> = emptyList()
+    private var playlistRefresh: (suspend () -> List<String>)? = null
+    private var refreshJob: Job? = null
+    private var generation = 0
     private var playlist: List<String> = emptyList()
     private var playlistIndex = 0
     private var shuffle = false
@@ -71,62 +73,44 @@ class AmbientAudioManager @Inject constructor(
     fun setShuffle(shuffle: Boolean) {
         this.shuffle = shuffle
         Log.d(TAG, "setShuffle=$shuffle")
-        if (isPlaylistMode && playlist.isNotEmpty()) {
+        if (playlist.isNotEmpty()) {
             reshufflePlaylist()
         }
     }
 
-    fun setAudioSource(path: String?) {
-        if (path == null) {
-            clearSource()
-            return
-        }
-        if (path == AMBIENT_SOURCE_PLAYLIST) return
-
-        val file = File(path)
-        if (file.isDirectory) {
-            setAudioFolder(path)
-        } else {
-            setAudioFile(path)
-        }
-    }
-
-    fun setPlaylistSource(paths: List<String>) {
-        if (isExplicitPlaylist && paths == explicitPaths) return
+    /** Replaces the playback queue; refresh re-expands the playlist at each full loop. */
+    fun setPlaylistSource(paths: List<String>, refresh: (suspend () -> List<String>)? = null) {
+        playlistRefresh = refresh
+        if (sourceSet && paths == sourcePaths) return
         Log.d(TAG, "setPlaylistSource: ${paths.size} tracks")
 
-        explicitPaths = paths
-        val existing = paths.filter { File(it).exists() }
-        if (existing.size < paths.size) {
-            Log.w(TAG, "Skipping ${paths.size - existing.size} missing playlist tracks")
-        }
+        generation++
+        refreshJob?.cancel()
 
-        if (isExplicitPlaylist) {
-            applyExplicitUpdate(existing)
+        if (!sourceSet) {
+            stopAndRelease()
+            sourceSet = true
+            sourcePaths = paths
+            playlist = if (shuffle) paths.shuffled() else paths
+            playlistIndex = 0
+            updateCurrentTrackName()
+            if (enabled && playlist.isNotEmpty()) {
+                preparePlayer(playlist[playlistIndex])
+            }
             return
         }
 
-        stopAndRelease()
-        isPlaylistMode = true
-        isExplicitPlaylist = true
-        folderPath = null
-        currentUri = AMBIENT_SOURCE_PLAYLIST
-        playlist = if (shuffle) existing.shuffled() else existing
-        playlistIndex = 0
-        updateCurrentTrackName()
-
-        if (enabled && playlist.isNotEmpty()) {
-            preparePlayer(playlist[playlistIndex], looping = false)
-        }
+        sourcePaths = paths
+        applyPlaylistUpdate(paths)
     }
 
-    private fun applyExplicitUpdate(existing: List<String>) {
+    private fun applyPlaylistUpdate(paths: List<String>) {
         val current = playlist.getOrNull(playlistIndex)
         val updated = if (shuffle) {
-            val kept = playlist.filter { it in existing }
-            kept + existing.filter { it !in kept }.shuffled()
+            val kept = playlist.filter { it in paths }
+            kept + paths.filter { it !in kept }.shuffled()
         } else {
-            existing
+            paths
         }
         playlist = updated
 
@@ -152,65 +136,6 @@ class AmbientAudioManager @Inject constructor(
         }
     }
 
-    private fun setAudioFile(uri: String) {
-        if (uri == currentUri && !isPlaylistMode) return
-        Log.d(TAG, "setAudioFile=$uri")
-
-        stopAndRelease()
-        isPlaylistMode = false
-        isExplicitPlaylist = false
-        explicitPaths = emptyList()
-        folderPath = null
-        playlist = emptyList()
-        playlistIndex = 0
-        currentUri = uri
-        _currentTrackName.value = null
-
-        if (enabled) {
-            preparePlayer(uri, looping = true)
-        }
-    }
-
-    private fun setAudioFolder(path: String) {
-        Log.d(TAG, "setAudioFolder=$path")
-
-        stopAndRelease()
-        isPlaylistMode = true
-        isExplicitPlaylist = false
-        explicitPaths = emptyList()
-        folderPath = path
-        currentUri = path
-
-        scanAndPreparePlaylist()
-
-        if (enabled && playlist.isNotEmpty()) {
-            preparePlayer(playlist[playlistIndex], looping = false)
-        }
-    }
-
-    private fun scanAndPreparePlaylist() {
-        val folder = folderPath?.let { File(it) } ?: return
-        if (!folder.isDirectory) {
-            Log.w(TAG, "Not a directory: $folderPath")
-            playlist = emptyList()
-            return
-        }
-
-        val audioFiles = folder.listFiles { file ->
-            file.isFile && file.extension.lowercase() in AUDIO_EXTENSIONS
-        }?.sortedBy { it.name.lowercase() }?.map { it.absolutePath } ?: emptyList()
-
-        Log.d(TAG, "Found ${audioFiles.size} audio files in folder")
-        playlist = audioFiles
-        playlistIndex = 0
-
-        if (shuffle && playlist.isNotEmpty()) {
-            reshufflePlaylist()
-        }
-
-        updateCurrentTrackName()
-    }
-
     private fun reshufflePlaylist() {
         if (playlist.isEmpty()) return
         playlist = playlist.shuffled()
@@ -220,81 +145,44 @@ class AmbientAudioManager @Inject constructor(
     }
 
     private fun updateCurrentTrackName() {
-        _currentTrackName.value = if (isPlaylistMode && playlist.isNotEmpty()) {
-            playlist.getOrNull(playlistIndex)?.substringAfterLast("/")
-        } else {
-            null
-        }
+        _currentTrackName.value = playlist.getOrNull(playlistIndex)?.substringAfterLast("/")
     }
 
-    private fun clearSource() {
-        Log.d(TAG, "clearSource")
-        stopAndRelease()
-        isPlaylistMode = false
-        isExplicitPlaylist = false
-        explicitPaths = emptyList()
-        folderPath = null
-        playlist = emptyList()
-        playlistIndex = 0
-        currentUri = null
-        _currentTrackName.value = null
-    }
-
-    @Deprecated("Use setAudioSource instead", ReplaceWith("setAudioSource(uri)"))
-    fun setAudioUri(uri: String?) {
-        setAudioSource(uri)
-    }
-
-    private fun preparePlayer(uri: String, looping: Boolean) {
-        if (!validateUri(uri)) {
-            Log.w(TAG, "Audio file not accessible: $uri")
-            if (isPlaylistMode) {
-                playNextTrack()
-            } else {
-                currentUri = null
-            }
+    private fun preparePlayer(path: String) {
+        if (!validatePath(path)) {
+            Log.w(TAG, "Audio file not accessible: $path")
+            playNextTrack()
             return
         }
 
         try {
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(audioAttributes)
-                if (uri.startsWith("/")) {
-                    setDataSource(uri)
-                } else {
-                    setDataSource(context, Uri.parse(uri))
-                }
-                isLooping = looping
+                setDataSource(path)
                 setVolume(0f, 0f)
                 setOnPreparedListener {
-                    Log.d(TAG, "MediaPlayer prepared: ${uri.substringAfterLast("/")}")
+                    Log.d(TAG, "MediaPlayer prepared: ${path.substringAfterLast("/")}")
                 }
                 setOnErrorListener { _, what, extra ->
                     Log.e(TAG, "MediaPlayer error: what=$what extra=$extra")
-                    if (isPlaylistMode) {
-                        playNextTrack()
-                    }
+                    playNextTrack()
                     true
                 }
-                if (!looping) {
-                    setOnCompletionListener {
-                        Log.d(TAG, "Track completed")
-                        playNextTrack()
-                    }
+                setOnCompletionListener {
+                    Log.d(TAG, "Track completed")
+                    playNextTrack()
                 }
                 prepareAsync()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to prepare MediaPlayer", e)
             mediaPlayer = null
-            if (isPlaylistMode) {
-                playNextTrack()
-            }
+            playNextTrack()
         }
     }
 
     private fun playNextTrack() {
-        if (!isPlaylistMode || playlist.isEmpty()) return
+        if (playlist.isEmpty()) return
 
         val wasPlaying = _isPlaying.value
         mediaPlayer?.release()
@@ -302,23 +190,35 @@ class AmbientAudioManager @Inject constructor(
 
         playlistIndex++
         if (playlistIndex >= playlist.size) {
-            if (isExplicitPlaylist) reloadExplicitPlaylist() else scanAndPreparePlaylist()
-            if (playlist.isEmpty()) {
-                Log.w(TAG, "No more tracks in playlist")
-                _isPlaying.value = false
-                return
-            }
+            refreshAndRestart(resume = wasPlaying)
+            return
         }
 
         Log.d(TAG, "Playing next track: ${playlist[playlistIndex].substringAfterLast("/")}")
         restartAtCurrentIndex(resume = wasPlaying)
     }
 
-    private fun reloadExplicitPlaylist() {
-        val existing = explicitPaths.filter { File(it).exists() }
-        playlist = if (shuffle) existing.shuffled() else existing
-        playlistIndex = 0
-        updateCurrentTrackName()
+    private fun refreshAndRestart(resume: Boolean) {
+        val gen = generation
+        val refresh = playlistRefresh
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
+            val fresh = withContext(Dispatchers.IO) {
+                refresh?.invoke() ?: sourcePaths.filter { File(it).canRead() }
+            }
+            if (gen != generation) return@launch
+            sourcePaths = fresh
+            playlist = if (shuffle) fresh.shuffled() else fresh
+            playlistIndex = 0
+            updateCurrentTrackName()
+            if (playlist.isEmpty()) {
+                Log.w(TAG, "No more tracks in playlist")
+                _isPlaying.value = false
+                return@launch
+            }
+            Log.d(TAG, "Playlist loop refreshed: ${playlist.size} tracks")
+            restartAtCurrentIndex(resume = resume)
+        }
     }
 
     private fun restartAtCurrentIndex(resume: Boolean) {
@@ -326,7 +226,7 @@ class AmbientAudioManager @Inject constructor(
         mediaPlayer = null
         updateCurrentTrackName()
         val track = playlist.getOrNull(playlistIndex) ?: return
-        preparePlayer(track, looping = false)
+        preparePlayer(track)
         if (resume && enabled && !suspended) {
             mediaPlayer?.setOnPreparedListener {
                 try {
@@ -340,16 +240,11 @@ class AmbientAudioManager @Inject constructor(
         }
     }
 
-    private fun validateUri(uri: String): Boolean {
+    private fun validatePath(path: String): Boolean {
         return try {
-            if (uri.startsWith("/")) {
-                File(uri).canRead()
-            } else {
-                context.contentResolver.openInputStream(Uri.parse(uri))?.close()
-                true
-            }
+            File(path).canRead()
         } catch (e: Exception) {
-            Log.w(TAG, "URI validation failed: ${e.message}")
+            Log.w(TAG, "Path validation failed: ${e.message}")
             false
         }
     }
@@ -373,17 +268,13 @@ class AmbientAudioManager @Inject constructor(
             Log.d(TAG, "fadeIn skipped: suspended (awaiting user input)")
             return
         }
-        if (!enabled || currentUri == null) {
-            Log.d(TAG, "fadeIn skipped: enabled=$enabled, uri=$currentUri")
+        if (!enabled) {
+            Log.d(TAG, "fadeIn skipped: disabled")
             return
         }
 
-        if (mediaPlayer == null) {
-            if (isPlaylistMode && playlist.isNotEmpty()) {
-                preparePlayer(playlist[playlistIndex], looping = false)
-            } else if (!isPlaylistMode) {
-                currentUri?.let { preparePlayer(it, looping = true) }
-            }
+        if (mediaPlayer == null && playlist.isNotEmpty()) {
+            preparePlayer(playlist[playlistIndex])
         }
 
         val player = mediaPlayer ?: return
@@ -467,14 +358,16 @@ class AmbientAudioManager @Inject constructor(
     }
 
     fun release() {
+        generation++
+        refreshJob?.cancel()
+        refreshJob = null
         stopAndRelease()
-        currentUri = null
         enabled = false
-        isPlaylistMode = false
-        isExplicitPlaylist = false
-        explicitPaths = emptyList()
-        folderPath = null
+        sourceSet = false
+        sourcePaths = emptyList()
+        playlistRefresh = null
         playlist = emptyList()
+        playlistIndex = 0
         _currentTrackName.value = null
     }
 }

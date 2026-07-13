@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -16,5 +17,12 @@ data class BgmPlaylistEntity(
     val position: Int,
     val filePath: String,
     val displayName: String,
-    val gameFileId: Long? = null
-)
+    val gameFileId: Long? = null,
+    @ColumnInfo(defaultValue = "file")
+    val entryType: String = TYPE_FILE
+) {
+    companion object {
+        const val TYPE_FILE = "file"
+        const val TYPE_FOLDER = "folder"
+    }
+}

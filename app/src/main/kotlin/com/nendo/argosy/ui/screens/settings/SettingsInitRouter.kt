@@ -506,40 +506,12 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 ?.capabilities?.supportsMusicApi == true
         ))
 
-        val ambientUri = prefs.ambientAudioUri
-        val isAmbientPlaylist = ambientUri == com.nendo.argosy.ui.audio.AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST
-        val isAmbientFolder = ambientUri?.let { uri ->
-            uri.startsWith("/") && java.io.File(uri).isDirectory
-        } ?: false
-        val ambientFileName = when {
-            isAmbientPlaylist -> "Playlist"
-            else -> ambientUri?.let { uri ->
-                if (uri.startsWith("/")) {
-                    uri.substringAfterLast("/")
-                } else {
-                    try {
-                        android.net.Uri.parse(uri).let { parsedUri ->
-                            vm.context.contentResolver.query(parsedUri, null, null, null, null)?.use { cursor ->
-                                if (cursor.moveToFirst()) {
-                                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                                    if (nameIndex >= 0) cursor.getString(nameIndex) else null
-                                } else null
-                            }
-                        }
-                    } catch (e: Exception) {
-                        uri.substringAfterLast("/").substringBefore("?")
-                    }
-                }
-            }
-        }
         vm.ambientAudioDelegate.updateState(AmbientAudioState(
             enabled = prefs.ambientAudioEnabled,
             volume = prefs.ambientAudioVolume,
-            audioUri = ambientUri,
-            audioFileName = ambientFileName,
-            isFolder = isAmbientFolder,
             shuffle = prefs.ambientAudioShuffle,
-            playlistTrackCount = vm.ambientAudioDelegate.state.value.playlistTrackCount
+            currentTrackName = vm.ambientAudioDelegate.state.value.currentTrackName,
+            playlistEntryCount = vm.ambientAudioDelegate.state.value.playlistEntryCount
         ))
 
         val excludedSlugs = setOf("android", "steam")

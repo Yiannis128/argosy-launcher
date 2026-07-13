@@ -394,7 +394,6 @@ private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState
             return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         ThemeMusicItem.BgmVolume -> vm.cycleAmbientAudioVolume()
-        ThemeMusicItem.BgmFile -> vm.openAudioFileBrowser()
         ThemeMusicItem.BgmPlaylist -> vm.openBgmPlaylistManager()
         ThemeMusicItem.BrowseServerMusic -> vm.openMusicBrowserBgm()
         ThemeMusicItem.BgmShuffle -> {

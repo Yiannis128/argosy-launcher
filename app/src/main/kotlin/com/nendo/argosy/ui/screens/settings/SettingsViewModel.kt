@@ -147,8 +147,6 @@ class SettingsViewModel @Inject constructor(
 
     val openBackgroundPickerEvent: SharedFlow<Unit> = displayDelegate.openBackgroundPickerEvent
     val openCustomSoundPickerEvent: SharedFlow<SoundType> = soundsDelegate.openCustomSoundPickerEvent
-    val openAudioFilePickerEvent: SharedFlow<Unit> = ambientAudioDelegate.openAudioFilePickerEvent
-    val openAudioFileBrowserEvent: SharedFlow<Unit> = ambientAudioDelegate.openAudioFileBrowserEvent
     val openBgmPlaylistManagerEvent: SharedFlow<Unit> = ambientAudioDelegate.openPlaylistManagerEvent
     val openMusicBrowserBgmEvent: SharedFlow<Unit> = ambientAudioDelegate.openMusicBrowserEvent
     val openMusicBrowserSfxEvent: SharedFlow<SoundType> = soundsDelegate.openMusicBrowserSfxEvent
@@ -903,15 +901,10 @@ class SettingsViewModel @Inject constructor(
     fun adjustAmbientAudioVolume(delta: Int) = routeAdjustAmbientAudioVolume(this, delta)
     fun cycleAmbientAudioVolume() = routeCycleAmbientAudioVolume(this)
 
-    fun openAudioFilePicker() = ambientAudioDelegate.openFilePicker(viewModelScope)
-    fun openAudioFileBrowser() = ambientAudioDelegate.openFileBrowser(viewModelScope)
-    fun setAmbientAudioUri(uri: String?) = ambientAudioDelegate.setAudioSource(viewModelScope, uri)
-    fun setAmbientAudioFilePath(path: String?) = ambientAudioDelegate.setAudioSource(viewModelScope, path)
     fun setAmbientAudioShuffle(shuffle: Boolean) = ambientAudioDelegate.setShuffle(viewModelScope, shuffle)
-    fun clearAmbientAudioFile() = ambientAudioDelegate.clearAudioFile(viewModelScope)
+    fun addBgmPlaylistEntry(path: String) = ambientAudioDelegate.addPlaylistEntry(viewModelScope, path)
     fun openBgmPlaylistManager() = ambientAudioDelegate.openPlaylistManager(viewModelScope)
     fun openMusicBrowserBgm() = ambientAudioDelegate.openMusicBrowser(viewModelScope)
-    fun setBgmPlaylistAsSource() = ambientAudioDelegate.setPlaylistAsSource(viewModelScope)
     fun setSwapAB(enabled: Boolean) = controlsDelegate.setSwapAB(viewModelScope, enabled)
     fun setSwapXY(enabled: Boolean) = controlsDelegate.setSwapXY(viewModelScope, enabled)
     fun cycleControllerLayout(direction: Int = 1) = controlsDelegate.cycleControllerLayout(viewModelScope, direction)

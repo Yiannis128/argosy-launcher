@@ -19,10 +19,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,14 +56,12 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 
 @Composable
 fun BgmPlaylistManagerScreen(
-    isActiveSource: Boolean,
-    onSetActive: () -> Unit,
+    onAddMusic: () -> Unit,
     onDismiss: () -> Unit,
     viewModel: BgmPlaylistManagerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currentIsActive by rememberUpdatedState(isActiveSource)
-    val currentOnSetActive by rememberUpdatedState(onSetActive)
+    val currentOnAddMusic by rememberUpdatedState(onAddMusic)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
 
     val inputHandler = remember(viewModel) {
@@ -103,10 +103,8 @@ fun BgmPlaylistManagerScreen(
 
             override fun onContextMenu(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.isReordering || st.entries.isEmpty() || currentIsActive) {
-                    return InputResult.handled(SoundType.SILENT)
-                }
-                currentOnSetActive()
+                if (st.isReordering) return InputResult.handled(SoundType.SILENT)
+                currentOnAddMusic()
                 return InputResult.HANDLED
             }
 
@@ -143,10 +141,8 @@ fun BgmPlaylistManagerScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             BgmPlaylistHeader(
-                isActiveSource = isActiveSource,
-                hasTracks = uiState.entries.isNotEmpty(),
                 onBack = onDismiss,
-                onSetActive = onSetActive
+                onAddMusic = onAddMusic
             )
 
             if (uiState.entries.isEmpty()) {
@@ -163,7 +159,7 @@ fun BgmPlaylistManagerScreen(
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
                     itemsIndexed(uiState.entries, key = { _, row -> row.id }) { index, row ->
-                        BgmPlaylistTrackRow(
+                        BgmPlaylistEntryRow(
                             row = row,
                             position = index + 1,
                             isFocused = uiState.focusedIndex == index,
@@ -181,17 +177,19 @@ fun BgmPlaylistManagerScreen(
         }
 
         val hints = when {
-            uiState.entries.isEmpty() -> emptyList()
             uiState.isReordering -> listOf(
                 InputButton.DPAD_VERTICAL to "Move",
                 InputButton.A to "Done",
                 InputButton.B to "Cancel"
             )
-            else -> buildList {
-                add(InputButton.A to "Move")
-                if (!isActiveSource) add(InputButton.X to "Set as BGM")
-                add(InputButton.Y to "Remove")
-            }
+            uiState.entries.isEmpty() -> listOf(
+                InputButton.X to "Add Music"
+            )
+            else -> listOf(
+                InputButton.A to "Move",
+                InputButton.X to "Add Music",
+                InputButton.Y to "Remove"
+            )
         }
 
         FooterHints(
@@ -211,10 +209,8 @@ fun BgmPlaylistManagerScreen(
 
 @Composable
 private fun BgmPlaylistHeader(
-    isActiveSource: Boolean,
-    hasTracks: Boolean,
     onBack: () -> Unit,
-    onSetActive: () -> Unit
+    onAddMusic: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -239,30 +235,32 @@ private fun BgmPlaylistHeader(
             modifier = Modifier.weight(1f)
         )
 
-        if (isActiveSource) {
-            Text(
-                text = "Active source",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = Dimens.spacingMd)
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(Dimens.radiusMd))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                .clickableNoFocus(onClick = onAddMusic)
+                .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(Dimens.iconSm)
             )
-        } else if (hasTracks) {
+            Spacer(modifier = Modifier.width(Dimens.spacingXs))
             Text(
-                text = "Use as BGM source",
+                text = "Add",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(Dimens.radiusMd))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                    .clickableNoFocus(onClick = onSetActive)
-                    .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
 @Composable
-private fun BgmPlaylistTrackRow(
+private fun BgmPlaylistEntryRow(
     row: BgmPlaylistRowUi,
     position: Int,
     isFocused: Boolean,
@@ -302,7 +300,7 @@ private fun BgmPlaylistTrackRow(
             )
         } else {
             Icon(
-                Icons.Outlined.MusicNote,
+                if (row.isFolder) Icons.Outlined.Folder else Icons.Outlined.MusicNote,
                 contentDescription = null,
                 tint = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(Dimens.iconMd)
@@ -317,11 +315,26 @@ private fun BgmPlaylistTrackRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurface
             )
-            if (row.isMissing) {
-                Text(
+            when {
+                row.isMissing && row.isFolder -> Text(
+                    text = "Folder missing - skipped during playback",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = warningColor
+                )
+                row.isMissing -> Text(
                     text = "File missing - skipped during playback",
                     style = MaterialTheme.typography.bodySmall,
                     color = warningColor
+                )
+                row.isFolder -> Text(
+                    text = when (row.folderTrackCount) {
+                        null, 0 -> "Folder - empty"
+                        1 -> "Folder - 1 track"
+                        else -> "Folder - ${row.folderTrackCount} tracks"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -367,7 +380,7 @@ private fun BgmPlaylistEmptyState() {
             )
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
             Text(
-                text = "No tracks - add from the music browser",
+                text = "No music - add from the music browser or local files",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

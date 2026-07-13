@@ -2005,3 +2005,9 @@ object Migration_137_138 : Migration(137, 138) {
         )
     }
 }
+
+object Migration_138_139 : Migration(138, 139) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `bgm_playlist` ADD COLUMN `entryType` TEXT NOT NULL DEFAULT 'file'")
+    }
+}

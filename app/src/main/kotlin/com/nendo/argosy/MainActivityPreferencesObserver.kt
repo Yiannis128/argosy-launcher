@@ -41,16 +41,8 @@ class MainActivityPreferencesObserver(
                 ambientAudioManager.setEnabled(prefs.ambientAudioEnabled)
                 ambientAudioManager.setVolume(prefs.ambientAudioVolume)
                 ambientAudioManager.setShuffle(prefs.ambientAudioShuffle)
-                if (prefs.ambientAudioUri == AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST) {
-                    bgmPlaylistCoordinator.activate()
-                } else {
-                    bgmPlaylistCoordinator.deactivate()
-                    ambientAudioManager.setAudioSource(prefs.ambientAudioUri)
-                }
-                if (prefs.ambientAudioEnabled &&
-                    prefs.ambientAudioUri != null &&
-                    hasWindowFocus()
-                ) {
+                bgmPlaylistCoordinator.activate()
+                if (prefs.ambientAudioEnabled && hasWindowFocus()) {
                     ambientAudioManager.fadeIn()
                 }
 

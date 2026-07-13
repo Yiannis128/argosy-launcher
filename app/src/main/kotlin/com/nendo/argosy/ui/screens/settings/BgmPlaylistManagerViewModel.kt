@@ -2,6 +2,8 @@ package com.nendo.argosy.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nendo.argosy.core.media.AudioFileTypes
+import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +21,9 @@ data class BgmPlaylistRowUi(
     val id: Long,
     val displayName: String,
     val filePath: String,
-    val isMissing: Boolean
+    val isMissing: Boolean,
+    val isFolder: Boolean = false,
+    val folderTrackCount: Int? = null
 )
 
 data class BgmPlaylistManagerState(
@@ -41,16 +45,7 @@ class BgmPlaylistManagerViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             coordinator.entries
-                .map { rows ->
-                    rows.map {
-                        BgmPlaylistRowUi(
-                            id = it.id,
-                            displayName = it.displayName,
-                            filePath = it.filePath,
-                            isMissing = !File(it.filePath).exists()
-                        )
-                    }
-                }
+                .map { rows -> rows.map { it.toRowUi() } }
                 .flowOn(Dispatchers.IO)
                 .collect { rows ->
                     _uiState.update { st ->
@@ -62,6 +57,23 @@ class BgmPlaylistManagerViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    private fun BgmPlaylistEntity.toRowUi(): BgmPlaylistRowUi {
+        val isFolder = entryType == BgmPlaylistEntity.TYPE_FOLDER
+        val file = File(filePath)
+        val isMissing = if (isFolder) !file.isDirectory else !file.exists()
+        val folderTrackCount = if (isFolder && !isMissing) {
+            file.walkTopDown().count { it.isFile && it.extension.lowercase() in AudioFileTypes.EXTENSIONS }
+        } else null
+        return BgmPlaylistRowUi(
+            id = id,
+            displayName = displayName,
+            filePath = filePath,
+            isMissing = isMissing,
+            isFolder = isFolder,
+            folderTrackCount = folderTrackCount
+        )
     }
 
     fun setFocusIndex(index: Int) {

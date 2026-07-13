@@ -136,7 +136,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.SpeedrunAttemptEntity::class,
         BgmPlaylistEntity::class
     ],
-    version = 138,
+    version = 139,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
