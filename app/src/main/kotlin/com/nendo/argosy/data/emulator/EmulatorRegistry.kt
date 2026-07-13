@@ -1118,11 +1118,11 @@ object EmulatorRegistry {
         "wonderswan" to listOf("mednafen_wswan"),
         "wsc" to listOf("mednafen_wswan"),
         "pokemini" to listOf("pokemini"),
-        "gameandwatch" to listOf("gw", "mame"),
+        "gameandwatch" to listOf("gw", "mamemess"),
         "pico8" to listOf("fake08", "retro8"),
         "c64" to listOf("vice_x64", "vice_x64sc"),
         "vic20" to listOf("vice_xvic"),
-        "amiga" to listOf("puae"),
+        "amiga" to listOf("puae", "puae2021"),
         "pc9800" to listOf("np2kai")
     )
 
@@ -1304,7 +1304,7 @@ object EmulatorRegistry {
         ),
         "gameandwatch" to listOf(
             RetroArchCore("gw", "Handheld Electronic (GW)"),
-            RetroArchCore("mame", "MAME")
+            RetroArchCore("mamemess", "Multi (MAME/MESS)")
         ),
         "c64" to listOf(
             RetroArchCore("vice_x64", "VICE x64"),
@@ -1314,7 +1314,8 @@ object EmulatorRegistry {
             RetroArchCore("vice_xvic", "VICE VIC-20")
         ),
         "amiga" to listOf(
-            RetroArchCore("puae", "PUAE")
+            RetroArchCore("puae", "PUAE"),
+            RetroArchCore("puae2021", "PUAE 2021")
         ),
         "jaguar" to listOf(
             RetroArchCore("virtualjaguar", "Virtual Jaguar")
