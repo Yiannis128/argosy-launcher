@@ -331,9 +331,9 @@ object EmulatorRegistry {
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
-                "wonderswan", "wsc", "pokemini",
+                "wonderswan", "wsc", "pokemini", "gameandwatch",
                 "arcade", "fbneo", "mame", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
+                "c64", "vic20", "amiga", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -351,9 +351,9 @@ object EmulatorRegistry {
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
-                "wonderswan", "wsc", "pokemini",
+                "wonderswan", "wsc", "pokemini", "gameandwatch",
                 "arcade", "fbneo", "mame", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
+                "c64", "vic20", "amiga", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
@@ -1007,12 +1007,14 @@ object EmulatorRegistry {
         "wonderswan" to listOf("builtin", "retroarch", "retroarch_64"),
         "wsc" to listOf("builtin", "retroarch", "retroarch_64"),
         "pokemini" to listOf("builtin", "retroarch", "retroarch_64"),
+        "gameandwatch" to listOf("builtin", "retroarch", "retroarch_64"),
         "xbox360" to listOf("ax360e", "ax360e_free"),
         "steam" to listOf("gamehub", "gamehub_lite", "gamenative"),
         "windows" to listOf("gamenative"),
         "pc" to listOf("gamenative"),
         "c64" to listOf("retroarch", "retroarch_64"),
         "vic20" to listOf("retroarch", "retroarch_64"),
+        "amiga" to listOf("builtin", "retroarch", "retroarch_64"),
         "pc9800" to listOf("retroarch", "retroarch_64"),
         "pico8" to listOf("builtin", "picpic", "retroarch", "retroarch_64")
     )
@@ -1063,8 +1065,10 @@ object EmulatorRegistry {
         "wonderswan" to "mednafen_wswan",
         "wsc" to "mednafen_wswan",
         "pokemini" to "pokemini",
+        "gameandwatch" to "gw",
         "c64" to "vice_x64",
         "vic20" to "vice_xvic",
+        "amiga" to "puae",
         "pc9800" to "np2kai",
         "pico8" to "fake08"
     )
@@ -1114,9 +1118,11 @@ object EmulatorRegistry {
         "wonderswan" to listOf("mednafen_wswan"),
         "wsc" to listOf("mednafen_wswan"),
         "pokemini" to listOf("pokemini"),
+        "gameandwatch" to listOf("gw", "mame"),
         "pico8" to listOf("fake08", "retro8"),
         "c64" to listOf("vice_x64", "vice_x64sc"),
         "vic20" to listOf("vice_xvic"),
+        "amiga" to listOf("puae"),
         "pc9800" to listOf("np2kai")
     )
 
@@ -1296,12 +1302,19 @@ object EmulatorRegistry {
         "pokemini" to listOf(
             RetroArchCore("pokemini", "PokeMini")
         ),
+        "gameandwatch" to listOf(
+            RetroArchCore("gw", "Handheld Electronic (GW)"),
+            RetroArchCore("mame", "MAME")
+        ),
         "c64" to listOf(
             RetroArchCore("vice_x64", "VICE x64"),
             RetroArchCore("vice_x64sc", "VICE x64 (Accurate)")
         ),
         "vic20" to listOf(
             RetroArchCore("vice_xvic", "VICE VIC-20")
+        ),
+        "amiga" to listOf(
+            RetroArchCore("puae", "PUAE")
         ),
         "jaguar" to listOf(
             RetroArchCore("virtualjaguar", "Virtual Jaguar")
@@ -1631,9 +1644,9 @@ object EmulatorRegistry {
                 "atari2600", "atari5200", "atari7800", "atari8bit", "lynx", "jaguar",
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
-                "wonderswan", "wsc", "pokemini",
+                "wonderswan", "wsc", "pokemini", "gameandwatch",
                 "arcade", "fbneo", "mame", "supergrafx",
-                "c64", "vic20", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
+                "c64", "vic20", "amiga", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.RetroArch(),
