@@ -641,7 +641,10 @@ class RomMLibrarySyncService @Inject constructor(
                 downloadedAt = existing?.downloadedAt,
                 isLaunchTarget = category.isLaunchTarget,
                 isMultiDisc = existing?.isMultiDisc ?: false,
-                m3uPath = existing?.m3uPath
+                m3uPath = existing?.m3uPath,
+                trackTitle = file.trackMeta?.title,
+                trackNumber = file.trackMeta?.track,
+                durationSeconds = file.trackMeta?.durationSeconds
             )
         }
         gameFileDao.insertAll(entities)
@@ -878,7 +881,10 @@ class RomMLibrarySyncService @Inject constructor(
                 isMultiDisc = existing?.isMultiDisc ?: false,
                 m3uPath = existing?.m3uPath,
                 regions = regions,
-                versionGroup = groupKey
+                versionGroup = groupKey,
+                trackTitle = file.trackMeta?.title,
+                trackNumber = file.trackMeta?.track,
+                durationSeconds = file.trackMeta?.durationSeconds
             )
         }
         gameFileDao.insertAll(entities)

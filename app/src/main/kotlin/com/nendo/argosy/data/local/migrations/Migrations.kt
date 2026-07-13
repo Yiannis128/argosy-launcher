@@ -1986,3 +1986,22 @@ object Migration_136_137 : Migration(136, 137) {
         db.execSQL("ALTER TABLE `emulator_configs` ADD COLUMN `savePath` TEXT")
     }
 }
+
+object Migration_137_138 : Migration(137, 138) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `game_files` ADD COLUMN `trackTitle` TEXT")
+        db.execSQL("ALTER TABLE `game_files` ADD COLUMN `trackNumber` INTEGER")
+        db.execSQL("ALTER TABLE `game_files` ADD COLUMN `durationSeconds` REAL")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `bgm_playlist` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`position` INTEGER NOT NULL, " +
+                "`filePath` TEXT NOT NULL, " +
+                "`displayName` TEXT NOT NULL, " +
+                "`gameFileId` INTEGER)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_bgm_playlist_filePath` ON `bgm_playlist` (`filePath`)"
+        )
+    }
+}

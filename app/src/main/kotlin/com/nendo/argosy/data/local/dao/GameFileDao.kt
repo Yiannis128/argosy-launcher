@@ -108,8 +108,11 @@ interface GameFileDao {
     @Query("UPDATE game_files SET localPath = :localPath, downloadedAt = :downloadedAt WHERE rommFileId = :rommFileId")
     suspend fun updateLocalPathByRommFileId(rommFileId: Long, localPath: String?, downloadedAt: Instant?)
 
-    @Query("UPDATE game_files SET localPath = NULL, downloadedAt = NULL WHERE gameId = :gameId")
-    suspend fun clearLocalPathsByGameId(gameId: Long)
+    @Query("""
+        UPDATE game_files SET localPath = NULL, downloadedAt = NULL
+        WHERE gameId = :gameId AND localPath IS NOT NULL AND localPath NOT LIKE :prefix || '%'
+    """)
+    suspend fun clearLocalPathsByGameIdExcludingPrefix(gameId: Long, prefix: String)
 
     @Query("DELETE FROM game_files WHERE id = :id")
     suspend fun deleteById(id: Long)

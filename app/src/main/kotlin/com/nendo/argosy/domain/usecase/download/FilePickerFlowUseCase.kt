@@ -1,13 +1,17 @@
 package com.nendo.argosy.domain.usecase.download
 
+import com.nendo.argosy.data.local.dao.BgmPlaylistDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.model.VariantCategory
+import com.nendo.argosy.data.music.MusicDirectoryManager
+import com.nendo.argosy.data.preferences.ControlsPreferencesRepository
 import com.nendo.argosy.data.preferences.DownloadDefaults
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.model.FilePickerRow
+import kotlinx.coroutines.flow.first
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,7 +35,10 @@ class FilePickerFlowUseCase @Inject constructor(
     private val romMRepository: RomMRepository,
     private val preferencesRepository: UserPreferencesRepository,
     private val downloadGameUseCase: DownloadGameUseCase,
-    private val downloadManager: com.nendo.argosy.data.download.DownloadManager
+    private val downloadManager: com.nendo.argosy.data.download.DownloadManager,
+    private val bgmPlaylistDao: BgmPlaylistDao,
+    private val musicDirectoryManager: MusicDirectoryManager,
+    private val controlsPreferencesRepository: ControlsPreferencesRepository
 ) {
 
     /** Null when there is nothing to choose: callers fall back to a plain download. */
@@ -225,12 +232,24 @@ class FilePickerFlowUseCase @Inject constructor(
                     val path = db.localPath
                     if (path != null && File(path).delete()) {
                         gameFileDao.clearLocalPath(db.id)
+                        pruneMusicReferences(path)
                         removed++
                     }
                 }
             }
         }
         return added to removed
+    }
+
+    private suspend fun pruneMusicReferences(path: String) {
+        val musicDirPrefix = musicDirectoryManager.resolveMusicDir().absolutePath + File.separator
+        if (!path.startsWith(musicDirPrefix)) return
+        bgmPlaylistDao.deleteByPath(path)
+        val configs = controlsPreferencesRepository.preferences.first().soundConfigs
+        val pruned = configs.filterValues { it.customFilePath != path }
+        if (pruned.size != configs.size) {
+            controlsPreferencesRepository.setSoundConfigs(pruned)
+        }
     }
 
     /** Returns queued count; errors surface through the returned messages. */

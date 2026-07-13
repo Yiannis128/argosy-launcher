@@ -10,6 +10,8 @@ import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.DownloadQueueEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.VariantCategory
+import com.nendo.argosy.data.music.MusicDirectoryManager
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMRepository
@@ -143,7 +145,8 @@ class DownloadManager @Inject constructor(
     private val m3uManager: M3uManager,
     private val thermalManager: dagger.Lazy<DownloadThermalManager>,
     private val emulatorResolver: EmulatorResolver,
-    private val steamContentManager: dagger.Lazy<com.nendo.argosy.data.steam.SteamContentManager>
+    private val steamContentManager: dagger.Lazy<com.nendo.argosy.data.steam.SteamContentManager>,
+    private val musicDirectoryManager: MusicDirectoryManager
 ) {
     private val _state = MutableStateFlow(DownloadQueueState())
     val state: StateFlow<DownloadQueueState> = _state.asStateFlow()
@@ -990,6 +993,7 @@ class DownloadManager @Inject constructor(
                 if (progress.selectedFileIds != null) {
                     mapSelectedFilesToDisk(progress.gameId, progress.selectedFileIds, File(finalPath))
                 }
+                relocateSoundtrackFiles(progress.gameId, File(finalPath), platformDir)
             }
         }
 
@@ -1465,6 +1469,44 @@ class DownloadManager @Inject constructor(
             emulatorResolver.getEmulatorIdForGame(gameId, game.platformId, platformSlug) == "eden"
         } catch (e: Exception) {
             false
+        }
+    }
+
+    private suspend fun relocateSoundtrackFiles(
+        gameId: Long,
+        finalTarget: File,
+        platformDir: File
+    ) {
+        val gameFolder = if (finalTarget.isDirectory) finalTarget else finalTarget.parentFile ?: return
+        if (gameFolder.absolutePath == platformDir.absolutePath) return
+        val rows = gameFileDao.getFilesByCategory(gameId, VariantCategory.SOUNDTRACK.key)
+        if (rows.isEmpty()) return
+        val game = gameDao.getById(gameId) ?: return
+        val platformName = platformDao.getBySlug(game.platformSlug)?.name ?: game.platformSlug
+        val folderPrefix = gameFolder.absolutePath + File.separator
+        val onDisk = gameFolder.walkTopDown().filter { it.isFile }.toList()
+        val emptiedDirs = mutableSetOf<File>()
+        for (row in rows) {
+            val fromLocalPath = row.localPath?.let(::File)
+                ?.takeIf { it.absolutePath.startsWith(folderPrefix) && it.exists() }
+            val source = fromLocalPath ?: onDisk.firstOrNull { it.name == row.fileName } ?: continue
+            val target = musicDirectoryManager.targetFileFor(
+                platformName, game.title, row.trackNumber, row.trackTitle, row.fileName
+            )
+            if (source.absolutePath == target.absolutePath) continue
+            if (musicDirectoryManager.moveIntoMusic(source, target)) {
+                gameFileDao.updateLocalPath(row.id, target.absolutePath, Instant.now())
+                musicDirectoryManager.scanFile(target)
+                source.parentFile
+                    ?.takeIf { it.absolutePath != gameFolder.absolutePath }
+                    ?.let { emptiedDirs.add(it) }
+                Logger.info(TAG, "Relocated soundtrack ${row.fileName} -> ${target.absolutePath}")
+            } else {
+                Logger.warn(TAG, "Failed to relocate soundtrack ${row.fileName} to ${target.absolutePath}")
+            }
+        }
+        emptiedDirs.forEach { dir ->
+            if (dir.listFiles().isNullOrEmpty()) dir.delete()
         }
     }
 

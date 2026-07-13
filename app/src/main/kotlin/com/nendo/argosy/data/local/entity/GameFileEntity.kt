@@ -40,7 +40,10 @@ data class GameFileEntity(
     val m3uPath: String? = null,
     val romHashPrefix: String? = null,
     val regions: String? = null,
-    val versionGroup: String? = null
+    val versionGroup: String? = null,
+    val trackTitle: String? = null,
+    val trackNumber: Int? = null,
+    val durationSeconds: Double? = null
 ) {
     fun isLocallyPresent(): Boolean = localPath?.let { File(it).exists() } == true
 }

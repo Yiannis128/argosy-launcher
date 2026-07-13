@@ -9,6 +9,7 @@ import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.OrphanedFileEntity
 import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.music.MusicDirectoryManager
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SteamRepository
@@ -32,7 +33,8 @@ class DeleteGameUseCase @Inject constructor(
     private val pendingSyncQueueDao: PendingSyncQueueDao,
     private val orphanedFileDao: OrphanedFileDao,
     private val steamRepository: SteamRepository,
-    private val payloadCodec: SyncPayloadCodec
+    private val payloadCodec: SyncPayloadCodec,
+    private val musicDirectoryManager: MusicDirectoryManager
 ) {
     suspend operator fun invoke(gameId: Long): Boolean {
         val game = gameDao.getById(gameId) ?: return false
@@ -46,7 +48,8 @@ class DeleteGameUseCase @Inject constructor(
 
         gameRepository.clearLocalPath(gameId)
         downloadQueueDao.deleteByGameId(gameId)
-        gameFileDao.clearLocalPathsByGameId(gameId)
+        val musicDirPrefix = musicDirectoryManager.resolveMusicDir().absolutePath + File.separator
+        gameFileDao.clearLocalPathsByGameIdExcludingPrefix(gameId, musicDirPrefix)
 
         saveCacheManager.deleteAllCachesForGame(gameId)
         saveSyncDao.deleteByGame(gameId)

@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import com.nendo.argosy.data.local.converter.Converters
 import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.local.dao.AppCategoryDao
+import com.nendo.argosy.data.local.dao.BgmPlaylistDao
 import com.nendo.argosy.data.local.dao.CheatDao
 import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
@@ -45,6 +46,7 @@ import com.nendo.argosy.data.local.dao.SteamDownloadTrackingDao
 import com.nendo.argosy.data.local.dao.SteamLicenseDao
 import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.local.entity.AppCategoryEntity
+import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.data.local.entity.CheatEntity
 import com.nendo.argosy.data.local.entity.CollectionEntity
 import com.nendo.argosy.data.local.entity.CollectionGameEntity
@@ -131,9 +133,10 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.TouchLayoutOverrideEntity::class,
         com.nendo.argosy.data.local.entity.SpeedrunCategoryEntity::class,
         com.nendo.argosy.data.local.entity.SpeedrunSegmentEntity::class,
-        com.nendo.argosy.data.local.entity.SpeedrunAttemptEntity::class
+        com.nendo.argosy.data.local.entity.SpeedrunAttemptEntity::class,
+        BgmPlaylistEntity::class
     ],
-    version = 137,
+    version = 138,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -180,5 +183,6 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun touchLayoutOverrideDao(): com.nendo.argosy.data.local.dao.TouchLayoutOverrideDao
     abstract fun speedrunDao(): com.nendo.argosy.data.local.dao.SpeedrunDao
     abstract fun gameAbsorptionDao(): com.nendo.argosy.data.local.dao.GameAbsorptionDao
+    abstract fun bgmPlaylistDao(): BgmPlaylistDao
 
 }
