@@ -12,6 +12,7 @@ import com.nendo.argosy.data.remote.romm.RomMMusicTrack
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.domain.usecase.music.DownloadMusicTrackUseCase
+import com.nendo.argosy.domain.usecase.music.GetLocalGameCoversUseCase
 import com.nendo.argosy.domain.usecase.music.GetLocalMusicTrackStateUseCase
 import com.nendo.argosy.domain.usecase.music.LocalMusicTrackState
 import com.nendo.argosy.domain.usecase.music.MusicTrackLookup
@@ -57,6 +58,7 @@ class MusicBrowserViewModel @Inject constructor(
     private val romMRepository: RomMRepository,
     private val downloadMusicTrack: DownloadMusicTrackUseCase,
     private val getLocalMusicTrackState: GetLocalMusicTrackStateUseCase,
+    private val getLocalGameCovers: GetLocalGameCoversUseCase,
     private val playlistCoordinator: BgmPlaylistCoordinator,
     private val ambientAudioManager: AmbientAudioManager,
     private val preferencesRepository: UserPreferencesRepository
@@ -87,7 +89,8 @@ class MusicBrowserViewModel @Inject constructor(
             MusicBrowserState(
                 mode = mode,
                 playlistPaths = st.playlistPaths,
-                playlistFileIds = st.playlistFileIds
+                playlistFileIds = st.playlistFileIds,
+                playlistPathByFileId = st.playlistPathByFileId
             )
         }
         searchInput.value = ""
@@ -110,7 +113,10 @@ class MusicBrowserViewModel @Inject constructor(
                 _uiState.update { st ->
                     st.copy(
                         playlistPaths = rows.map { it.filePath }.toSet(),
-                        playlistFileIds = rows.mapNotNull { it.gameFileId }.toSet()
+                        playlistFileIds = rows.mapNotNull { it.gameFileId }.toSet(),
+                        playlistPathByFileId = rows.mapNotNull { row ->
+                            row.gameFileId?.let { it to row.filePath }
+                        }.toMap()
                     )
                 }
             }
@@ -143,6 +149,15 @@ class MusicBrowserViewModel @Inject constructor(
         maybePrefetch()
     }
 
+    fun jumpGroup(delta: Int) {
+        _uiState.update { st ->
+            if (st.groups.isEmpty()) return@update st
+            val target = (st.groupIndexOf(st.focusedIndex) + delta).coerceIn(0, st.groups.size - 1)
+            st.copy(focusedIndex = st.groups[target].startIndex, showKeyboard = false)
+        }
+        maybePrefetch()
+    }
+
     private fun maybePrefetch() {
         val st = _uiState.value
         if (st.focusedIndex >= st.tracks.size - PREFETCH_THRESHOLD) loadPage(reset = false)
@@ -163,7 +178,8 @@ class MusicBrowserViewModel @Inject constructor(
                         isOffline = true,
                         isLoading = false,
                         isLoadingMore = false,
-                        tracks = if (reset) emptyList() else it.tracks
+                        tracks = if (reset) emptyList() else it.tracks,
+                        groups = if (reset) emptyList() else it.groups
                     )
                 }
                 return@launch
@@ -175,6 +191,7 @@ class MusicBrowserViewModel @Inject constructor(
                     isLoading = reset,
                     isLoadingMore = !reset,
                     tracks = if (reset) emptyList() else it.tracks,
+                    groups = if (reset) emptyList() else it.groups,
                     total = if (reset) 0 else it.total,
                     focusedIndex = if (reset) -1 else it.focusedIndex
                 )
@@ -188,6 +205,7 @@ class MusicBrowserViewModel @Inject constructor(
                 genre = current.genreFilter,
                 minDuration = minDuration,
                 maxDuration = maxDuration,
+                orderBy = "album",
                 limit = PAGE_SIZE,
                 offset = if (reset) 0 else current.tracks.size
             )
@@ -195,19 +213,28 @@ class MusicBrowserViewModel @Inject constructor(
                 is RomMResult.Success -> {
                     val newTracks = result.data.items.map { it.toUi() }
                     val localStates = getLocalMusicTrackState(newTracks.map { it.toLookup() })
+                    val knownCovers = if (reset) emptyMap() else _uiState.value.coversByRomId
+                    val unknownRomIds = newTracks.map { it.romId }.toSet() - knownCovers.keys
+                    val newCovers = if (unknownRomIds.isEmpty()) emptyMap() else getLocalGameCovers(unknownRomIds)
                     _uiState.update { state ->
                         val merged = if (reset) newTracks else state.tracks + newTracks
+                        val covers = knownCovers + newCovers
+                        val (flat, groups) = regroup(merged, covers)
+                        val focusedId = if (reset) null else state.tracks.getOrNull(state.focusedIndex)?.romFileId
                         state.copy(
-                            tracks = merged,
+                            tracks = flat,
+                            groups = groups,
+                            coversByRomId = covers,
                             total = result.data.total,
                             localByRomFileId = if (reset) localStates else state.localByRomFileId + localStates,
                             isLoading = false,
                             isLoadingMore = false,
                             isUnsupported = false,
-                            focusedIndex = if (reset) {
-                                if (merged.isEmpty()) -1 else 0
-                            } else {
-                                state.focusedIndex
+                            focusedIndex = when {
+                                reset -> if (flat.isEmpty()) -1 else 0
+                                focusedId == null -> state.focusedIndex
+                                else -> flat.indexOfFirst { it.romFileId == focusedId }
+                                    .takeIf { it >= 0 } ?: state.focusedIndex
                             }
                         )
                     }
@@ -222,6 +249,38 @@ class MusicBrowserViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun regroup(
+        tracks: List<MusicTrackUi>,
+        covers: Map<Long, String>
+    ): Pair<List<MusicTrackUi>, List<GameGroup>> {
+        val byRomId = LinkedHashMap<Long, MutableList<MusicTrackUi>>()
+        for (track in tracks) byRomId.getOrPut(track.romId) { mutableListOf() }.add(track)
+        val flat = ArrayList<MusicTrackUi>(tracks.size)
+        val groups = ArrayList<GameGroup>(byRomId.size)
+        for ((romId, groupTracks) in byRomId) {
+            val sorted = groupTracks.sortedWith(
+                compareBy(
+                    { it.disc ?: Int.MAX_VALUE },
+                    { it.trackNumber ?: Int.MAX_VALUE },
+                    { it.title }
+                )
+            )
+            val first = sorted.first()
+            groups.add(
+                GameGroup(
+                    romId = romId,
+                    gameName = first.gameName,
+                    platformName = first.platformName,
+                    coverPath = covers[romId],
+                    startIndex = flat.size,
+                    tracks = sorted
+                )
+            )
+            flat.addAll(sorted)
+        }
+        return flat to groups
     }
 
     private fun durationParams(mode: MusicBrowserMode): Pair<Double?, Double?> =
@@ -448,18 +507,23 @@ class MusicBrowserViewModel @Inject constructor(
         val track = st.tracks.getOrNull(index ?: st.focusedIndex) ?: return
         if (track.romFileId in st.downloadingIds) return
         when (st.mode) {
-            MusicBrowserMode.BGM -> assignBgm(track)
+            MusicBrowserMode.BGM -> if (st.isInPlaylist(track)) removeFromPlaylist(track) else assignBgm(track)
             MusicBrowserMode.SFX -> assignSfx(track)
         }
     }
 
-    fun removeFocusedFromPlaylist() {
+    private fun removeFromPlaylist(track: MusicTrackUi) {
         val st = _uiState.value
-        if (st.mode != MusicBrowserMode.BGM) return
-        val track = st.tracks.getOrNull(st.focusedIndex) ?: return
         val local = st.localByRomFileId[track.romFileId] ?: return
-        if (!st.isInPlaylist(track)) return
-        viewModelScope.launch(Dispatchers.IO) { playlistCoordinator.remove(local.localPath) }
+        val path = if (local.localPath in st.playlistPaths) {
+            local.localPath
+        } else {
+            local.gameFileId?.let { st.playlistPathByFileId[it] } ?: local.localPath
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            playlistCoordinator.remove(path)
+            postNotice("Removed from playlist")
+        }
     }
 
     private fun assignBgm(track: MusicTrackUi) {
@@ -530,21 +594,18 @@ class MusicBrowserViewModel @Inject constructor(
             artist?.takeIf { it.isNotBlank() },
             album?.takeIf { it.isNotBlank() }
         ).joinToString(" - ").takeIf { it.isNotEmpty() }
-        val gameLine = listOfNotNull(
-            gameName?.takeIf { it.isNotBlank() },
-            platformName.takeIf { it.isNotBlank() }
-        ).joinToString(" - ").takeIf { it.isNotEmpty() }
         return MusicTrackUi(
             romFileId = romFileId,
+            romId = romId,
             title = cleanTitle ?: decodedName,
             artistAlbum = artistAlbum,
-            gameLine = gameLine,
             durationLabel = durationSeconds?.let { formatDuration(it) },
             fileName = decodedName,
             streamUrl = streamUrl,
             platformName = platformName,
             gameName = gameName?.takeIf { it.isNotBlank() } ?: "Unknown Game",
             trackNumber = track,
+            disc = disc,
             trackTitle = cleanTitle
         )
     }

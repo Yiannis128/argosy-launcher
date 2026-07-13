@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.musicbrowser
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,15 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.MusicOff
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,9 +43,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,14 +58,20 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.remote.romm.RomMMusicFacet
+import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
@@ -136,12 +147,7 @@ fun MusicBrowserScreen(
                 return InputResult.HANDLED
             }
 
-            override fun onSecondaryAction(): InputResult {
-                val st = viewModel.uiState.value
-                if (st.facetPicker != null) return InputResult.handled(SoundType.SILENT)
-                viewModel.removeFocusedFromPlaylist()
-                return InputResult.HANDLED
-            }
+            override fun onSecondaryAction(): InputResult = InputResult.handled(SoundType.SILENT)
 
             override fun onContextMenu(): InputResult {
                 val st = viewModel.uiState.value
@@ -157,8 +163,21 @@ fun MusicBrowserScreen(
             }
 
             override fun onNextSection(): InputResult = InputResult.handled(SoundType.SILENT)
-            override fun onPrevTrigger(): InputResult = InputResult.handled(SoundType.SILENT)
-            override fun onNextTrigger(): InputResult = InputResult.handled(SoundType.SILENT)
+
+            override fun onPrevTrigger(): InputResult {
+                val st = viewModel.uiState.value
+                if (st.facetPicker != null) return InputResult.handled(SoundType.SILENT)
+                viewModel.jumpGroup(-1)
+                return InputResult.HANDLED
+            }
+
+            override fun onNextTrigger(): InputResult {
+                val st = viewModel.uiState.value
+                if (st.facetPicker != null) return InputResult.handled(SoundType.SILENT)
+                viewModel.jumpGroup(1)
+                return InputResult.HANDLED
+            }
+
             override fun onMenu(): InputResult = InputResult.handled(SoundType.SILENT)
             override fun onSelect(): InputResult = InputResult.handled(SoundType.SILENT)
         }
@@ -178,23 +197,25 @@ fun MusicBrowserScreen(
         }
     }
 
-    LaunchedEffect(uiState.focusedIndex, uiState.tracks.size) {
-        if (uiState.focusedIndex >= 0 && uiState.focusedIndex < uiState.tracks.size) {
-            val viewportHeight = listState.layoutInfo.viewportEndOffset
-            val visibleItems = listState.layoutInfo.visibleItemsInfo
-            val avgItemHeight = if (visibleItems.isNotEmpty()) {
-                visibleItems.sumOf { it.size } / visibleItems.size
-            } else 64
-            val targetOffset = (viewportHeight / 2) - (avgItemHeight / 2)
-            listState.animateScrollToItem(uiState.focusedIndex, -targetOffset)
-        }
+    val density = LocalDensity.current
+    val trackRowHeightPx = with(density) { Dimens.menuRowHeightLg.toPx() }
+    val trackRowStridePx = with(density) { (Dimens.menuRowHeightLg + Dimens.spacingSm).toPx() }
+
+    LaunchedEffect(uiState.focusedIndex, uiState.groups.size) {
+        val groupIndex = uiState.groupIndexOf(uiState.focusedIndex)
+        val group = uiState.groups.getOrNull(groupIndex) ?: return@LaunchedEffect
+        val indexInGroup = uiState.focusedIndex - group.startIndex
+        val viewportHeight = listState.layoutInfo.viewportEndOffset
+        val centerOffset = (viewportHeight / 2) - (trackRowHeightPx / 2).toInt()
+        val scrollOffset = (indexInGroup * trackRowStridePx).toInt() - centerOffset
+        listState.animateScrollToItem(groupIndex, scrollOffset)
     }
 
-    LaunchedEffect(listState, uiState.tracks.size) {
+    LaunchedEffect(listState, uiState.groups.size) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastVisible ->
-                val count = viewModel.uiState.value.tracks.size
-                if (lastVisible != null && count > 0 && lastVisible >= count - 6) {
+                val groupCount = viewModel.uiState.value.groups.size
+                if (lastVisible != null && groupCount > 0 && lastVisible >= groupCount - 2) {
                     viewModel.onListEndApproached()
                 }
             }
@@ -258,26 +279,50 @@ fun MusicBrowserScreen(
                             top = Dimens.spacingSm,
                             bottom = Dimens.footerHeight
                         ),
-                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
                     ) {
-                        itemsIndexed(uiState.tracks, key = { _, track -> track.romFileId }) { index, track ->
-                            MusicTrackRow(
-                                track = track,
-                                isFocused = uiState.focusedIndex == index,
-                                isDownloaded = uiState.isDownloaded(track),
-                                isDownloading = track.romFileId in uiState.downloadingIds,
-                                isInPlaylist = mode == MusicBrowserMode.BGM && uiState.isInPlaylist(track),
-                                isPreviewing = uiState.previewingId == track.romFileId,
-                                onClick = {
-                                    viewModel.setFocusIndex(index)
-                                    viewModel.confirmRow(index)
-                                },
-                                onPreview = { viewModel.togglePreview(index) },
-                                onRemove = {
-                                    viewModel.setFocusIndex(index)
-                                    viewModel.removeFocusedFromPlaylist()
+                        itemsIndexed(uiState.groups, key = { _, group -> group.romId }) { groupIndex, group ->
+                            var rowHeightPx by remember { mutableIntStateOf(0) }
+                            Column {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
+                                    modifier = Modifier.onSizeChanged { rowHeightPx = it.height }
+                                ) {
+                                    GameGroupPanel(
+                                        group = group,
+                                        listState = listState,
+                                        itemIndex = groupIndex,
+                                        containerHeightPx = { rowHeightPx }
+                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                                    ) {
+                                        group.tracks.forEachIndexed { trackIndex, track ->
+                                            val flatIndex = group.startIndex + trackIndex
+                                            MusicTrackRow(
+                                                track = track,
+                                                isFocused = uiState.focusedIndex == flatIndex,
+                                                isDownloaded = uiState.isDownloaded(track),
+                                                isDownloading = track.romFileId in uiState.downloadingIds,
+                                                isInPlaylist = mode == MusicBrowserMode.BGM && uiState.isInPlaylist(track),
+                                                isPreviewing = uiState.previewingId == track.romFileId,
+                                                onClick = {
+                                                    viewModel.setFocusIndex(flatIndex)
+                                                    viewModel.confirmRow(flatIndex)
+                                                },
+                                                onPreview = { viewModel.togglePreview(flatIndex) }
+                                            )
+                                        }
+                                    }
                                 }
-                            )
+                                if (groupIndex < uiState.groups.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(top = Dimens.spacingMd),
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                            }
                         }
                         if (uiState.isLoadingMore) {
                             item(key = "loading-more") {
@@ -310,12 +355,18 @@ fun MusicBrowserScreen(
         } else {
             buildList {
                 add(InputButton.LB to "Filters")
+                if (uiState.groups.size > 1) {
+                    add(InputButton.LT_RT to "Game")
+                }
                 if (focusedTrack != null) {
                     add(InputButton.X to if (uiState.previewingId == focusedTrack.romFileId) "Stop" else "Preview")
-                    if (mode == MusicBrowserMode.BGM && uiState.isInPlaylist(focusedTrack)) {
-                        add(InputButton.Y to "Remove")
-                    }
-                    add(InputButton.A to if (mode == MusicBrowserMode.BGM) "Add" else "Assign")
+                    add(
+                        InputButton.A to when {
+                            mode == MusicBrowserMode.SFX -> "Assign"
+                            uiState.isInPlaylist(focusedTrack) -> "Remove"
+                            else -> "Add"
+                        }
+                    )
                 }
             }
         }
@@ -327,8 +378,8 @@ fun MusicBrowserScreen(
                     InputButton.A -> inputHandler.onConfirm()
                     InputButton.B -> inputHandler.onBack()
                     InputButton.X -> inputHandler.onContextMenu()
-                    InputButton.Y -> inputHandler.onSecondaryAction()
                     InputButton.LB -> inputHandler.onPrevSection()
+                    InputButton.LT_RT -> inputHandler.onNextTrigger()
                     else -> {}
                 }
             }
@@ -496,6 +547,75 @@ private fun FilterChip(
 }
 
 @Composable
+private fun GameGroupPanel(
+    group: GameGroup,
+    listState: LazyListState,
+    itemIndex: Int,
+    containerHeightPx: () -> Int
+) {
+    var panelHeightPx by remember { mutableIntStateOf(0) }
+    val stickyTranslation by remember(itemIndex) {
+        derivedStateOf {
+            val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == itemIndex }
+            val maxShift = (containerHeightPx() - panelHeightPx).coerceAtLeast(0).toFloat()
+            if (info == null || panelHeightPx == 0) 0f
+            else (-info.offset.toFloat()).coerceIn(0f, maxShift)
+        }
+    }
+    Column(
+        modifier = Modifier
+            .width(Dimens.coverPanelWidth)
+            .onSizeChanged { panelHeightPx = it.height }
+            .graphicsLayer { translationY = stickyTranslation },
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        val model = rememberFileImageModel(group.coverPath)
+        if (model != null) {
+            AsyncImage(
+                model = model,
+                contentDescription = group.gameName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f)
+                    .clip(RoundedCornerShape(Dimens.radiusMd))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f)
+                    .clip(RoundedCornerShape(Dimens.radiusMd))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(Dimens.iconLg)
+                )
+            }
+        }
+        Text(
+            text = group.gameName,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = group.platformName,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 private fun MusicTrackRow(
     track: MusicTrackUi,
     isFocused: Boolean,
@@ -504,23 +624,28 @@ private fun MusicTrackRow(
     isInPlaylist: Boolean,
     isPreviewing: Boolean,
     onClick: () -> Unit,
-    onPreview: () -> Unit,
-    onRemove: () -> Unit
+    onPreview: () -> Unit
 ) {
     val focusAccent = LocalArgosyTheme.current.focusAccent
     val focusedContent = lerp(focusAccent, Color.White, 0.45f)
     val successColor = LocalLauncherTheme.current.semanticColors.success
+    val rowShape = RoundedCornerShape(Dimens.radiusMd)
+    val borderModifier = if (isInPlaylist) {
+        Modifier.border(Dimens.borderMedium, focusAccent, rowShape)
+    } else Modifier
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Dimens.radiusMd))
+            .height(Dimens.menuRowHeightLg)
+            .clip(rowShape)
             .background(
                 if (isFocused) focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
+            .then(borderModifier)
             .clickableNoFocus(onClick = onClick)
-            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+            .padding(horizontal = Dimens.spacingMd),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isDownloading) {
@@ -531,9 +656,11 @@ private fun MusicTrackRow(
         } else {
             Icon(
                 imageVector = if (isPreviewing) Icons.Default.GraphicEq else Icons.Outlined.MusicNote,
-                contentDescription = null,
+                contentDescription = if (isInPlaylist) "In playlist" else null,
                 tint = when {
                     isPreviewing -> MaterialTheme.colorScheme.primary
+                    isInPlaylist -> focusAccent
+                    isDownloaded -> successColor
                     isFocused -> focusedContent
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
@@ -546,7 +673,7 @@ private fun MusicTrackRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -561,32 +688,6 @@ private fun MusicTrackRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            track.gameLine?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isFocused) focusedContent.copy(alpha = 0.7f)
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(Dimens.spacingSm))
-
-        if (isInPlaylist) {
-            StatusIcon(
-                icon = Icons.AutoMirrored.Filled.PlaylistAddCheck,
-                tint = MaterialTheme.colorScheme.primary,
-                contentDescription = "In playlist"
-            )
-        } else if (isDownloaded) {
-            StatusIcon(
-                icon = Icons.Default.DownloadDone,
-                tint = successColor,
-                contentDescription = "Downloaded"
-            )
         }
 
         track.durationLabel?.let {
@@ -607,33 +708,7 @@ private fun MusicTrackRow(
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        if (isInPlaylist) {
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Remove from playlist",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
-}
-
-@Composable
-private fun StatusIcon(
-    icon: ImageVector,
-    tint: Color,
-    contentDescription: String
-) {
-    Icon(
-        imageVector = icon,
-        contentDescription = contentDescription,
-        tint = tint,
-        modifier = Modifier
-            .padding(horizontal = Dimens.spacingXs)
-            .size(Dimens.iconSm)
-    )
 }
 
 @Composable

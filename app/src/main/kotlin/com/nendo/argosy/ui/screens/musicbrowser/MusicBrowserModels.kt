@@ -7,16 +7,26 @@ enum class MusicBrowserMode { BGM, SFX }
 
 data class MusicTrackUi(
     val romFileId: Long,
+    val romId: Long,
     val title: String,
     val artistAlbum: String?,
-    val gameLine: String?,
     val durationLabel: String?,
     val fileName: String,
     val streamUrl: String,
     val platformName: String,
     val gameName: String,
     val trackNumber: Int?,
+    val disc: Int?,
     val trackTitle: String?
+)
+
+data class GameGroup(
+    val romId: Long,
+    val gameName: String,
+    val platformName: String,
+    val coverPath: String?,
+    val startIndex: Int,
+    val tracks: List<MusicTrackUi>
 )
 
 enum class FacetPickerStage { CHOOSER, VALUES }
@@ -33,11 +43,14 @@ data class FacetPickerUi(
 data class MusicBrowserState(
     val mode: MusicBrowserMode = MusicBrowserMode.BGM,
     val tracks: List<MusicTrackUi> = emptyList(),
+    val groups: List<GameGroup> = emptyList(),
+    val coversByRomId: Map<Long, String> = emptyMap(),
     val total: Int = 0,
     val localByRomFileId: Map<Long, LocalMusicTrackState> = emptyMap(),
     val downloadingIds: Set<Long> = emptySet(),
     val playlistPaths: Set<String> = emptySet(),
     val playlistFileIds: Set<Long> = emptySet(),
+    val playlistPathByFileId: Map<Long, String> = emptyMap(),
     val searchQuery: String = "",
     val artistFilter: String? = null,
     val albumFilter: String? = null,
@@ -62,5 +75,10 @@ data class MusicBrowserState(
         val local = localByRomFileId[track.romFileId] ?: return false
         if (local.localPath in playlistPaths) return true
         return local.gameFileId?.let { it in playlistFileIds } == true
+    }
+
+    fun groupIndexOf(flatIndex: Int): Int {
+        if (flatIndex < 0) return -1
+        return groups.indexOfLast { it.startIndex <= flatIndex }
     }
 }
