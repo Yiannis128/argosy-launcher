@@ -63,6 +63,7 @@ enum class SettingsSection {
     BIOS,
     THEME,
     THEME_SOUNDS,
+    THEME_MUSIC,
     THEME_FONTS,
     THEME_BACKDROP,
     INTERFACE,

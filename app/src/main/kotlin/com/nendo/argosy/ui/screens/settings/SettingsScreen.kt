@@ -96,6 +96,7 @@ import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
 import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeMusicSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsSection
 import com.nendo.argosy.ui.screens.settings.sections.formatFileSize
@@ -495,6 +496,7 @@ fun SettingsScreen(
                         SettingsSection.STORAGE -> "STORAGE"
                         SettingsSection.THEME -> "THEME"
                         SettingsSection.THEME_SOUNDS -> "SOUNDS"
+                        SettingsSection.THEME_MUSIC -> "MUSIC"
                         SettingsSection.THEME_FONTS -> "FONTS"
                         SettingsSection.THEME_BACKDROP -> "SURFACE BACKDROP"
                         SettingsSection.INTERFACE -> "INTERFACE"
@@ -559,6 +561,7 @@ fun SettingsScreen(
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
                     SettingsSection.THEME -> ThemeSection(uiState, viewModel)
                     SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
+                    SettingsSection.THEME_MUSIC -> ThemeMusicSection(uiState, viewModel)
                     SettingsSection.THEME_FONTS -> ThemeFontsSection(uiState, viewModel)
                     SettingsSection.THEME_BACKDROP -> ThemeBackdropSection(uiState, viewModel)
                     SettingsSection.INTERFACE -> InterfaceSection(uiState, viewModel)

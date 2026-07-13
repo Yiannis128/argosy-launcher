@@ -1,6 +1,5 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
-import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -55,19 +54,10 @@ internal class InterfaceSectionInput(
             InterfaceItem.DimAfter -> { viewModel.adjustScreenDimmerTimeout(direction); return InputResult.HANDLED }
             InterfaceItem.DimLevel -> { viewModel.adjustScreenDimmerLevel(direction); return InputResult.HANDLED }
             InterfaceItem.DisplayRoles -> { viewModel.cycleDisplayRoleOverride(direction); return InputResult.HANDLED }
-            InterfaceItem.BgmVolume -> if (state.ambientAudio.enabled) { viewModel.adjustAmbientAudioVolume(direction); return InputResult.HANDLED }
             InterfaceItem.DualScreenEnabled ->
                 return toggleLeftRight(direction, state.display.dualScreenEnabled) { viewModel.setDualScreenEnabled(it) }
             InterfaceItem.ScreenDimmer ->
                 return toggleLeftRight(direction, state.storage.screenDimmerEnabled) { viewModel.toggleScreenDimmer() }
-            InterfaceItem.BgmToggle -> {
-                val target = direction > 0
-                if (target == state.ambientAudio.enabled) return InputResult.handled(SoundType.SILENT)
-                viewModel.setAmbientAudioEnabled(target)
-                return InputResult.handled(if (target) SoundType.TOGGLE else SoundType.SILENT)
-            }
-            InterfaceItem.BgmShuffle ->
-                return toggleLeftRight(direction, state.ambientAudio.shuffle) { viewModel.setAmbientAudioShuffle(it) }
             else -> {}
         }
         return InputResult.UNHANDLED

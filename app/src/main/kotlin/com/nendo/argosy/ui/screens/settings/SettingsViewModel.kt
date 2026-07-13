@@ -793,6 +793,7 @@ class SettingsViewModel @Inject constructor(
     fun navigateToHomeScreen() = routeNavigateToHomeScreen(this)
     fun navigateToAmbientLed() = routeNavigateToAmbientLed(this)
     fun navigateToThemeSounds() = routeNavigateToThemeSounds(this)
+    fun navigateToThemeMusic() = routeNavigateToThemeMusic(this)
     fun navigateToThemeFonts() = routeNavigateToThemeFonts(this)
     fun navigateToThemeBackdrop() = routeNavigateToThemeBackdrop(this)
 

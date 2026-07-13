@@ -30,6 +30,8 @@ import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeMusicItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeMusicLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsItem
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.themeBackdropItemAtFocusIndex
@@ -39,6 +41,8 @@ import com.nendo.argosy.ui.screens.settings.sections.themeFontsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeFocusIndexOf
 import com.nendo.argosy.ui.screens.settings.sections.themeItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeMusicItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.themeMusicMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeSoundsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.themeSoundsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.aboutHasChangelog
@@ -227,6 +231,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
         SettingsSection.STORAGE -> routeStorageConfirm(vm, state)
         SettingsSection.THEME -> routeThemeConfirm(vm, state)
         SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
+        SettingsSection.THEME_MUSIC -> routeThemeMusicConfirm(vm, state)
         SettingsSection.THEME_FONTS -> routeThemeFontsConfirm(vm, state)
         SettingsSection.THEME_BACKDROP -> routeThemeBackdropConfirm(vm, state)
         SettingsSection.INTERFACE -> routeInterfaceConfirm(vm, state)
@@ -352,19 +357,6 @@ private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
         InterfaceItem.DimLevel -> vm.cycleScreenDimmerLevel()
-        InterfaceItem.BgmToggle -> {
-            val newEnabled = !state.ambientAudio.enabled
-            vm.setAmbientAudioEnabled(newEnabled)
-            return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
-        }
-        InterfaceItem.BgmVolume -> vm.cycleAmbientAudioVolume()
-        InterfaceItem.BgmFile -> vm.openAudioFileBrowser()
-        InterfaceItem.BgmPlaylist -> vm.openBgmPlaylistManager()
-        InterfaceItem.BrowseServerMusic -> vm.openMusicBrowserBgm()
-        InterfaceItem.BgmShuffle -> {
-            vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
-            return InputResult.handled(SoundType.TOGGLE)
-        }
         InterfaceItem.DualScreenEnabled -> vm.setDualScreenEnabled(!state.display.dualScreenEnabled)
         InterfaceItem.DisplayRoles -> {
             vm.requestEnumPicker(InterfaceItem.DisplayRoles.key)
@@ -387,7 +379,29 @@ private fun routeThemeConfirm(vm: SettingsViewModel, state: SettingsUiState): In
         ThemeItem.Backdrop -> vm.navigateToThemeBackdrop()
         ThemeItem.Fonts -> vm.navigateToThemeFonts()
         ThemeItem.Sounds -> vm.navigateToThemeSounds()
+        ThemeItem.Music -> vm.navigateToThemeMusic()
         else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val layoutState = ThemeMusicLayoutState.from(state)
+    when (themeMusicItemAtFocusIndex(state.focusedIndex, layoutState)) {
+        ThemeMusicItem.BgmToggle -> {
+            val newEnabled = !state.ambientAudio.enabled
+            vm.setAmbientAudioEnabled(newEnabled)
+            return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
+        }
+        ThemeMusicItem.BgmVolume -> vm.cycleAmbientAudioVolume()
+        ThemeMusicItem.BgmFile -> vm.openAudioFileBrowser()
+        ThemeMusicItem.BgmPlaylist -> vm.openBgmPlaylistManager()
+        ThemeMusicItem.BrowseServerMusic -> vm.openMusicBrowserBgm()
+        ThemeMusicItem.BgmShuffle -> {
+            vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        null -> {}
     }
     return InputResult.HANDLED
 }
@@ -767,6 +781,10 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             val focusIdx = themeFocusIndexOf(ThemeItem.Sounds)
             vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
         }
+        state.currentSection == SettingsSection.THEME_MUSIC -> {
+            val focusIdx = themeFocusIndexOf(ThemeItem.Music)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
         state.currentSection == SettingsSection.THEME_FONTS -> {
             val focusIdx = themeFocusIndexOf(ThemeItem.Fonts)
             vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
@@ -910,6 +928,7 @@ private fun computeMaxFocusIndex(
     ).let { it.layout.maxFocusIndex(it.state) }
     SettingsSection.THEME -> themeMaxFocusIndex()
     SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))
+    SettingsSection.THEME_MUSIC -> themeMusicMaxFocusIndex(ThemeMusicLayoutState.from(state))
     SettingsSection.THEME_FONTS -> themeFontsMaxFocusIndex(ThemeFontsLayoutState.from(state))
     SettingsSection.THEME_BACKDROP -> themeBackdropMaxFocusIndex(ThemeBackdropLayoutState.from(state))
     SettingsSection.INTERFACE -> interfaceMaxFocusIndex(InterfaceLayoutState.from(state))
