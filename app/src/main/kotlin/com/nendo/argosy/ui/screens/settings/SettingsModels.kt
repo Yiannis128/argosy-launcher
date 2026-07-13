@@ -262,8 +262,13 @@ data class SoundState(
     val musicApiSupported: Boolean = false
 ) {
     val presets: List<SoundPreset>
-        get() = if (musicApiSupported) SoundPreset.selectable
-        else SoundPreset.selectable.filterNot { it == SoundPreset.ROMM_MUSIC }
+        get() {
+            val sources = buildList {
+                if (musicApiSupported) add(SoundPreset.ROMM_MUSIC)
+                add(SoundPreset.CUSTOM)
+            }
+            return sources + SoundPreset.selectable.filterNot { it in sources }
+        }
 
     fun getCurrentPresetForType(type: SoundType): SoundPreset? {
         val config = soundConfigs[type] ?: return null
