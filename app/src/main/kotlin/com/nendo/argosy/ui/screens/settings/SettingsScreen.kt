@@ -49,6 +49,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
 import com.nendo.argosy.ui.filebrowser.FileFilter
@@ -311,6 +312,14 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         viewModel.openAudioFileBrowserEvent.collect {
             showAudioFileBrowser = true
+        }
+    }
+
+    var customSoundTargetType by remember { mutableStateOf<SoundType?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.openCustomSoundPickerEvent.collect { soundType ->
+            customSoundTargetType = soundType
         }
     }
 
@@ -581,7 +590,7 @@ fun SettingsScreen(
                     presets = uiState.sounds.presets,
                     focusIndex = uiState.sounds.soundPickerFocusIndex,
                     currentPreset = uiState.sounds.getCurrentPresetForType(soundType),
-                    onConfirm = { viewModel.confirmSoundPickerSelection() },
+                    onConfirm = { index -> viewModel.confirmSoundPickerSelectionAt(index) },
                     onDismiss = { viewModel.dismissSoundPicker() }
                 )
             }
@@ -755,6 +764,21 @@ fun SettingsScreen(
             },
             onDismiss = {
                 showAudioFileBrowser = false
+            }
+        )
+    }
+
+    customSoundTargetType?.let { soundType ->
+        FileBrowserScreen(
+            mode = FileBrowserMode.FILE_SELECTION,
+            fileFilter = FileFilter.AUDIO,
+            title = "Custom Sound",
+            onPathSelected = { path ->
+                customSoundTargetType = null
+                viewModel.setCustomSoundFile(soundType, path)
+            },
+            onDismiss = {
+                customSoundTargetType = null
             }
         )
     }

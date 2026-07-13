@@ -54,10 +54,12 @@ class SoundSettingsDelegate @Inject constructor(
 
     fun showSoundPicker(type: SoundType) {
         val currentConfig = _state.value.soundConfigs[type]
-        val initialIndex = if (currentConfig?.presetName != null) {
-            SoundPreset.selectable.indexOfFirst { it.name == currentConfig.presetName }.takeIf { it >= 0 } ?: 0
-        } else {
-            0
+        val initialIndex = when {
+            currentConfig?.customFilePath != null ->
+                SoundPreset.selectable.indexOf(SoundPreset.CUSTOM).coerceAtLeast(0)
+            currentConfig?.presetName != null ->
+                SoundPreset.selectable.indexOfFirst { it.name == currentConfig.presetName }.takeIf { it >= 0 } ?: 0
+            else -> 0
         }
         _state.update {
             it.copy(
@@ -89,11 +91,18 @@ class SoundSettingsDelegate @Inject constructor(
     }
 
     fun previewSoundPickerSelection() {
-        val focusIndex = _state.value.soundPickerFocusIndex
-        val preset = SoundPreset.selectable.getOrNull(focusIndex) ?: return
-        if (preset != SoundPreset.SILENT && preset != SoundPreset.CUSTOM) {
-            soundManager.playPreset(preset)
+        val state = _state.value
+        val preset = SoundPreset.selectable.getOrNull(state.soundPickerFocusIndex) ?: return
+        when (preset) {
+            SoundPreset.SILENT -> Unit
+            SoundPreset.CUSTOM -> state.soundPickerType?.let { soundManager.playCustom(it) }
+            else -> soundManager.playPreset(preset)
         }
+    }
+
+    fun confirmSoundPickerSelectionAt(scope: CoroutineScope, index: Int) {
+        _state.update { it.copy(soundPickerFocusIndex = index) }
+        confirmSoundPickerSelection(scope)
     }
 
     fun confirmSoundPickerSelection(scope: CoroutineScope) {

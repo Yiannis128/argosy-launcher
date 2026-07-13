@@ -263,6 +263,7 @@ data class SoundState(
 
     fun getCurrentPresetForType(type: SoundType): SoundPreset? {
         val config = soundConfigs[type] ?: return null
+        if (config.customFilePath != null) return SoundPreset.CUSTOM
         return SoundPreset.entries.find { it.name == config.presetName }
     }
 
