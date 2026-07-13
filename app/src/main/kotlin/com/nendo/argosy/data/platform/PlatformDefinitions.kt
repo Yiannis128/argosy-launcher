@@ -569,6 +569,9 @@ object PlatformDefinitions {
         return platformMap[slugAliases[lower] ?: lower]
     }
 
+    fun shortNameForDisplayName(displayName: String): String? =
+        platforms.firstOrNull { it.name.equals(displayName, ignoreCase = true) }?.shortName
+
     fun isAlias(slug: String): Boolean = slugAliases.containsKey(slug.lowercase())
 
     fun getCanonicalSlug(slug: String): String {

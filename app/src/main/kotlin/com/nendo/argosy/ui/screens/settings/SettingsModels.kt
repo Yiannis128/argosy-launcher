@@ -5,6 +5,7 @@ import com.nendo.argosy.data.cache.GradientExtractionConfig
 import com.nendo.argosy.ui.common.GradientExtractionResult
 import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.data.emulator.EmulatorDef
+import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.emulator.ExtensionOption
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.RetroArchCore
@@ -254,7 +255,8 @@ data class ControlsState(
 
 data class SoundValueLabel(
     val primary: String,
-    val secondary: String? = null
+    val secondary: String? = null,
+    val secondaryPrefix: String? = null
 )
 
 data class SoundState(
@@ -289,10 +291,14 @@ data class SoundState(
                 .substringBeforeLast('.')
                 .replace(TRACK_NUMBER_PREFIX, "")
                 .ifBlank { "Custom" }
-            val gameName = if (config.isRommSource) {
-                path.substringBeforeLast('/').substringAfterLast('/')
-            } else null
-            return SoundValueLabel(trackName, gameName)
+            if (config.isRommSource) {
+                val gameDir = path.substringBeforeLast('/')
+                val gameName = gameDir.substringAfterLast('/')
+                val platformFolder = gameDir.substringBeforeLast('/').substringAfterLast('/')
+                val platform = PlatformDefinitions.shortNameForDisplayName(platformFolder) ?: platformFolder
+                return SoundValueLabel(trackName, gameName, platform)
+            }
+            return SoundValueLabel(trackName)
         }
         return SoundValueLabel(
             SoundPreset.entries.find { it.name == config.presetName }?.displayName ?: "Default"

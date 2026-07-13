@@ -20,8 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.SoundValueLabel
 import com.nendo.argosy.ui.components.SliderPreference
@@ -33,6 +36,7 @@ import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 internal data class ThemeSoundsLayoutState(
@@ -241,13 +245,26 @@ private fun SoundCustomizationItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            displayValue.secondary?.let {
+            displayValue.secondary?.let { secondary ->
+                val isDark = LocalLauncherTheme.current.isDarkTheme
+                val palePrimary = lerp(
+                    MaterialTheme.colorScheme.primary,
+                    if (isDark) Color.White else Color.Black,
+                    0.35f
+                )
+                val secondaryColor = if (isFocused) focusedContent.copy(alpha = 0.5f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 Text(
-                    text = it,
+                    text = buildAnnotatedString {
+                        displayValue.secondaryPrefix?.let { prefix ->
+                            withStyle(SpanStyle(color = palePrimary)) { append(prefix) }
+                            append(" - ")
+                        }
+                        append(secondary)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     fontStyle = FontStyle.Italic,
-                    color = if (isFocused) focusedContent.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = secondaryColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
