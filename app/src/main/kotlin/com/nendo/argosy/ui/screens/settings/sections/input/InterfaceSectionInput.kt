@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -16,13 +17,19 @@ internal class InterfaceSectionInput(
     private fun layoutState() = InterfaceLayoutState.from(viewModel.uiState.value)
 
     override fun onUp(): InputResult {
-        viewModel.moveFocusWrapped(-1, interfaceMaxFocusIndex(layoutState()))
-        return InputResult.HANDLED
+        return if (viewModel.moveFocusWrapped(-1, interfaceMaxFocusIndex(layoutState()))) {
+            InputResult.HANDLED
+        } else {
+            InputResult.handled(SoundType.BOUNDARY)
+        }
     }
 
     override fun onDown(): InputResult {
-        viewModel.moveFocusWrapped(1, interfaceMaxFocusIndex(layoutState()))
-        return InputResult.HANDLED
+        return if (viewModel.moveFocusWrapped(1, interfaceMaxFocusIndex(layoutState()))) {
+            InputResult.HANDLED
+        } else {
+            InputResult.handled(SoundType.BOUNDARY)
+        }
     }
 
     override fun onLeft(): InputResult = cycle(-1)

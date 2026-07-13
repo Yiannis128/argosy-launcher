@@ -113,14 +113,14 @@ fun MusicBrowserScreen(
         object : InputHandler {
             override fun onUp(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.facetPicker != null) viewModel.moveFacetFocus(-1) else viewModel.moveFocus(-1)
-                return InputResult.HANDLED
+                val moved = if (st.facetPicker != null) viewModel.moveFacetFocus(-1) else viewModel.moveFocus(-1)
+                return if (moved) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onDown(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.facetPicker != null) viewModel.moveFacetFocus(1) else viewModel.moveFocus(1)
-                return InputResult.HANDLED
+                val moved = if (st.facetPicker != null) viewModel.moveFacetFocus(1) else viewModel.moveFocus(1)
+                return if (moved) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onLeft(): InputResult = adjustDurationOrSilent(-1)
@@ -179,15 +179,13 @@ fun MusicBrowserScreen(
             override fun onPrevTrigger(): InputResult {
                 val st = viewModel.uiState.value
                 if (st.facetPicker != null) return InputResult.handled(SoundType.SILENT)
-                viewModel.jumpGroup(-1)
-                return InputResult.HANDLED
+                return if (viewModel.jumpGroup(-1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onNextTrigger(): InputResult {
                 val st = viewModel.uiState.value
                 if (st.facetPicker != null) return InputResult.handled(SoundType.SILENT)
-                viewModel.jumpGroup(1)
-                return InputResult.HANDLED
+                return if (viewModel.jumpGroup(1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onMenu(): InputResult = InputResult.handled(SoundType.SILENT)

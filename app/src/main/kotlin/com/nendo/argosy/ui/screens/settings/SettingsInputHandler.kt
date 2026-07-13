@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.sections.input.BoxArtSectionInput
@@ -105,13 +106,11 @@ class SettingsInputHandler(
     }
 
     override fun onUp(): InputResult = dispatch(InputMethod.UP) {
-        viewModel.moveFocus(-1)
-        InputResult.HANDLED
+        if (viewModel.moveFocus(-1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
     }
 
     override fun onDown(): InputResult = dispatch(InputMethod.DOWN) {
-        viewModel.moveFocus(1)
-        InputResult.HANDLED
+        if (viewModel.moveFocus(1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
     }
 
     override fun onLeft(): InputResult = dispatch(InputMethod.LEFT) {

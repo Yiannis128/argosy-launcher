@@ -142,21 +142,27 @@ class MusicBrowserViewModel @Inject constructor(
         }
     }
 
-    fun moveFocus(delta: Int) {
+    fun moveFocus(delta: Int): Boolean {
+        var moved = false
         _uiState.update { st ->
             val next = (st.focusedIndex + delta).coerceIn(-1, st.tracks.size - 1)
+            moved = next != st.focusedIndex
             st.copy(focusedIndex = next, showKeyboard = next == -1)
         }
         maybePrefetch()
+        return moved
     }
 
-    fun jumpGroup(delta: Int) {
+    fun jumpGroup(delta: Int): Boolean {
+        var moved = false
         _uiState.update { st ->
             if (st.groups.isEmpty()) return@update st
             val target = (st.groupIndexOf(st.focusedIndex) + delta).coerceIn(0, st.groups.size - 1)
+            moved = st.groups[target].startIndex != st.focusedIndex
             st.copy(focusedIndex = st.groups[target].startIndex, showKeyboard = false)
         }
         maybePrefetch()
+        return moved
     }
 
     private fun maybePrefetch() {
@@ -358,16 +364,16 @@ class MusicBrowserViewModel @Inject constructor(
         }
     }
 
-    fun moveFacetFocus(delta: Int) {
+    fun moveFacetFocus(delta: Int): Boolean {
+        var moved = false
         _uiState.update { st ->
             val picker = st.facetPicker ?: return@update st
             if (picker.options.isEmpty()) return@update st
-            st.copy(
-                facetPicker = picker.copy(
-                    focusIndex = (picker.focusIndex + delta).coerceIn(0, picker.options.size - 1)
-                )
-            )
+            val next = (picker.focusIndex + delta).coerceIn(0, picker.options.size - 1)
+            moved = next != picker.focusIndex
+            st.copy(facetPicker = picker.copy(focusIndex = next))
         }
+        return moved
     }
 
     fun confirmFacetSelection(index: Int? = null) {

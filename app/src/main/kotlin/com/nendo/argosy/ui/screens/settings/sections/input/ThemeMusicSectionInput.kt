@@ -17,13 +17,19 @@ internal class ThemeMusicSectionInput(
     private fun layoutState() = ThemeMusicLayoutState.from(viewModel.uiState.value)
 
     override fun onUp(): InputResult {
-        viewModel.moveFocusWrapped(-1, themeMusicMaxFocusIndex(layoutState()))
-        return InputResult.HANDLED
+        return if (viewModel.moveFocusWrapped(-1, themeMusicMaxFocusIndex(layoutState()))) {
+            InputResult.HANDLED
+        } else {
+            InputResult.handled(SoundType.BOUNDARY)
+        }
     }
 
     override fun onDown(): InputResult {
-        viewModel.moveFocusWrapped(1, themeMusicMaxFocusIndex(layoutState()))
-        return InputResult.HANDLED
+        return if (viewModel.moveFocusWrapped(1, themeMusicMaxFocusIndex(layoutState()))) {
+            InputResult.HANDLED
+        } else {
+            InputResult.handled(SoundType.BOUNDARY)
+        }
     }
 
     override fun onLeft(): InputResult = cycle(-1)

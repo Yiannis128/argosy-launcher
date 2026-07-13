@@ -670,12 +670,16 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(enumPickerKey = key, enumPickerToken = it.enumPickerToken + 1) }
     }
 
-    fun moveFocusWrapped(delta: Int, maxIndex: Int) {
+    fun moveFocusWrapped(delta: Int, maxIndex: Int): Boolean {
+        var moved = false
         _uiState.update {
-            it.copy(focusedIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
+            val newIndex = com.nendo.argosy.ui.input.InputDispatcher.computeWrappedIndex(
                 it.focusedIndex, delta, maxIndex, it.controls.menuWrapMode
-            ))
+            )
+            moved = newIndex != it.focusedIndex
+            it.copy(focusedIndex = newIndex)
         }
+        return moved
     }
 
     fun refreshSteamSettings() = steamDelegate.loadSteamSettings(context, viewModelScope)

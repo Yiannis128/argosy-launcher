@@ -864,33 +864,35 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
     }
 }
 
-internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
+internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int): Boolean {
     if (vm._uiState.value.emulators.showSavePathModal) {
-        vm.emulatorDelegate.moveSavePathModalFocus(delta); return
+        vm.emulatorDelegate.moveSavePathModalFocus(delta); return true
     }
     if (vm._uiState.value.emulators.showMemcardPicker) {
-        vm.emulatorDelegate.moveMemcardPickerFocus(delta); return
+        vm.emulatorDelegate.moveMemcardPickerFocus(delta); return true
     }
     if (vm._uiState.value.storage.platformSettingsModalId != null) {
-        vm.storageDelegate.movePlatformSettingsFocus(delta); return
+        vm.storageDelegate.movePlatformSettingsFocus(delta); return true
     }
     if (vm._uiState.value.sounds.showSoundPicker) {
-        vm.soundsDelegate.moveSoundPickerFocus(delta); return
+        vm.soundsDelegate.moveSoundPickerFocus(delta); return true
     }
     if (vm._uiState.value.syncSettings.showRegionPicker) {
-        vm.syncDelegate.moveRegionPickerFocus(delta); return
+        vm.syncDelegate.moveRegionPickerFocus(delta); return true
     }
     if (vm._uiState.value.emulators.showEmulatorPicker) {
-        vm.emulatorDelegate.moveEmulatorPickerFocus(delta); return
+        vm.emulatorDelegate.moveEmulatorPickerFocus(delta); return true
     }
     if (vm._uiState.value.currentSection == SettingsSection.CORE_MANAGEMENT) {
-        vm.moveCoreManagementPlatformFocus(delta); return
+        vm.moveCoreManagementPlatformFocus(delta); return true
     }
+    var moved = false
     vm._uiState.update { state ->
         val isConnected = state.server.connectionStatus == ConnectionStatus.ONLINE ||
             state.server.connectionStatus == ConnectionStatus.OFFLINE
         val maxIndex = computeMaxFocusIndex(vm, state, isConnected)
         val newIndex = computeWrappedIndex(state.focusedIndex, delta, maxIndex, state.controls.menuWrapMode)
+        moved = newIndex != state.focusedIndex
         state.copy(focusedIndex = newIndex)
     }
     if (vm._uiState.value.currentSection == SettingsSection.PLATFORMS) {
@@ -900,6 +902,7 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int) {
         vm.biosDelegate.resetPlatformSubFocus()
         vm.biosDelegate.resetBiosPathActionFocus()
     }
+    return moved
 }
 
 private fun computeMaxFocusIndex(

@@ -3,6 +3,7 @@ package com.nendo.argosy.ui.input
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.os.SystemClock
 import android.util.Log
 import com.nendo.argosy.R
 import com.nendo.argosy.core.input.SoundConfig
@@ -65,6 +66,9 @@ class SoundFeedbackManager @Inject constructor(
     @Volatile
     private var soundConfigs: Map<SoundType, SoundConfig> = emptyMap()
 
+    @Volatile
+    private var lastBoundaryPlayMs = 0L
+
     private val defaultPresetMap = mapOf(
         SoundType.NAVIGATE to SoundPreset.TAP_LIGHT,
         SoundType.BOUNDARY to SoundPreset.BUZZ_ERROR,
@@ -80,7 +84,7 @@ class SoundFeedbackManager @Inject constructor(
         SoundType.DOWNLOAD_CANCEL to SoundPreset.DISMISS_FAIL,
         SoundType.ERROR to SoundPreset.BUZZ_ERROR,
         SoundType.VOLUME_PREVIEW to SoundPreset.CLICK_SOFT,
-        SoundType.TOGGLE to SoundPreset.BELL_HIGH,
+        SoundType.TOGGLE to SoundPreset.CLICK_SOFT,
         SoundType.LAUNCH_GAME to SoundPreset.COLLECT
     )
 
@@ -98,6 +102,7 @@ class SoundFeedbackManager @Inject constructor(
         private const val PRIORITY_LOW = 1
         private const val PRIORITY_DEFAULT = 2
         private const val PRIORITY_HIGH = 3
+        private const val BOUNDARY_RATE_LIMIT_MS = 500L
     }
 
     fun setEnabled(enabled: Boolean) {
@@ -263,6 +268,11 @@ class SoundFeedbackManager @Inject constructor(
 
     fun play(type: SoundType) {
         if (!shouldPlaySound(type)) return
+        if (type == SoundType.BOUNDARY) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastBoundaryPlayMs < BOUNDARY_RATE_LIMIT_MS) return
+            lastBoundaryPlayMs = now
+        }
 
         val config = soundConfigs[type]
         if (config?.customFilePath != null && playCustomSample(type)) return

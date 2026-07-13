@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -20,14 +21,20 @@ internal class StorageSectionInput(
 
     override fun onUp(): InputResult {
         val info = layoutInfo()
-        viewModel.moveFocusWrapped(-1, info.layout.maxFocusIndex(info.state))
-        return InputResult.HANDLED
+        return if (viewModel.moveFocusWrapped(-1, info.layout.maxFocusIndex(info.state))) {
+            InputResult.HANDLED
+        } else {
+            InputResult.handled(SoundType.BOUNDARY)
+        }
     }
 
     override fun onDown(): InputResult {
         val info = layoutInfo()
-        viewModel.moveFocusWrapped(1, info.layout.maxFocusIndex(info.state))
-        return InputResult.HANDLED
+        return if (viewModel.moveFocusWrapped(1, info.layout.maxFocusIndex(info.state))) {
+            InputResult.HANDLED
+        } else {
+            InputResult.handled(SoundType.BOUNDARY)
+        }
     }
 
     override fun onLeft(): InputResult = cycle(-1)

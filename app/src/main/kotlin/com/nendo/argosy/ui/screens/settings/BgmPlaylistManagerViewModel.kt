@@ -137,15 +137,18 @@ class BgmPlaylistManagerViewModel @Inject constructor(
         _uiState.update { it.copy(isReordering = true) }
     }
 
-    fun moveFocusedRow(delta: Int) {
+    fun moveFocusedRow(delta: Int): Boolean {
+        var moved = false
         _uiState.update { st ->
             if (!st.isReordering) return@update st
             val trackIndex = st.focusedIndex - st.folderSources.size
             val target = trackIndex + delta
             if (trackIndex < 0 || target < 0 || target >= st.entries.size) return@update st
             val reordered = st.entries.toMutableList().apply { add(target, removeAt(trackIndex)) }
+            moved = true
             st.copy(entries = reordered, focusedIndex = st.folderSources.size + target)
         }
+        return moved
     }
 
     fun commitReorder() {

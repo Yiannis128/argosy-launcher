@@ -69,14 +69,20 @@ fun BgmPlaylistManagerScreen(
         object : InputHandler {
             override fun onUp(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.isReordering) viewModel.moveFocusedRow(-1) else viewModel.moveFocus(-1)
-                return InputResult.HANDLED
+                if (!st.isReordering) {
+                    viewModel.moveFocus(-1)
+                    return InputResult.HANDLED
+                }
+                return if (viewModel.moveFocusedRow(-1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onDown(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.isReordering) viewModel.moveFocusedRow(1) else viewModel.moveFocus(1)
-                return InputResult.HANDLED
+                if (!st.isReordering) {
+                    viewModel.moveFocus(1)
+                    return InputResult.HANDLED
+                }
+                return if (viewModel.moveFocusedRow(1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onLeft(): InputResult = InputResult.handled(SoundType.SILENT)
