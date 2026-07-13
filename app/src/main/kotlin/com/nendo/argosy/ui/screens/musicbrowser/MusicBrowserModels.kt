@@ -40,6 +40,11 @@ data class FacetPickerUi(
     val focusIndex: Int = 0
 )
 
+const val SFX_DURATION_MIN_SECONDS = 1
+const val SFX_DURATION_MAX_SECONDS = 5
+const val SFX_DURATION_DEFAULT_SECONDS = 3
+const val DURATION_FILTER_OPTION = "Max Duration"
+
 data class MusicBrowserState(
     val mode: MusicBrowserMode = MusicBrowserMode.BGM,
     val tracks: List<MusicTrackUi> = emptyList(),
@@ -55,6 +60,7 @@ data class MusicBrowserState(
     val artistFilter: String? = null,
     val albumFilter: String? = null,
     val genreFilter: String? = null,
+    val sfxMaxDuration: Int = SFX_DURATION_DEFAULT_SECONDS,
     val focusedIndex: Int = -1,
     val showKeyboard: Boolean = false,
     val isLoading: Boolean = false,

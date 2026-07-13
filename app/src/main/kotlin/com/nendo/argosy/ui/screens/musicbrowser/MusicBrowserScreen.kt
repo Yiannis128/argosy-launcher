@@ -123,8 +123,20 @@ fun MusicBrowserScreen(
                 return InputResult.HANDLED
             }
 
-            override fun onLeft(): InputResult = InputResult.handled(SoundType.SILENT)
-            override fun onRight(): InputResult = InputResult.handled(SoundType.SILENT)
+            override fun onLeft(): InputResult = adjustDurationOrSilent(-1)
+            override fun onRight(): InputResult = adjustDurationOrSilent(1)
+
+            private fun adjustDurationOrSilent(delta: Int): InputResult {
+                val st = viewModel.uiState.value
+                val picker = st.facetPicker
+                val onDurationRow = picker?.stage == FacetPickerStage.CHOOSER &&
+                    picker.options.getOrNull(picker.focusIndex) == DURATION_FILTER_OPTION
+                if (onDurationRow) {
+                    viewModel.adjustSfxMaxDuration(delta)
+                    return InputResult.HANDLED
+                }
+                return InputResult.handled(SoundType.SILENT)
+            }
 
             override fun onConfirm(): InputResult {
                 val st = viewModel.uiState.value
@@ -248,7 +260,9 @@ fun MusicBrowserScreen(
                 albumFilter = uiState.albumFilter,
                 genreFilter = uiState.genreFilter,
                 hasActiveFilters = uiState.hasActiveFilters,
+                sfxMaxDuration = if (mode == MusicBrowserMode.SFX) uiState.sfxMaxDuration else null,
                 onFacetTap = { viewModel.openFacetValues(it) },
+                onDurationTap = { viewModel.openFacetChooser() },
                 onClearAll = { viewModel.clearFilters() }
             )
 
@@ -344,6 +358,8 @@ fun MusicBrowserScreen(
         uiState.facetPicker?.let { picker ->
             FacetPickerPopup(
                 picker = picker,
+                sfxMaxDuration = if (mode == MusicBrowserMode.SFX) uiState.sfxMaxDuration else null,
+                onAdjustDuration = { viewModel.adjustSfxMaxDuration(it) },
                 onSelect = { viewModel.confirmFacetSelection(it) },
                 onDismiss = { viewModel.dismissFacetPicker() }
             )
@@ -498,7 +514,9 @@ private fun MusicFilterChips(
     albumFilter: String?,
     genreFilter: String?,
     hasActiveFilters: Boolean,
+    sfxMaxDuration: Int?,
     onFacetTap: (RomMMusicFacet) -> Unit,
+    onDurationTap: () -> Unit,
     onClearAll: () -> Unit
 ) {
     Row(
@@ -516,6 +534,13 @@ private fun MusicFilterChips(
         }
         FilterChip(label = genreFilter ?: "Genre", isActive = genreFilter != null) {
             onFacetTap(RomMMusicFacet.GENRES)
+        }
+        if (sfxMaxDuration != null) {
+            FilterChip(
+                label = "Under ${sfxMaxDuration}s",
+                isActive = sfxMaxDuration != SFX_DURATION_DEFAULT_SECONDS,
+                onClick = onDurationTap
+            )
         }
         if (hasActiveFilters) {
             FilterChip(label = "Clear", isActive = false, onClick = onClearAll)
@@ -771,6 +796,8 @@ private fun MusicBrowserError(
 @Composable
 private fun FacetPickerPopup(
     picker: FacetPickerUi,
+    sfxMaxDuration: Int?,
+    onAdjustDuration: (Int) -> Unit,
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -825,21 +852,66 @@ private fun FacetPickerPopup(
                 ) {
                     itemsIndexed(picker.options, key = { index, option -> "$index:$option" }) { index, option ->
                         val isFocused = picker.focusIndex == index
-                        Text(
-                            text = option,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(Dimens.radiusMd))
-                                .background(
-                                    if (isFocused) focusAccent.copy(alpha = 0.15f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        if (option == DURATION_FILTER_OPTION && sfxMaxDuration != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(Dimens.radiusMd))
+                                    .background(
+                                        if (isFocused) focusAccent.copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
+                            ) {
+                                Text(
+                                    text = option,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f)
                                 )
-                                .clickableNoFocus { onSelect(index) }
-                                .padding(Dimens.spacingMd)
-                        )
+                                Text(
+                                    text = "-",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Dimens.radiusSm))
+                                        .clickableNoFocus { onAdjustDuration(-1) }
+                                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
+                                )
+                                Text(
+                                    text = "${sfxMaxDuration}s",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "+",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(Dimens.radiusSm))
+                                        .clickableNoFocus { onAdjustDuration(1) }
+                                        .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(Dimens.radiusMd))
+                                    .background(
+                                        if (isFocused) focusAccent.copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    .clickableNoFocus { onSelect(index) }
+                                    .padding(Dimens.spacingMd)
+                            )
+                        }
                     }
                 }
             }

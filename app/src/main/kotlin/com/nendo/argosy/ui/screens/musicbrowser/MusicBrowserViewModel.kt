@@ -50,7 +50,6 @@ private const val PREFETCH_THRESHOLD = 8
 private const val SEARCH_DEBOUNCE_MS = 400L
 private const val NOTICE_DURATION_MS = 3000L
 private const val BGM_MIN_DURATION_SECONDS = 30.0
-private const val SFX_MAX_DURATION_SECONDS = 3.0
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -199,7 +198,7 @@ class MusicBrowserViewModel @Inject constructor(
                 )
             }
             val current = _uiState.value
-            val (minDuration, maxDuration) = durationParams(current.mode)
+            val (minDuration, maxDuration) = durationParams(current)
             val params = romMRepository.buildMusicQueryParams(
                 search = current.searchQuery.trim().takeIf { it.isNotEmpty() },
                 artist = current.artistFilter,
@@ -285,11 +284,21 @@ class MusicBrowserViewModel @Inject constructor(
         return flat to groups
     }
 
-    private fun durationParams(mode: MusicBrowserMode): Pair<Double?, Double?> =
-        when (mode) {
+    private fun durationParams(st: MusicBrowserState): Pair<Double?, Double?> =
+        when (st.mode) {
             MusicBrowserMode.BGM -> BGM_MIN_DURATION_SECONDS to null
-            MusicBrowserMode.SFX -> null to SFX_MAX_DURATION_SECONDS
+            MusicBrowserMode.SFX -> null to st.sfxMaxDuration.toDouble()
         }
+
+    fun adjustSfxMaxDuration(delta: Int) {
+        val st = _uiState.value
+        if (st.mode != MusicBrowserMode.SFX) return
+        val next = (st.sfxMaxDuration + delta)
+            .coerceIn(SFX_DURATION_MIN_SECONDS, SFX_DURATION_MAX_SECONDS)
+        if (next == st.sfxMaxDuration) return
+        _uiState.update { it.copy(sfxMaxDuration = next) }
+        loadPage(reset = true)
+    }
 
     fun openFacetChooser() {
         val st = _uiState.value
@@ -298,6 +307,7 @@ class MusicBrowserViewModel @Inject constructor(
             add("Artist")
             add("Album")
             add("Genre")
+            if (st.mode == MusicBrowserMode.SFX) add(DURATION_FILTER_OPTION)
             if (st.hasActiveFilters) add("Clear Filters")
         }
         _uiState.update {
@@ -318,7 +328,7 @@ class MusicBrowserViewModel @Inject constructor(
         }
         viewModelScope.launch(Dispatchers.IO) {
             val st = _uiState.value
-            val (minDuration, maxDuration) = durationParams(st.mode)
+            val (minDuration, maxDuration) = durationParams(st)
             val params = romMRepository.buildMusicQueryParams(
                 minDuration = minDuration,
                 maxDuration = maxDuration,
@@ -370,6 +380,7 @@ class MusicBrowserViewModel @Inject constructor(
                 "Artist" -> openFacetValues(RomMMusicFacet.ARTISTS)
                 "Album" -> openFacetValues(RomMMusicFacet.ALBUMS)
                 "Genre" -> openFacetValues(RomMMusicFacet.GENRES)
+                DURATION_FILTER_OPTION -> {}
                 "Clear Filters" -> clearFilters()
                 else -> {}
             }
