@@ -131,9 +131,9 @@ fun ThemeMusicSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             ThemeMusicItem.BgmPlaylist -> {
                 val entryCount = uiState.ambientAudio.playlistEntryCount
                 val countLabel = when (entryCount) {
-                    0 -> "No entries"
-                    1 -> "1 entry"
-                    else -> "$entryCount entries"
+                    0 -> "No tracks"
+                    1 -> "1 track"
+                    else -> "$entryCount tracks"
                 }
                 NavigationPreference(
                     icon = Icons.Outlined.MusicNote,

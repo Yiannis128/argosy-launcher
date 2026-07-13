@@ -39,6 +39,7 @@ class BgmPlaylistCoordinator @Inject constructor(
         if (activated) return
         activated = true
         importLegacySource()
+        repository.reconcileFolderSources()
         pushPlaylist()
         startWatching()
     }
@@ -51,12 +52,17 @@ class BgmPlaylistCoordinator @Inject constructor(
         }
     }
 
-    /** Adds a local path picked in the file browser, as a folder or file entry by type. */
+    /** Adds a local path picked in the file browser, as a folder sync source or file entry by type. */
     suspend fun addLocalPath(path: String) {
         val added = withContext(Dispatchers.IO) {
             val file = File(path)
-            if (file.isDirectory) repository.addFolder(path)
-            else repository.addFile(path, file.nameWithoutExtension)
+            if (file.isDirectory) {
+                val addedFolder = repository.addFolder(path)
+                val reconciled = repository.reconcileFolderSources()
+                addedFolder || reconciled
+            } else {
+                repository.addFile(path, file.nameWithoutExtension)
+            }
         }
         if (added) {
             pushPlaylist()
@@ -68,12 +74,17 @@ class BgmPlaylistCoordinator @Inject constructor(
 
     suspend fun removeById(id: Long) = repository.removeById(id)
 
+    suspend fun removeFolderSource(id: Long) = repository.removeFolderSource(id)
+
     suspend fun reorder(orderedIds: List<Long>) = repository.reorder(orderedIds)
 
     private suspend fun pushPlaylist() {
         val paths = repository.resolvePlaybackPaths()
         withContext(Dispatchers.Main) {
-            ambientAudioManager.setPlaylistSource(paths) { repository.resolvePlaybackPaths() }
+            ambientAudioManager.setPlaylistSource(paths) {
+                repository.reconcileFolderSources()
+                repository.resolvePlaybackPaths()
+            }
         }
     }
 

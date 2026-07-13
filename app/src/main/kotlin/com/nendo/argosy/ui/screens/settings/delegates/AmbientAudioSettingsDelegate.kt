@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.delegates
 
+import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
@@ -40,7 +41,8 @@ class AmbientAudioSettingsDelegate @Inject constructor(
         }
         scope.launch {
             playlistCoordinator.entries.collect { entries ->
-                _state.update { it.copy(playlistEntryCount = entries.size) }
+                val trackCount = entries.count { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
+                _state.update { it.copy(playlistEntryCount = trackCount) }
             }
         }
     }

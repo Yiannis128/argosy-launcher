@@ -6,6 +6,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMMusicFacet
 import com.nendo.argosy.data.remote.romm.RomMMusicTrack
@@ -110,11 +111,12 @@ class MusicBrowserViewModel @Inject constructor(
         }
         viewModelScope.launch {
             playlistCoordinator.entries.collect { rows ->
+                val fileRows = rows.filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
                 _uiState.update { st ->
                     st.copy(
-                        playlistPaths = rows.map { it.filePath }.toSet(),
-                        playlistFileIds = rows.mapNotNull { it.gameFileId }.toSet(),
-                        playlistPathByFileId = rows.mapNotNull { row ->
+                        playlistPaths = fileRows.map { it.filePath }.toSet(),
+                        playlistFileIds = fileRows.mapNotNull { it.gameFileId }.toSet(),
+                        playlistPathByFileId = fileRows.mapNotNull { row ->
                             row.gameFileId?.let { it to row.filePath }
                         }.toMap()
                     )

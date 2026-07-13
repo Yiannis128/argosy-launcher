@@ -29,11 +29,23 @@ interface BgmPlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entry: BgmPlaylistEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(entry: BgmPlaylistEntity): Long
+
     @Query("DELETE FROM bgm_playlist WHERE filePath = :filePath")
     suspend fun deleteByPath(filePath: String)
 
     @Query("DELETE FROM bgm_playlist WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM bgm_playlist WHERE sourceEntryId = :sourceEntryId")
+    suspend fun deleteBySourceEntryId(sourceEntryId: Long)
+
+    @Transaction
+    suspend fun deleteFolderSource(id: Long) {
+        deleteBySourceEntryId(id)
+        deleteById(id)
+    }
 
     @Query("UPDATE bgm_playlist SET position = :position WHERE id = :id")
     suspend fun updatePosition(id: Long, position: Int)

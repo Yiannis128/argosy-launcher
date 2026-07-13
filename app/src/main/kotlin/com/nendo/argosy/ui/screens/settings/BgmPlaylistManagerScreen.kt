@@ -83,8 +83,12 @@ fun BgmPlaylistManagerScreen(
 
             override fun onConfirm(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.entries.isEmpty()) return InputResult.handled(SoundType.SILENT)
-                if (st.isReordering) viewModel.commitReorder() else viewModel.beginReorder()
+                if (st.isReordering) {
+                    viewModel.commitReorder()
+                    return InputResult.HANDLED
+                }
+                if (st.focusedEntry == null) return InputResult.handled(SoundType.SILENT)
+                viewModel.beginReorder()
                 return InputResult.HANDLED
             }
 
@@ -96,7 +100,7 @@ fun BgmPlaylistManagerScreen(
 
             override fun onSecondaryAction(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.isReordering || st.entries.isEmpty()) return InputResult.handled(SoundType.SILENT)
+                if (st.isReordering || st.isEmpty) return InputResult.handled(SoundType.SILENT)
                 viewModel.removeFocused()
                 return InputResult.HANDLED
             }
@@ -121,16 +125,21 @@ fun BgmPlaylistManagerScreen(
 
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.focusedIndex, uiState.entries.size) {
-        if (uiState.entries.isNotEmpty() && uiState.focusedIndex in uiState.entries.indices) {
-            val viewportHeight = listState.layoutInfo.viewportEndOffset
-            val visibleItems = listState.layoutInfo.visibleItemsInfo
-            val avgItemHeight = if (visibleItems.isNotEmpty()) {
-                visibleItems.sumOf { it.size } / visibleItems.size
-            } else 64
-            val targetOffset = (viewportHeight / 2) - (avgItemHeight / 2)
-            listState.animateScrollToItem(uiState.focusedIndex, -targetOffset)
+    LaunchedEffect(uiState.focusedIndex, uiState.folderSources.size, uiState.entries.size) {
+        if (uiState.isEmpty || uiState.focusedIndex !in 0 until uiState.focusCount) return@LaunchedEffect
+        val sourceCount = uiState.folderSources.size
+        val lazyIndex = when {
+            sourceCount == 0 -> uiState.focusedIndex
+            uiState.focusedIndex < sourceCount -> 1 + uiState.focusedIndex
+            else -> 2 + sourceCount + (uiState.focusedIndex - sourceCount)
         }
+        val viewportHeight = listState.layoutInfo.viewportEndOffset
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        val avgItemHeight = if (visibleItems.isNotEmpty()) {
+            visibleItems.sumOf { it.size } / visibleItems.size
+        } else 64
+        val targetOffset = (viewportHeight / 2) - (avgItemHeight / 2)
+        listState.animateScrollToItem(lazyIndex, -targetOffset)
     }
 
     Box(
@@ -141,13 +150,15 @@ fun BgmPlaylistManagerScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             BgmPlaylistHeader(
+                notice = uiState.notice,
                 onBack = onDismiss,
                 onAddMusic = onAddMusic
             )
 
-            if (uiState.entries.isEmpty()) {
+            if (uiState.isEmpty) {
                 BgmPlaylistEmptyState()
             } else {
+                val sourceCount = uiState.folderSources.size
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(
@@ -158,38 +169,56 @@ fun BgmPlaylistManagerScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
-                    itemsIndexed(uiState.entries, key = { _, row -> row.id }) { index, row ->
+                    if (sourceCount > 0) {
+                        item(key = "sources-header") {
+                            BgmPlaylistGroupHeader("Synced Folders")
+                        }
+                        itemsIndexed(uiState.folderSources, key = { _, row -> "source-${row.id}" }) { index, row ->
+                            BgmFolderSourceRow(
+                                row = row,
+                                isFocused = uiState.focusedIndex == index,
+                                onClick = { viewModel.setFocusIndex(index) },
+                                onRemove = { viewModel.removeSource(index) }
+                            )
+                        }
+                        item(key = "tracks-header") {
+                            BgmPlaylistGroupHeader("Tracks")
+                        }
+                    }
+                    itemsIndexed(uiState.entries, key = { _, row -> "track-${row.id}" }) { index, row ->
+                        val focusIndex = sourceCount + index
                         BgmPlaylistEntryRow(
                             row = row,
                             position = index + 1,
-                            isFocused = uiState.focusedIndex == index,
-                            isBeingMoved = uiState.isReordering && uiState.focusedIndex == index,
+                            isFocused = uiState.focusedIndex == focusIndex,
+                            isBeingMoved = uiState.isReordering && uiState.focusedIndex == focusIndex,
                             canMoveUp = index > 0,
                             canMoveDown = index < uiState.entries.lastIndex,
-                            onClick = { viewModel.setFocusIndex(index) },
-                            onMoveUp = { viewModel.moveRow(index, -1) },
-                            onMoveDown = { viewModel.moveRow(index, 1) },
-                            onRemove = { viewModel.removeAt(index) }
+                            onClick = { viewModel.setFocusIndex(focusIndex) },
+                            onMoveUp = { viewModel.moveTrack(index, -1) },
+                            onMoveDown = { viewModel.moveTrack(index, 1) },
+                            onRemove = { viewModel.removeTrack(index) }
                         )
                     }
                 }
             }
         }
 
+        val focusedSourcedTrack = uiState.focusedEntry?.sourceFolderName != null
         val hints = when {
             uiState.isReordering -> listOf(
                 InputButton.DPAD_VERTICAL to "Move",
                 InputButton.A to "Done",
                 InputButton.B to "Cancel"
             )
-            uiState.entries.isEmpty() -> listOf(
+            uiState.isEmpty -> listOf(
                 InputButton.X to "Add Music"
             )
-            else -> listOf(
-                InputButton.A to "Move",
-                InputButton.X to "Add Music",
-                InputButton.Y to "Remove"
-            )
+            else -> buildList {
+                if (uiState.focusedEntry != null) add(InputButton.A to "Move")
+                add(InputButton.X to "Add Music")
+                if (!focusedSourcedTrack) add(InputButton.Y to "Remove")
+            }
         }
 
         FooterHints(
@@ -209,6 +238,7 @@ fun BgmPlaylistManagerScreen(
 
 @Composable
 private fun BgmPlaylistHeader(
+    notice: String?,
     onBack: () -> Unit,
     onAddMusic: () -> Unit
 ) {
@@ -235,6 +265,15 @@ private fun BgmPlaylistHeader(
             modifier = Modifier.weight(1f)
         )
 
+        notice?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = Dimens.spacingMd)
+            )
+        }
+
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(Dimens.radiusMd))
@@ -254,6 +293,80 @@ private fun BgmPlaylistHeader(
                 text = "Add",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun BgmPlaylistGroupHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs)
+    )
+}
+
+@Composable
+private fun BgmFolderSourceRow(
+    row: BgmFolderSourceUi,
+    isFocused: Boolean,
+    onClick: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val focusAccent = LocalArgosyTheme.current.focusAccent
+    val focusedContentColor = lerp(focusAccent, Color.White, 0.45f)
+    val warningColor = LocalLauncherTheme.current.semanticColors.warning
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Dimens.radiusMd))
+            .background(
+                if (isFocused) focusAccent.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.surface)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Outlined.Folder,
+            contentDescription = null,
+            tint = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Dimens.iconMd)
+        )
+
+        Spacer(modifier = Modifier.width(Dimens.spacingMd))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = row.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurface
+            )
+            if (row.isMissing) {
+                Text(
+                    text = "Folder missing",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = warningColor
+                )
+            } else {
+                Text(
+                    text = if (row.trackCount == 1) "1 track" else "${row.trackCount} tracks",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        IconButton(onClick = onRemove) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Remove folder",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -300,7 +413,7 @@ private fun BgmPlaylistEntryRow(
             )
         } else {
             Icon(
-                if (row.isFolder) Icons.Outlined.Folder else Icons.Outlined.MusicNote,
+                Icons.Outlined.MusicNote,
                 contentDescription = null,
                 tint = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(Dimens.iconMd)
@@ -316,26 +429,27 @@ private fun BgmPlaylistEntryRow(
                 color = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurface
             )
             when {
-                row.isMissing && row.isFolder -> Text(
-                    text = "Folder missing - skipped during playback",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = warningColor
-                )
                 row.isMissing -> Text(
                     text = "File missing - skipped during playback",
                     style = MaterialTheme.typography.bodySmall,
                     color = warningColor
                 )
-                row.isFolder -> Text(
-                    text = when (row.folderTrackCount) {
-                        null, 0 -> "Folder - empty"
-                        1 -> "Folder - 1 track"
-                        else -> "Folder - ${row.folderTrackCount} tracks"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                row.sourceFolderName != null -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.Folder,
+                        contentDescription = null,
+                        tint = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(Dimens.iconXs)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                    Text(
+                        text = row.sourceFolderName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
@@ -355,12 +469,14 @@ private fun BgmPlaylistEntryRow(
                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
-        IconButton(onClick = onRemove) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Remove",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (row.sourceFolderName == null) {
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Remove",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
