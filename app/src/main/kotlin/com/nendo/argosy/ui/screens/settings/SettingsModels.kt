@@ -252,6 +252,11 @@ data class ControlsState(
     val menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP
 )
 
+data class SoundValueLabel(
+    val primary: String,
+    val secondary: String? = null
+)
+
 data class SoundState(
     val enabled: Boolean = false,
     val volume: Int = 40,
@@ -276,11 +281,26 @@ data class SoundState(
         return SoundPreset.entries.find { it.name == config.presetName }
     }
 
-    fun getDisplayNameForType(type: SoundType): String {
-        val config = soundConfigs[type] ?: return "Default"
-        if (config.isRommSource) return "RomM Music"
-        if (config.customFilePath != null) return "Custom"
-        return SoundPreset.entries.find { it.name == config.presetName }?.displayName ?: "Default"
+    fun getSoundValueForType(type: SoundType): SoundValueLabel {
+        val config = soundConfigs[type] ?: return SoundValueLabel("Default")
+        val path = config.customFilePath
+        if (path != null) {
+            val trackName = path.substringAfterLast('/')
+                .substringBeforeLast('.')
+                .replace(TRACK_NUMBER_PREFIX, "")
+                .ifBlank { "Custom" }
+            val gameName = if (config.isRommSource) {
+                path.substringBeforeLast('/').substringAfterLast('/')
+            } else null
+            return SoundValueLabel(trackName, gameName)
+        }
+        return SoundValueLabel(
+            SoundPreset.entries.find { it.name == config.presetName }?.displayName ?: "Default"
+        )
+    }
+
+    companion object {
+        private val TRACK_NUMBER_PREFIX = Regex("^\\d+\\s*-\\s*")
     }
 }
 
