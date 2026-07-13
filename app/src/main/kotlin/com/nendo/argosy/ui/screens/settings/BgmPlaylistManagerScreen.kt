@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.Icon
@@ -150,7 +151,6 @@ fun BgmPlaylistManagerScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             BgmPlaylistHeader(
-                notice = uiState.notice,
                 onBack = onDismiss,
                 onAddMusic = onAddMusic
             )
@@ -197,14 +197,13 @@ fun BgmPlaylistManagerScreen(
                             onClick = { viewModel.setFocusIndex(focusIndex) },
                             onMoveUp = { viewModel.moveTrack(index, -1) },
                             onMoveDown = { viewModel.moveTrack(index, 1) },
-                            onRemove = { viewModel.removeTrack(index) }
+                            onToggleOrRemove = { viewModel.toggleOrRemoveTrack(index) }
                         )
                     }
                 }
             }
         }
 
-        val focusedSourcedTrack = uiState.focusedEntry?.sourceFolderName != null
         val hints = when {
             uiState.isReordering -> listOf(
                 InputButton.DPAD_VERTICAL to "Move",
@@ -215,9 +214,16 @@ fun BgmPlaylistManagerScreen(
                 InputButton.X to "Add Music"
             )
             else -> buildList {
-                if (uiState.focusedEntry != null) add(InputButton.A to "Move")
+                val focusedEntry = uiState.focusedEntry
+                if (focusedEntry != null) add(InputButton.A to "Move")
                 add(InputButton.X to "Add Music")
-                if (!focusedSourcedTrack) add(InputButton.Y to "Remove")
+                val trackVerb = when {
+                    focusedEntry == null -> "Remove"
+                    !focusedEntry.isFolderCovered -> "Remove"
+                    focusedEntry.enabled -> "Disable"
+                    else -> "Enable"
+                }
+                add(InputButton.Y to trackVerb)
             }
         }
 
@@ -238,7 +244,6 @@ fun BgmPlaylistManagerScreen(
 
 @Composable
 private fun BgmPlaylistHeader(
-    notice: String?,
     onBack: () -> Unit,
     onAddMusic: () -> Unit
 ) {
@@ -264,15 +269,6 @@ private fun BgmPlaylistHeader(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
-
-        notice?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = Dimens.spacingMd)
-            )
-        }
 
         Row(
             modifier = Modifier
@@ -353,8 +349,10 @@ private fun BgmFolderSourceRow(
                     color = warningColor
                 )
             } else {
+                val countLabel = if (row.trackCount == 1) "1 track" else "${row.trackCount} tracks"
+                val disabledSuffix = if (row.disabledCount > 0) " (${row.disabledCount} disabled)" else ""
                 Text(
-                    text = if (row.trackCount == 1) "1 track" else "${row.trackCount} tracks",
+                    text = countLabel + disabledSuffix,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -383,11 +381,13 @@ private fun BgmPlaylistEntryRow(
     onClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
-    onRemove: () -> Unit
+    onToggleOrRemove: () -> Unit
 ) {
     val focusAccent = LocalArgosyTheme.current.focusAccent
     val focusedContentColor = lerp(focusAccent, Color.White, 0.45f)
     val warningColor = LocalLauncherTheme.current.semanticColors.warning
+    val disabledAlpha = 0.38f
+    val contentAlpha = if (row.enabled) 1f else disabledAlpha
 
     Row(
         modifier = Modifier
@@ -413,9 +413,10 @@ private fun BgmPlaylistEntryRow(
             )
         } else {
             Icon(
-                Icons.Outlined.MusicNote,
+                if (row.enabled) Icons.Outlined.MusicNote else Icons.Default.MusicOff,
                 contentDescription = null,
-                tint = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = (if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurfaceVariant)
+                    .copy(alpha = contentAlpha),
                 modifier = Modifier.size(Dimens.iconMd)
             )
         }
@@ -426,13 +427,20 @@ private fun BgmPlaylistEntryRow(
             Text(
                 text = "$position. ${row.displayName}",
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurface
+                color = (if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurface)
+                    .copy(alpha = contentAlpha)
             )
             when {
                 row.isMissing -> Text(
                     text = "File missing - skipped during playback",
                     style = MaterialTheme.typography.bodySmall,
                     color = warningColor
+                )
+                !row.enabled -> Text(
+                    text = "Disabled - excluded from playback",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isFocused) focusedContentColor.copy(alpha = 0.7f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 row.sourceFolderName != null -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -469,12 +477,22 @@ private fun BgmPlaylistEntryRow(
                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
-        if (row.sourceFolderName == null) {
-            IconButton(onClick = onRemove) {
-                Icon(
+        IconButton(onClick = onToggleOrRemove) {
+            when {
+                !row.isFolderCovered -> Icon(
                     Icons.Default.Close,
                     contentDescription = "Remove",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                row.enabled -> Icon(
+                    Icons.Default.MusicOff,
+                    contentDescription = "Disable",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                else -> Icon(
+                    Icons.Outlined.MusicNote,
+                    contentDescription = "Enable",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

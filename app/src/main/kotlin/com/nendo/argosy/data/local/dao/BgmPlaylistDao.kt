@@ -20,6 +20,9 @@ interface BgmPlaylistDao {
     @Query("SELECT * FROM bgm_playlist WHERE filePath = :filePath")
     suspend fun getByPath(filePath: String): BgmPlaylistEntity?
 
+    @Query("SELECT * FROM bgm_playlist WHERE id = :id")
+    suspend fun getById(id: Long): BgmPlaylistEntity?
+
     @Query("SELECT EXISTS(SELECT 1 FROM bgm_playlist WHERE filePath = :filePath)")
     suspend fun exists(filePath: String): Boolean
 
@@ -46,6 +49,12 @@ interface BgmPlaylistDao {
         deleteBySourceEntryId(id)
         deleteById(id)
     }
+
+    @Query("UPDATE bgm_playlist SET enabled = :enabled WHERE id = :id")
+    suspend fun updateEnabled(id: Long, enabled: Boolean)
+
+    @Query("UPDATE bgm_playlist SET sourceEntryId = :sourceEntryId, enabled = 0 WHERE id = :id")
+    suspend fun convertToDisabledSourced(id: Long, sourceEntryId: Long)
 
     @Query("UPDATE bgm_playlist SET position = :position WHERE id = :id")
     suspend fun updatePosition(id: Long, position: Int)

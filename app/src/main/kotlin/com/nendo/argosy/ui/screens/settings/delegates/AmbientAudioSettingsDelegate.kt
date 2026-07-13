@@ -41,7 +41,7 @@ class AmbientAudioSettingsDelegate @Inject constructor(
         }
         scope.launch {
             playlistCoordinator.entries.collect { entries ->
-                val trackCount = entries.count { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
+                val trackCount = entries.count { it.entryType != BgmPlaylistEntity.TYPE_FOLDER && it.enabled }
                 _state.update { it.copy(playlistEntryCount = trackCount) }
             }
         }

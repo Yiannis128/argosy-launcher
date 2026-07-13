@@ -2017,3 +2017,9 @@ object Migration_139_140 : Migration(139, 140) {
         db.execSQL("ALTER TABLE `bgm_playlist` ADD COLUMN `sourceEntryId` INTEGER")
     }
 }
+
+object Migration_140_141 : Migration(140, 141) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `bgm_playlist` ADD COLUMN `enabled` INTEGER NOT NULL DEFAULT 1")
+    }
+}

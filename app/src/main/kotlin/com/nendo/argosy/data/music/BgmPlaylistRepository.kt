@@ -20,11 +20,16 @@ class BgmPlaylistRepository @Inject constructor(
 
     fun observeAll(): Flow<List<BgmPlaylistEntity>> = bgmPlaylistDao.observeAll()
 
-    /** Appends a track at the end of the playlist; no-op if the path is already present. */
+    /** Appends a track at the end of the playlist; re-enables a disabled existing row; no-op if already present and enabled. */
     suspend fun addFile(filePath: String, displayName: String, gameFileId: Long? = null): Boolean =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                if (bgmPlaylistDao.exists(filePath)) return@withLock false
+                val existing = bgmPlaylistDao.getByPath(filePath)
+                if (existing != null) {
+                    if (existing.enabled) return@withLock false
+                    bgmPlaylistDao.updateEnabled(existing.id, true)
+                    return@withLock true
+                }
                 val position = (bgmPlaylistDao.getMaxPosition() ?: -1) + 1
                 bgmPlaylistDao.insert(
                     BgmPlaylistEntity(
@@ -104,10 +109,10 @@ class BgmPlaylistRepository @Inject constructor(
         }
     }
 
-    /** Ordered playable paths: file rows in position order, filtered to files that exist. */
+    /** Ordered playable paths: enabled file rows in position order, filtered to files that exist. */
     suspend fun resolvePlaybackPaths(): List<String> = withContext(Dispatchers.IO) {
         bgmPlaylistDao.getAll()
-            .filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
+            .filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER && it.enabled }
             .map { it.filePath }
             .filter { File(it).isFile }
     }
@@ -119,6 +124,44 @@ class BgmPlaylistRepository @Inject constructor(
     suspend fun removeById(id: Long) = withContext(Dispatchers.IO) {
         mutex.withLock { bgmPlaylistDao.deleteById(id) }
     }
+
+    suspend fun setEnabled(id: Long, enabled: Boolean) = withContext(Dispatchers.IO) {
+        mutex.withLock { bgmPlaylistDao.updateEnabled(id, enabled) }
+    }
+
+    /** True when the path lies inside any synced folder source. */
+    suspend fun isCoveredBySyncedFolder(filePath: String): Boolean = withContext(Dispatchers.IO) {
+        coveringFolderId(bgmPlaylistDao.getAll(), filePath) != null
+    }
+
+    /** Deletes a standalone manual row; disables a folder-sourced row; converts a folder-covered manual row to a disabled sourced row so it cannot silently return. */
+    suspend fun removeOrDisable(filePath: String) = withContext(Dispatchers.IO) {
+        mutex.withLock { bgmPlaylistDao.getByPath(filePath)?.let { removeOrDisableRow(it) } }
+    }
+
+    suspend fun removeOrDisableById(id: Long) = withContext(Dispatchers.IO) {
+        mutex.withLock { bgmPlaylistDao.getById(id)?.let { removeOrDisableRow(it) } }
+    }
+
+    private suspend fun removeOrDisableRow(row: BgmPlaylistEntity) {
+        if (row.entryType == BgmPlaylistEntity.TYPE_FOLDER) return
+        if (row.sourceEntryId != null) {
+            bgmPlaylistDao.updateEnabled(row.id, !row.enabled)
+            return
+        }
+        val coveringId = coveringFolderId(bgmPlaylistDao.getAll(), row.filePath)
+        if (coveringId == null) {
+            bgmPlaylistDao.deleteById(row.id)
+        } else {
+            bgmPlaylistDao.convertToDisabledSourced(row.id, coveringId)
+        }
+    }
+
+    private fun coveringFolderId(all: List<BgmPlaylistEntity>, filePath: String): Long? =
+        all.firstOrNull { entry ->
+            entry.entryType == BgmPlaylistEntity.TYPE_FOLDER &&
+                filePath.startsWith(entry.filePath.trimEnd('/') + "/")
+        }?.id
 
     /** Deletes a folder source row and every file row it mirrored, in one transaction. */
     suspend fun removeFolderSource(id: Long) = withContext(Dispatchers.IO) {

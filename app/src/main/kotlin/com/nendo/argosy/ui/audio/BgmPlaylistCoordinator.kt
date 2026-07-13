@@ -70,9 +70,13 @@ class BgmPlaylistCoordinator @Inject constructor(
         }
     }
 
-    suspend fun remove(filePath: String) = repository.remove(filePath)
-
     suspend fun removeById(id: Long) = repository.removeById(id)
+
+    suspend fun removeOrDisable(filePath: String) = repository.removeOrDisable(filePath)
+
+    suspend fun removeOrDisableById(id: Long) = repository.removeOrDisableById(id)
+
+    suspend fun setTrackEnabled(id: Long, enabled: Boolean) = repository.setEnabled(id, enabled)
 
     suspend fun removeFolderSource(id: Long) = repository.removeFolderSource(id)
 

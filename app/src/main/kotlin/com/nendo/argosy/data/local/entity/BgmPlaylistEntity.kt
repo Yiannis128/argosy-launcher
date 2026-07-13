@@ -20,7 +20,9 @@ data class BgmPlaylistEntity(
     val gameFileId: Long? = null,
     @ColumnInfo(defaultValue = "file")
     val entryType: String = TYPE_FILE,
-    val sourceEntryId: Long? = null
+    val sourceEntryId: Long? = null,
+    @ColumnInfo(defaultValue = "1")
+    val enabled: Boolean = true
 ) {
     companion object {
         const val TYPE_FILE = "file"

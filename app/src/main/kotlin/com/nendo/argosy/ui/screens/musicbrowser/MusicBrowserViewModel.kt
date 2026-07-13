@@ -111,7 +111,7 @@ class MusicBrowserViewModel @Inject constructor(
         }
         viewModelScope.launch {
             playlistCoordinator.entries.collect { rows ->
-                val fileRows = rows.filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
+                val fileRows = rows.filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER && it.enabled }
                 _uiState.update { st ->
                     st.copy(
                         playlistPaths = fileRows.map { it.filePath }.toSet(),
@@ -523,7 +523,7 @@ class MusicBrowserViewModel @Inject constructor(
             local.gameFileId?.let { st.playlistPathByFileId[it] } ?: local.localPath
         }
         viewModelScope.launch(Dispatchers.IO) {
-            playlistCoordinator.remove(path)
+            playlistCoordinator.removeOrDisable(path)
             postNotice("Removed from playlist")
         }
     }

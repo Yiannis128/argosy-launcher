@@ -6,8 +6,6 @@ import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,13 +16,12 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
-private const val NOTICE_DURATION_MS = 2500L
-
 data class BgmFolderSourceUi(
     val id: Long,
     val displayName: String,
     val filePath: String,
     val trackCount: Int,
+    val disabledCount: Int,
     val isMissing: Boolean
 )
 
@@ -33,6 +30,8 @@ data class BgmPlaylistRowUi(
     val displayName: String,
     val filePath: String,
     val isMissing: Boolean,
+    val enabled: Boolean = true,
+    val isFolderCovered: Boolean = false,
     val sourceFolderName: String? = null
 )
 
@@ -40,8 +39,7 @@ data class BgmPlaylistManagerState(
     val folderSources: List<BgmFolderSourceUi> = emptyList(),
     val entries: List<BgmPlaylistRowUi> = emptyList(),
     val focusedIndex: Int = 0,
-    val isReordering: Boolean = false,
-    val notice: String? = null
+    val isReordering: Boolean = false
 ) {
     val focusCount: Int get() = folderSources.size + entries.size
     val isEmpty: Boolean get() = focusCount == 0
@@ -59,7 +57,6 @@ class BgmPlaylistManagerViewModel @Inject constructor(
     val uiState: StateFlow<BgmPlaylistManagerState> = _uiState.asStateFlow()
 
     private var orderSnapshot: List<BgmPlaylistRowUi>? = null
-    private var noticeJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -86,13 +83,17 @@ class BgmPlaylistManagerViewModel @Inject constructor(
         val folders = filter { it.entryType == BgmPlaylistEntity.TYPE_FOLDER }
         val files = filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
         val folderNameById = folders.associate { it.id to it.displayName }
-        val sourcedCounts = files.mapNotNull { it.sourceEntryId }.groupingBy { it }.eachCount()
+        val folderPrefixes = folders.map { it.filePath.trimEnd('/') + "/" }
+        val sourcedFiles = files.filter { it.sourceEntryId != null }
+        val sourcedCounts = sourcedFiles.groupingBy { it.sourceEntryId }.eachCount()
+        val disabledCounts = sourcedFiles.filter { !it.enabled }.groupingBy { it.sourceEntryId }.eachCount()
         val sources = folders.map { folder ->
             BgmFolderSourceUi(
                 id = folder.id,
                 displayName = folder.displayName,
                 filePath = folder.filePath,
                 trackCount = sourcedCounts[folder.id] ?: 0,
+                disabledCount = disabledCounts[folder.id] ?: 0,
                 isMissing = !File(folder.filePath).isDirectory
             )
         }
@@ -102,6 +103,9 @@ class BgmPlaylistManagerViewModel @Inject constructor(
                 displayName = file.displayName,
                 filePath = file.filePath,
                 isMissing = !File(file.filePath).exists(),
+                enabled = file.enabled,
+                isFolderCovered = file.sourceEntryId != null ||
+                    folderPrefixes.any { file.filePath.startsWith(it) },
                 sourceFolderName = file.sourceEntryId?.let { folderNameById[it] }
             )
         }
@@ -178,30 +182,23 @@ class BgmPlaylistManagerViewModel @Inject constructor(
         viewModelScope.launch { coordinator.removeFolderSource(source.id) }
     }
 
-    fun removeTrack(trackIndex: Int) {
+    fun toggleOrRemoveTrack(trackIndex: Int) {
         val st = _uiState.value
         if (st.isReordering) return
         val row = st.entries.getOrNull(trackIndex) ?: return
-        if (row.sourceFolderName != null) {
-            postNotice("Managed by synced folder - remove the file or the folder source")
-            return
+        viewModelScope.launch {
+            when {
+                !row.isFolderCovered -> coordinator.removeById(row.id)
+                row.enabled -> coordinator.removeOrDisableById(row.id)
+                else -> coordinator.setTrackEnabled(row.id, true)
+            }
         }
-        viewModelScope.launch { coordinator.removeById(row.id) }
     }
 
     fun removeFocused() {
         val st = _uiState.value
         if (st.isReordering) return
         if (st.focusedIndex < st.folderSources.size) removeSource(st.focusedIndex)
-        else removeTrack(st.focusedIndex - st.folderSources.size)
-    }
-
-    private fun postNotice(message: String) {
-        noticeJob?.cancel()
-        _uiState.update { it.copy(notice = message) }
-        noticeJob = viewModelScope.launch {
-            delay(NOTICE_DURATION_MS)
-            _uiState.update { it.copy(notice = null) }
-        }
+        else toggleOrRemoveTrack(st.focusedIndex - st.folderSources.size)
     }
 }
