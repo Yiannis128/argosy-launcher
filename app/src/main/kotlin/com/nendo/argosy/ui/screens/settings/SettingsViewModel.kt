@@ -150,6 +150,8 @@ class SettingsViewModel @Inject constructor(
     val openAudioFilePickerEvent: SharedFlow<Unit> = ambientAudioDelegate.openAudioFilePickerEvent
     val openAudioFileBrowserEvent: SharedFlow<Unit> = ambientAudioDelegate.openAudioFileBrowserEvent
     val openBgmPlaylistManagerEvent: SharedFlow<Unit> = ambientAudioDelegate.openPlaylistManagerEvent
+    val openMusicBrowserBgmEvent: SharedFlow<Unit> = ambientAudioDelegate.openMusicBrowserEvent
+    val openMusicBrowserSfxEvent: SharedFlow<SoundType> = soundsDelegate.openMusicBrowserSfxEvent
     val launchPlatformFolderPicker: SharedFlow<Long> = storageDelegate.launchPlatformFolderPicker
     val launchSavePathPicker: SharedFlow<Unit> = emulatorDelegate.launchSavePathPicker
     val builtinNavigationEvent = emulatorDelegate.builtinNavigationEvent
@@ -907,6 +909,7 @@ class SettingsViewModel @Inject constructor(
     fun setAmbientAudioShuffle(shuffle: Boolean) = ambientAudioDelegate.setShuffle(viewModelScope, shuffle)
     fun clearAmbientAudioFile() = ambientAudioDelegate.clearAudioFile(viewModelScope)
     fun openBgmPlaylistManager() = ambientAudioDelegate.openPlaylistManager(viewModelScope)
+    fun openMusicBrowserBgm() = ambientAudioDelegate.openMusicBrowser(viewModelScope)
     fun setBgmPlaylistAsSource() = ambientAudioDelegate.setPlaylistAsSource(viewModelScope)
     fun setSwapAB(enabled: Boolean) = controlsDelegate.setSwapAB(viewModelScope, enabled)
     fun setSwapXY(enabled: Boolean) = controlsDelegate.setSwapXY(viewModelScope, enabled)

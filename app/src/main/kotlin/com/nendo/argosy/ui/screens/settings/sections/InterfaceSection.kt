@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +45,8 @@ internal data class InterfaceLayoutState(
     val bgmIsPlaylist: Boolean = false,
     val hasSecondaryDisplay: Boolean = false,
     val hasPhysicalSecondaryDisplay: Boolean = false,
-    val dualScreenEnabled: Boolean = false
+    val dualScreenEnabled: Boolean = false,
+    val musicApiSupported: Boolean = false
 ) {
     companion object {
         fun from(state: SettingsUiState) = InterfaceLayoutState(
@@ -54,7 +56,8 @@ internal data class InterfaceLayoutState(
             bgmIsPlaylist = state.ambientAudio.isPlaylistSource,
             hasSecondaryDisplay = state.display.hasSecondaryDisplay,
             hasPhysicalSecondaryDisplay = state.display.hasPhysicalSecondaryDisplay,
-            dualScreenEnabled = state.display.dualScreenEnabled
+            dualScreenEnabled = state.display.dualScreenEnabled,
+            musicApiSupported = state.server.musicApiSupported
         )
     }
 }
@@ -91,6 +94,7 @@ internal sealed class InterfaceItem(
     data object BgmVolume : InterfaceItem("bgmVolume", "ambience", { it.bgmEnabled })
     data object BgmFile : InterfaceItem("bgmFile", "ambience", { it.bgmEnabled })
     data object BgmPlaylist : InterfaceItem("bgmPlaylist", "ambience", { it.bgmEnabled })
+    data object BrowseServerMusic : InterfaceItem("browseServerMusic", "ambience", { it.bgmEnabled && it.musicApiSupported })
     data object BgmShuffle : InterfaceItem("bgmShuffle", "ambience", { it.bgmEnabled && (it.bgmIsFolder || it.bgmIsPlaylist) })
 
     data object DualScreenEnabled : InterfaceItem("dualScreenEnabled", "displays")
@@ -120,7 +124,7 @@ internal sealed class InterfaceItem(
             ScreenSafetySpacer, ScreenSafetyHeader,
             ScreenDimmer, DimAfter, DimLevel,
             AmbienceSpacer, AmbienceHeader,
-            BgmToggle, BgmVolume, BgmFile, BgmPlaylist, BgmShuffle,
+            BgmToggle, BgmVolume, BgmFile, BgmPlaylist, BrowseServerMusic, BgmShuffle,
             DisplaysSpacer, DisplaysHeader,
             DualScreenEnabled, DisplayRoles, AmbientLedSettings
         )
@@ -161,6 +165,8 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val bgmIsFolder = uiState.ambientAudio.isFolder
     val bgmIsPlaylist = uiState.ambientAudio.isPlaylistSource
 
+    val musicApiSupported = uiState.server.musicApiSupported
+
     val layoutState = remember(
         display.ambientLedAvailable,
         display.hasSecondaryDisplay,
@@ -168,9 +174,10 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.dualScreenEnabled,
         bgmEnabled,
         bgmIsFolder,
-        bgmIsPlaylist
+        bgmIsPlaylist,
+        musicApiSupported
     ) {
-        InterfaceLayoutState(display, bgmEnabled, bgmIsFolder, bgmIsPlaylist, display.hasSecondaryDisplay, display.hasPhysicalSecondaryDisplay, display.dualScreenEnabled)
+        InterfaceLayoutState(display, bgmEnabled, bgmIsFolder, bgmIsPlaylist, display.hasSecondaryDisplay, display.hasPhysicalSecondaryDisplay, display.dualScreenEnabled, musicApiSupported)
     }
 
     val visibleItems = remember(layoutState) {
@@ -307,6 +314,14 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         onClick = { viewModel.openBgmPlaylistManager() }
                     )
                 }
+
+                InterfaceItem.BrowseServerMusic -> NavigationPreference(
+                    icon = Icons.Outlined.LibraryMusic,
+                    title = "Browse Server Music",
+                    subtitle = "Preview and download tracks from RomM",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.openMusicBrowserBgm() }
+                )
 
                 InterfaceItem.BgmShuffle -> SwitchPreference(
                     title = "Shuffle",

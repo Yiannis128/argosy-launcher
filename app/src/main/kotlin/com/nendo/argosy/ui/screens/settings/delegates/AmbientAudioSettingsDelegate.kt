@@ -38,6 +38,9 @@ class AmbientAudioSettingsDelegate @Inject constructor(
     private val _openPlaylistManagerEvent = MutableSharedFlow<Unit>()
     val openPlaylistManagerEvent: SharedFlow<Unit> = _openPlaylistManagerEvent.asSharedFlow()
 
+    private val _openMusicBrowserEvent = MutableSharedFlow<Unit>()
+    val openMusicBrowserEvent: SharedFlow<Unit> = _openMusicBrowserEvent.asSharedFlow()
+
     fun initFlowCollection(scope: CoroutineScope) {
         scope.launch {
             ambientAudioManager.currentTrackName.collect { trackName ->
@@ -104,6 +107,12 @@ class AmbientAudioSettingsDelegate @Inject constructor(
     fun openPlaylistManager(scope: CoroutineScope) {
         scope.launch {
             _openPlaylistManagerEvent.emit(Unit)
+        }
+    }
+
+    fun openMusicBrowser(scope: CoroutineScope) {
+        scope.launch {
+            _openMusicBrowserEvent.emit(Unit)
         }
     }
 

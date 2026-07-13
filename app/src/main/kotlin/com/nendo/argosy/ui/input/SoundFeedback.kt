@@ -36,7 +36,8 @@ enum class SoundPreset(val resourceId: Int?, val displayName: String) {
     COLLECT(R.raw.collect, "Collect"),
     DISMISS_FAIL(R.raw.dismiss_fail, "Dismiss Fail"),
     SILENT(null, "Silent"),
-    CUSTOM(null, "Custom File");
+    CUSTOM(null, "Custom File"),
+    ROMM_MUSIC(null, "RomM Music");
 
     companion object {
         val selectable: List<SoundPreset> = entries.toList()

@@ -258,9 +258,12 @@ data class SoundState(
     val soundConfigs: Map<SoundType, SoundConfig> = emptyMap(),
     val showSoundPicker: Boolean = false,
     val soundPickerType: SoundType? = null,
-    val soundPickerFocusIndex: Int = 0
+    val soundPickerFocusIndex: Int = 0,
+    val musicApiSupported: Boolean = false
 ) {
-    val presets: List<SoundPreset> get() = SoundPreset.selectable
+    val presets: List<SoundPreset>
+        get() = if (musicApiSupported) SoundPreset.selectable
+        else SoundPreset.selectable.filterNot { it == SoundPreset.ROMM_MUSIC }
 
     fun getCurrentPresetForType(type: SoundType): SoundPreset? {
         val config = soundConfigs[type] ?: return null
@@ -688,7 +691,8 @@ data class ServerState(
     val syncScreenshotsEnabled: Boolean = false,
     val uploadScreenshotsEnabled: Boolean = true,
     val boxArtCacheEnabled: Boolean = true,
-    val screenshotUploadSupported: Boolean = false
+    val screenshotUploadSupported: Boolean = false,
+    val musicApiSupported: Boolean = false
 )
 
 data class PlatformFilterItem(

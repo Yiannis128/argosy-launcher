@@ -216,11 +216,15 @@ internal fun routeObserveConnectionState(vm: SettingsViewModel) {
         val version = (connectionState as? ConnectionState.Connected)?.version
         val screenshotUpload = (connectionState as? ConnectionState.Connected)
             ?.capabilities?.supportsScreenshotUpload == true
+        val musicApi = (connectionState as? ConnectionState.Connected)
+            ?.capabilities?.supportsMusicApi == true
         vm.serverDelegate.updateState(vm._uiState.value.server.copy(
             connectionStatus = status,
             rommVersion = version,
-            screenshotUploadSupported = screenshotUpload
+            screenshotUploadSupported = screenshotUpload,
+            musicApiSupported = musicApi
         ))
+        vm.soundsDelegate.setMusicApiSupported(musicApi)
     }.launchIn(vm.viewModelScope)
 }
 
@@ -497,7 +501,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         vm.soundsDelegate.updateState(SoundState(
             enabled = prefs.soundEnabled,
             volume = prefs.soundVolume,
-            soundConfigs = prefs.soundConfigs
+            soundConfigs = prefs.soundConfigs,
+            musicApiSupported = (connectionState as? ConnectionState.Connected)
+                ?.capabilities?.supportsMusicApi == true
         ))
 
         val ambientUri = prefs.ambientAudioUri
@@ -574,7 +580,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             uploadScreenshotsEnabled = prefs.uploadScreenshotsEnabled,
             boxArtCacheEnabled = prefs.boxArtCacheEnabled,
             screenshotUploadSupported = (connectionState as? ConnectionState.Connected)
-                ?.capabilities?.supportsScreenshotUpload == true
+                ?.capabilities?.supportsScreenshotUpload == true,
+            musicApiSupported = (connectionState as? ConnectionState.Connected)
+                ?.capabilities?.supportsMusicApi == true
         ))
 
         vm.storageDelegate.updateState(StorageState(

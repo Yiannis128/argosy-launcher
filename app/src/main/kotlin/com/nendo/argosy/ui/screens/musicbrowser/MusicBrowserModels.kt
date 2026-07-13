@@ -1,0 +1,66 @@
+package com.nendo.argosy.ui.screens.musicbrowser
+
+import com.nendo.argosy.data.remote.romm.RomMMusicFacet
+import com.nendo.argosy.domain.usecase.music.LocalMusicTrackState
+
+enum class MusicBrowserMode { BGM, SFX }
+
+data class MusicTrackUi(
+    val romFileId: Long,
+    val title: String,
+    val artistAlbum: String?,
+    val gameLine: String?,
+    val durationLabel: String?,
+    val fileName: String,
+    val streamUrl: String,
+    val platformName: String,
+    val gameName: String,
+    val trackNumber: Int?,
+    val trackTitle: String?
+)
+
+enum class FacetPickerStage { CHOOSER, VALUES }
+
+data class FacetPickerUi(
+    val stage: FacetPickerStage,
+    val facet: RomMMusicFacet? = null,
+    val title: String = "",
+    val options: List<String> = emptyList(),
+    val isLoading: Boolean = false,
+    val focusIndex: Int = 0
+)
+
+data class MusicBrowserState(
+    val mode: MusicBrowserMode = MusicBrowserMode.BGM,
+    val tracks: List<MusicTrackUi> = emptyList(),
+    val total: Int = 0,
+    val localByRomFileId: Map<Long, LocalMusicTrackState> = emptyMap(),
+    val downloadingIds: Set<Long> = emptySet(),
+    val playlistPaths: Set<String> = emptySet(),
+    val playlistFileIds: Set<Long> = emptySet(),
+    val searchQuery: String = "",
+    val artistFilter: String? = null,
+    val albumFilter: String? = null,
+    val genreFilter: String? = null,
+    val focusedIndex: Int = -1,
+    val showKeyboard: Boolean = false,
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val isUnsupported: Boolean = false,
+    val isOffline: Boolean = false,
+    val errorMessage: String? = null,
+    val notice: String? = null,
+    val previewingId: Long? = null,
+    val facetPicker: FacetPickerUi? = null
+) {
+    val hasMore: Boolean get() = tracks.size < total
+    val hasActiveFilters: Boolean get() = artistFilter != null || albumFilter != null || genreFilter != null
+
+    fun isDownloaded(track: MusicTrackUi): Boolean = localByRomFileId.containsKey(track.romFileId)
+
+    fun isInPlaylist(track: MusicTrackUi): Boolean {
+        val local = localByRomFileId[track.romFileId] ?: return false
+        if (local.localPath in playlistPaths) return true
+        return local.gameFileId?.let { it in playlistFileIds } == true
+    }
+}

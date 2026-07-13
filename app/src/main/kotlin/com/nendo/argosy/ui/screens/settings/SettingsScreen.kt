@@ -57,6 +57,8 @@ import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModal
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
+import com.nendo.argosy.ui.screens.musicbrowser.MusicBrowserMode
+import com.nendo.argosy.ui.screens.musicbrowser.MusicBrowserScreen
 import com.nendo.argosy.ui.screens.settings.components.PlatformSettingsModal
 import com.nendo.argosy.ui.screens.settings.components.ReleaseChangelogModal
 import com.nendo.argosy.ui.screens.settings.components.SoundPickerPopup
@@ -320,6 +322,21 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         viewModel.openBgmPlaylistManagerEvent.collect {
             showBgmPlaylistManager = true
+        }
+    }
+
+    var showMusicBrowserBgm by remember { mutableStateOf(false) }
+    var musicBrowserSfxTarget by remember { mutableStateOf<SoundType?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.openMusicBrowserBgmEvent.collect {
+            showMusicBrowserBgm = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.openMusicBrowserSfxEvent.collect { soundType ->
+            musicBrowserSfxTarget = soundType
         }
     }
 
@@ -781,6 +798,29 @@ fun SettingsScreen(
             isActiveSource = uiState.ambientAudio.isPlaylistSource,
             onSetActive = { viewModel.setBgmPlaylistAsSource() },
             onDismiss = { showBgmPlaylistManager = false }
+        )
+    }
+
+    if (showMusicBrowserBgm) {
+        MusicBrowserScreen(
+            mode = MusicBrowserMode.BGM,
+            onDismiss = { showMusicBrowserBgm = false }
+        )
+    }
+
+    musicBrowserSfxTarget?.let { soundType ->
+        MusicBrowserScreen(
+            mode = MusicBrowserMode.SFX,
+            sfxTargetLabel = soundType.name
+                .replace("_", " ")
+                .lowercase()
+                .split(" ")
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
+            onSfxSelected = { path ->
+                musicBrowserSfxTarget = null
+                viewModel.setCustomSoundFile(soundType, path)
+            },
+            onDismiss = { musicBrowserSfxTarget = null }
         )
     }
 
