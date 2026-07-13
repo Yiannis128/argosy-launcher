@@ -98,6 +98,30 @@ class RomMRepository @Inject constructor(
         rangeHeader: String? = null
     ): RomMResult<DownloadResponse> = apiClient.downloadRomFile(fileId, fileName, rangeHeader)
 
+    suspend fun getMusicTracks(params: Map<String, String>): RomMResult<RomMMusicTrackPage> =
+        apiClient.getMusicTracks(params)
+
+    suspend fun getMusicFacet(
+        facet: RomMMusicFacet,
+        params: Map<String, String>
+    ): RomMResult<RomMMusicFacetPage> = apiClient.getMusicFacet(facet, params)
+
+    fun buildMusicQueryParams(
+        search: String? = null,
+        artist: String? = null,
+        album: String? = null,
+        genre: String? = null,
+        platformId: Long? = null,
+        minDuration: Double? = null,
+        maxDuration: Double? = null,
+        orderBy: String = "title",
+        orderDir: String = "asc",
+        limit: Int = 50,
+        offset: Int = 0
+    ): Map<String, String> = apiClient.buildMusicQueryParams(
+        search, artist, album, genre, platformId, minDuration, maxDuration, orderBy, orderDir, limit, offset
+    )
+
     suspend fun getCurrentUser(): RomMResult<RomMUser> = apiClient.getCurrentUser()
 
     suspend fun getLibrarySummary(): RomMResult<Pair<Int, Int>> = apiClient.getLibrarySummary()

@@ -55,6 +55,69 @@ class RomMApiClient @Inject constructor(
         }
     }
 
+    fun buildMusicQueryParams(
+        search: String? = null,
+        artist: String? = null,
+        album: String? = null,
+        genre: String? = null,
+        platformId: Long? = null,
+        minDuration: Double? = null,
+        maxDuration: Double? = null,
+        orderBy: String = "title",
+        orderDir: String = "asc",
+        limit: Int = 50,
+        offset: Int = 0
+    ): Map<String, String> {
+        return buildMap {
+            search?.let { put("search", it) }
+            artist?.let { put("artist", it) }
+            album?.let { put("album", it) }
+            genre?.let { put("genre", it) }
+            platformId?.let { put("platform_ids", it.toString()) }
+            minDuration?.let { put("min_duration", it.toString()) }
+            maxDuration?.let { put("max_duration", it.toString()) }
+            put("order_by", orderBy)
+            put("order_dir", orderDir)
+            put("limit", limit.toString())
+            put("offset", offset.toString())
+        }
+    }
+
+    suspend fun getMusicTracks(params: Map<String, String>): RomMResult<RomMMusicTrackPage> {
+        val currentApi = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = currentApi.getMusicTracks(params)
+            if (response.isSuccessful) {
+                val body = response.body()
+                    ?: return RomMResult.Error("Empty response from server")
+                RomMResult.Success(body)
+            } else {
+                RomMResult.Error("Failed to fetch music tracks", response.code())
+            }
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Failed to fetch music tracks")
+        }
+    }
+
+    suspend fun getMusicFacet(
+        facet: RomMMusicFacet,
+        params: Map<String, String>
+    ): RomMResult<RomMMusicFacetPage> {
+        val currentApi = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = currentApi.getMusicFacet(facet.path, params)
+            if (response.isSuccessful) {
+                val body = response.body()
+                    ?: return RomMResult.Error("Empty response from server")
+                RomMResult.Success(body)
+            } else {
+                RomMResult.Error("Failed to fetch music ${facet.path}", response.code())
+            }
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Failed to fetch music ${facet.path}")
+        }
+    }
+
     suspend fun getRom(romId: Long): RomMResult<RomMRom> {
         val currentApi = api ?: return RomMResult.Error("Not connected")
         return try {

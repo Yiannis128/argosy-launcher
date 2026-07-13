@@ -82,6 +82,17 @@ interface RomMApi {
         @Header("Range") range: String? = null
     ): Response<ResponseBody>
 
+    @GET("api/music/tracks")
+    suspend fun getMusicTracks(
+        @QueryMap params: Map<String, String>
+    ): Response<RomMMusicTrackPage>
+
+    @GET("api/music/{facet}")
+    suspend fun getMusicFacet(
+        @Path("facet") facet: String,
+        @QueryMap params: Map<String, String>
+    ): Response<RomMMusicFacetPage>
+
     @PUT("api/roms/{id}/props")
     suspend fun updateRomUserProps(
         @Path("id") romId: Long,

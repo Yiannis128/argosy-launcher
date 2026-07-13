@@ -163,7 +163,8 @@ data class RomMRomFile(
     @Json(name = "file_path") val filePath: String,
     @Json(name = "file_size_bytes") val fileSizeBytes: Long,
     @Json(name = "full_path") val fullPath: String,
-    @Json(name = "category") val category: String? = null
+    @Json(name = "category") val category: String? = null,
+    @Json(name = "track_meta") val trackMeta: RomMTrackMeta? = null
 ) {
     val discNumber: Int?
         get() = DISC_NUMBER_REGEX.find(
@@ -178,6 +179,20 @@ data class RomMRomFile(
         private val DISC_NUMBER_REGEX = Regex("\\d+")
     }
 }
+
+@JsonClass(generateAdapter = true)
+data class RomMTrackMeta(
+    @Json(name = "title") val title: String? = null,
+    @Json(name = "artist") val artist: String? = null,
+    @Json(name = "album") val album: String? = null,
+    @Json(name = "genre") val genre: String? = null,
+    @Json(name = "year") val year: Int? = null,
+    @Json(name = "track") val track: Int? = null,
+    @Json(name = "disc") val disc: Int? = null,
+    @Json(name = "duration_seconds") val durationSeconds: Double? = null,
+    @Json(name = "has_embedded_cover") val hasEmbeddedCover: Boolean = false,
+    @Json(name = "cover_path") val coverPath: String? = null
+)
 
 @JsonClass(generateAdapter = true)
 data class RomMMetadatum(
