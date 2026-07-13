@@ -66,9 +66,9 @@ class SoundSettingsDelegate @Inject constructor(
         val initialIndex = when {
             currentConfig?.customFilePath != null ->
                 presets.indexOf(SoundPreset.CUSTOM).coerceAtLeast(0)
-            currentConfig?.presetName != null ->
-                presets.indexOfFirst { it.name == currentConfig.presetName }.takeIf { it >= 0 } ?: 0
-            else -> 0
+            currentConfig?.presetName == SoundPreset.SILENT.name ->
+                presets.indexOf(SoundPreset.SILENT).coerceAtLeast(0)
+            else -> presets.indexOf(SoundPreset.DEFAULT).coerceAtLeast(0)
         }
         _state.update {
             it.copy(
@@ -106,6 +106,7 @@ class SoundSettingsDelegate @Inject constructor(
             SoundPreset.SILENT -> Unit
             SoundPreset.ROMM_MUSIC -> Unit
             SoundPreset.CUSTOM -> state.soundPickerType?.let { soundManager.playCustom(it) }
+            SoundPreset.DEFAULT -> state.soundPickerType?.let { soundManager.playDefault(it) }
             else -> soundManager.playPreset(preset)
         }
     }
@@ -137,11 +138,17 @@ class SoundSettingsDelegate @Inject constructor(
             return
         }
 
-        val config = if (preset == SoundPreset.SILENT) {
-            SoundConfig(presetName = SoundPreset.SILENT.name)
-        } else {
-            SoundConfig(presetName = preset.name)
+        if (preset == SoundPreset.DEFAULT) {
+            scope.launch {
+                preferencesRepository.setSoundConfig(type, null)
+                _state.update { it.copy(soundConfigs = it.soundConfigs - type) }
+                soundManager.clearSoundConfig(type)
+            }
+            dismissSoundPicker()
+            return
         }
+
+        val config = SoundConfig(presetName = SoundPreset.SILENT.name)
 
         scope.launch {
             preferencesRepository.setSoundConfig(type, config)

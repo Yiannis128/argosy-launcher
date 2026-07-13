@@ -37,11 +37,8 @@ enum class SoundPreset(val resourceId: Int?, val displayName: String) {
     DISMISS_FAIL(R.raw.dismiss_fail, "Dismiss Fail"),
     SILENT(null, "Silent"),
     CUSTOM(null, "Custom File"),
-    ROMM_MUSIC(null, "RomM Music");
-
-    companion object {
-        val selectable: List<SoundPreset> = entries.toList()
-    }
+    ROMM_MUSIC(null, "RomM Music"),
+    DEFAULT(null, "Default");
 }
 
 @Singleton
@@ -212,6 +209,15 @@ class SoundFeedbackManager @Inject constructor(
     fun setSoundConfig(type: SoundType, config: SoundConfig) {
         soundConfigs = soundConfigs + (type to config)
         refreshCustomSounds()
+    }
+
+    fun clearSoundConfig(type: SoundType) {
+        soundConfigs = soundConfigs - type
+        refreshCustomSounds()
+    }
+
+    fun playDefault(type: SoundType) {
+        defaultPresetMap[type]?.let { playPreset(it) }
     }
 
     private fun refreshCustomSounds() {
