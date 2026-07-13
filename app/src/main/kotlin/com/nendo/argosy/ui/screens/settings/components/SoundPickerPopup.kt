@@ -107,7 +107,6 @@ fun SoundPickerPopup(
 
             FooterHints(
                 hints = listOf(
-                    InputButton.X to "Preview",
                     InputButton.A to "Select",
                     InputButton.B to "Close"
                 )

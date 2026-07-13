@@ -30,6 +30,27 @@ internal class ThemeSoundsSectionInput(
 
     override fun onRight(): InputResult = cycle(1)
 
+    override fun onContextMenu(): InputResult {
+        val state = viewModel.uiState.value
+        val item = themeSoundsItemAtFocusIndex(state.focusedIndex, layoutState())
+        if (item is ThemeSoundsItem.SoundTypeItem) {
+            viewModel.soundManager.play(item.soundType)
+        }
+        return InputResult.handled(SoundType.SILENT)
+    }
+
+    override fun onSecondaryAction(): InputResult {
+        val state = viewModel.uiState.value
+        val item = themeSoundsItemAtFocusIndex(state.focusedIndex, layoutState())
+        if (item is ThemeSoundsItem.SoundTypeItem &&
+            state.sounds.soundConfigs.containsKey(item.soundType)
+        ) {
+            viewModel.resetSoundToDefault(item.soundType)
+            return InputResult.HANDLED
+        }
+        return InputResult.handled(SoundType.SILENT)
+    }
+
     override fun onPrevSection(): InputResult {
         if (viewModel.jumpToPrevSection(themeSoundsSections(layoutState()))) {
             return InputResult.HANDLED

@@ -98,7 +98,10 @@ import com.nendo.argosy.ui.screens.settings.sections.ThemeBackdropSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeFontsSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeMusicSection
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSection
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsItem
+import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.ThemeSoundsSection
+import com.nendo.argosy.ui.screens.settings.sections.themeSoundsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.formatFileSize
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsMaxFocusIndex
 import com.nendo.argosy.ui.icons.InputIcons
@@ -1044,6 +1047,16 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
             val onStatePath = uiState.focusedIndex == settingsMax + 2
             if ((onSavePath && videoState.isCustomSavePath) || (onStatePath && videoState.isCustomStatePath)) {
                 add(InputButton.Y to "Reset to Default")
+            }
+        }
+        if (uiState.currentSection == SettingsSection.THEME_SOUNDS && uiState.sounds.enabled) {
+            val soundsLayout = ThemeSoundsLayoutState.from(uiState)
+            val focusedSoundItem = themeSoundsItemAtFocusIndex(uiState.focusedIndex, soundsLayout)
+            if (focusedSoundItem is ThemeSoundsItem.SoundTypeItem) {
+                add(InputButton.X to "Sample")
+                if (uiState.sounds.soundConfigs.containsKey(focusedSoundItem.soundType)) {
+                    add(InputButton.Y to "Reset to Default")
+                }
             }
         }
         if (uiState.currentSection == SettingsSection.CORE_OPTIONS &&

@@ -216,7 +216,7 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             InputMethod.DOWN -> { viewModel.moveSoundPickerFocus(1); InputResult.HANDLED }
             InputMethod.CONFIRM -> { viewModel.confirmSoundPickerSelection(); InputResult.HANDLED }
             InputMethod.BACK -> { viewModel.dismissSoundPicker(); InputResult.HANDLED }
-            InputMethod.CONTEXT_MENU -> { viewModel.previewSoundPickerSelection(); InputResult.HANDLED }
+            InputMethod.CONTEXT_MENU -> InputResult.handled(SoundType.SILENT)
             else -> InputResult.HANDLED
         }
     }

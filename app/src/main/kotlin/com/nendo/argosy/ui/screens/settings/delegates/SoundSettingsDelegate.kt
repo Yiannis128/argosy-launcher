@@ -101,15 +101,11 @@ class SoundSettingsDelegate @Inject constructor(
         }
     }
 
-    fun previewSoundPickerSelection() {
-        val state = _state.value
-        val preset = state.presets.getOrNull(state.soundPickerFocusIndex) ?: return
-        when (preset) {
-            SoundPreset.SILENT -> Unit
-            SoundPreset.ROMM_MUSIC -> state.soundPickerType?.let { soundManager.playCustom(it) }
-            SoundPreset.CUSTOM -> state.soundPickerType?.let { soundManager.playCustom(it) }
-            SoundPreset.DEFAULT -> state.soundPickerType?.let { soundManager.playDefault(it) }
-            else -> soundManager.playPreset(preset)
+    fun resetSoundToDefault(scope: CoroutineScope, type: SoundType) {
+        scope.launch {
+            preferencesRepository.setSoundConfig(type, null)
+            _state.update { it.copy(soundConfigs = it.soundConfigs - type) }
+            soundManager.clearSoundConfig(type)
         }
     }
 

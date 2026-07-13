@@ -892,7 +892,7 @@ class SettingsViewModel @Inject constructor(
     fun showSoundPicker(type: SoundType) = soundsDelegate.showSoundPicker(type)
     fun dismissSoundPicker() = soundsDelegate.dismissSoundPicker()
     fun moveSoundPickerFocus(delta: Int) = soundsDelegate.moveSoundPickerFocus(delta)
-    fun previewSoundPickerSelection() = soundsDelegate.previewSoundPickerSelection()
+    fun resetSoundToDefault(type: SoundType) = soundsDelegate.resetSoundToDefault(viewModelScope, type)
     fun confirmSoundPickerSelection() = soundsDelegate.confirmSoundPickerSelection(viewModelScope)
     fun confirmSoundPickerSelectionAt(index: Int) = soundsDelegate.confirmSoundPickerSelectionAt(viewModelScope, index)
     fun setCustomSoundFile(type: SoundType, filePath: String, fromRomm: Boolean = false) =
