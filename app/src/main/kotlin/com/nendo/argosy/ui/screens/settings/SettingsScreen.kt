@@ -798,7 +798,7 @@ fun SettingsScreen(
                 .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
             onSfxSelected = { path ->
                 musicBrowserSfxTarget = null
-                viewModel.setCustomSoundFile(soundType, path)
+                viewModel.setCustomSoundFile(soundType, path, fromRomm = true)
             },
             onDismiss = { musicBrowserSfxTarget = null }
         )

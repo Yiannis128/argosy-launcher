@@ -895,7 +895,8 @@ class SettingsViewModel @Inject constructor(
     fun previewSoundPickerSelection() = soundsDelegate.previewSoundPickerSelection()
     fun confirmSoundPickerSelection() = soundsDelegate.confirmSoundPickerSelection(viewModelScope)
     fun confirmSoundPickerSelectionAt(index: Int) = soundsDelegate.confirmSoundPickerSelectionAt(viewModelScope, index)
-    fun setCustomSoundFile(type: SoundType, filePath: String) = soundsDelegate.setCustomSoundFile(viewModelScope, type, filePath)
+    fun setCustomSoundFile(type: SoundType, filePath: String, fromRomm: Boolean = false) =
+        soundsDelegate.setCustomSoundFile(viewModelScope, type, filePath, fromRomm)
     fun setAmbientAudioEnabled(enabled: Boolean) = ambientAudioDelegate.setEnabled(viewModelScope, enabled)
     fun setAmbientAudioVolume(volume: Int) = ambientAudioDelegate.setVolume(viewModelScope, volume)
 

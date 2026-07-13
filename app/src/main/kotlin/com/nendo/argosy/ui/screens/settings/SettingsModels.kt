@@ -271,12 +271,14 @@ data class SoundState(
 
     fun getCurrentPresetForType(type: SoundType): SoundPreset? {
         val config = soundConfigs[type] ?: return SoundPreset.DEFAULT
+        if (config.isRommSource) return SoundPreset.ROMM_MUSIC
         if (config.customFilePath != null) return SoundPreset.CUSTOM
         return SoundPreset.entries.find { it.name == config.presetName }
     }
 
     fun getDisplayNameForType(type: SoundType): String {
         val config = soundConfigs[type] ?: return "Default"
+        if (config.isRommSource) return "RomM Music"
         if (config.customFilePath != null) return "Custom"
         return SoundPreset.entries.find { it.name == config.presetName }?.displayName ?: "Default"
     }

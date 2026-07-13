@@ -174,6 +174,10 @@ class ControlsPreferencesRepository @Inject constructor(
                 val soundType = try { SoundType.valueOf(parts[0]) } catch (_: Exception) { return@mapNotNull null }
                 val value = parts[1]
                 val config = when {
+                    value.startsWith("romm:") -> SoundConfig(
+                        presetName = SoundConfig.ROMM_SOURCE,
+                        customFilePath = value.removePrefix("romm:")
+                    )
                     value.startsWith("custom:") -> SoundConfig(customFilePath = value.removePrefix("custom:"))
                     else -> SoundConfig(presetName = value)
                 }
@@ -185,6 +189,8 @@ class ControlsPreferencesRepository @Inject constructor(
     private fun serializeSoundConfigs(configs: Map<SoundType, SoundConfig>): String {
         return configs.entries.joinToString(";") { (type, config) ->
             val value = when {
+                config.customFilePath != null && config.presetName == SoundConfig.ROMM_SOURCE ->
+                    "romm:${config.customFilePath}"
                 config.customFilePath != null -> "custom:${config.customFilePath}"
                 config.presetName != null -> config.presetName
                 else -> return@joinToString ""
