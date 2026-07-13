@@ -315,6 +315,14 @@ fun SettingsScreen(
         }
     }
 
+    var showBgmPlaylistManager by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.openBgmPlaylistManagerEvent.collect {
+            showBgmPlaylistManager = true
+        }
+    }
+
     var customSoundTargetType by remember { mutableStateOf<SoundType?>(null) }
 
     LaunchedEffect(Unit) {
@@ -765,6 +773,14 @@ fun SettingsScreen(
             onDismiss = {
                 showAudioFileBrowser = false
             }
+        )
+    }
+
+    if (showBgmPlaylistManager) {
+        BgmPlaylistManagerScreen(
+            isActiveSource = uiState.ambientAudio.isPlaylistSource,
+            onSetActive = { viewModel.setBgmPlaylistAsSource() },
+            onDismiss = { showBgmPlaylistManager = false }
         )
     }
 

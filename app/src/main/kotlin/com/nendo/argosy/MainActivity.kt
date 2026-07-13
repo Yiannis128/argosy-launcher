@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var preferencesRepository: UserPreferencesRepository
     @Inject lateinit var syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
     @Inject lateinit var ambientAudioManager: AmbientAudioManager
+    @Inject lateinit var bgmPlaylistCoordinator: com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
     @Inject lateinit var ambientLedManager: AmbientLedManager
     @Inject lateinit var screenCaptureManager: ScreenCaptureManager
     @Inject lateinit var displayAffinityHelper: DisplayAffinityHelper
@@ -319,6 +320,7 @@ class MainActivity : ComponentActivity() {
         preferencesObserver = MainActivityPreferencesObserver(
             preferencesRepository = preferencesRepository,
             ambientAudioManager = ambientAudioManager,
+            bgmPlaylistCoordinator = bgmPlaylistCoordinator,
             sessionStateStore = sessionStateStore,
             dualScreenManager = dualScreenManager,
             displayAffinityHelper = displayAffinityHelper,

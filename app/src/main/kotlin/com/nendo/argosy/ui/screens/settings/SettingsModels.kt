@@ -35,6 +35,7 @@ import com.nendo.argosy.data.preferences.AmbientLedColorMode
 import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.core.input.SoundConfig
+import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.input.SoundPreset
 import com.nendo.argosy.ui.theme.backdrop.BackdropConfig
 import com.nendo.argosy.core.input.SoundType
@@ -281,8 +282,12 @@ data class AmbientAudioState(
     val audioFileName: String? = null,
     val isFolder: Boolean = false,
     val shuffle: Boolean = false,
-    val currentTrackName: String? = null
-)
+    val currentTrackName: String? = null,
+    val playlistTrackCount: Int = 0
+) {
+    val isPlaylistSource: Boolean
+        get() = audioUri == AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST
+}
 
 data class EmulatorState(
     val platforms: List<PlatformEmulatorConfig> = emptyList(),

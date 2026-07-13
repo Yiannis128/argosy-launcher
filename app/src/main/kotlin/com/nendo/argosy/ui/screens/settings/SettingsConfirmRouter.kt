@@ -359,6 +359,7 @@ private fun routeInterfaceConfirm(vm: SettingsViewModel, state: SettingsUiState)
         }
         InterfaceItem.BgmVolume -> vm.cycleAmbientAudioVolume()
         InterfaceItem.BgmFile -> vm.openAudioFileBrowser()
+        InterfaceItem.BgmPlaylist -> vm.openBgmPlaylistManager()
         InterfaceItem.BgmShuffle -> {
             vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
             return InputResult.handled(SoundType.TOGGLE)

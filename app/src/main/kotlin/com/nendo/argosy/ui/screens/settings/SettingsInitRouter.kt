@@ -501,24 +501,28 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         ))
 
         val ambientUri = prefs.ambientAudioUri
+        val isAmbientPlaylist = ambientUri == com.nendo.argosy.ui.audio.AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST
         val isAmbientFolder = ambientUri?.let { uri ->
             uri.startsWith("/") && java.io.File(uri).isDirectory
         } ?: false
-        val ambientFileName = ambientUri?.let { uri ->
-            if (uri.startsWith("/")) {
-                uri.substringAfterLast("/")
-            } else {
-                try {
-                    android.net.Uri.parse(uri).let { parsedUri ->
-                        vm.context.contentResolver.query(parsedUri, null, null, null, null)?.use { cursor ->
-                            if (cursor.moveToFirst()) {
-                                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                                if (nameIndex >= 0) cursor.getString(nameIndex) else null
-                            } else null
+        val ambientFileName = when {
+            isAmbientPlaylist -> "Playlist"
+            else -> ambientUri?.let { uri ->
+                if (uri.startsWith("/")) {
+                    uri.substringAfterLast("/")
+                } else {
+                    try {
+                        android.net.Uri.parse(uri).let { parsedUri ->
+                            vm.context.contentResolver.query(parsedUri, null, null, null, null)?.use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                    if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                                } else null
+                            }
                         }
+                    } catch (e: Exception) {
+                        uri.substringAfterLast("/").substringBefore("?")
                     }
-                } catch (e: Exception) {
-                    uri.substringAfterLast("/").substringBefore("?")
                 }
             }
         }
@@ -528,7 +532,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             audioUri = ambientUri,
             audioFileName = ambientFileName,
             isFolder = isAmbientFolder,
-            shuffle = prefs.ambientAudioShuffle
+            shuffle = prefs.ambientAudioShuffle,
+            playlistTrackCount = vm.ambientAudioDelegate.state.value.playlistTrackCount
         ))
 
         val excludedSlugs = setOf("android", "steam")

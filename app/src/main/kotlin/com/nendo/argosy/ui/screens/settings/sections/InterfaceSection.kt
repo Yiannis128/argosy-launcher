@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +41,7 @@ internal data class InterfaceLayoutState(
     val display: DisplayState,
     val bgmEnabled: Boolean,
     val bgmIsFolder: Boolean,
+    val bgmIsPlaylist: Boolean = false,
     val hasSecondaryDisplay: Boolean = false,
     val hasPhysicalSecondaryDisplay: Boolean = false,
     val dualScreenEnabled: Boolean = false
@@ -49,6 +51,7 @@ internal data class InterfaceLayoutState(
             display = state.display,
             bgmEnabled = state.ambientAudio.enabled,
             bgmIsFolder = state.ambientAudio.isFolder,
+            bgmIsPlaylist = state.ambientAudio.isPlaylistSource,
             hasSecondaryDisplay = state.display.hasSecondaryDisplay,
             hasPhysicalSecondaryDisplay = state.display.hasPhysicalSecondaryDisplay,
             dualScreenEnabled = state.display.dualScreenEnabled
@@ -87,7 +90,8 @@ internal sealed class InterfaceItem(
     data object BgmToggle : InterfaceItem("bgmToggle", "ambience")
     data object BgmVolume : InterfaceItem("bgmVolume", "ambience", { it.bgmEnabled })
     data object BgmFile : InterfaceItem("bgmFile", "ambience", { it.bgmEnabled })
-    data object BgmShuffle : InterfaceItem("bgmShuffle", "ambience", { it.bgmEnabled && it.bgmIsFolder })
+    data object BgmPlaylist : InterfaceItem("bgmPlaylist", "ambience", { it.bgmEnabled })
+    data object BgmShuffle : InterfaceItem("bgmShuffle", "ambience", { it.bgmEnabled && (it.bgmIsFolder || it.bgmIsPlaylist) })
 
     data object DualScreenEnabled : InterfaceItem("dualScreenEnabled", "displays")
     data object DisplayRoles : InterfaceItem(
@@ -116,7 +120,7 @@ internal sealed class InterfaceItem(
             ScreenSafetySpacer, ScreenSafetyHeader,
             ScreenDimmer, DimAfter, DimLevel,
             AmbienceSpacer, AmbienceHeader,
-            BgmToggle, BgmVolume, BgmFile, BgmShuffle,
+            BgmToggle, BgmVolume, BgmFile, BgmPlaylist, BgmShuffle,
             DisplaysSpacer, DisplaysHeader,
             DualScreenEnabled, DisplayRoles, AmbientLedSettings
         )
@@ -155,6 +159,7 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val storage = uiState.storage
     val bgmEnabled = uiState.ambientAudio.enabled
     val bgmIsFolder = uiState.ambientAudio.isFolder
+    val bgmIsPlaylist = uiState.ambientAudio.isPlaylistSource
 
     val layoutState = remember(
         display.ambientLedAvailable,
@@ -162,9 +167,10 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.hasPhysicalSecondaryDisplay,
         display.dualScreenEnabled,
         bgmEnabled,
-        bgmIsFolder
+        bgmIsFolder,
+        bgmIsPlaylist
     ) {
-        InterfaceLayoutState(display, bgmEnabled, bgmIsFolder, display.hasSecondaryDisplay, display.hasPhysicalSecondaryDisplay, display.dualScreenEnabled)
+        InterfaceLayoutState(display, bgmEnabled, bgmIsFolder, bgmIsPlaylist, display.hasSecondaryDisplay, display.hasPhysicalSecondaryDisplay, display.dualScreenEnabled)
     }
 
     val visibleItems = remember(layoutState) {
@@ -286,6 +292,22 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onClick = { viewModel.openAudioFileBrowser() }
                 )
 
+                InterfaceItem.BgmPlaylist -> {
+                    val trackCount = uiState.ambientAudio.playlistTrackCount
+                    val countLabel = when (trackCount) {
+                        0 -> "No tracks"
+                        1 -> "1 track"
+                        else -> "$trackCount tracks"
+                    }
+                    NavigationPreference(
+                        icon = Icons.Outlined.MusicNote,
+                        title = "Music Playlist",
+                        subtitle = if (uiState.ambientAudio.isPlaylistSource) "$countLabel - Active source" else countLabel,
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.openBgmPlaylistManager() }
+                    )
+                }
+
                 InterfaceItem.BgmShuffle -> SwitchPreference(
                     title = "Shuffle",
                     subtitle = "Randomize playback order",
@@ -362,7 +384,11 @@ private fun BackgroundMusicFileItem(
     isFocused: Boolean,
     onClick: () -> Unit
 ) {
-    val displayValue = filePath?.let { truncatePathMiddle(it) } ?: "None selected"
+    val displayValue = when (filePath) {
+        null -> "None selected"
+        com.nendo.argosy.ui.audio.AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST -> "Playlist"
+        else -> truncatePathMiddle(filePath)
+    }
 
     val focusAccent = LocalArgosyTheme.current.focusAccent
     val focusedContent = lerp(focusAccent, Color.White, 0.45f)

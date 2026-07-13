@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.ui.audio.AmbientAudioManager
+import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
 import com.nendo.argosy.ui.screens.settings.AmbientAudioState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +23,8 @@ import javax.inject.Inject
 class AmbientAudioSettingsDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val preferencesRepository: UserPreferencesRepository,
-    private val ambientAudioManager: AmbientAudioManager
+    private val ambientAudioManager: AmbientAudioManager,
+    private val playlistCoordinator: BgmPlaylistCoordinator
 ) {
     private val _state = MutableStateFlow(AmbientAudioState())
     val state: StateFlow<AmbientAudioState> = _state.asStateFlow()
@@ -33,10 +35,18 @@ class AmbientAudioSettingsDelegate @Inject constructor(
     private val _openAudioFileBrowserEvent = MutableSharedFlow<Unit>()
     val openAudioFileBrowserEvent: SharedFlow<Unit> = _openAudioFileBrowserEvent.asSharedFlow()
 
+    private val _openPlaylistManagerEvent = MutableSharedFlow<Unit>()
+    val openPlaylistManagerEvent: SharedFlow<Unit> = _openPlaylistManagerEvent.asSharedFlow()
+
     fun initFlowCollection(scope: CoroutineScope) {
         scope.launch {
             ambientAudioManager.currentTrackName.collect { trackName ->
                 _state.update { it.copy(currentTrackName = trackName) }
+            }
+        }
+        scope.launch {
+            playlistCoordinator.entries.collect { entries ->
+                _state.update { it.copy(playlistTrackCount = entries.size) }
             }
         }
     }
@@ -91,8 +101,32 @@ class AmbientAudioSettingsDelegate @Inject constructor(
         }
     }
 
+    fun openPlaylistManager(scope: CoroutineScope) {
+        scope.launch {
+            _openPlaylistManagerEvent.emit(Unit)
+        }
+    }
+
+    fun setPlaylistAsSource(scope: CoroutineScope) {
+        scope.launch {
+            preferencesRepository.setAmbientAudioUri(AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST)
+            playlistCoordinator.activate()
+            _state.update {
+                it.copy(
+                    audioUri = AmbientAudioManager.AMBIENT_SOURCE_PLAYLIST,
+                    audioFileName = "Playlist",
+                    isFolder = false
+                )
+            }
+            if (_state.value.enabled) {
+                ambientAudioManager.fadeIn()
+            }
+        }
+    }
+
     fun setAudioSource(scope: CoroutineScope, path: String?) {
         scope.launch {
+            playlistCoordinator.deactivate()
             preferencesRepository.setAmbientAudioUri(path)
             ambientAudioManager.setAudioSource(path)
 
