@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.runtime.Composable
@@ -39,11 +40,12 @@ internal sealed class ThemeMusicItem(
     data object BgmVolume : ThemeMusicItem("bgmVolume", "music", { it.bgmEnabled })
     data object BgmPlaylist : ThemeMusicItem("bgmPlaylist", "music", { it.bgmEnabled })
     data object BrowseServerMusic : ThemeMusicItem("browseServerMusic", "music", { it.bgmEnabled && it.musicApiSupported })
+    data object BrowseLocalMusic : ThemeMusicItem("browseLocalMusic", "music", { it.bgmEnabled })
     data object BgmShuffle : ThemeMusicItem("bgmShuffle", "music", { it.bgmEnabled })
 
     companion object {
         val ALL: List<ThemeMusicItem> = listOf(
-            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BgmShuffle
+            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle
         )
     }
 }
@@ -148,6 +150,14 @@ fun ThemeMusicSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 subtitle = "Preview and download tracks from RomM",
                 isFocused = isFocused(item),
                 onClick = { viewModel.openMusicBrowserBgm() }
+            )
+
+            ThemeMusicItem.BrowseLocalMusic -> NavigationPreference(
+                icon = Icons.Outlined.FolderOpen,
+                title = "Browse Local Music",
+                subtitle = "Add files or folders to the playlist",
+                isFocused = isFocused(item),
+                onClick = { viewModel.openBgmAddMusicBrowser() }
             )
 
             ThemeMusicItem.BgmShuffle -> SwitchPreference(

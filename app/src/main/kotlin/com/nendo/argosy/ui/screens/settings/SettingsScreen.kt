@@ -297,6 +297,12 @@ fun SettingsScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.openBgmAddMusicBrowserEvent.collect {
+            showBgmAddMusicBrowser = true
+        }
+    }
+
     var showMusicBrowserBgm by remember { mutableStateOf(false) }
     var musicBrowserSfxTarget by remember { mutableStateOf<SoundType?>(null) }
 
