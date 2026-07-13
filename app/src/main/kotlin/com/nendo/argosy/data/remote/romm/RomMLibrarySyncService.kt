@@ -60,6 +60,7 @@ class RomMLibrarySyncService @Inject constructor(
     private val controllerMappingDao: ControllerMappingDao,
     private val collectionDao: CollectionDao,
     private val imageCacheManager: ImageCacheManager,
+    private val musicDirectoryManager: com.nendo.argosy.data.music.MusicDirectoryManager,
     private val biosRepository: BiosRepository,
     private val installedAppResolver: InstalledAppResolver,
     private val gameRepository: dagger.Lazy<com.nendo.argosy.data.repository.GameRepository>,
@@ -628,6 +629,7 @@ class RomMLibrarySyncService @Inject constructor(
         val entities = files.map { file ->
             val existing = gameFileDao.getByRommFileId(file.id)
             val category = com.nendo.argosy.data.model.VariantCategory.fromKey(file.category)
+            val localPath = existing?.localPath ?: recoverMusicLocalPath(file, category, rom)
             GameFileEntity(
                 id = existing?.id ?: 0,
                 gameId = gameId,
@@ -637,8 +639,8 @@ class RomMLibrarySyncService @Inject constructor(
                 filePath = file.filePath,
                 category = category.key,
                 fileSize = file.fileSizeBytes,
-                localPath = existing?.localPath,
-                downloadedAt = existing?.downloadedAt,
+                localPath = localPath,
+                downloadedAt = existing?.downloadedAt ?: localPath?.let { Instant.now() },
                 isLaunchTarget = category.isLaunchTarget,
                 isMultiDisc = existing?.isMultiDisc ?: false,
                 m3uPath = existing?.m3uPath,
@@ -648,6 +650,22 @@ class RomMLibrarySyncService @Inject constructor(
             )
         }
         gameFileDao.insertAll(entities)
+    }
+
+    private suspend fun recoverMusicLocalPath(
+        file: RomMRomFile,
+        category: VariantCategory,
+        rom: RomMRom
+    ): String? {
+        if (category != VariantCategory.SOUNDTRACK) return null
+        val target = musicDirectoryManager.targetFileFor(
+            platformName = rom.platformName ?: rom.platformSlug,
+            gameName = rom.name,
+            trackNumber = file.trackMeta?.track,
+            title = file.trackMeta?.title,
+            fileName = file.fileName
+        )
+        return target.takeIf { it.exists() }?.absolutePath
     }
 
     private data class PlatformSyncResult(

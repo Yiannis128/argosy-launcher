@@ -14,6 +14,7 @@ import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.domain.usecase.music.DownloadMusicTrackUseCase
 import com.nendo.argosy.domain.usecase.music.GetLocalMusicTrackStateUseCase
 import com.nendo.argosy.domain.usecase.music.LocalMusicTrackState
+import com.nendo.argosy.domain.usecase.music.MusicTrackLookup
 import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -193,7 +194,7 @@ class MusicBrowserViewModel @Inject constructor(
             when (val result = romMRepository.getMusicTracks(params)) {
                 is RomMResult.Success -> {
                     val newTracks = result.data.items.map { it.toUi() }
-                    val localStates = getLocalMusicTrackState(newTracks.map { it.romFileId })
+                    val localStates = getLocalMusicTrackState(newTracks.map { it.toLookup() })
                     _uiState.update { state ->
                         val merged = if (reset) newTracks else state.tracks + newTracks
                         state.copy(
@@ -493,7 +494,7 @@ class MusicBrowserViewModel @Inject constructor(
         )
         return result.fold(
             onSuccess = { file ->
-                val local = getLocalMusicTrackState(listOf(track.romFileId))[track.romFileId]
+                val local = getLocalMusicTrackState(listOf(track.toLookup()))[track.romFileId]
                     ?: LocalMusicTrackState(gameFileId = null, localPath = file.absolutePath)
                 _uiState.update {
                     it.copy(
@@ -558,4 +559,13 @@ class MusicBrowserViewModel @Inject constructor(
         releasePlayer()
         ambientAudioManager.resumeFromSuspend()
     }
+
+    private fun MusicTrackUi.toLookup() = MusicTrackLookup(
+        romFileId = romFileId,
+        platformName = platformName,
+        gameName = gameName,
+        trackNumber = trackNumber,
+        trackTitle = trackTitle,
+        fileName = fileName
+    )
 }

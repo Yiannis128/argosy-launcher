@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.remote.romm.RomMMusicFacet
@@ -547,7 +548,8 @@ private fun MusicTrackRow(
                 text = track.title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isFocused) focusedContent else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             track.artistAlbum?.let {
                 Text(
@@ -555,7 +557,8 @@ private fun MusicTrackRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isFocused) focusedContent.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             track.gameLine?.let {
@@ -564,7 +567,8 @@ private fun MusicTrackRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isFocused) focusedContent.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -577,8 +581,7 @@ private fun MusicTrackRow(
                 tint = MaterialTheme.colorScheme.primary,
                 contentDescription = "In playlist"
             )
-        }
-        if (isDownloaded) {
+        } else if (isDownloaded) {
             StatusIcon(
                 icon = Icons.Default.DownloadDone,
                 tint = successColor,
