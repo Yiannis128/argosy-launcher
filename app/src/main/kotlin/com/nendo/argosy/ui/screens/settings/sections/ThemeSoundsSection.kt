@@ -94,7 +94,7 @@ internal sealed class ThemeSoundsItem(
         val ALL: List<ThemeSoundsItem> = listOf(
             UiSoundsToggle, UiSoundsVolume,
             CustomizeSpacer, CustomizeHeader
-        ) + SoundType.entries.map { SoundTypeItem(it) }
+        ) + SoundType.entries.filterNot { it == SoundType.SILENT }.map { SoundTypeItem(it) }
     }
 }
 
