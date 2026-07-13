@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.Icon
@@ -50,6 +49,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.ModalInputEffect
+import com.nendo.argosy.ui.primitives.ArgosyToggle
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -197,7 +197,8 @@ fun BgmPlaylistManagerScreen(
                             onClick = { viewModel.setFocusIndex(focusIndex) },
                             onMoveUp = { viewModel.moveTrack(index, -1) },
                             onMoveDown = { viewModel.moveTrack(index, 1) },
-                            onToggleOrRemove = { viewModel.toggleOrRemoveTrack(index) }
+                            onRemove = { viewModel.toggleOrRemoveTrack(index) },
+                            onSetEnabled = { viewModel.setTrackEnabled(index, it) }
                         )
                     }
                 }
@@ -381,7 +382,8 @@ private fun BgmPlaylistEntryRow(
     onClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
-    onToggleOrRemove: () -> Unit
+    onRemove: () -> Unit,
+    onSetEnabled: (Boolean) -> Unit
 ) {
     val focusAccent = LocalArgosyTheme.current.focusAccent
     val focusedContentColor = lerp(focusAccent, Color.White, 0.45f)
@@ -404,21 +406,29 @@ private fun BgmPlaylistEntryRow(
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (isBeingMoved) {
-            Icon(
-                Icons.Default.DragHandle,
-                contentDescription = "Moving",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(Dimens.iconMd)
+        Box {
+            BgmTrackThumbnail(
+                filePath = row.filePath,
+                coverPath = row.coverPath,
+                contentAlpha = contentAlpha,
+                size = Dimens.iconXl
             )
-        } else {
-            Icon(
-                if (row.enabled) Icons.Outlined.MusicNote else Icons.Default.MusicOff,
-                contentDescription = null,
-                tint = (if (isFocused) focusedContentColor else MaterialTheme.colorScheme.onSurfaceVariant)
-                    .copy(alpha = contentAlpha),
-                modifier = Modifier.size(Dimens.iconMd)
-            )
+            if (isBeingMoved) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(Dimens.radiusSm))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.DragHandle,
+                        contentDescription = "Moving",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(Dimens.iconMd)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.width(Dimens.spacingMd))
@@ -477,22 +487,20 @@ private fun BgmPlaylistEntryRow(
                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
-        IconButton(onClick = onToggleOrRemove) {
-            when {
-                !row.isFolderCovered -> Icon(
+        if (row.isFolderCovered) {
+            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+            ArgosyToggle(
+                checked = row.enabled,
+                onToggle = onSetEnabled,
+                focused = isFocused
+            )
+            Spacer(modifier = Modifier.width(Dimens.spacingXs))
+        } else {
+            IconButton(onClick = onRemove) {
+                Icon(
                     Icons.Default.Close,
                     contentDescription = "Remove",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                row.enabled -> Icon(
-                    Icons.Default.MusicOff,
-                    contentDescription = "Disable",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                else -> Icon(
-                    Icons.Outlined.MusicNote,
-                    contentDescription = "Enable",
-                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

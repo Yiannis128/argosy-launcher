@@ -3,6 +3,7 @@ package com.nendo.argosy.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
+import com.nendo.argosy.domain.usecase.music.GetBgmTrackGameCoversUseCase
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,8 @@ data class BgmPlaylistRowUi(
     val isMissing: Boolean,
     val enabled: Boolean = true,
     val isFolderCovered: Boolean = false,
-    val sourceFolderName: String? = null
+    val sourceFolderName: String? = null,
+    val coverPath: String? = null
 )
 
 data class BgmPlaylistManagerState(
@@ -50,7 +52,8 @@ data class BgmPlaylistManagerState(
 
 @HiltViewModel
 class BgmPlaylistManagerViewModel @Inject constructor(
-    private val coordinator: BgmPlaylistCoordinator
+    private val coordinator: BgmPlaylistCoordinator,
+    private val getBgmTrackGameCovers: GetBgmTrackGameCoversUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BgmPlaylistManagerState())
@@ -79,11 +82,11 @@ class BgmPlaylistManagerViewModel @Inject constructor(
         }
     }
 
-    private fun List<BgmPlaylistEntity>.toGroups(): Pair<List<BgmFolderSourceUi>, List<BgmPlaylistRowUi>> {
+    private suspend fun List<BgmPlaylistEntity>.toGroups(): Pair<List<BgmFolderSourceUi>, List<BgmPlaylistRowUi>> {
         val folders = filter { it.entryType == BgmPlaylistEntity.TYPE_FOLDER }
         val files = filter { it.entryType != BgmPlaylistEntity.TYPE_FOLDER }
         val folderNameById = folders.associate { it.id to it.displayName }
-        val folderPrefixes = folders.map { it.filePath.trimEnd('/') + "/" }
+        val coverByGameFileId = getBgmTrackGameCovers(files.mapNotNull { it.gameFileId })
         val sourcedFiles = files.filter { it.sourceEntryId != null }
         val sourcedCounts = sourcedFiles.groupingBy { it.sourceEntryId }.eachCount()
         val disabledCounts = sourcedFiles.filter { !it.enabled }.groupingBy { it.sourceEntryId }.eachCount()
@@ -98,15 +101,19 @@ class BgmPlaylistManagerViewModel @Inject constructor(
             )
         }
         val tracks = files.map { file ->
+            val coveringFolder = folders.firstOrNull {
+                file.filePath.startsWith(it.filePath.trimEnd('/') + "/")
+            }
             BgmPlaylistRowUi(
                 id = file.id,
                 displayName = file.displayName,
                 filePath = file.filePath,
                 isMissing = !File(file.filePath).exists(),
                 enabled = file.enabled,
-                isFolderCovered = file.sourceEntryId != null ||
-                    folderPrefixes.any { file.filePath.startsWith(it) },
+                isFolderCovered = file.sourceEntryId != null || coveringFolder != null,
                 sourceFolderName = file.sourceEntryId?.let { folderNameById[it] }
+                    ?: coveringFolder?.displayName,
+                coverPath = file.gameFileId?.let { coverByGameFileId[it] }
             )
         }
         return sources to tracks
@@ -192,6 +199,17 @@ class BgmPlaylistManagerViewModel @Inject constructor(
                 row.enabled -> coordinator.removeOrDisableById(row.id)
                 else -> coordinator.setTrackEnabled(row.id, true)
             }
+        }
+    }
+
+    fun setTrackEnabled(trackIndex: Int, enabled: Boolean) {
+        val st = _uiState.value
+        if (st.isReordering) return
+        val row = st.entries.getOrNull(trackIndex) ?: return
+        if (!row.isFolderCovered || row.enabled == enabled) return
+        viewModelScope.launch {
+            if (enabled) coordinator.setTrackEnabled(row.id, true)
+            else coordinator.removeOrDisableById(row.id)
         }
     }
 
