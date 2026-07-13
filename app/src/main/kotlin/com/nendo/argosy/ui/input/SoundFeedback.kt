@@ -7,6 +7,7 @@ import android.util.Log
 import com.nendo.argosy.R
 import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.core.media.SfxTranscoder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -115,7 +116,7 @@ class SoundFeedbackManager @Inject constructor(
 
     private fun initSoundPool() {
         val audioAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
 
@@ -169,12 +170,22 @@ class SoundFeedbackManager @Inject constructor(
             Log.w(TAG, "Custom sound missing for ${type.name}: $path")
             return
         }
+        val playablePath = resolvePlayablePath(path)
+        if (playablePath == null) {
+            Log.w(TAG, "Skipping custom sound for ${type.name}: transcode failed for $path")
+            return
+        }
         try {
-            customSoundIds[type] = pool.load(path, 1)
+            customSoundIds[type] = pool.load(playablePath, 1)
             customSoundPaths[type] = path
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load custom sound for ${type.name}", e)
         }
+    }
+
+    private fun resolvePlayablePath(path: String): String? {
+        if (path.substringAfterLast('.', "").lowercase() == "wav") return path
+        return SfxTranscoder.transcodeToWavCache(context, path)?.absolutePath
     }
 
     private fun releaseSoundPool() {
@@ -274,8 +285,7 @@ class SoundFeedbackManager @Inject constructor(
         val soundId = customSoundIds[type] ?: return false
         if (soundId !in loadedSampleIds) return false
         return try {
-            pool.play(soundId, volume, volume, PRIORITY_DEFAULT, 0, 1f)
-            true
+            pool.play(soundId, volume, volume, PRIORITY_DEFAULT, 0, 1f) != 0
         } catch (e: Exception) {
             Log.e(TAG, "Failed to play custom sound for ${type.name}", e)
             false
