@@ -214,7 +214,7 @@ fun StorageGamesSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
                 volumeOrder = volumeOrder,
                 neutralColor = neutral,
                 isFocused = isFocused(item),
-                onClick = { viewModel.openPlatformDetailFromStorageGames(item.usage.platformId) }
+                onClick = { viewModel.openStoragePlatformGames(item.usage.platformId) }
             )
         }
     }

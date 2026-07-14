@@ -144,7 +144,7 @@ class FilePickerFlowUseCase @Inject constructor(
 
         val rows = mutableListOf<FilePickerRow>()
         val preselected = mutableSetOf<Long>()
-        val rootLen = dbRows.minOf { it.filePath.length }
+        val rootDepth = dbRows.minOf { it.filePath.count { c -> c == '/' } }
 
         val basePath = game.localPath
         val baseInDb = basePath != null && dbRows.any { it.localPath == basePath }
@@ -164,7 +164,7 @@ class FilePickerFlowUseCase @Inject constructor(
             when {
                 cat == VariantCategory.GAME -> "game"
                 cat != VariantCategory.UNKNOWN -> cat.key
-                f.filePath.length > rootLen -> "folder:${f.filePath.substringAfterLast('/')}"
+                f.filePath.count { c -> c == '/' } > rootDepth -> "folder:${f.filePath.substringAfterLast('/')}"
                 else -> "game"
             }
         }
@@ -244,6 +244,25 @@ class FilePickerFlowUseCase @Inject constructor(
         attributionRepository.markDirty(StorageCategory.GAMES)
         attributionRepository.markDirty(StorageCategory.MUSIC)
         return added to removed
+    }
+
+    /**
+     * Deletes a game's soundtrack files (they live under the Music dir, outside the game dir, so
+     * DeleteGameUseCase deliberately skips them). Reuses [pruneMusicReferences] and marks MUSIC dirty.
+     */
+    suspend fun purgeSoundtrack(gameId: Long): Int {
+        val soundtracks = gameFileDao.getFilesByCategory(gameId, VariantCategory.SOUNDTRACK.key)
+        var removed = 0
+        for (file in soundtracks) {
+            val path = file.localPath ?: continue
+            if (File(path).delete() || !File(path).exists()) {
+                gameFileDao.clearLocalPath(file.id)
+                pruneMusicReferences(path)
+                removed++
+            }
+        }
+        if (removed > 0) attributionRepository.markDirty(StorageCategory.MUSIC)
+        return removed
     }
 
     private suspend fun pruneMusicReferences(path: String) {

@@ -49,6 +49,8 @@ object DimensionTokens {
         const val gameCardWidth = 180
         const val gameCardHeight = 240
         const val coverPanelWidth = 108
+        const val storageGameCoverWidth = 64
+        const val storageGameCoverHeight = 88
         const val settingsItemMinHeight = 40
         const val menuRowHeight = 40
         const val menuRowHeightLg = 52

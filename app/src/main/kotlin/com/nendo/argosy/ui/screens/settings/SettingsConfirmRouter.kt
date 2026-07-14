@@ -75,6 +75,11 @@ import com.nendo.argosy.ui.screens.settings.sections.createStorageGamesLayoutInf
 import com.nendo.argosy.ui.screens.settings.sections.storageGamesFocusIndexOfPlatform
 import com.nendo.argosy.ui.screens.settings.sections.storageGamesItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.storageGamesMaxFocusIndex
+import com.nendo.argosy.domain.usecase.storage.GameStorageBucket
+import com.nendo.argosy.ui.screens.settings.sections.StoragePlatformGamesItem
+import com.nendo.argosy.ui.screens.settings.sections.createStoragePlatformGamesLayoutInfo
+import com.nendo.argosy.ui.screens.settings.sections.storagePlatformGamesItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.storagePlatformGamesMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.StorageCachesItem
 import com.nendo.argosy.ui.screens.settings.sections.createStorageCachesLayoutInfo
 import com.nendo.argosy.ui.screens.settings.sections.storageCachesItemAtFocusIndex
@@ -240,6 +245,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
         }
         SettingsSection.STORAGE -> routeStorageConfirm(vm, state)
         SettingsSection.STORAGE_GAMES -> routeStorageGamesConfirm(vm, state)
+        SettingsSection.STORAGE_PLATFORM_GAMES -> routeStoragePlatformGamesConfirm(vm, state)
         SettingsSection.STORAGE_CACHES -> routeStorageCachesConfirm(vm, state)
         SettingsSection.THEME -> routeThemeConfirm(vm, state)
         SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
@@ -371,10 +377,26 @@ private fun routeStorageGamesConfirm(vm: SettingsViewModel, state: SettingsUiSta
             vm.toggleWeeklyIntegrityCheck(!state.storage.weeklyIntegrityCheckEnabled)
             return InputResult.handled(SoundType.TOGGLE)
         }
-        is StorageGamesItem.PlatformRow -> vm.openPlatformDetailFromStorageGames(item.usage.platformId)
+        is StorageGamesItem.PlatformRow -> vm.openStoragePlatformGames(item.usage.platformId)
         else -> {}
     }
     return InputResult.HANDLED
+}
+
+private fun routeStoragePlatformGamesConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val info = createStoragePlatformGamesLayoutInfo(state)
+    val item = storagePlatformGamesItemAtFocusIndex(state.focusedIndex, info)
+    if (item !is StoragePlatformGamesItem.GameCard) return InputResult.HANDLED
+    val game = state.storagePlatformGames.games.firstOrNull { it.gameId == item.gameId }
+    val buckets = game?.buckets ?: return InputResult.HANDLED
+    if (buckets.isEmpty()) return InputResult.HANDLED
+    val index = state.storagePlatformGames.highlightedCategoryIndex.coerceIn(0, buckets.size - 1)
+    if (buckets[index].bucket == GameStorageBucket.BASE) {
+        vm.requestStoragePlatformGameDelete(item.gameId)
+    } else {
+        vm.requestStoragePlatformCategoryDelete(item.gameId, buckets[index].bucket)
+    }
+    return InputResult.handled(SoundType.OPEN_MODAL)
 }
 
 private fun routeStorageCachesConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
@@ -838,6 +860,8 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
     return when {
         state.changelog.visible -> { vm.closeChangelog(); true }
         state.systemizeResult != null -> { vm.dismissSystemizeDialog(); true }
+        state.storagePlatformGames.deleteConfirm != null -> { vm.dismissStoragePlatformGameDelete(); true }
+        state.storagePlatformGames.categoryDeleteConfirm != null -> { vm.dismissStoragePlatformCategoryDelete(); true }
         state.emulators.showSavePathModal -> { vm.dismissSavePathModal(); true }
         state.emulators.showMemcardPicker -> { vm.dismissMemcardPicker(); true }
         state.storage.platformSettingsModalId != null -> { vm.closePlatformSettingsModal(); true }
@@ -888,6 +912,11 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             val info = createStorageLayoutInfo(state)
             val focusIdx = storageFocusIndexOf(StorageItem.GamesTile, info).coerceAtLeast(0)
             vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE, focusedIndex = focusIdx) }; true
+        }
+        state.currentSection == SettingsSection.STORAGE_PLATFORM_GAMES -> {
+            val platformId = state.storagePlatformGames.selectedPlatformId
+            val focusIdx = storageGamesFocusIndexOfPlatform(platformId, createStorageGamesLayoutInfo(state))
+            vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE_GAMES, focusedIndex = focusIdx) }; true
         }
         state.currentSection == SettingsSection.STORAGE_CACHES -> {
             val fromSteam = state.attribution.cachesEntryFocus == CACHES_ENTRY_STEAM
@@ -959,16 +988,6 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
         }
         state.currentSection == SettingsSection.PLATFORM_DETAIL && state.platformDetail.showRemoveConfirm -> {
             vm._uiState.update { it.copy(platformDetail = it.platformDetail.copy(showRemoveConfirm = false)) }; true
-        }
-        state.currentSection == SettingsSection.PLATFORM_DETAIL && state.platformDetail.enteredFromStorageGames -> {
-            val platformId = state.emulators.platforms
-                .getOrNull(state.platformDetail.platformIndex)?.platform?.id
-            val focusIdx = storageGamesFocusIndexOfPlatform(platformId, createStorageGamesLayoutInfo(state))
-            vm._uiState.update { it.copy(
-                currentSection = SettingsSection.STORAGE_GAMES,
-                focusedIndex = focusIdx,
-                platformDetail = it.platformDetail.copy(enteredFromStorageGames = false)
-            ) }; true
         }
         state.currentSection == SettingsSection.PLATFORM_DETAIL && state.platformDetail.enteredExternally -> false
         state.currentSection == SettingsSection.PLATFORM_DETAIL -> {
@@ -1051,6 +1070,7 @@ private fun computeMaxFocusIndex(
     }
     SettingsSection.STORAGE -> createStorageLayoutInfo(state).let { it.layout.maxFocusIndex(it.state) }
     SettingsSection.STORAGE_GAMES -> storageGamesMaxFocusIndex(createStorageGamesLayoutInfo(state))
+    SettingsSection.STORAGE_PLATFORM_GAMES -> storagePlatformGamesMaxFocusIndex(createStoragePlatformGamesLayoutInfo(state))
     SettingsSection.STORAGE_CACHES -> storageCachesMaxFocusIndex(createStorageCachesLayoutInfo(state))
     SettingsSection.THEME -> themeMaxFocusIndex()
     SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))

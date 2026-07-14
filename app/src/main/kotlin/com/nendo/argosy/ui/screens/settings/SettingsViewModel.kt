@@ -104,6 +104,7 @@ class SettingsViewModel @Inject constructor(
     val serverDelegate: ServerSettingsDelegate,
     val storageDelegate: StorageSettingsDelegate,
     val attributionDelegate: StorageAttributionDelegate,
+    val storagePlatformGamesDelegate: com.nendo.argosy.ui.screens.settings.delegates.StoragePlatformGamesDelegate,
     val storageCachesDelegate: com.nendo.argosy.ui.screens.settings.delegates.StorageCachesDelegate,
     val syncDelegate: SyncSettingsDelegate,
     val steamDelegate: SteamSettingsDelegate,
@@ -281,8 +282,7 @@ class SettingsViewModel @Inject constructor(
             currentSection = SettingsSection.PLATFORM_DETAIL,
             focusedIndex = 0,
             platformDetail = it.platformDetail.copy(
-                platformIndex = platformIndex,
-                enteredFromStorageGames = false
+                platformIndex = platformIndex
             )
         ) }
         loadPlatformDetailStats(platformIndex)
@@ -840,11 +840,72 @@ class SettingsViewModel @Inject constructor(
         }
     )
 
-    fun openPlatformDetailFromStorageGames(platformId: Long) {
-        val index = _uiState.value.emulators.platforms.indexOfFirst { it.platform.id == platformId }
-        if (index < 0) return
-        navigateToPlatformDetail(index)
-        _uiState.update { it.copy(platformDetail = it.platformDetail.copy(enteredFromStorageGames = true)) }
+    fun openStoragePlatformGames(platformId: Long) {
+        val name = _uiState.value.attribution.snapshot?.gamesPerPlatform
+            ?.firstOrNull { it.platformId == platformId }?.name ?: ""
+        _uiState.update { it.copy(currentSection = SettingsSection.STORAGE_PLATFORM_GAMES, focusedIndex = 0) }
+        storagePlatformGamesDelegate.open(platformId, name, viewModelScope)
+    }
+
+    fun resetStoragePlatformHighlightedCategory() =
+        storagePlatformGamesDelegate.setHighlightedCategory(0)
+
+    fun setStoragePlatformHighlightedCategory(index: Int) =
+        storagePlatformGamesDelegate.setHighlightedCategory(index)
+
+    fun onStoragePlatformCoverTap(gameIndex: Int, gameId: Long) {
+        setFocusIndex(gameIndex)
+        storagePlatformGamesDelegate.setHighlightedCategory(0)
+        storagePlatformGamesDelegate.requestDeleteConfirm(gameId)
+    }
+
+    fun onStoragePlatformCategoryTap(
+        gameIndex: Int,
+        categoryIndex: Int,
+        gameId: Long,
+        bucket: com.nendo.argosy.domain.usecase.storage.GameStorageBucket
+    ) {
+        setFocusIndex(gameIndex)
+        storagePlatformGamesDelegate.setHighlightedCategory(categoryIndex)
+        if (bucket == com.nendo.argosy.domain.usecase.storage.GameStorageBucket.BASE) {
+            storagePlatformGamesDelegate.requestDeleteConfirm(gameId)
+        } else {
+            storagePlatformGamesDelegate.requestCategoryDeleteConfirm(gameId, bucket)
+        }
+    }
+
+    fun requestStoragePlatformCategoryDelete(
+        gameId: Long,
+        bucket: com.nendo.argosy.domain.usecase.storage.GameStorageBucket
+    ) = storagePlatformGamesDelegate.requestCategoryDeleteConfirm(gameId, bucket)
+
+    fun dismissStoragePlatformCategoryDelete() =
+        storagePlatformGamesDelegate.dismissCategoryDeleteConfirm()
+
+    fun confirmStoragePlatformCategoryDelete(
+        gameId: Long,
+        bucket: com.nendo.argosy.domain.usecase.storage.GameStorageBucket
+    ) = storagePlatformGamesDelegate.deleteCategory(gameId, bucket, viewModelScope) {
+        backToStorageGamesFromPlatform()
+    }
+
+    fun requestStoragePlatformGameDelete(gameId: Long) =
+        storagePlatformGamesDelegate.requestDeleteConfirm(gameId)
+
+    fun dismissStoragePlatformGameDelete() = storagePlatformGamesDelegate.dismissDeleteConfirm()
+
+    fun confirmStoragePlatformGameDelete(gameId: Long, withSoundtrack: Boolean) =
+        storagePlatformGamesDelegate.confirmDeleteGame(gameId, withSoundtrack, viewModelScope) {
+            backToStorageGamesFromPlatform()
+        }
+
+    private fun backToStorageGamesFromPlatform() {
+        val platformId = _uiState.value.storagePlatformGames.selectedPlatformId
+        val focusIdx = com.nendo.argosy.ui.screens.settings.sections.storageGamesFocusIndexOfPlatform(
+            platformId,
+            com.nendo.argosy.ui.screens.settings.sections.createStorageGamesLayoutInfo(_uiState.value)
+        )
+        _uiState.update { it.copy(currentSection = SettingsSection.STORAGE_GAMES, focusedIndex = focusIdx) }
     }
 
     fun openFontPicker(slot: FontSlot) {

@@ -67,6 +67,7 @@ enum class SettingsSection {
     RETRO_ACHIEVEMENTS,
     STORAGE,
     STORAGE_GAMES,
+    STORAGE_PLATFORM_GAMES,
     STORAGE_CACHES,
     BIOS,
     THEME,
@@ -419,7 +420,6 @@ data class PlatformDetailState(
     val platformIndex: Int = 0,
     val builtinEnteredFromPlatform: Boolean = false,
     val enteredExternally: Boolean = false,
-    val enteredFromStorageGames: Boolean = false,
     val showRemoveConfirm: Boolean = false,
     val totalGames: Int = 0,
     val downloadedGames: Int = 0,
@@ -714,6 +714,31 @@ data class StorageAttributionState(
     val musicEnteredFromStorage: Boolean = false,
     val cachesEntryFocus: Int = CACHES_ENTRY_TOP,
     val steamTileLatched: Boolean = false
+)
+
+data class GameStorageDeleteConfirm(
+    val gameId: Long,
+    val title: String,
+    val hasSoundtrack: Boolean,
+    val unsyncedSaves: Int
+)
+
+data class GameStorageCategoryDeleteConfirm(
+    val gameId: Long,
+    val bucket: com.nendo.argosy.domain.usecase.storage.GameStorageBucket,
+    val fileCount: Int,
+    val totalBytes: Long
+)
+
+data class StoragePlatformGamesState(
+    val selectedPlatformId: Long = -1L,
+    val platformName: String = "",
+    val isLoading: Boolean = false,
+    val games: List<com.nendo.argosy.domain.usecase.storage.GameStorageBreakdown> = emptyList(),
+    val coverPaths: Map<Long, String?> = emptyMap(),
+    val highlightedCategoryIndex: Int = 0,
+    val deleteConfirm: GameStorageDeleteConfirm? = null,
+    val categoryDeleteConfirm: GameStorageCategoryDeleteConfirm? = null
 )
 
 enum class CachesClearTarget {
@@ -1149,6 +1174,7 @@ data class SettingsUiState(
     val server: ServerState = ServerState(),
     val storage: StorageState = StorageState(),
     val attribution: StorageAttributionState = StorageAttributionState(),
+    val storagePlatformGames: StoragePlatformGamesState = StoragePlatformGamesState(),
     val storageCaches: StorageCachesState = StorageCachesState(),
     val platformLibretro: PlatformLibretroState = PlatformLibretroState(),
     val syncSettings: SyncSettingsState = SyncSettingsState(),

@@ -115,6 +115,30 @@ internal fun routeObserveDelegateStates(vm: SettingsViewModel) {
     }.launchIn(vm.viewModelScope)
     vm.attributionDelegate.initFlowCollection(vm.viewModelScope)
 
+    vm.storagePlatformGamesDelegate.state.onEach { storagePlatformGames ->
+        vm._uiState.update { state ->
+            val updated = state.copy(storagePlatformGames = storagePlatformGames)
+            if (state.currentSection == SettingsSection.STORAGE_PLATFORM_GAMES) {
+                val maxIndex = com.nendo.argosy.ui.screens.settings.sections
+                    .storagePlatformGamesMaxFocusIndex(
+                        com.nendo.argosy.ui.screens.settings.sections
+                            .createStoragePlatformGamesLayoutInfo(updated)
+                    )
+                val clampedFocus = state.focusedIndex.coerceAtMost(maxIndex).coerceAtLeast(0)
+                val focusedBuckets = storagePlatformGames.games.getOrNull(clampedFocus)?.buckets?.size ?: 0
+                val clampedCategory = storagePlatformGames.highlightedCategoryIndex
+                    .coerceAtMost((focusedBuckets - 1).coerceAtLeast(0))
+                    .coerceAtLeast(0)
+                updated.copy(
+                    focusedIndex = clampedFocus,
+                    storagePlatformGames = storagePlatformGames.copy(highlightedCategoryIndex = clampedCategory)
+                )
+            } else {
+                updated
+            }
+        }
+    }.launchIn(vm.viewModelScope)
+
     vm.storageCachesDelegate.state.onEach { storageCaches ->
         vm._uiState.update { it.copy(storageCaches = storageCaches) }
     }.launchIn(vm.viewModelScope)

@@ -57,6 +57,7 @@ import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModal
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
+import com.nendo.argosy.util.formatBytes
 import com.nendo.argosy.ui.screens.musicbrowser.MusicBrowserMode
 import com.nendo.argosy.ui.screens.musicbrowser.MusicBrowserScreen
 import com.nendo.argosy.data.storage.StorageCategory
@@ -95,6 +96,10 @@ import com.nendo.argosy.ui.screens.settings.sections.SocialSection
 import com.nendo.argosy.ui.screens.settings.sections.SteamSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageCachesSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageGamesSection
+import com.nendo.argosy.ui.screens.settings.sections.StoragePlatformGamesSection
+import com.nendo.argosy.ui.screens.settings.sections.StoragePlatformGamesItem
+import com.nendo.argosy.ui.screens.settings.sections.createStoragePlatformGamesLayoutInfo
+import com.nendo.argosy.ui.screens.settings.sections.storagePlatformGamesItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
 import com.nendo.argosy.data.preferences.FontSlot
@@ -490,6 +495,8 @@ fun SettingsScreen(
                         SettingsSection.RETRO_ACHIEVEMENTS -> "RETROACHIEVEMENTS"
                         SettingsSection.STORAGE -> "STORAGE"
                         SettingsSection.STORAGE_GAMES -> "GAMES STORAGE"
+                        SettingsSection.STORAGE_PLATFORM_GAMES ->
+                            uiState.storagePlatformGames.platformName.uppercase().ifBlank { "PLATFORM GAMES" }
                         SettingsSection.STORAGE_CACHES -> "CACHES & SYSTEM"
                         SettingsSection.THEME -> "THEME"
                         SettingsSection.THEME_SOUNDS -> "SOUNDS"
@@ -557,6 +564,7 @@ fun SettingsScreen(
                     SettingsSection.RETRO_ACHIEVEMENTS -> RASettingsSection(uiState, viewModel)
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
                     SettingsSection.STORAGE_GAMES -> StorageGamesSection(uiState, viewModel)
+                    SettingsSection.STORAGE_PLATFORM_GAMES -> StoragePlatformGamesSection(uiState, viewModel)
                     SettingsSection.STORAGE_CACHES -> StorageCachesSection(uiState, viewModel)
                     SettingsSection.THEME -> ThemeSection(uiState, viewModel)
                     SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
@@ -777,6 +785,60 @@ fun SettingsScreen(
             onHoldStart = { viewModel.hardResetHoldStarted() },
             onConfirm = { viewModel.confirmHardReset() },
             onDismiss = { viewModel.cancelHardReset() }
+        )
+    }
+
+    val platformGameDelete = uiState.storagePlatformGames.deleteConfirm
+    if (platformGameDelete != null) {
+        val saveWarning = if (platformGameDelete.unsyncedSaves > 0) {
+            val noun = if (platformGameDelete.unsyncedSaves == 1) "save" else "saves"
+            " ${platformGameDelete.unsyncedSaves} unsynced $noun will be lost."
+        } else ""
+        if (platformGameDelete.hasSoundtrack) {
+            ArgosyConfirmModalHost(
+                visible = true,
+                title = "Delete ${platformGameDelete.title}?",
+                message = "Removes all downloaded files for this game.$saveWarning Choose whether to also delete its soundtrack.",
+                cancelLabel = "Cancel",
+                neutralLabel = "Delete Game",
+                onNeutral = { viewModel.confirmStoragePlatformGameDelete(platformGameDelete.gameId, withSoundtrack = false) },
+                confirmLabel = "Delete + Soundtrack",
+                destructive = true,
+                onConfirm = { viewModel.confirmStoragePlatformGameDelete(platformGameDelete.gameId, withSoundtrack = true) },
+                onDismiss = { viewModel.dismissStoragePlatformGameDelete() }
+            )
+        } else {
+            ArgosyConfirmModalHost(
+                visible = true,
+                title = "Delete ${platformGameDelete.title}?",
+                message = "Removes all downloaded files for this game.$saveWarning This cannot be undone.",
+                confirmLabel = "Delete Game",
+                destructive = true,
+                onConfirm = { viewModel.confirmStoragePlatformGameDelete(platformGameDelete.gameId, withSoundtrack = false) },
+                onDismiss = { viewModel.dismissStoragePlatformGameDelete() }
+            )
+        }
+    }
+
+    val platformCategoryDelete = uiState.storagePlatformGames.categoryDeleteConfirm
+    if (platformCategoryDelete != null) {
+        val fileNoun = if (platformCategoryDelete.fileCount == 1) "file" else "files"
+        val bucketLabel = com.nendo.argosy.ui.screens.settings.sections
+            .bucketDisplayLabel(platformCategoryDelete.bucket)
+        ArgosyConfirmModalHost(
+            visible = true,
+            title = "Remove $bucketLabel?",
+            message = "Removes ${platformCategoryDelete.fileCount} $fileNoun " +
+                "(${formatBytes(platformCategoryDelete.totalBytes)}). Re-downloads from your library.",
+            confirmLabel = "Delete",
+            destructive = true,
+            onConfirm = {
+                viewModel.confirmStoragePlatformCategoryDelete(
+                    platformCategoryDelete.gameId,
+                    platformCategoryDelete.bucket
+                )
+            },
+            onDismiss = { viewModel.dismissStoragePlatformCategoryDelete() }
         )
     }
 
@@ -1183,6 +1245,19 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
         }
         if (uiState.currentSection == SettingsSection.STORAGE_GAMES) {
             add(InputButton.X to "Sort")
+        }
+        if (uiState.currentSection == SettingsSection.STORAGE_PLATFORM_GAMES) {
+            val pgInfo = createStoragePlatformGamesLayoutInfo(uiState)
+            val focusedPg = storagePlatformGamesItemAtFocusIndex(uiState.focusedIndex, pgInfo)
+            val focusedGame = (focusedPg as? StoragePlatformGamesItem.GameCard)?.let { card ->
+                uiState.storagePlatformGames.games.firstOrNull { it.gameId == card.gameId }
+            }
+            if (focusedGame != null) {
+                if (focusedGame.buckets.size > 1) {
+                    add(InputButton.DPAD_HORIZONTAL to "Category")
+                }
+                add(InputButton.Y to "Delete")
+            }
         }
         if (uiState.currentSection == SettingsSection.PLATFORM_DETAIL) {
             val config = uiState.emulators.platforms.getOrNull(uiState.platformDetail.platformIndex)
