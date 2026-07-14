@@ -354,7 +354,7 @@ fun GameDetailScreen(
     DisposableEffect(isHardcoreConflict) {
         onDispose {
             if (isHardcoreConflict) {
-                inputDispatcher.popModal()
+                inputDispatcher.removeModal(hardcoreConflictInputHandler)
             }
         }
     }
@@ -362,7 +362,7 @@ fun GameDetailScreen(
     DisposableEffect(isLocalModified) {
         onDispose {
             if (isLocalModified) {
-                inputDispatcher.popModal()
+                inputDispatcher.removeModal(localModifiedInputHandler)
             }
         }
     }
@@ -388,7 +388,7 @@ fun GameDetailScreen(
     DisposableEffect(showMemcardPicker) {
         onDispose {
             if (showMemcardPicker) {
-                inputDispatcher.popModal()
+                inputDispatcher.removeModal(memcardPickerInputHandler)
             }
         }
     }
@@ -414,7 +414,7 @@ fun GameDetailScreen(
     DisposableEffect(showLaunchVariantPicker) {
         onDispose {
             if (showLaunchVariantPicker) {
-                inputDispatcher.popModal()
+                inputDispatcher.removeModal(launchVariantPickerInputHandler)
             }
         }
     }
@@ -433,7 +433,7 @@ fun GameDetailScreen(
     DisposableEffect(showPerGameSettings) {
         onDispose {
             if (showPerGameSettings) {
-                inputDispatcher.popModal()
+                inputDispatcher.removeModal(perGameSettingsInputHandler)
             }
         }
     }
