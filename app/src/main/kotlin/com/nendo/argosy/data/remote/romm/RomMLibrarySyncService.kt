@@ -134,6 +134,7 @@ class RomMLibrarySyncService @Inject constructor(
             for (platform in platforms) {
                 syncPlatformMetadata(platform)
             }
+            androidGameScanner.get().relinkInstalledRommAndroidApps()
             Result.success(platforms.size)
         } catch (e: Exception) {
             Result.failure(e)
@@ -546,6 +547,7 @@ class RomMLibrarySyncService @Inject constructor(
             rommFileName = rom.fileName,
             igdbId = rom.igdbId,
             raId = rom.raId,
+            titleId = existing?.titleId,
             source = when {
                 installedPackageName != null -> GameSource.ANDROID_APP
                 localDataSource?.localPath != null -> GameSource.ROMM_SYNCED
