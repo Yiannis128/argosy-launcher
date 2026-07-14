@@ -106,7 +106,7 @@ fun MusicBrowserScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose { viewModel.stopPreview() }
+        onDispose { viewModel.onBrowserClosed() }
     }
 
     val inputHandler = remember(viewModel) {

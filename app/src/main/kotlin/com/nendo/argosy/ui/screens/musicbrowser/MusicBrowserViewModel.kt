@@ -85,6 +85,7 @@ class MusicBrowserViewModel @Inject constructor(
 
     fun open(mode: MusicBrowserMode) {
         stopPreview()
+        ambientAudioManager.suspend()
         _uiState.update { st ->
             MusicBrowserState(
                 mode = mode,
@@ -449,7 +450,6 @@ class MusicBrowserViewModel @Inject constructor(
         previewToken++
         val token = previewToken
         releasePlayer()
-        ambientAudioManager.suspend()
         _uiState.update { it.copy(previewingId = track.romFileId) }
         viewModelScope.launch(Dispatchers.IO) {
             val local = _uiState.value.localByRomFileId[track.romFileId]
@@ -470,7 +470,13 @@ class MusicBrowserViewModel @Inject constructor(
                     player.setDataSource(context, Uri.parse(url), headers)
                 }
                 player.setOnPreparedListener { prepared ->
-                    if (previewToken == token) prepared.start() else runCatching { prepared.release() }
+                    if (previewToken == token) {
+                        val volume = ambientAudioManager.currentVolume
+                        runCatching { prepared.setVolume(volume, volume) }
+                        prepared.start()
+                    } else {
+                        runCatching { prepared.release() }
+                    }
                 }
                 player.setOnCompletionListener { onPreviewEnded(track.romFileId) }
                 player.setOnErrorListener { _, _, _ ->
@@ -496,7 +502,6 @@ class MusicBrowserViewModel @Inject constructor(
         if (!wasCurrent) return
         _uiState.update { it.copy(previewingId = null) }
         releasePlayer()
-        resumeAmbientOnMain()
     }
 
     fun stopPreview() {
@@ -505,10 +510,10 @@ class MusicBrowserViewModel @Inject constructor(
         if (!hadPreview) return
         _uiState.update { it.copy(previewingId = null) }
         releasePlayer()
-        resumeAmbientOnMain()
     }
 
-    private fun resumeAmbientOnMain() {
+    fun onBrowserClosed() {
+        stopPreview()
         viewModelScope.launch { ambientAudioManager.resumeFromSuspend() }
     }
 

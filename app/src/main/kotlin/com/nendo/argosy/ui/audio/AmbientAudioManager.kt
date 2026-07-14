@@ -100,6 +100,8 @@ class AmbientAudioManager @Inject constructor(
         }
     }
 
+    val currentVolume: Float get() = targetVolume
+
     fun setVolume(volume: Int) {
         this.targetVolume = (volume / 100f).coerceIn(0f, 1f)
         Log.d(TAG, "setVolume=$volume (${this.targetVolume})")
