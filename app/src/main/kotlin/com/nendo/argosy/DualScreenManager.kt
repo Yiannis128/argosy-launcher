@@ -97,6 +97,7 @@ class DualScreenManager(
     internal val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
     internal val gradientExtractionDelegate: com.nendo.argosy.ui.screens.common.GradientExtractionDelegate,
     private val filePickerFlow: com.nendo.argosy.domain.usecase.download.FilePickerFlowUseCase,
+    private val gameThemeAudioCoordinator: com.nendo.argosy.ui.audio.GameThemeAudioCoordinator,
     initialRolesSwapped: Boolean = false
 ) {
 
@@ -593,6 +594,7 @@ class DualScreenManager(
 
     internal fun handleGameDetailOpened(gameId: Long) {
         if (gameId == -1L) return
+        gameThemeAudioCoordinator.enter(gameId)
         val current = _dualGameDetailState.value
         if (current != null && current.gameId == gameId && current.modalType != ActiveModal.NONE) {
             return
@@ -668,6 +670,7 @@ class DualScreenManager(
 
     fun onGameDetailClosed() {
         Log.d("UpdatesDLC", "onGameDetailClosed, currentModal=${_dualGameDetailState.value?.modalType}")
+        _dualGameDetailState.value?.gameId?.let { gameThemeAudioCoordinator.exit(it) }
         _dualGameDetailState.value = null
         resyncShowcaseFromHome()
     }

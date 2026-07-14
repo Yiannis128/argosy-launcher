@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var displayAffinityHelper: DisplayAffinityHelper
     @Inject lateinit var permissionHelper: com.nendo.argosy.util.PermissionHelper
     @Inject lateinit var gameActionsDelegate: GameActionsDelegate
+    @Inject lateinit var gameThemeAudioCoordinator: com.nendo.argosy.ui.audio.GameThemeAudioCoordinator
     @Inject lateinit var gameLaunchDelegate: GameLaunchDelegate
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var getUnifiedSavesUseCase: GetUnifiedSavesUseCase
@@ -293,6 +294,7 @@ class MainActivity : ComponentActivity() {
                 downloadFileStatusRepository = downloadFileStatusRepository,
                 gradientExtractionDelegate = gradientExtractionDelegate,
                 filePickerFlow = filePickerFlowUseCase,
+                gameThemeAudioCoordinator = gameThemeAudioCoordinator,
                 initialRolesSwapped = initialSwapped
             )
             DualScreenManagerHolder.instance = dualScreenManager
