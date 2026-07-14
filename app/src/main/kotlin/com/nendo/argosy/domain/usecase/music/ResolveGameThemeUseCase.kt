@@ -1,6 +1,8 @@
 package com.nendo.argosy.domain.usecase.music
 
+import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.model.VariantCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,13 +22,18 @@ sealed interface GameThemeSource {
     data class Stream(
         val rommFileId: Long,
         val fileName: String,
-        override val title: String
+        override val title: String,
+        val platformName: String,
+        val gameName: String,
+        val trackNumber: Int?
     ) : GameThemeSource
 }
 
 /** Picks a game's explicitly theme-titled soundtrack track, or null when none qualifies. */
 class ResolveGameThemeUseCase @Inject constructor(
-    private val gameFileDao: GameFileDao
+    private val gameFileDao: GameFileDao,
+    private val gameDao: GameDao,
+    private val platformDao: PlatformDao
 ) {
     private val mainTheme = Regex("(?i)\\bmain\\s+theme\\b")
     private val titleTheme = Regex("(?i)\\btitle\\s+(theme|screen)\\b")
@@ -53,7 +60,19 @@ class ResolveGameThemeUseCase @Inject constructor(
         val localPath = localPathIfPresent(best.localPath)
         when {
             localPath != null -> GameThemeSource.Local(localPath, displayTitle)
-            best.rommFileId != null -> GameThemeSource.Stream(best.rommFileId, best.fileName, displayTitle)
+            best.rommFileId != null -> {
+                val game = gameDao.getById(gameId)
+                val platformName = game?.platformId?.let { platformDao.getById(it)?.name }
+                    ?: game?.platformSlug.orEmpty()
+                GameThemeSource.Stream(
+                    rommFileId = best.rommFileId,
+                    fileName = best.fileName,
+                    title = displayTitle,
+                    platformName = platformName,
+                    gameName = game?.title.orEmpty(),
+                    trackNumber = best.trackNumber
+                )
+            }
             else -> null
         }
     }

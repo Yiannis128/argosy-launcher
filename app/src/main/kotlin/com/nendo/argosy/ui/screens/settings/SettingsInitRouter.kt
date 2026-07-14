@@ -512,8 +512,11 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             shuffle = prefs.ambientAudioShuffle,
             gameDetailThemeEnabled = prefs.gameDetailThemeEnabled,
             currentTrackName = vm.ambientAudioDelegate.state.value.currentTrackName,
-            playlistEntryCount = vm.ambientAudioDelegate.state.value.playlistEntryCount
+            playlistEntryCount = vm.ambientAudioDelegate.state.value.playlistEntryCount,
+            musicDirPath = vm.ambientAudioDelegate.state.value.musicDirPath,
+            pendingMusicRelocation = vm.ambientAudioDelegate.state.value.pendingMusicRelocation
         ))
+        vm.ambientAudioDelegate.refreshMusicDirPath(vm.viewModelScope)
 
         val excludedSlugs = setOf("android", "steam")
         val filteredPlatformConfigs = platformConfigs

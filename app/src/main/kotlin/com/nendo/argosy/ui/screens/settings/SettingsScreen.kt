@@ -307,11 +307,18 @@ fun SettingsScreen(
     }
 
     var showMusicBrowserBgm by remember { mutableStateOf(false) }
+    var showMusicLocationBrowser by remember { mutableStateOf(false) }
     var musicBrowserSfxTarget by remember { mutableStateOf<SoundType?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.openMusicBrowserBgmEvent.collect {
             showMusicBrowserBgm = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.openMusicLocationPickerEvent.collect {
+            showMusicLocationBrowser = true
         }
     }
 
@@ -668,6 +675,18 @@ fun SettingsScreen(
         onNeutral = { viewModel.skipBuiltinPathMigration() }
     )
 
+    val musicRelocation = uiState.ambientAudio.pendingMusicRelocation
+    ArgosyConfirmModalHost(
+        visible = musicRelocation != null,
+        title = "Move music files?",
+        message = "The current music folder contains ${musicRelocation?.fileCount ?: 0} files. Move them to the new location? This will overwrite any conflicts.",
+        confirmLabel = "Move",
+        onConfirm = { viewModel.confirmMusicRelocation() },
+        onDismiss = { viewModel.cancelMusicRelocation() },
+        neutralLabel = "Skip",
+        onNeutral = { viewModel.skipMusicRelocation() }
+    )
+
     ArgosyConfirmModalHost(
         visible = uiState.showMigrationDialog,
         title = "Migrate Downloads?",
@@ -780,6 +799,20 @@ fun SettingsScreen(
             },
             onDismiss = {
                 showBgmAddMusicBrowser = false
+            }
+        )
+    }
+
+    if (showMusicLocationBrowser) {
+        FileBrowserScreen(
+            mode = FileBrowserMode.FOLDER_SELECTION,
+            title = "Music Location",
+            onPathSelected = { path ->
+                showMusicLocationBrowser = false
+                viewModel.onMusicLocationSelected(path)
+            },
+            onDismiss = {
+                showMusicLocationBrowser = false
             }
         )
     }

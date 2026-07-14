@@ -117,6 +117,27 @@ class ControlsPreferencesRepository @Inject constructor(
         }
     }
 
+    /** Repoints custom/romm sound paths under [oldPrefix] to [newPrefix] after a music relocation. */
+    suspend fun rewriteSoundConfigPathPrefix(oldPrefix: String, newPrefix: String) {
+        val old = oldPrefix.trimEnd('/')
+        val new = newPrefix.trimEnd('/')
+        dataStore.edit { prefs ->
+            val current = parseSoundConfigs(prefs[Keys.SOUND_CONFIGS])
+            if (current.isEmpty()) return@edit
+            val updated = current.mapValues { (_, config) ->
+                val path = config.customFilePath
+                if (path != null && path.startsWith("$old/")) {
+                    config.copy(customFilePath = new + path.removePrefix(old))
+                } else {
+                    config
+                }
+            }
+            if (updated != current) {
+                prefs[Keys.SOUND_CONFIGS] = serializeSoundConfigs(updated)
+            }
+        }
+    }
+
     suspend fun setSwapAB(enabled: Boolean) {
         dataStore.edit { it[Keys.SWAP_AB] = enabled }
     }

@@ -18,10 +18,12 @@ private const val MAX_SECONDS = 10
 private const val BYTES_PER_SAMPLE = 2
 private const val TIMEOUT_US = 10_000L
 private const val MAX_DRY_SPINS = 200
+private const val CACHE_VERSION = "v2"
+private const val TARGET_PEAK = 13045
 
 object SfxTranscoder {
 
-    /** Decodes the first audio track of sourcePath to a cached PCM 16-bit WAV; null on failure. */
+    /** Decodes the first audio track of sourcePath to a cached peak-normalized PCM 16-bit WAV; null on failure. */
     fun transcodeToWavCache(context: Context, sourcePath: String): File? {
         val source = File(sourcePath)
         if (!source.exists()) {
@@ -34,7 +36,7 @@ object SfxTranscoder {
             return null
         }
         val pathHash = sha1(sourcePath)
-        val target = File(cacheRoot, "$pathHash-${sha1("${source.lastModified()}|${source.length()}")}.wav")
+        val target = File(cacheRoot, "$pathHash-${sha1("${source.lastModified()}|${source.length()}|$CACHE_VERSION")}.wav")
         if (target.exists()) return target
         cacheRoot.listFiles { file -> file.name.startsWith("$pathHash-") }?.forEach { it.delete() }
         return try {
@@ -123,7 +125,7 @@ object SfxTranscoder {
                 Log.w(TAG, "Decoded zero PCM bytes from ${source.path}")
                 return null
             }
-            writeWav(target, pcm.toByteArray(), sampleRate, channels)
+            writeWav(target, normalizePeak(pcm.toByteArray()), sampleRate, channels)
             return target
         } finally {
             codec?.let { active ->
@@ -132,6 +134,28 @@ object SfxTranscoder {
             }
             extractor.release()
         }
+    }
+
+    private fun normalizePeak(pcm: ByteArray): ByteArray {
+        var peak = 0
+        var i = 0
+        while (i + 1 < pcm.size) {
+            val sample = ((pcm[i + 1].toInt() shl 8) or (pcm[i].toInt() and 0xFF)).toShort().toInt()
+            val magnitude = if (sample < 0) -sample else sample
+            if (magnitude > peak) peak = magnitude
+            i += 2
+        }
+        if (peak == 0 || peak == TARGET_PEAK) return pcm
+        val scale = TARGET_PEAK.toFloat() / peak
+        i = 0
+        while (i + 1 < pcm.size) {
+            val sample = ((pcm[i + 1].toInt() shl 8) or (pcm[i].toInt() and 0xFF)).toShort().toInt()
+            val scaled = (sample * scale).toInt().coerceIn(-32768, 32767)
+            pcm[i] = (scaled and 0xFF).toByte()
+            pcm[i + 1] = ((scaled shr 8) and 0xFF).toByte()
+            i += 2
+        }
+        return pcm
     }
 
     private fun writeWav(target: File, pcm: ByteArray, sampleRate: Int, channels: Int) {

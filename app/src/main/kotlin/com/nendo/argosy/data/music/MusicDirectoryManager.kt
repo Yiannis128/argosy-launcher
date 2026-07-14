@@ -3,12 +3,17 @@ package com.nendo.argosy.data.music
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.os.Environment
+import android.util.Log
 import com.nendo.argosy.data.preferences.StoragePreferencesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "MusicDirectoryManager"
 
 /** Resolves and manages the public Music/RomM directory where soundtrack files live. */
 @Singleton
@@ -62,6 +67,44 @@ class MusicDirectoryManager @Inject constructor(
         } catch (_: Exception) {
             false
         }
+    }
+
+    suspend fun countFiles(): Int = withContext(Dispatchers.IO) {
+        val dir = resolveMusicDir()
+        if (dir.exists()) dir.walkTopDown().count { it.isFile } else 0
+    }
+
+    /** Moves the music tree into [destination] preserving structure; conflicts are overwritten. */
+    suspend fun relocate(source: File, destination: File): Unit = withContext(Dispatchers.IO) {
+        if (!source.exists() || source.absolutePath == destination.absolutePath) return@withContext
+        val moved = mutableListOf<String>()
+        moveTree(source, destination, moved)
+        if (moved.isNotEmpty()) {
+            MediaScannerConnection.scanFile(context, moved.toTypedArray(), null, null)
+        }
+    }
+
+    private fun moveTree(source: File, destination: File, moved: MutableList<String>) {
+        destination.mkdirs()
+        val files = source.listFiles() ?: return
+        for (file in files) {
+            val target = File(destination, file.name)
+            try {
+                if (file.isDirectory) {
+                    moveTree(file, target, moved)
+                } else {
+                    if (target.exists()) target.delete()
+                    if (!file.renameTo(target)) {
+                        file.copyTo(target, overwrite = true)
+                        file.delete()
+                    }
+                    moved.add(target.absolutePath)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to move ${file.name}: ${e.message}")
+            }
+        }
+        if (source.listFiles()?.isEmpty() == true) source.delete()
     }
 
     fun scanFile(file: File) {

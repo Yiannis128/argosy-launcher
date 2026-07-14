@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.MusicNote
@@ -41,12 +42,13 @@ internal sealed class ThemeMusicItem(
     data object BgmPlaylist : ThemeMusicItem("bgmPlaylist", "music", { it.bgmEnabled })
     data object BrowseServerMusic : ThemeMusicItem("browseServerMusic", "music", { it.bgmEnabled && it.musicApiSupported })
     data object BrowseLocalMusic : ThemeMusicItem("browseLocalMusic", "music", { it.bgmEnabled })
+    data object MusicLocation : ThemeMusicItem("musicLocation", "music", { it.bgmEnabled })
     data object BgmShuffle : ThemeMusicItem("bgmShuffle", "music", { it.bgmEnabled })
     data object GameThemeToggle : ThemeMusicItem("gameDetailTheme", "music", { it.bgmEnabled && it.musicApiSupported })
 
     companion object {
         val ALL: List<ThemeMusicItem> = listOf(
-            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle, GameThemeToggle
+            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, MusicLocation, BgmShuffle, GameThemeToggle
         )
     }
 }
@@ -159,6 +161,14 @@ fun ThemeMusicSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 subtitle = "Add files or folders to the playlist",
                 isFocused = isFocused(item),
                 onClick = { viewModel.openBgmAddMusicBrowser() }
+            )
+
+            ThemeMusicItem.MusicLocation -> NavigationPreference(
+                icon = Icons.Outlined.Folder,
+                title = "Music Location",
+                subtitle = uiState.ambientAudio.musicDirPath ?: "",
+                isFocused = isFocused(item),
+                onClick = { viewModel.openMusicLocationPicker() }
             )
 
             ThemeMusicItem.BgmShuffle -> SwitchPreference(

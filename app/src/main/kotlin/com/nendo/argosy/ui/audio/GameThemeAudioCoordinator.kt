@@ -5,6 +5,7 @@ import android.util.Log
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.domain.usecase.music.DownloadMusicTrackUseCase
 import com.nendo.argosy.domain.usecase.music.GameThemeSource
 import com.nendo.argosy.domain.usecase.music.ResolveGameThemeUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,10 +25,13 @@ private const val TAG = "GameThemeAudio"
 class GameThemeAudioCoordinator @Inject constructor(
     private val ambientAudioManager: AmbientAudioManager,
     private val resolveGameTheme: ResolveGameThemeUseCase,
+    private val downloadMusicTrack: DownloadMusicTrackUseCase,
     private val romMRepository: RomMRepository,
     private val preferencesRepository: UserPreferencesRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val inFlightDownloads: MutableSet<Long> = ConcurrentHashMap.newKeySet()
     private var activeGameId: Long? = null
     private var resolveJob: Job? = null
 
@@ -53,6 +58,28 @@ class GameThemeAudioCoordinator @Inject constructor(
             null -> null
             is GameThemeSource.Local -> AmbientOverrideSource.Local(theme.path, theme.title)
             is GameThemeSource.Stream -> buildRemoteSource(theme, prefs.rommToken)
+                ?.also { cacheStreamInBackground(theme) }
+        }
+    }
+
+    private fun cacheStreamInBackground(theme: GameThemeSource.Stream) {
+        if (theme.platformName.isBlank() || theme.gameName.isBlank()) return
+        if (!inFlightDownloads.add(theme.rommFileId)) return
+        downloadScope.launch {
+            try {
+                downloadMusicTrack(
+                    rommFileId = theme.rommFileId,
+                    fileName = theme.fileName,
+                    platformName = theme.platformName,
+                    gameName = theme.gameName,
+                    trackNumber = theme.trackNumber,
+                    title = theme.title
+                ).onFailure {
+                    Log.w(TAG, "Theme cache download failed for ${theme.fileName}: ${it.message}")
+                }
+            } finally {
+                inFlightDownloads.remove(theme.rommFileId)
+            }
         }
     }
 

@@ -1,10 +1,13 @@
 package com.nendo.argosy.ui.screens.settings.delegates
 
 import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
+import com.nendo.argosy.data.music.MusicDirectoryManager
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.domain.usecase.music.RelocateMusicLibraryUseCase
 import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
 import com.nendo.argosy.ui.screens.settings.AmbientAudioState
+import com.nendo.argosy.ui.screens.settings.MusicRelocationPrompt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +22,9 @@ import javax.inject.Inject
 class AmbientAudioSettingsDelegate @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val ambientAudioManager: AmbientAudioManager,
-    private val playlistCoordinator: BgmPlaylistCoordinator
+    private val playlistCoordinator: BgmPlaylistCoordinator,
+    private val musicDirectoryManager: MusicDirectoryManager,
+    private val relocateMusicLibrary: RelocateMusicLibraryUseCase
 ) {
     private val _state = MutableStateFlow(AmbientAudioState())
     val state: StateFlow<AmbientAudioState> = _state.asStateFlow()
@@ -32,6 +37,9 @@ class AmbientAudioSettingsDelegate @Inject constructor(
 
     private val _openAddMusicBrowserEvent = MutableSharedFlow<Unit>()
     val openAddMusicBrowserEvent: SharedFlow<Unit> = _openAddMusicBrowserEvent.asSharedFlow()
+
+    private val _openMusicLocationPickerEvent = MutableSharedFlow<Unit>()
+    val openMusicLocationPickerEvent: SharedFlow<Unit> = _openMusicLocationPickerEvent.asSharedFlow()
 
     fun initFlowCollection(scope: CoroutineScope) {
         scope.launch {
@@ -113,6 +121,63 @@ class AmbientAudioSettingsDelegate @Inject constructor(
     fun openMusicBrowser(scope: CoroutineScope) {
         scope.launch {
             _openMusicBrowserEvent.emit(Unit)
+        }
+    }
+
+    fun openMusicLocationPicker(scope: CoroutineScope) {
+        scope.launch {
+            _openMusicLocationPickerEvent.emit(Unit)
+        }
+    }
+
+    fun refreshMusicDirPath(scope: CoroutineScope) {
+        scope.launch {
+            val path = musicDirectoryManager.resolveMusicDir().absolutePath
+            _state.update { it.copy(musicDirPath = path) }
+        }
+    }
+
+    fun onMusicLocationSelected(scope: CoroutineScope, newPath: String) {
+        scope.launch {
+            val oldPath = musicDirectoryManager.resolveMusicDir().absolutePath
+            if (oldPath == newPath) return@launch
+            val fileCount = musicDirectoryManager.countFiles()
+            if (fileCount > 0) {
+                _state.update {
+                    it.copy(pendingMusicRelocation = MusicRelocationPrompt(oldPath, newPath, fileCount))
+                }
+            } else {
+                applyMusicLocation(scope, oldPath, newPath, moveFiles = false)
+            }
+        }
+    }
+
+    fun confirmMusicRelocation(scope: CoroutineScope) {
+        val pending = _state.value.pendingMusicRelocation ?: return
+        _state.update { it.copy(pendingMusicRelocation = null) }
+        applyMusicLocation(scope, pending.oldPath, pending.newPath, moveFiles = true)
+    }
+
+    fun skipMusicRelocation(scope: CoroutineScope) {
+        val pending = _state.value.pendingMusicRelocation ?: return
+        _state.update { it.copy(pendingMusicRelocation = null) }
+        applyMusicLocation(scope, pending.oldPath, pending.newPath, moveFiles = false)
+    }
+
+    fun cancelMusicRelocation() {
+        _state.update { it.copy(pendingMusicRelocation = null) }
+    }
+
+    private fun applyMusicLocation(
+        scope: CoroutineScope,
+        oldPath: String,
+        newPath: String,
+        moveFiles: Boolean
+    ) {
+        scope.launch {
+            relocateMusicLibrary(oldPath, newPath, moveFiles)
+            playlistCoordinator.refresh()
+            _state.update { it.copy(musicDirPath = newPath) }
         }
     }
 }

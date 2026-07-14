@@ -136,6 +136,12 @@ interface GameFileDao {
     @Query("UPDATE game_files SET localPath = :newPath WHERE localPath = :oldPath")
     suspend fun updateLocalPathByOldPath(oldPath: String, newPath: String)
 
+    @Query("""
+        UPDATE game_files SET localPath = :newPrefix || SUBSTR(localPath, LENGTH(:oldPrefix) + 1)
+        WHERE localPath LIKE :oldPrefix || '/%'
+    """)
+    suspend fun rewriteLocalPathPrefix(oldPrefix: String, newPrefix: String)
+
     @Query("SELECT * FROM game_files WHERE gameId = :gameId AND isLaunchTarget = 1 ORDER BY category ASC, fileName ASC")
     suspend fun getVariantsForGame(gameId: Long): List<GameFileEntity>
 

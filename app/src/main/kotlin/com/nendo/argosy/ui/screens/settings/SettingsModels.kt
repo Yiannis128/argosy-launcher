@@ -53,6 +53,12 @@ data class BuiltinPathMigration(
     val existingFileCount: Int
 )
 
+data class MusicRelocationPrompt(
+    val oldPath: String,
+    val newPath: String,
+    val fileCount: Int
+)
+
 enum class SettingsSection {
     MAIN,
     SERVER,
@@ -316,7 +322,9 @@ data class AmbientAudioState(
     val shuffle: Boolean = false,
     val gameDetailThemeEnabled: Boolean = false,
     val currentTrackName: String? = null,
-    val playlistEntryCount: Int = 0
+    val playlistEntryCount: Int = 0,
+    val musicDirPath: String? = null,
+    val pendingMusicRelocation: MusicRelocationPrompt? = null
 )
 
 data class EmulatorState(

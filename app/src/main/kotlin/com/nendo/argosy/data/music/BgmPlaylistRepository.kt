@@ -171,4 +171,11 @@ class BgmPlaylistRepository @Inject constructor(
     suspend fun reorder(orderedIds: List<Long>) = withContext(Dispatchers.IO) {
         mutex.withLock { bgmPlaylistDao.updatePositions(orderedIds) }
     }
+
+    /** Repoints every folder-source and file row under [oldPrefix] to [newPrefix] after a relocation. */
+    suspend fun rewritePathPrefix(oldPrefix: String, newPrefix: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            bgmPlaylistDao.rewritePathPrefix(oldPrefix.trimEnd('/'), newPrefix.trimEnd('/'))
+        }
+    }
 }

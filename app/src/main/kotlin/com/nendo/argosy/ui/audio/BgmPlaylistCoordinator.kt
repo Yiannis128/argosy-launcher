@@ -70,6 +70,12 @@ class BgmPlaylistCoordinator @Inject constructor(
         }
     }
 
+    /** Re-syncs folder sources and pushes the current playable paths to the player. */
+    suspend fun refresh() {
+        repository.reconcileFolderSources()
+        pushPlaylist()
+    }
+
     suspend fun removeById(id: Long) = repository.removeById(id)
 
     suspend fun removeOrDisable(filePath: String) = repository.removeOrDisable(filePath)

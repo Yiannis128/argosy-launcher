@@ -397,6 +397,7 @@ private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState
         ThemeMusicItem.BgmPlaylist -> vm.openBgmPlaylistManager()
         ThemeMusicItem.BrowseServerMusic -> vm.openMusicBrowserBgm()
         ThemeMusicItem.BrowseLocalMusic -> vm.openBgmAddMusicBrowser()
+        ThemeMusicItem.MusicLocation -> vm.openMusicLocationPicker()
         ThemeMusicItem.BgmShuffle -> {
             vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
             return InputResult.handled(SoundType.TOGGLE)

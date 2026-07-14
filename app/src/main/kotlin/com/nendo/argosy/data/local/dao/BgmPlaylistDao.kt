@@ -53,6 +53,12 @@ interface BgmPlaylistDao {
     @Query("UPDATE bgm_playlist SET enabled = :enabled WHERE id = :id")
     suspend fun updateEnabled(id: Long, enabled: Boolean)
 
+    @Query("""
+        UPDATE bgm_playlist SET filePath = :newPrefix || SUBSTR(filePath, LENGTH(:oldPrefix) + 1)
+        WHERE filePath = :oldPrefix OR filePath LIKE :oldPrefix || '/%'
+    """)
+    suspend fun rewritePathPrefix(oldPrefix: String, newPrefix: String)
+
     @Query("UPDATE bgm_playlist SET sourceEntryId = :sourceEntryId, enabled = 0 WHERE id = :id")
     suspend fun convertToDisabledSourced(id: Long, sourceEntryId: Long)
 

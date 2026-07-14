@@ -150,6 +150,7 @@ class SettingsViewModel @Inject constructor(
     val openBgmPlaylistManagerEvent: SharedFlow<Unit> = ambientAudioDelegate.openPlaylistManagerEvent
     val openBgmAddMusicBrowserEvent: SharedFlow<Unit> = ambientAudioDelegate.openAddMusicBrowserEvent
     val openMusicBrowserBgmEvent: SharedFlow<Unit> = ambientAudioDelegate.openMusicBrowserEvent
+    val openMusicLocationPickerEvent: SharedFlow<Unit> = ambientAudioDelegate.openMusicLocationPickerEvent
     val openMusicBrowserSfxEvent: SharedFlow<SoundType> = soundsDelegate.openMusicBrowserSfxEvent
     val launchPlatformFolderPicker: SharedFlow<Long> = storageDelegate.launchPlatformFolderPicker
     val launchSavePathPicker: SharedFlow<Unit> = emulatorDelegate.launchSavePathPicker
@@ -913,6 +914,11 @@ class SettingsViewModel @Inject constructor(
     fun openBgmPlaylistManager() = ambientAudioDelegate.openPlaylistManager(viewModelScope)
     fun openBgmAddMusicBrowser() = ambientAudioDelegate.openAddMusicBrowser(viewModelScope)
     fun openMusicBrowserBgm() = ambientAudioDelegate.openMusicBrowser(viewModelScope)
+    fun openMusicLocationPicker() = ambientAudioDelegate.openMusicLocationPicker(viewModelScope)
+    fun onMusicLocationSelected(path: String) = ambientAudioDelegate.onMusicLocationSelected(viewModelScope, path)
+    fun confirmMusicRelocation() = ambientAudioDelegate.confirmMusicRelocation(viewModelScope)
+    fun skipMusicRelocation() = ambientAudioDelegate.skipMusicRelocation(viewModelScope)
+    fun cancelMusicRelocation() = ambientAudioDelegate.cancelMusicRelocation()
     fun setSwapAB(enabled: Boolean) = controlsDelegate.setSwapAB(viewModelScope, enabled)
     fun setSwapXY(enabled: Boolean) = controlsDelegate.setSwapXY(viewModelScope, enabled)
     fun cycleControllerLayout(direction: Int = 1) = controlsDelegate.cycleControllerLayout(viewModelScope, direction)
