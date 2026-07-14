@@ -75,6 +75,8 @@ class GamepadHoldTracker {
         isHeld = false
     }
 
+    fun eventAtMs(): Long = lastEventAtMs
+
     fun isStalled(nowMs: Long = SystemClock.uptimeMillis()): Boolean {
         if (!isHeld) return false
         val window = if (sawRepeat) {
@@ -127,6 +129,16 @@ fun HoldToConfirmButton(
             }
             progress = ((SystemClock.uptimeMillis() - startMs).toFloat() / holdMs).coerceIn(0f, 1f)
             if (progress >= 1f) {
+                if (gamepadTracker != null && gamepadTracker.isHeld) {
+                    val markEventMs = gamepadTracker.eventAtMs()
+                    while (gamepadTracker.eventAtMs() <= markEventMs) {
+                        delay(tickMs)
+                        if (!gamepadTracker.isHeld || gamepadTracker.isStalled()) {
+                            gamepadTracker.forceRelease()
+                            return@LaunchedEffect
+                        }
+                    }
+                }
                 touchHeld = false
                 gamepadTracker?.forceRelease()
                 currentOnConfirmed()

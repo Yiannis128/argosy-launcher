@@ -199,6 +199,7 @@ private fun RecomputeRow(
             )
             .clip(shape)
             .clickableNoFocus(
+                interactionSource = interaction,
                 onClick = { if (!isRefreshing) onRefresh() },
                 onLongClick = { if (!isRefreshing) onDeepRescan() }
             )

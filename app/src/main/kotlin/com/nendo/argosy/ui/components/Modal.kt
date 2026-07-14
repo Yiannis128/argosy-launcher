@@ -48,7 +48,7 @@ fun Modal(
         modifier = Modifier
             .fillMaxSize()
             .background(overlayColor)
-            .then(if (onDismiss != null) Modifier.clickableNoFocus(onClick = onDismiss) else Modifier),
+            .clickableNoFocus(onClick = onDismiss ?: {}),
         contentAlignment = Alignment.Center
     ) {
         val modalWidth = (baseWidth * scale).coerceIn(280.dp, maxWidth * 0.9f)
@@ -65,7 +65,7 @@ fun Modal(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(Dimens.radiusPanel)
                 )
-                .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
+                .clickableNoFocus {}
                 .padding(Dimens.spacingLg)
         ) {
             if (titleContent != null) {
@@ -112,7 +112,7 @@ fun CenteredModal(
         modifier = Modifier
             .fillMaxSize()
             .background(overlayColor)
-            .then(if (onDismiss != null) Modifier.clickableNoFocus(onClick = onDismiss) else Modifier),
+            .clickableNoFocus(onClick = onDismiss ?: {}),
         contentAlignment = Alignment.Center
     ) {
         val modalWidth = (baseWidth * scale).coerceIn(280.dp, maxWidth * 0.9f)
@@ -124,7 +124,7 @@ fun CenteredModal(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(Dimens.radiusPanel)
                 )
-                .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
+                .clickableNoFocus {}
                 .padding(Dimens.spacingLg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -161,7 +161,7 @@ fun NestedModal(
         modifier = Modifier
             .fillMaxSize()
             .background(overlayColor)
-            .then(if (onDismiss != null) Modifier.clickableNoFocus(onClick = onDismiss) else Modifier),
+            .clickableNoFocus(onClick = onDismiss ?: {}),
         contentAlignment = Alignment.Center
     ) {
         val modalWidth = (baseWidth * scale).coerceIn(280.dp, maxWidth * 0.9f)
@@ -173,7 +173,7 @@ fun NestedModal(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(Dimens.radiusPanel)
                 )
-                .then(if (onDismiss != null) Modifier.clickableNoFocus {} else Modifier)
+                .clickableNoFocus {}
                 .padding(Dimens.spacingLg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

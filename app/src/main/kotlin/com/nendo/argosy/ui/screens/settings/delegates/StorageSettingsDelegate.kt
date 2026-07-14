@@ -20,6 +20,7 @@ import com.nendo.argosy.domain.usecase.sync.SyncPlatformUseCase
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.nendo.argosy.ui.screens.settings.PlatformMigrationInfo
@@ -727,22 +728,29 @@ class StorageSettingsDelegate @Inject constructor(
         if (_state.value.isHardResetting) return
         _state.update { it.copy(isHardResetting = true) }
         scope.launch {
-            val blocker = databaseAdminRepository.hardReset()
-            if (blocker != null) {
+            try {
+                val blocker = databaseAdminRepository.hardReset()
+                if (blocker != null) {
+                    _state.update { it.copy(isHardResetting = false, showHardResetModal = false) }
+                    notificationManager.showError(hardResetBlockerMessage(blocker))
+                    return@launch
+                }
+                _state.update {
+                    it.copy(
+                        isHardResetting = false,
+                        showHardResetModal = false,
+                        platformConfigs = emptyList()
+                    )
+                }
+                refreshCollectionStats(scope)
+                notificationManager.showSuccess("Hard reset complete - sync to rebuild your library")
+                _hardResetCompletedEvent.emit(Unit)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _state.update { it.copy(isHardResetting = false, showHardResetModal = false) }
-                notificationManager.showError(hardResetBlockerMessage(blocker))
-                return@launch
+                notificationManager.showError("Hard reset failed - ${e.message ?: "try again"}")
             }
-            _state.update {
-                it.copy(
-                    isHardResetting = false,
-                    showHardResetModal = false,
-                    platformConfigs = emptyList()
-                )
-            }
-            refreshCollectionStats(scope)
-            notificationManager.showSuccess("Hard reset complete - sync to rebuild your library")
-            _hardResetCompletedEvent.emit(Unit)
         }
     }
 
