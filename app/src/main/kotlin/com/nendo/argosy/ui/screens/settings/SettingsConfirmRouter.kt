@@ -406,7 +406,7 @@ private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.setGameDetailThemeEnabled(!state.ambientAudio.gameDetailThemeEnabled)
             return InputResult.handled(SoundType.TOGGLE)
         }
-        null -> {}
+        is ThemeMusicItem.Header, is ThemeMusicItem.SectionSpacer, null -> {}
     }
     return InputResult.HANDLED
 }

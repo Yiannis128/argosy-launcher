@@ -1,9 +1,13 @@
 package com.nendo.argosy.ui.screens.settings.sections
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.LibraryMusic
@@ -37,6 +41,24 @@ internal sealed class ThemeMusicItem(
     val section: String,
     val visibleWhen: (ThemeMusicLayoutState) -> Boolean = { true }
 ) {
+    val isFocusable: Boolean get() = when (this) {
+        is Header, is SectionSpacer -> false
+        else -> true
+    }
+
+    class Header(
+        key: String,
+        section: String,
+        val title: String,
+        visibleWhen: (ThemeMusicLayoutState) -> Boolean = { true }
+    ) : ThemeMusicItem(key, section, visibleWhen)
+
+    class SectionSpacer(
+        key: String,
+        section: String,
+        visibleWhen: (ThemeMusicLayoutState) -> Boolean = { true }
+    ) : ThemeMusicItem(key, section, visibleWhen)
+
     data object BgmToggle : ThemeMusicItem("bgmToggle", "music")
     data object BgmVolume : ThemeMusicItem("bgmVolume", "music", { it.bgmEnabled })
     data object BgmPlaylist : ThemeMusicItem("bgmPlaylist", "music", { it.bgmEnabled })
@@ -47,15 +69,19 @@ internal sealed class ThemeMusicItem(
     data object GameThemeToggle : ThemeMusicItem("gameDetailTheme", "music", { it.bgmEnabled && it.musicApiSupported })
 
     companion object {
+        private val StorageSpacer = SectionSpacer("storageSpacer", "storage", { it.bgmEnabled })
+        private val StorageHeader = Header("storageHeader", "storage", "Storage", { it.bgmEnabled })
+
         val ALL: List<ThemeMusicItem> = listOf(
-            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle, GameThemeToggle, MusicLocation
+            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle, GameThemeToggle,
+            StorageSpacer, StorageHeader, MusicLocation
         )
     }
 }
 
 private val themeMusicLayout = SettingsLayout<ThemeMusicItem, ThemeMusicLayoutState>(
     allItems = ThemeMusicItem.ALL,
-    isFocusable = { true },
+    isFocusable = { it.isFocusable },
     visibleWhen = { item, state -> item.visibleWhen(state) },
     sectionOf = { it.section },
     sectionTitle = {
@@ -100,13 +126,22 @@ fun ThemeMusicSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         focusedIndex = uiState.focusedIndex,
         focusToListIndex = { themeMusicLayout.focusToListIndex(it, layoutState) },
         itemKey = { it.key },
-        isNavItem = { false },
-        isHeader = { false },
+        isNavItem = { it is ThemeMusicItem.SectionSpacer },
+        isHeader = { it is ThemeMusicItem.Header },
         onSectionTap = { viewModel.setFocusIndex(it.focusStartIndex) },
         modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) { item ->
         when (item) {
+            is ThemeMusicItem.Header -> Text(
+                text = item.title.uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(vertical = Dimens.spacingXs)
+            )
+
+            is ThemeMusicItem.SectionSpacer -> Spacer(modifier = Modifier.height(Dimens.spacingMd))
+
             ThemeMusicItem.BgmToggle -> SwitchPreference(
                 title = "Background Music",
                 subtitle = "Play music while using the launcher",
