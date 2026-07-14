@@ -17,7 +17,11 @@ import com.nendo.argosy.ui.screens.settings.sections.BiosItem
 import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.buildGameDataItemsFromState
+import com.nendo.argosy.ui.screens.settings.sections.StorageItem
+import com.nendo.argosy.ui.screens.settings.sections.createStorageLayoutInfo
 import com.nendo.argosy.ui.screens.settings.sections.gameDataItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.storageFocusIndexOf
+import com.nendo.argosy.ui.screens.settings.sections.storageSteamVisibleLive
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -38,6 +42,15 @@ internal fun routeNavigateToSection(vm: SettingsViewModel, section: SettingsSect
             vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
         }
         SettingsSection.SYNC_SETTINGS -> vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
+        SettingsSection.STORAGE -> {
+            vm.attributionDelegate.latchSteamTileVisible(storageSteamVisibleLive(vm._uiState.value))
+            vm.attributionDelegate.refreshOnOpen()
+            vm._uiState.update { state ->
+                state.copy(
+                    focusedIndex = storageFocusIndexOf(StorageItem.GamesTile, createStorageLayoutInfo(state))
+                )
+            }
+        }
         SettingsSection.STEAM_SETTINGS -> vm.steamDelegate.loadSteamSettings(vm.context, vm.viewModelScope)
         SettingsSection.PERMISSIONS -> vm.permissionsDelegate.refreshPermissions()
         SettingsSection.SHADER_STACK -> vm.shaderChainManager.loadChain(vm._uiState.value.builtinVideo.shaderChainJson)
@@ -64,7 +77,22 @@ internal fun routeNavigateToThemeSounds(vm: SettingsViewModel) {
 }
 
 internal fun routeNavigateToThemeMusic(vm: SettingsViewModel) {
+    vm.attributionDelegate.setMusicEnteredFromStorage(false)
     vm._uiState.update { it.copy(currentSection = SettingsSection.THEME_MUSIC, focusedIndex = 0) }
+}
+
+internal fun routeNavigateToThemeMusicFromStorage(vm: SettingsViewModel) {
+    vm.attributionDelegate.setMusicEnteredFromStorage(true)
+    vm._uiState.update { it.copy(currentSection = SettingsSection.THEME_MUSIC, focusedIndex = 0) }
+}
+
+internal fun routeNavigateToStorageGames(vm: SettingsViewModel) {
+    vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE_GAMES, focusedIndex = 0) }
+}
+
+internal fun routeNavigateToStorageCaches(vm: SettingsViewModel, entryFocus: Int) {
+    vm.attributionDelegate.setCachesEntryFocus(entryFocus)
+    vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE_CACHES, focusedIndex = 0) }
 }
 
 internal fun routeNavigateToThemeBackdrop(vm: SettingsViewModel) {

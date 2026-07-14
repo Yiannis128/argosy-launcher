@@ -37,13 +37,30 @@ class StorageAttributionDelegate @Inject constructor(
         }.launchIn(scope)
     }
 
-    fun refresh(force: Boolean = false) {
-        attributionRepository.refresh(force)
+    fun refresh(force: Boolean = false, deep: Boolean = false) {
+        attributionRepository.refresh(force, deep)
+    }
+
+    fun refreshOnOpen() {
+        attributionRepository.refreshOnOpen()
     }
 
     fun markDirty(category: StorageCategory) = attributionRepository.markDirty(category)
 
     fun setGamesSortMode(mode: StorageGamesSortMode) {
         _state.update { it.copy(gamesSortMode = mode) }
+    }
+
+    fun setMusicEnteredFromStorage(entered: Boolean) {
+        _state.update { it.copy(musicEnteredFromStorage = entered) }
+    }
+
+    fun setCachesEntryFocus(focus: Int) {
+        _state.update { it.copy(cachesEntryFocus = focus) }
+    }
+
+    /** Latched at STORAGE entry so the Steam tile cannot insert mid-visit and shift focus indices. */
+    fun latchSteamTileVisible(visible: Boolean) {
+        _state.update { it.copy(steamTileLatched = visible) }
     }
 }

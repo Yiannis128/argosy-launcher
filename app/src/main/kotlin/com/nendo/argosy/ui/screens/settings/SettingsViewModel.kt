@@ -800,8 +800,13 @@ class SettingsViewModel @Inject constructor(
     fun navigateToAmbientLed() = routeNavigateToAmbientLed(this)
     fun navigateToThemeSounds() = routeNavigateToThemeSounds(this)
     fun navigateToThemeMusic() = routeNavigateToThemeMusic(this)
+    fun navigateToThemeMusicFromStorage() = routeNavigateToThemeMusicFromStorage(this)
     fun navigateToThemeFonts() = routeNavigateToThemeFonts(this)
     fun navigateToThemeBackdrop() = routeNavigateToThemeBackdrop(this)
+    fun navigateToStorageGames() = routeNavigateToStorageGames(this)
+    fun navigateToStorageCaches() = routeNavigateToStorageCaches(this, CACHES_ENTRY_TOP)
+    fun navigateToStorageCachesForSteam() = routeNavigateToStorageCaches(this, CACHES_ENTRY_STEAM)
+    fun refreshStorageAttribution(deep: Boolean = false) = attributionDelegate.refresh(force = true, deep = deep)
 
     fun openFontPicker(slot: FontSlot) {
         viewModelScope.launch { _openFontPickerEvent.emit(slot) }

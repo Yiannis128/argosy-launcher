@@ -66,6 +66,8 @@ enum class SettingsSection {
     STEAM_SETTINGS,
     RETRO_ACHIEVEMENTS,
     STORAGE,
+    STORAGE_GAMES,
+    STORAGE_CACHES,
     BIOS,
     THEME,
     THEME_SOUNDS,
@@ -696,12 +698,18 @@ data class StorageState(
 
 enum class StorageGamesSortMode { SIZE, NAME }
 
+internal const val CACHES_ENTRY_TOP = 0
+internal const val CACHES_ENTRY_STEAM = 1
+
 data class StorageAttributionState(
     val snapshot: com.nendo.argosy.data.storage.StorageSnapshot? = null,
     val volumes: List<com.nendo.argosy.data.storage.StorageVolumeInfo> = emptyList(),
     val walkProgress: Map<com.nendo.argosy.data.storage.StorageCategory, com.nendo.argosy.data.storage.WalkState> = emptyMap(),
     val isRefreshing: Boolean = false,
-    val gamesSortMode: StorageGamesSortMode = StorageGamesSortMode.SIZE
+    val gamesSortMode: StorageGamesSortMode = StorageGamesSortMode.SIZE,
+    val musicEnteredFromStorage: Boolean = false,
+    val cachesEntryFocus: Int = CACHES_ENTRY_TOP,
+    val steamTileLatched: Boolean = false
 )
 
 data class PlatformMigrationInfo(

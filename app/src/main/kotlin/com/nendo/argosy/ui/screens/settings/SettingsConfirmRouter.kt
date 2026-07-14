@@ -68,6 +68,7 @@ import com.nendo.argosy.ui.screens.settings.sections.homeScreenMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.interfaceMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.mainSettingsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.permissionsMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.storageFocusIndexOf
 import com.nendo.argosy.ui.screens.settings.sections.storageItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
@@ -229,6 +230,8 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             InputResult.HANDLED
         }
         SettingsSection.STORAGE -> routeStorageConfirm(vm, state)
+        SettingsSection.STORAGE_GAMES -> InputResult.HANDLED
+        SettingsSection.STORAGE_CACHES -> InputResult.HANDLED
         SettingsSection.THEME -> routeThemeConfirm(vm, state)
         SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
         SettingsSection.THEME_MUSIC -> routeThemeMusicConfirm(vm, state)
@@ -325,18 +328,25 @@ private fun routeServerConfirm(vm: SettingsViewModel, state: SettingsUiState): I
 }
 
 private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
-    val info = createStorageLayoutInfo()
-    when (val item = storageItemAtFocusIndex(state.focusedIndex, info)) {
+    val info = createStorageLayoutInfo(state)
+    when (storageItemAtFocusIndex(state.focusedIndex, info)) {
+        StorageItem.RecomputeRow -> if (!state.attribution.isRefreshing) vm.refreshStorageAttribution()
+        StorageItem.GamesTile -> vm.navigateToStorageGames()
+        StorageItem.MusicTile -> vm.navigateToThemeMusicFromStorage()
+        StorageItem.CachesTile -> vm.navigateToStorageCaches()
+        StorageItem.SteamTile -> vm.navigateToStorageCachesForSteam()
+        StorageItem.GlobalRomPath -> vm.openFolderPicker()
+        StorageItem.ImageCache -> if (!state.syncSettings.isImageCacheMigrating) vm.openImageCachePicker()
+        StorageItem.MusicLocation -> vm.openMusicLocationPicker()
+        StorageItem.BiosFolder -> if (!state.bios.isBiosMigrating) vm.openBiosFolderPicker()
+        StorageItem.BuiltinSavePath -> vm.openBuiltinSavePathBrowser()
+        StorageItem.BuiltinStatePath -> vm.openBuiltinStatePathBrowser()
         StorageItem.MaxDownloads -> vm.cycleMaxConcurrentDownloads()
         StorageItem.Threshold -> {
             vm.requestEnumPicker(StorageItem.Threshold.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
-        StorageItem.GlobalRomPath -> vm.openFolderPicker()
-        StorageItem.ImageCache -> vm.openImageCachePicker()
-        StorageItem.ValidateCache -> vm.validateImageCache()
-        StorageItem.WeeklyIntegrityCheck -> vm.toggleWeeklyIntegrityCheck(!state.storage.weeklyIntegrityCheckEnabled)
-        StorageItem.PurgeAll -> vm.requestPurgeAll()
+        StorageItem.ResetLibrary -> vm.requestPurgeAll()
         else -> {}
     }
     return InputResult.HANDLED
@@ -786,9 +796,28 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
             val focusIdx = themeFocusIndexOf(ThemeItem.Sounds)
             vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
         }
+        state.currentSection == SettingsSection.THEME_MUSIC && state.attribution.musicEnteredFromStorage -> {
+            vm.attributionDelegate.setMusicEnteredFromStorage(false)
+            val info = createStorageLayoutInfo(state)
+            val focusIdx = storageFocusIndexOf(StorageItem.MusicTile, info).coerceAtLeast(0)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE, focusedIndex = focusIdx) }; true
+        }
         state.currentSection == SettingsSection.THEME_MUSIC -> {
             val focusIdx = themeFocusIndexOf(ThemeItem.Music)
             vm._uiState.update { it.copy(currentSection = SettingsSection.THEME, focusedIndex = focusIdx) }; true
+        }
+        state.currentSection == SettingsSection.STORAGE_GAMES -> {
+            val info = createStorageLayoutInfo(state)
+            val focusIdx = storageFocusIndexOf(StorageItem.GamesTile, info).coerceAtLeast(0)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE, focusedIndex = focusIdx) }; true
+        }
+        state.currentSection == SettingsSection.STORAGE_CACHES -> {
+            val fromSteam = state.attribution.cachesEntryFocus == CACHES_ENTRY_STEAM
+            vm.attributionDelegate.setCachesEntryFocus(CACHES_ENTRY_TOP)
+            val info = createStorageLayoutInfo(state)
+            val tile = if (fromSteam) StorageItem.SteamTile else StorageItem.CachesTile
+            val focusIdx = storageFocusIndexOf(tile, info).coerceAtLeast(0)
+            vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE, focusedIndex = focusIdx) }; true
         }
         state.currentSection == SettingsSection.THEME_FONTS -> {
             val focusIdx = themeFocusIndexOf(ThemeItem.Fonts)
@@ -932,8 +961,9 @@ private fun computeMaxFocusIndex(
         state.retroAchievements.proxyEnabled -> RA_PROXY_FIELD_INDEX
         else -> RA_PROXY_TOGGLE_INDEX
     }
-    SettingsSection.STORAGE -> createStorageLayoutInfo(
-    ).let { it.layout.maxFocusIndex(it.state) }
+    SettingsSection.STORAGE -> createStorageLayoutInfo(state).let { it.layout.maxFocusIndex(it.state) }
+    SettingsSection.STORAGE_GAMES -> 0
+    SettingsSection.STORAGE_CACHES -> 0
     SettingsSection.THEME -> themeMaxFocusIndex()
     SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))
     SettingsSection.THEME_MUSIC -> themeMusicMaxFocusIndex(ThemeMusicLayoutState.from(state))

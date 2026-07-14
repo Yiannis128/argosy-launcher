@@ -99,6 +99,22 @@ object ComponentDefaults {
         const val thumbSize = 64
     }
 
+    object VolumeMeter {
+        const val height = 12
+        const val radius = 2
+        const val segmentGap = 2
+        const val otherFillAlpha = 0.35f
+    }
+
+    object StorageLegend {
+        const val swatchSize = 10
+        const val gap = 12
+    }
+
+    object CategoryTile {
+        const val minHeight = 52
+    }
+
     object Modal {
         const val blurRadius = 8
     }

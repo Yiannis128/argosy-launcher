@@ -91,6 +91,7 @@ import com.nendo.argosy.ui.screens.settings.sections.RASettingsSection
 import com.nendo.argosy.ui.screens.settings.sections.ShaderStackSection
 import com.nendo.argosy.ui.screens.settings.sections.SocialSection
 import com.nendo.argosy.ui.screens.settings.sections.SteamSection
+import com.nendo.argosy.ui.screens.settings.sections.StorageDrillInPlaceholder
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
 import com.nendo.argosy.data.preferences.FontSlot
@@ -481,6 +482,8 @@ fun SettingsScreen(
                         SettingsSection.STEAM_SETTINGS -> "STEAM (EXPERIMENTAL)"
                         SettingsSection.RETRO_ACHIEVEMENTS -> "RETROACHIEVEMENTS"
                         SettingsSection.STORAGE -> "STORAGE"
+                        SettingsSection.STORAGE_GAMES -> "GAMES STORAGE"
+                        SettingsSection.STORAGE_CACHES -> "CACHES & SYSTEM"
                         SettingsSection.THEME -> "THEME"
                         SettingsSection.THEME_SOUNDS -> "SOUNDS"
                         SettingsSection.THEME_MUSIC -> "MUSIC"
@@ -546,6 +549,8 @@ fun SettingsScreen(
                     SettingsSection.STEAM_SETTINGS -> SteamSection(uiState, viewModel)
                     SettingsSection.RETRO_ACHIEVEMENTS -> RASettingsSection(uiState, viewModel)
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
+                    SettingsSection.STORAGE_GAMES -> StorageDrillInPlaceholder("Games")
+                    SettingsSection.STORAGE_CACHES -> StorageDrillInPlaceholder("Caches & System")
                     SettingsSection.THEME -> ThemeSection(uiState, viewModel)
                     SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
                     SettingsSection.THEME_MUSIC -> ThemeMusicSection(uiState, viewModel)
@@ -1123,6 +1128,9 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
             if (steamItem == com.nendo.argosy.ui.screens.settings.sections.SteamItem.SyncLibrary) {
                 add(InputButton.X to "Force Sync")
             }
+        }
+        if (uiState.currentSection == SettingsSection.STORAGE) {
+            add(InputButton.X to "Refresh")
         }
         if (uiState.currentSection == SettingsSection.PLATFORM_DETAIL) {
             val config = uiState.emulators.platforms.getOrNull(uiState.platformDetail.platformIndex)
