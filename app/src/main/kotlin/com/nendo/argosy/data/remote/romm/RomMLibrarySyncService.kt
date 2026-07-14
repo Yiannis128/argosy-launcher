@@ -26,6 +26,8 @@ import com.nendo.argosy.data.model.VersionGroups
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.BiosRepository
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -66,7 +68,8 @@ class RomMLibrarySyncService @Inject constructor(
     private val gameRepository: dagger.Lazy<com.nendo.argosy.data.repository.GameRepository>,
     private val syncVirtualCollectionsUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.collection.SyncVirtualCollectionsUseCase>,
     private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer,
-    private val androidGameScanner: dagger.Lazy<com.nendo.argosy.data.scanner.AndroidGameScanner>
+    private val androidGameScanner: dagger.Lazy<com.nendo.argosy.data.scanner.AndroidGameScanner>,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
     private val syncMutex = Mutex()
@@ -303,6 +306,8 @@ class RomMLibrarySyncService @Inject constructor(
             userPreferencesRepository.setLastRommSyncTime(Instant.now())
 
             syncVirtualCollectionsUseCase.get()()
+
+            attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
 
         } catch (e: Exception) {
             errors.add(e.message ?: "Sync failed")

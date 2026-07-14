@@ -22,6 +22,8 @@ import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -51,7 +53,8 @@ class GameRepository @Inject constructor(
     private val platformDao: PlatformDao,
     private val romMRepository: RomMRepository,
     private val preferencesRepository: UserPreferencesRepository,
-    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer
+    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val defaultDownloadDir: File by lazy {
         File(context.getExternalFilesDir(null), "downloads")
@@ -665,6 +668,7 @@ class GameRepository @Inject constructor(
             }
         }
         Log.i(TAG, "Deleted $deleted local files for platform $platformId")
+        attributionRepository.markDirty(StorageCategory.GAMES)
         deleted
     }
 

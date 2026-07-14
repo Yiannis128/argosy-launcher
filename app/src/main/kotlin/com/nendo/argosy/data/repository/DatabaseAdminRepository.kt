@@ -6,6 +6,8 @@ import androidx.room.withTransaction
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.ALauncherDatabase
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +22,8 @@ private const val TAG = "DatabaseAdminRepository"
 class DatabaseAdminRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: ALauncherDatabase,
-    private val imageCacheManager: ImageCacheManager
+    private val imageCacheManager: ImageCacheManager,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     /** Wipes RomM-sourced library content AND its downloaded files so a server switch starts clean. */
     suspend fun purgeRomMLibrary() = withContext(Dispatchers.IO) {
@@ -64,6 +67,7 @@ class DatabaseAdminRepository @Inject constructor(
 
         if (clearImages) {
             imageCacheManager.clearCache()
+            attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
         }
     }
 
@@ -80,6 +84,7 @@ class DatabaseAdminRepository @Inject constructor(
             }
         }
         deleteCacheDirs(sources)
+        attributionRepository.markDirty(StorageCategory.GAMES)
     }
 
     private suspend fun deleteCacheDirs(sources: List<GameSource>) {
@@ -87,15 +92,17 @@ class DatabaseAdminRepository @Inject constructor(
             deleteQuietly(AppPaths.saveCacheDir(context.filesDir))
             deleteQuietly(AppPaths.stateCacheDir(context.filesDir))
             deleteQuietly(AppPaths.romCacheDir(context.filesDir))
-            return
-        }
-        for (source in sources) {
-            for (game in database.gameDao().getBySource(source)) {
-                deleteQuietly(File(AppPaths.saveCacheDir(context.filesDir), game.id.toString()))
-                deleteQuietly(File(AppPaths.stateCacheDir(context.filesDir), "${game.platformSlug}/${game.id}"))
-                deleteQuietly(File(AppPaths.romCacheDir(context.filesDir), "${game.platformSlug}/${game.id}"))
+        } else {
+            for (source in sources) {
+                for (game in database.gameDao().getBySource(source)) {
+                    deleteQuietly(File(AppPaths.saveCacheDir(context.filesDir), game.id.toString()))
+                    deleteQuietly(File(AppPaths.stateCacheDir(context.filesDir), "${game.platformSlug}/${game.id}"))
+                    deleteQuietly(File(AppPaths.romCacheDir(context.filesDir), "${game.platformSlug}/${game.id}"))
+                }
             }
         }
+        attributionRepository.markDirty(StorageCategory.SAVE_STATE_CACHE)
+        attributionRepository.markDirty(StorageCategory.ROM_EXTRACTION)
     }
 
     private fun deleteQuietly(dir: File) {

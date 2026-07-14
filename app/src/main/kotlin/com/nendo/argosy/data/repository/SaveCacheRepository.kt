@@ -11,6 +11,8 @@ import com.nendo.argosy.data.local.dao.StateCacheDao
 import com.nendo.argosy.data.local.dao.StateTombstoneDao
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.preferences.SessionStateStore
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +42,8 @@ class SaveCacheRepository @Inject constructor(
     private val saveSyncDao: SaveSyncDao,
     private val pendingSyncQueueDao: PendingSyncQueueDao,
     private val stateTombstoneDao: StateTombstoneDao,
-    private val pendingConflictDao: PendingConflictDao
+    private val pendingConflictDao: PendingConflictDao,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val sessionStateStore by lazy { SessionStateStore(context) }
 
@@ -75,6 +78,7 @@ class SaveCacheRepository @Inject constructor(
         stateCacheDir.deleteRecursively()
         saveCacheDir.mkdirs()
         stateCacheDir.mkdirs()
+        attributionRepository.markDirty(StorageCategory.SAVE_STATE_CACHE)
         true
     }
 

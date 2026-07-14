@@ -25,6 +25,8 @@ import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMDeleteSavesRequest
 import com.nendo.argosy.data.remote.romm.RomMSave
 import com.nendo.argosy.data.remote.romm.RomMState
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.util.AppPaths
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -64,7 +66,8 @@ class StateCacheManager @Inject constructor(
     private val retroArchPathResolver: com.nendo.argosy.data.emulator.RetroArchPathResolver,
     private val libretroStatePathResolver: com.nendo.argosy.data.emulator.LibretroStatePathResolver,
     private val saveSyncApiClient: SaveSyncApiClient,
-    private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec
+    private val payloadCodec: com.nendo.argosy.data.sync.SyncPayloadCodec,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     companion object {
         private const val TAG = "StateCacheManager"
@@ -636,6 +639,7 @@ class StateCacheManager @Inject constructor(
             cacheBaseDir.mkdirs()
         }
         Log.d(TAG, "Cleared all state cache")
+        attributionRepository.markDirty(StorageCategory.SAVE_STATE_CACHE)
         true
     }
 

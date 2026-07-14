@@ -11,6 +11,8 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.model.FilePickerRow
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import kotlinx.coroutines.flow.first
 import java.io.File
 import javax.inject.Inject
@@ -38,7 +40,8 @@ class FilePickerFlowUseCase @Inject constructor(
     private val downloadManager: com.nendo.argosy.data.download.DownloadManager,
     private val bgmPlaylistRepository: BgmPlaylistRepository,
     private val musicDirectoryManager: MusicDirectoryManager,
-    private val controlsPreferencesRepository: ControlsPreferencesRepository
+    private val controlsPreferencesRepository: ControlsPreferencesRepository,
+    private val attributionRepository: StorageAttributionRepository
 ) {
 
     /** Null when there is nothing to choose: callers fall back to a plain download. */
@@ -238,6 +241,8 @@ class FilePickerFlowUseCase @Inject constructor(
                 }
             }
         }
+        attributionRepository.markDirty(StorageCategory.GAMES)
+        attributionRepository.markDirty(StorageCategory.MUSIC)
         return added to removed
     }
 

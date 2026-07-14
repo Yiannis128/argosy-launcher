@@ -10,6 +10,8 @@ import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import com.nendo.argosy.data.download.ZipExtractor
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.data.storage.StoragePathUtils
 import com.nendo.argosy.data.launcher.GameNativeLauncher
 import com.nendo.argosy.data.launcher.SteamLaunchers
@@ -89,7 +91,8 @@ class GameLauncher @Inject constructor(
     private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository,
     private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry,
     private val libretroStatePathResolver: LibretroStatePathResolver,
-    private val notificationManager: com.nendo.argosy.core.notification.NotificationManager
+    private val notificationManager: com.nendo.argosy.core.notification.NotificationManager,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val shellAmAvailable: Boolean by lazy {
         try {
@@ -1917,15 +1920,18 @@ class GameLauncher @Inject constructor(
 
             if (extractedFile.exists()) {
                 Logger.info(TAG, "Extracted to cache: ${extractedFile.name}")
+                attributionRepository.markDirty(StorageCategory.ROM_EXTRACTION)
                 extractedFile
             } else {
                 Logger.error(TAG, "Extraction failed: extracted file doesn't exist: ${extractedFile.absolutePath}")
                 cacheDir.deleteRecursively()
+                attributionRepository.markDirty(StorageCategory.ROM_EXTRACTION)
                 romFile
             }
         } catch (e: Exception) {
             Logger.error(TAG, "Failed to extract archive: ${e.message}", e)
             cacheDir.deleteRecursively()
+            attributionRepository.markDirty(StorageCategory.ROM_EXTRACTION)
             romFile
         }
     }

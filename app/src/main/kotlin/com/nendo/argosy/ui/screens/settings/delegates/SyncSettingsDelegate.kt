@@ -14,6 +14,8 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.SaveCacheRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.ui.screens.settings.PlatformFilterItem
@@ -44,7 +46,8 @@ class SyncSettingsDelegate @Inject constructor(
     private val rommRepository: RomMRepository,
     private val imageCacheManager: ImageCacheManager,
     private val notificationManager: NotificationManager,
-    private val permissionHelper: com.nendo.argosy.util.PermissionHelper
+    private val permissionHelper: com.nendo.argosy.util.PermissionHelper,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val _state = MutableStateFlow(SyncSettingsState())
     val state: StateFlow<SyncSettingsState> = _state.asStateFlow()
@@ -553,6 +556,7 @@ class SyncSettingsDelegate @Inject constructor(
                     } else {
                         notificationManager.showError("Failed to move some images")
                     }
+                    attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
                 } finally {
                     _state.update { it.copy(isImageCacheMigrating = false) }
                 }
@@ -582,6 +586,7 @@ class SyncSettingsDelegate @Inject constructor(
                     } else {
                         notificationManager.showError("Failed to move some images")
                     }
+                    attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
                 } finally {
                     _state.update { it.copy(isImageCacheMigrating = false) }
                 }

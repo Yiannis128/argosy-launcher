@@ -4,6 +4,8 @@ import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.music.MusicDirectoryManager
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -18,7 +20,8 @@ private const val COPY_BUFFER_SIZE = 64 * 1024
 class DownloadMusicTrackUseCase @Inject constructor(
     private val romMRepository: RomMRepository,
     private val gameFileDao: GameFileDao,
-    private val musicDirectoryManager: MusicDirectoryManager
+    private val musicDirectoryManager: MusicDirectoryManager,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     suspend operator fun invoke(
         rommFileId: Long,
@@ -59,6 +62,7 @@ class DownloadMusicTrackUseCase @Inject constructor(
                 gameFileDao.updateLocalPath(row.id, target.absolutePath, Instant.now())
             }
             musicDirectoryManager.scanFile(target)
+            attributionRepository.markDirty(StorageCategory.MUSIC)
             Result.success(target)
         } catch (e: Exception) {
             tempFile.delete()

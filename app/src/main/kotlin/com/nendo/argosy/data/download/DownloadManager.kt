@@ -21,6 +21,8 @@ import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.download.nsz.NszDecompressor
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.M3uManager
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.DualScreenManagerHolder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.nendo.argosy.util.Logger
@@ -146,7 +148,8 @@ class DownloadManager @Inject constructor(
     private val thermalManager: dagger.Lazy<DownloadThermalManager>,
     private val emulatorResolver: EmulatorResolver,
     private val steamContentManager: dagger.Lazy<com.nendo.argosy.data.steam.SteamContentManager>,
-    private val musicDirectoryManager: MusicDirectoryManager
+    private val musicDirectoryManager: MusicDirectoryManager,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val _state = MutableStateFlow(DownloadQueueState())
     val state: StateFlow<DownloadQueueState> = _state.asStateFlow()
@@ -994,8 +997,10 @@ class DownloadManager @Inject constructor(
                     mapSelectedFilesToDisk(progress.gameId, progress.selectedFileIds, File(finalPath))
                 }
                 relocateSoundtrackFiles(progress.gameId, File(finalPath), platformDir)
+                attributionRepository.markDirty(StorageCategory.MUSIC)
             }
         }
+        attributionRepository.markDirty(StorageCategory.GAMES)
 
         _completionEvents.emit(
             DownloadCompletionEvent(
@@ -1426,6 +1431,7 @@ class DownloadManager @Inject constructor(
                 }
             }
             downloadQueueDao.deleteByGameId(gameId)
+            attributionRepository.markDirty(StorageCategory.GAMES)
 
             _completionEvents.emit(
                 DownloadCompletionEvent(

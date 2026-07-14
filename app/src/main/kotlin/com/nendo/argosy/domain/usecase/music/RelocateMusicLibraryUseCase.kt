@@ -5,6 +5,8 @@ import com.nendo.argosy.data.music.BgmPlaylistRepository
 import com.nendo.argosy.data.music.MusicDirectoryManager
 import com.nendo.argosy.data.preferences.ControlsPreferencesRepository
 import com.nendo.argosy.data.preferences.StoragePreferencesRepository
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -16,7 +18,8 @@ class RelocateMusicLibraryUseCase @Inject constructor(
     private val bgmPlaylistRepository: BgmPlaylistRepository,
     private val gameFileDao: GameFileDao,
     private val controlsPreferencesRepository: ControlsPreferencesRepository,
-    private val storagePreferences: StoragePreferencesRepository
+    private val storagePreferences: StoragePreferencesRepository,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     suspend operator fun invoke(
         oldPath: String,
@@ -34,5 +37,6 @@ class RelocateMusicLibraryUseCase @Inject constructor(
             controlsPreferencesRepository.rewriteSoundConfigPathPrefix(oldPrefix, newPrefix)
         }
         storagePreferences.setMusicStoragePath(target.absolutePath)
+        attributionRepository.markDirty(StorageCategory.MUSIC)
     }
 }
