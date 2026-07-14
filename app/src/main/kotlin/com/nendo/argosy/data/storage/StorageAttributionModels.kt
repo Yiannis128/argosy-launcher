@@ -12,6 +12,7 @@ enum class StorageCategory {
     BIOS,
     CORES_SYSTEM,
     STEAM,
+    ANDROID_APPS,
     SHADERS_CATALOG,
     SHADERS_CUSTOM,
     FRAMES,
@@ -44,10 +45,17 @@ data class PlatformUsage(
     val perVolume: Map<String, Long>
 )
 
+/** Cheap per-volume change detector: any material write moves [usedBytes]. */
+data class VolumeFingerprint(
+    val totalBytes: Long,
+    val usedBytes: Long
+)
+
 data class StorageSnapshot(
     val computedAt: Long,
     val categories: Map<StorageCategory, CategoryUsage>,
-    val gamesPerPlatform: List<PlatformUsage>
+    val gamesPerPlatform: List<PlatformUsage>,
+    val volumeFingerprints: Map<String, VolumeFingerprint> = emptyMap()
 )
 
 /** Live-detected volume; never persisted. [key] is the canonical root path used for attribution. */

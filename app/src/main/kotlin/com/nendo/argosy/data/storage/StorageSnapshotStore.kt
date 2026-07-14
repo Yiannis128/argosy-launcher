@@ -28,10 +28,17 @@ internal data class PersistedPlatformUsage(
 )
 
 @JsonClass(generateAdapter = true)
+internal data class PersistedVolumeFingerprint(
+    val totalBytes: Long,
+    val usedBytes: Long
+)
+
+@JsonClass(generateAdapter = true)
 internal data class PersistedStorageSnapshot(
     val computedAt: Long,
     val categories: Map<String, PersistedCategoryUsage>,
-    val gamesPerPlatform: List<PersistedPlatformUsage>
+    val gamesPerPlatform: List<PersistedPlatformUsage>,
+    val volumeFingerprints: Map<String, PersistedVolumeFingerprint> = emptyMap()
 )
 
 /** Persists the last completed [StorageSnapshot] as Moshi JSON under a single DataStore key. */
@@ -65,6 +72,9 @@ class StorageSnapshotStore @Inject constructor(
         }.toMap(),
         gamesPerPlatform = gamesPerPlatform.map {
             PlatformUsage(it.platformId, it.name, it.sortOrder, it.downloadedCount, it.bytes, it.perVolume)
+        },
+        volumeFingerprints = volumeFingerprints.mapValues { (_, fp) ->
+            VolumeFingerprint(fp.totalBytes, fp.usedBytes)
         }
     )
 
@@ -75,6 +85,9 @@ class StorageSnapshotStore @Inject constructor(
         },
         gamesPerPlatform = gamesPerPlatform.map {
             PersistedPlatformUsage(it.platformId, it.name, it.sortOrder, it.downloadedCount, it.bytes, it.perVolume)
+        },
+        volumeFingerprints = volumeFingerprints.mapValues { (_, fp) ->
+            PersistedVolumeFingerprint(fp.totalBytes, fp.usedBytes)
         }
     )
 
