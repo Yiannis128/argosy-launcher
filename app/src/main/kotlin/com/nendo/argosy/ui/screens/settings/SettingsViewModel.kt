@@ -48,6 +48,7 @@ import com.nendo.argosy.ui.screens.settings.delegates.RASettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.ServerSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.SoundSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.SteamSettingsDelegate
+import com.nendo.argosy.ui.screens.settings.delegates.StorageAttributionDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.StorageSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.SyncSettingsDelegate
 import com.nendo.argosy.core.emulator.LibretroSettingDef
@@ -101,6 +102,7 @@ class SettingsViewModel @Inject constructor(
     val emulatorDelegate: EmulatorSettingsDelegate,
     val serverDelegate: ServerSettingsDelegate,
     val storageDelegate: StorageSettingsDelegate,
+    val attributionDelegate: StorageAttributionDelegate,
     val syncDelegate: SyncSettingsDelegate,
     val steamDelegate: SteamSettingsDelegate,
     val raDelegate: RASettingsDelegate,
@@ -1073,11 +1075,11 @@ class SettingsViewModel @Inject constructor(
     fun onMediaPermissionResult(granted: Boolean) = routeOnMediaPermissionResult(this, granted)
     fun runSaveSyncNow() = syncDelegate.runSaveSyncNow(viewModelScope)
 
-    fun requestResetSaveCache() = syncDelegate.requestResetSaveCache()
+    fun requestResetSaveCache() = syncDelegate.requestResetSaveCache(viewModelScope)
     fun confirmResetSaveCache() = syncDelegate.confirmResetSaveCache(viewModelScope)
     fun cancelResetSaveCache() = syncDelegate.cancelResetSaveCache()
 
-    fun requestClearPathCache() = syncDelegate.requestClearPathCache()
+    fun requestClearPathCache() = syncDelegate.requestClearPathCache(viewModelScope)
     fun confirmClearPathCache() = syncDelegate.confirmClearPathCache(viewModelScope)
     fun cancelClearPathCache() = syncDelegate.cancelClearPathCache()
 
@@ -1094,12 +1096,8 @@ class SettingsViewModel @Inject constructor(
     fun validateImageCache() = routeValidateImageCache(this)
     fun validateDownloads() = routeValidateDownloads(this)
 
-    fun toggleWeeklyIntegrityCheck(enabled: Boolean) {
-        _uiState.update { it.copy(storage = it.storage.copy(weeklyIntegrityCheckEnabled = enabled)) }
-        viewModelScope.launch {
-            preferencesRepository.setWeeklyIntegrityCheckEnabled(enabled)
-        }
-    }
+    fun toggleWeeklyIntegrityCheck(enabled: Boolean) =
+        storageDelegate.toggleWeeklyIntegrityCheck(viewModelScope, enabled)
 
     fun cycleMaxConcurrentDownloads() = storageDelegate.cycleMaxConcurrentDownloads(viewModelScope)
 
@@ -1187,7 +1185,7 @@ class SettingsViewModel @Inject constructor(
     fun requestPurgePlatform(platformId: Long) = storageDelegate.requestPurgePlatform(platformId)
     fun confirmPurgePlatform() = storageDelegate.confirmPurgePlatform(viewModelScope)
     fun cancelPurgePlatform() = storageDelegate.cancelPurgePlatform()
-    fun requestPurgeAll() = storageDelegate.requestPurgeAll()
+    fun requestPurgeAll() = storageDelegate.requestPurgeAll(viewModelScope)
     fun confirmPurgeAll() = storageDelegate.confirmPurgeAll(viewModelScope)
     fun cancelPurgeAll() = storageDelegate.cancelPurgeAll()
     fun confirmPlatformMigration() = storageDelegate.confirmPlatformMigration(viewModelScope)

@@ -110,6 +110,11 @@ internal fun routeObserveDelegateStates(vm: SettingsViewModel) {
         vm._uiState.update { it.copy(isMigrating = migrating) }
     }.launchIn(vm.viewModelScope)
 
+    vm.attributionDelegate.state.onEach { attribution ->
+        vm._uiState.update { it.copy(attribution = attribution) }
+    }.launchIn(vm.viewModelScope)
+    vm.attributionDelegate.initFlowCollection(vm.viewModelScope)
+
     vm.syncDelegate.state.onEach { syncSettings ->
         vm._uiState.update { it.copy(syncSettings = syncSettings) }
     }.launchIn(vm.viewModelScope)
@@ -570,7 +575,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             availableSpace = availableSpace,
             screenDimmerEnabled = prefs.screenDimmerEnabled,
             screenDimmerTimeoutMinutes = prefs.screenDimmerTimeoutMinutes,
-            screenDimmerLevel = prefs.screenDimmerLevel
+            screenDimmerLevel = prefs.screenDimmerLevel,
+            weeklyIntegrityCheckEnabled = prefs.weeklyIntegrityCheckEnabled
         ))
         vm.storageDelegate.checkAllFilesAccess()
         val platformEmulatorInfoMap = mutableMapOf<Long, StorageSettingsDelegate.PlatformEmulatorInfo>()

@@ -28,6 +28,11 @@ data class MissingGameFile(
     val platformSlug: String
 )
 
+data class PlatformLocalPath(
+    val platformId: Long,
+    val localPath: String
+)
+
 @Dao
 interface GameFileDao {
 
@@ -51,6 +56,14 @@ interface GameFileDao {
 
     @Query("SELECT * FROM game_files WHERE localPath IS NOT NULL")
     suspend fun getAllWithLocalPath(): List<GameFileEntity>
+
+    @Query("""
+        SELECT g.platformId AS platformId, gf.localPath AS localPath
+        FROM game_files gf
+        INNER JOIN games g ON gf.gameId = g.id
+        WHERE gf.localPath IS NOT NULL
+    """)
+    suspend fun getAllLocalPathsWithPlatform(): List<PlatformLocalPath>
 
     @Query("SELECT * FROM game_files WHERE id = :id")
     suspend fun getById(id: Long): GameFileEntity?

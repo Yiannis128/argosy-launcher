@@ -687,10 +687,21 @@ data class StorageState(
     val isValidatingCache: Boolean = false,
     val isValidatingDownloads: Boolean = false,
     val showPurgeAllConfirm: Boolean = false,
+    val purgeAllPendingUploads: Int = 0,
     val isPurgingAll: Boolean = false,
     val weeklyIntegrityCheckEnabled: Boolean = true,
     val busyPlatformIds: Set<Long> = emptySet(),
     val isLibrarySyncing: Boolean = false
+)
+
+enum class StorageGamesSortMode { SIZE, NAME }
+
+data class StorageAttributionState(
+    val snapshot: com.nendo.argosy.data.storage.StorageSnapshot? = null,
+    val volumes: List<com.nendo.argosy.data.storage.StorageVolumeInfo> = emptyList(),
+    val walkProgress: Map<com.nendo.argosy.data.storage.StorageCategory, com.nendo.argosy.data.storage.WalkState> = emptyMap(),
+    val isRefreshing: Boolean = false,
+    val gamesSortMode: StorageGamesSortMode = StorageGamesSortMode.SIZE
 )
 
 data class PlatformMigrationInfo(
@@ -1104,6 +1115,7 @@ data class SettingsUiState(
     val coreOptions: CoreOptionsState = CoreOptionsState(),
     val server: ServerState = ServerState(),
     val storage: StorageState = StorageState(),
+    val attribution: StorageAttributionState = StorageAttributionState(),
     val platformLibretro: PlatformLibretroState = PlatformLibretroState(),
     val syncSettings: SyncSettingsState = SyncSettingsState(),
     val steam: SteamSettingsState = SteamSettingsState(),
