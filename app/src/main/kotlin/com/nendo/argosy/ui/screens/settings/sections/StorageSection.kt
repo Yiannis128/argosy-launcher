@@ -222,7 +222,7 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     val isPurging = storage.isPurgingAll
                     ActionPreference(
                         title = "Reset Library",
-                        subtitle = if (isPurging) "Resetting..." else "Clear database and image cache, keep downloaded files",
+                        subtitle = if (isPurging) "Resetting..." else "Clears the database and image cache. Downloaded files stay on disk.",
                         isFocused = isFocused(item),
                         isDangerous = true,
                         isEnabled = !isPurging,

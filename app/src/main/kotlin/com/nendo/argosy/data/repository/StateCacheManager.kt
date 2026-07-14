@@ -76,7 +76,9 @@ class StateCacheManager @Inject constructor(
     }
 
     private val cacheBaseDir: File
-        get() = File(context.filesDir, "state_cache")
+        get() = AppPaths.stateCacheDir(context.filesDir)
+
+    private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
 
     @Volatile
     private var legacyCacheCleared = false
@@ -620,12 +622,21 @@ class StateCacheManager @Inject constructor(
         deletedAny
     }
 
-    suspend fun clearAllCache() = withContext(Dispatchers.IO) {
+    /** Deletes all state cache rows AND files; returns false when blocked by an active session. */
+    suspend fun clearAllCache(): Boolean = withContext(Dispatchers.IO) {
+        if (sessionStateStore.hasActiveSession()) {
+            Log.w(TAG, "clearAllCache blocked: active game session")
+            return@withContext false
+        }
+        pendingSyncQueueDao.deleteBySyncType(SyncType.SAVE_STATE)
+        stateCacheDao.deleteAll()
+        stateTombstoneDao.deleteAll()
         if (cacheBaseDir.exists()) {
             cacheBaseDir.deleteRecursively()
             cacheBaseDir.mkdirs()
         }
         Log.d(TAG, "Cleared all state cache")
+        true
     }
 
     sealed class StateCloudResult {

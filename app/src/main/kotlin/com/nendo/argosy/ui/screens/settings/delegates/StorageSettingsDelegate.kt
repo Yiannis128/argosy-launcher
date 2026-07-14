@@ -48,6 +48,7 @@ class StorageSettingsDelegate @Inject constructor(
     private val syncPlatformUseCase: SyncPlatformUseCase,
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val databaseAdminRepository: DatabaseAdminRepository,
+    private val saveCacheRepository: com.nendo.argosy.data.repository.SaveCacheRepository,
     private val managedStorageAccessor: ManagedStorageAccessor,
     private val notificationManager: NotificationManager
 ) {
@@ -624,6 +625,13 @@ class StorageSettingsDelegate @Inject constructor(
         }
     }
 
+    fun toggleWeeklyIntegrityCheck(scope: CoroutineScope, enabled: Boolean) {
+        scope.launch {
+            preferencesRepository.setWeeklyIntegrityCheckEnabled(enabled)
+            _state.update { it.copy(weeklyIntegrityCheckEnabled = enabled) }
+        }
+    }
+
     fun toggleScreenDimmer(scope: CoroutineScope) {
         scope.launch {
             val current = _state.value.screenDimmerEnabled
@@ -673,8 +681,13 @@ class StorageSettingsDelegate @Inject constructor(
         }
     }
 
-    fun requestPurgeAll() {
-        _state.update { it.copy(showPurgeAllConfirm = true) }
+    fun requestPurgeAll(scope: CoroutineScope) {
+        scope.launch {
+            val pendingUploads = saveCacheRepository.getPendingSyncCounts().pendingUploads
+            _state.update {
+                it.copy(showPurgeAllConfirm = true, purgeAllPendingUploads = pendingUploads)
+            }
+        }
     }
 
     fun cancelPurgeAll() {

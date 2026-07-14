@@ -1,10 +1,13 @@
 package com.nendo.argosy.data.repository
 
+import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.ALauncherDatabase
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.util.AppPaths
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -15,34 +18,29 @@ private const val TAG = "DatabaseAdminRepository"
 
 @Singleton
 class DatabaseAdminRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val database: ALauncherDatabase,
     private val imageCacheManager: ImageCacheManager
 ) {
-    /** Wipes RomM-sourced library content so a server switch starts clean; preserves other sources, input config, cores, settings. */
-    suspend fun purgeRomMLibrary() =
-        purgeLibrary(listOf(GameSource.ROMM_REMOTE, GameSource.ROMM_SYNCED), includeLocalCollections = false)
+    /** Wipes RomM-sourced library content AND its downloaded files so a server switch starts clean. */
+    suspend fun purgeRomMLibrary() = withContext(Dispatchers.IO) {
+        val sources = listOf(GameSource.ROMM_REMOTE, GameSource.ROMM_SYNCED)
+        deleteDownloadedFiles(sources)
+        purgeDatabase(sources, includeLocalCollections = false, clearImages = true)
+    }
 
-    /** Resets the entire game library across all sources; preserves input config, installed cores, theme, and settings. */
-    suspend fun purgeAllLibrary() =
-        purgeLibrary(GameSource.entries, includeLocalCollections = true)
+    /** Resets the entire library database and per-game caches; downloaded ROM files stay on disk. */
+    suspend fun purgeAllLibrary() = withContext(Dispatchers.IO) {
+        deleteCacheDirs(GameSource.entries)
+        purgeDatabase(GameSource.entries, includeLocalCollections = true, clearImages = true)
+    }
 
-    private suspend fun purgeLibrary(
+    suspend fun purgeDatabase(
         sources: List<GameSource>,
-        includeLocalCollections: Boolean
+        includeLocalCollections: Boolean,
+        clearImages: Boolean
     ) = withContext(Dispatchers.IO) {
         val sourceNames = sources.map { it.name }
-
-        for (game in database.gameDao().getDownloadedBySources(sources)) {
-            val path = game.localPath ?: continue
-            try {
-                val file = File(path)
-                if (file.exists()) {
-                    if (file.isDirectory) file.deleteRecursively() else file.delete()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "purgeLibrary: failed to delete $path: ${e.message}")
-            }
-        }
 
         database.withTransaction {
             database.saveSyncDao().deleteByGameSources(sourceNames)
@@ -61,8 +59,50 @@ class DatabaseAdminRepository @Inject constructor(
             database.gameDao().deleteBySources(sources)
             database.platformDao().deleteEmptyPlatforms()
             database.pinnedCollectionDao().deleteOrphaned()
+            database.bgmPlaylistDao().clearDanglingGameFileIds()
         }
 
-        imageCacheManager.clearCache()
+        if (clearImages) {
+            imageCacheManager.clearCache()
+        }
+    }
+
+    suspend fun deleteDownloadedFiles(sources: List<GameSource>) = withContext(Dispatchers.IO) {
+        for (game in database.gameDao().getDownloadedBySources(sources)) {
+            val path = game.localPath ?: continue
+            try {
+                val file = File(path)
+                if (file.exists()) {
+                    if (file.isDirectory) file.deleteRecursively() else file.delete()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteDownloadedFiles: failed to delete $path: ${e.message}")
+            }
+        }
+        deleteCacheDirs(sources)
+    }
+
+    private suspend fun deleteCacheDirs(sources: List<GameSource>) {
+        if (sources.containsAll(GameSource.entries)) {
+            deleteQuietly(AppPaths.saveCacheDir(context.filesDir))
+            deleteQuietly(AppPaths.stateCacheDir(context.filesDir))
+            deleteQuietly(AppPaths.romCacheDir(context.filesDir))
+            return
+        }
+        for (source in sources) {
+            for (game in database.gameDao().getBySource(source)) {
+                deleteQuietly(File(AppPaths.saveCacheDir(context.filesDir), game.id.toString()))
+                deleteQuietly(File(AppPaths.stateCacheDir(context.filesDir), "${game.platformSlug}/${game.id}"))
+                deleteQuietly(File(AppPaths.romCacheDir(context.filesDir), "${game.platformSlug}/${game.id}"))
+            }
+        }
+    }
+
+    private fun deleteQuietly(dir: File) {
+        try {
+            if (dir.exists()) dir.deleteRecursively()
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteQuietly: failed to delete ${dir.absolutePath}: ${e.message}")
+        }
     }
 }

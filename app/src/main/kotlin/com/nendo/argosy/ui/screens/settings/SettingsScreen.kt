@@ -723,15 +723,29 @@ fun SettingsScreen(
         onDismiss = { viewModel.cancelPurgePlatform() }
     )
 
-    ArgosyConfirmModalHost(
-        visible = uiState.storage.showPurgeAllConfirm,
-        title = "Reset Library?",
-        message = "This will clear all metadata, platforms, and cached images. Downloaded ROM files will be preserved. You will need to re-sync your library.",
-        confirmLabel = "Reset",
-        destructive = true,
-        onConfirm = { viewModel.confirmPurgeAll() },
-        onDismiss = { viewModel.cancelPurgeAll() }
-    )
+    if (uiState.storage.purgeAllPendingUploads > 0) {
+        ArgosyConfirmModalHost(
+            visible = uiState.storage.showPurgeAllConfirm,
+            title = "Sync Saves First",
+            message = "Sync saves first - ${uiState.storage.purgeAllPendingUploads} pending. Resetting the library now would permanently discard saves that have not been uploaded.",
+            confirmLabel = "Sync Now",
+            onConfirm = {
+                viewModel.cancelPurgeAll()
+                viewModel.requestSyncSaves()
+            },
+            onDismiss = { viewModel.cancelPurgeAll() }
+        )
+    } else {
+        ArgosyConfirmModalHost(
+            visible = uiState.storage.showPurgeAllConfirm,
+            title = "Reset Library?",
+            message = "Clears the database and image cache. Downloaded files stay on disk. Permanently lost: play time, local collections, download history, save sync state, and per-game settings. You will need to re-sync your library.",
+            confirmLabel = "Reset",
+            destructive = true,
+            onConfirm = { viewModel.confirmPurgeAll() },
+            onDismiss = { viewModel.cancelPurgeAll() }
+        )
+    }
 
     ArgosyConfirmModalHost(
         visible = uiState.syncSettings.showResetSaveCacheConfirm,

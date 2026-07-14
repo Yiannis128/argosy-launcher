@@ -76,6 +76,7 @@ class RomMConnectionManager @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val saveSyncRepository: dagger.Lazy<com.nendo.argosy.data.repository.SaveSyncRepository>,
     private val databaseAdminRepository: dagger.Lazy<com.nendo.argosy.data.repository.DatabaseAdminRepository>,
+    private val saveCacheRepository: dagger.Lazy<com.nendo.argosy.data.repository.SaveCacheRepository>,
     private val biosRepository: BiosRepository
 ) {
     private var api: RomMApi? = null
@@ -180,6 +181,13 @@ class RomMConnectionManager @Inject constructor(
         val storedKey = userPreferencesRepository.preferences.first().rommBaseUrl?.let { normalizeServerKey(it) }
         val newKey = normalizeServerKey(newBaseUrl)
         if (!storedKey.isNullOrBlank() && storedKey != newKey) {
+            val pendingUploads = saveCacheRepository.get().getPendingSyncCounts().pendingUploads
+            if (pendingUploads > 0) {
+                Logger.info(TAG, "persistRommCredentials: server switch blocked, $pendingUploads saves pending upload")
+                throw IllegalStateException(
+                    "Sync saves first - $pendingUploads pending upload. Switching servers would delete them."
+                )
+            }
             Logger.info(TAG, "persistRommCredentials: server changed ($storedKey -> $newKey), purging RomM library")
             databaseAdminRepository.get().purgeRomMLibrary()
         }

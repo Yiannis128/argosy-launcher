@@ -62,6 +62,9 @@ interface BgmPlaylistDao {
     @Query("UPDATE bgm_playlist SET sourceEntryId = :sourceEntryId, enabled = 0 WHERE id = :id")
     suspend fun convertToDisabledSourced(id: Long, sourceEntryId: Long)
 
+    @Query("UPDATE bgm_playlist SET gameFileId = NULL WHERE gameFileId IS NOT NULL AND gameFileId NOT IN (SELECT id FROM game_files)")
+    suspend fun clearDanglingGameFileIds()
+
     @Query("UPDATE bgm_playlist SET position = :position WHERE id = :id")
     suspend fun updatePosition(id: Long, position: Int)
 
