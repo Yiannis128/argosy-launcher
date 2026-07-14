@@ -40,7 +40,6 @@ class SecondaryHomeInputHandler(
 
     fun routeInput(
         event: GamepadEvent,
-        useDualScreenMode: Boolean,
         isArgosyForeground: Boolean,
         isGameActive: Boolean,
         currentScreen: CompanionScreen
@@ -51,15 +50,13 @@ class SecondaryHomeInputHandler(
         val saveConflictResult = handleSaveConflictInput(event)
         if (saveConflictResult.handled) return saveConflictResult
 
-        return if (useDualScreenMode && isArgosyForeground && !isGameActive) {
+        return if (isArgosyForeground && !isGameActive) {
             when (currentScreen) {
-            CompanionScreen.HOME -> handleDualHomeInput(event)
-            CompanionScreen.GAME_DETAIL -> handleDualDetailInput(event)
-        }
-        } else if (useDualScreenMode && isGameActive) {
-            handleCompanionInput(event)
+                CompanionScreen.HOME -> handleDualHomeInput(event)
+                CompanionScreen.GAME_DETAIL -> handleDualDetailInput(event)
+            }
         } else {
-            handleGridInput(event)
+            handleCompanionInput(event)
         }
     }
 
@@ -271,51 +268,6 @@ class SecondaryHomeInputHandler(
         }
     }
 
-    fun handleGridInput(event: GamepadEvent): InputResult {
-        if (viewModel.uiState.value.isDrawerOpen) return handleDrawerInput(event)
-
-        return when (event) {
-            GamepadEvent.Up -> {
-                viewModel.moveFocusUp()
-                InputResult.HANDLED
-            }
-            GamepadEvent.Down -> {
-                viewModel.moveFocusDown()
-                InputResult.HANDLED
-            }
-            GamepadEvent.Left -> {
-                viewModel.moveFocusLeft()
-                InputResult.HANDLED
-            }
-            GamepadEvent.Right -> {
-                viewModel.moveFocusRight()
-                InputResult.HANDLED
-            }
-            GamepadEvent.PrevSection -> {
-                viewModel.previousSection()
-                InputResult.HANDLED
-            }
-            GamepadEvent.NextSection -> {
-                viewModel.nextSection()
-                InputResult.HANDLED
-            }
-            GamepadEvent.Confirm -> {
-                selectFocusedGame()
-                InputResult.HANDLED
-            }
-            GamepadEvent.ContextMenu -> {
-                launchFocusedGame()
-                InputResult.HANDLED
-            }
-            GamepadEvent.Select -> {
-                viewModel.openDrawer()
-                broadcasts.broadcastViewModeChange(drawerOpen = true)
-                InputResult.HANDLED
-            }
-            else -> InputResult.UNHANDLED
-        }
-    }
-
     fun handleOption(vm: DualGameDetailViewModel, option: GameDetailOption) {
         val gameId = vm.uiState.value.gameId
         when (option) {
@@ -481,9 +433,7 @@ class SecondaryHomeInputHandler(
                     dualHomeViewModel.focusCarousel()
                     broadcasts.broadcastViewModeChange()
                 }
-                dualHomeViewModel.previousSection()
-                broadcasts.broadcastCurrentGameSelection()
-                onPersistCarouselPosition()
+                dualHomeViewModel.previousSection { onPersistCarouselPosition() }
                 InputResult.HANDLED
             }
             GamepadEvent.NextSection -> {
@@ -491,9 +441,7 @@ class SecondaryHomeInputHandler(
                     dualHomeViewModel.focusCarousel()
                     broadcasts.broadcastViewModeChange()
                 }
-                dualHomeViewModel.nextSection()
-                broadcasts.broadcastCurrentGameSelection()
-                onPersistCarouselPosition()
+                dualHomeViewModel.nextSection { onPersistCarouselPosition() }
                 InputResult.HANDLED
             }
             GamepadEvent.Select -> {
@@ -1247,17 +1195,6 @@ class SecondaryHomeInputHandler(
 
     private fun launchDrawerApp(intent: android.content.Intent?, options: android.os.Bundle?) {
         drawerAppLauncher?.invoke(intent, options)
-    }
-
-    private fun selectFocusedGame() {
-        val (intent, options) = viewModel.selectFocusedGame() ?: return
-        drawerAppLauncher?.invoke(intent, options)
-    }
-
-    private fun launchFocusedGame() {
-        val result = viewModel.launchFocusedGame() ?: return
-        val (intent, options) = result
-        intent?.let { drawerAppLauncher?.invoke(it, options) }
     }
 }
 

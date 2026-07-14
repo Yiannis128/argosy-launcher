@@ -145,9 +145,9 @@ class SecondaryHomeBroadcastHelper(
     }
 
     fun broadcastCurrentGameSelection() {
-        val state = dualHomeViewModel.uiState.value
-        val game = state.selectedGame ?: return
-        dsm.onGameSelected(game.toShowcaseState())
+        val game = dualHomeViewModel.uiState.value.selectedGame
+        if (game != null) dsm.onGameSelected(game.toShowcaseState())
+        else dsm.onGameSelected(com.nendo.argosy.ui.dualscreen.home.DualHomeShowcaseState())
     }
 
     fun broadcastDirectAction(

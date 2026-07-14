@@ -38,7 +38,6 @@ class SecondaryHomeStateManager(
         private set
 
     data class InitialState(
-        val useDualScreenMode: Boolean,
         val isShowcaseRole: Boolean,
         val isArgosyForeground: Boolean,
         val isGameActive: Boolean,
@@ -50,6 +49,7 @@ class SecondaryHomeStateManager(
         val activeGameId: Long,
         val savedSection: Int,
         val savedSelected: Int,
+        val restoreScheduled: Boolean,
         val restoredScreen: CompanionScreen?,
         val restoredDetailViewModel: DualGameDetailViewModel?,
         val restoredDetailGameId: Long
@@ -72,7 +72,6 @@ class SecondaryHomeStateManager(
         sessionStateStore = SessionStateStore(context)
 
         displayAffinityHelper.dualScreenEnabled = sessionStateStore.isDualScreenEnabled()
-        val useDualScreenMode = displayAffinityHelper.hasSecondaryDisplay
         val resolver = DisplayRoleResolver(displayAffinityHelper, sessionStateStore)
         val isShowcaseRole = resolver.isSwapped
 
@@ -90,10 +89,12 @@ class SecondaryHomeStateManager(
 
         val activeGameId = sessionStateStore.getGameId()
 
-        val savedSection = sessionStateStore.getCarouselSectionIndex()
-        val savedSelected = sessionStateStore.getCarouselSelectedIndex()
-        if (savedSection > 0 || savedSelected > 0) {
-            dualHomeViewModel.restorePosition(savedSection, savedSelected)
+        val navContext = sessionStateStore.getCarouselNavContext()
+        val savedSection = navContext.legacySectionIndex
+        val savedSelected = navContext.legacySelectedIndex
+        val restoreScheduled = navContext.hasContext || savedSection > 0 || savedSelected > 0
+        if (restoreScheduled) {
+            dualHomeViewModel.restoreNavContext(navContext)
         }
 
         val savedScreen = sessionStateStore.getCompanionScreen()
@@ -136,7 +137,6 @@ class SecondaryHomeStateManager(
         }
 
         return InitialState(
-            useDualScreenMode = useDualScreenMode,
             isShowcaseRole = isShowcaseRole,
             isGameActive = isGameActive,
             isArgosyForeground = isArgosyForeground,
@@ -148,6 +148,7 @@ class SecondaryHomeStateManager(
             activeGameId = activeGameId,
             savedSection = savedSection,
             savedSelected = savedSelected,
+            restoreScheduled = restoreScheduled,
             restoredScreen = restoredScreen,
             restoredDetailViewModel = restoredDetailViewModel,
             restoredDetailGameId = restoredDetailGameId
@@ -220,10 +221,6 @@ class SecondaryHomeStateManager(
     }
 
     fun persistCarouselPosition(dualHomeViewModel: DualHomeViewModel) {
-        val state = dualHomeViewModel.uiState.value
-        sessionStateStore.setCarouselPosition(
-            state.currentSectionIndex,
-            state.selectedIndex
-        )
+        sessionStateStore.setCarouselNavContext(dualHomeViewModel.currentNavContext())
     }
 }

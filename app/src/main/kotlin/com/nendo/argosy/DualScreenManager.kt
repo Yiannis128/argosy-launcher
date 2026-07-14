@@ -541,6 +541,11 @@ class DualScreenManager(
             val state = _dualGameDetailState.value
             if (state?.modalType != null && state.modalType != ActiveModal.NONE) {
                 _dualGameDetailState.update { it?.copy(modalType = ActiveModal.NONE) }
+                companionHost?.onModalResult(
+                    dismissed = true, type = null, value = 0,
+                    statusSelected = null, selectedIndex = -1,
+                    collectionToggleId = -1, collectionCreateName = null
+                )
                 Log.w(TAG, "Companion watchdog: auto-dismissed stale modal")
             }
         }
