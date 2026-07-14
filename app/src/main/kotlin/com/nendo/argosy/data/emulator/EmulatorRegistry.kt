@@ -332,7 +332,7 @@ object EmulatorRegistry {
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini", "gameandwatch",
-                "arcade", "fbneo", "mame", "supergrafx",
+                "arcade", "fbneo", "mame", "cps1", "cps2", "cps3", "supergrafx",
                 "c64", "vic20", "amiga", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
@@ -352,7 +352,7 @@ object EmulatorRegistry {
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini", "gameandwatch",
-                "arcade", "fbneo", "mame", "supergrafx",
+                "arcade", "fbneo", "mame", "cps1", "cps2", "cps3", "supergrafx",
                 "c64", "vic20", "amiga", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
@@ -836,7 +836,7 @@ object EmulatorRegistry {
             id = "fbalpha",
             packageName = "com.bangkokfusion.finalburn",
             displayName = "FinalBurn Alpha",
-            supportedPlatforms = setOf("arcade", "fbneo", "neogeo"),
+            supportedPlatforms = setOf("arcade", "fbneo", "neogeo", "cps1", "cps2", "cps3"),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.bangkokfusion.finalburn"
         ),
 
@@ -993,6 +993,9 @@ object EmulatorRegistry {
         "arcade" to listOf("flycast", "mame4droid", "fbalpha", "retroarch", "retroarch_64"),
         "fbneo" to listOf("fbalpha", "retroarch", "retroarch_64"),
         "mame" to listOf("mame4droid", "retroarch", "retroarch_64"),
+        "cps1" to listOf("fbalpha", "retroarch", "retroarch_64"),
+        "cps2" to listOf("fbalpha", "retroarch", "retroarch_64"),
+        "cps3" to listOf("fbalpha", "retroarch", "retroarch_64"),
         "neogeo" to listOf("fbalpha", "retroarch", "retroarch_64"),
         "dos" to listOf("magic_dosbox", "dosbox_turbo"),
         "scummvm" to listOf("scummvm", "retroarch", "retroarch_64"),
@@ -1059,6 +1062,9 @@ object EmulatorRegistry {
         "arcade" to "fbneo",
         "fbneo" to "fbneo",
         "mame" to "mame2003_plus",
+        "cps1" to "fbneo",
+        "cps2" to "fbneo",
+        "cps3" to "fbneo",
         "dos" to "dosbox_pure",
         "msx" to "bluemsx",
         "msx2" to "bluemsx",
@@ -1111,6 +1117,9 @@ object EmulatorRegistry {
         "arcade" to listOf("fbneo", "mame", "fbalpha"),
         "fbneo" to listOf("fbneo", "fbalpha"),
         "mame" to listOf("mame", "mame2003_plus", "mame2010"),
+        "cps1" to listOf("fbneo", "fbalpha2012_cps1"),
+        "cps2" to listOf("fbneo", "fbalpha2012_cps2"),
+        "cps3" to listOf("fbneo", "fbalpha2012_cps3"),
         "amstradcpc" to listOf("cap32", "crocods"),
         "dos" to listOf("dosbox_pure", "dosbox_core", "dosbox_svn"),
         "msx" to listOf("bluemsx", "fmsx"),
@@ -1284,6 +1293,18 @@ object EmulatorRegistry {
             RetroArchCore("mame2003_plus", "MAME 2003-Plus"),
             RetroArchCore("mame2010", "MAME 2010")
         ),
+        "cps1" to listOf(
+            RetroArchCore("fbneo", "FinalBurn Neo"),
+            RetroArchCore("fbalpha2012_cps1", "FB Alpha 2012 CPS-1")
+        ),
+        "cps2" to listOf(
+            RetroArchCore("fbneo", "FinalBurn Neo"),
+            RetroArchCore("fbalpha2012_cps2", "FB Alpha 2012 CPS-2")
+        ),
+        "cps3" to listOf(
+            RetroArchCore("fbneo", "FinalBurn Neo"),
+            RetroArchCore("fbalpha2012_cps3", "FB Alpha 2012 CPS-3")
+        ),
         "msx" to listOf(
             RetroArchCore("bluemsx", "blueMSX"),
             RetroArchCore("fmsx", "fMSX")
@@ -1406,6 +1427,9 @@ object EmulatorRegistry {
         "fbneo" to "FinalBurn Neo",
         "fbalpha2012" to "FB Alpha 2012",
         "fbalpha2012_neogeo" to "FB Alpha 2012 Neo Geo",
+        "fbalpha2012_cps1" to "FB Alpha 2012 CPS-1",
+        "fbalpha2012_cps2" to "FB Alpha 2012 CPS-2",
+        "fbalpha2012_cps3" to "FB Alpha 2012 CPS-3",
         "mame2003_plus" to "MAME 2003-Plus",
         "mame2010" to "MAME 2010 (0.139)",
         "cap32" to "Caprice32",
@@ -1643,7 +1667,7 @@ object EmulatorRegistry {
                 "ngp", "ngpc", "neogeo", "neogeocd",
                 "msx", "msx2", "coleco",
                 "wonderswan", "wsc", "pokemini", "gameandwatch",
-                "arcade", "fbneo", "mame", "supergrafx",
+                "arcade", "fbneo", "mame", "cps1", "cps2", "cps3", "supergrafx",
                 "c64", "vic20", "amiga", "dos", "zx", "pc9800", "amstradcpc", "pico8", "scummvm"
             ),
             launchAction = Intent.ACTION_MAIN,
