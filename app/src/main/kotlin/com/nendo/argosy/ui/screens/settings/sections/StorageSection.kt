@@ -104,6 +104,7 @@ internal sealed class StorageItem(
     data object Threshold : StorageItem("threshold", "downloads")
 
     data object ResetLibrary : StorageItem("resetLibrary", "danger")
+    data object HardReset : StorageItem("hardReset", "danger")
 
     companion object {
         private val LocationsSpacer = SectionSpacer("locationsSpacer", "locations")
@@ -118,7 +119,7 @@ internal sealed class StorageItem(
             LocationsSpacer, LocationsHeader,
             GlobalRomPath, ImageCache, MusicLocation, BiosFolder, BuiltinSavePath, BuiltinStatePath,
             DownloadsSpacer, DownloadsHeader, MaxDownloads, Threshold,
-            DangerSpacer, DangerHeader, ResetLibrary
+            DangerSpacer, DangerHeader, ResetLibrary, HardReset
         )
     }
 }
@@ -497,10 +498,23 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     subtitle = if (isPurging) "Resetting..." else "Clears the database and image cache. Downloaded files stay on disk.",
                     isFocused = isFocused(item),
                     isDangerous = true,
-                    isEnabled = !isPurging,
+                    isEnabled = !isPurging && !storage.isHardResetting,
                     onClick = { viewModel.requestPurgeAll() }
                 )
             }
+
+            StorageItem.HardReset -> ActionPreference(
+                title = "Hard Reset",
+                subtitle = if (storage.isHardResetting) {
+                    "Resetting..."
+                } else {
+                    "Deletes downloaded games, the library database, and every cache. Settings and sign-ins stay."
+                },
+                isFocused = isFocused(item),
+                isDangerous = true,
+                isEnabled = !storage.isHardResetting && !storage.isPurgingAll,
+                onClick = { viewModel.requestHardReset() }
+            )
         }
     }
 }

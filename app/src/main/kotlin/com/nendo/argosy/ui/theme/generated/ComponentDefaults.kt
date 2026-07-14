@@ -115,6 +115,16 @@ object ComponentDefaults {
         const val minHeight = 52
     }
 
+    object HoldButton {
+        const val height = 44
+        const val radius = 8
+        const val fillAlpha = 0.3f
+        const val holdDurationMs = 5000f
+        const val tickMs = 50
+        const val repeatStallMs = 300
+        const val repeatGraceMs = 600
+    }
+
     object Modal {
         const val blurRadius = 8
     }

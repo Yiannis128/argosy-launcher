@@ -59,6 +59,8 @@ import com.nendo.argosy.ui.primitives.ArgosyConfirmModal
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
 import com.nendo.argosy.ui.screens.musicbrowser.MusicBrowserMode
 import com.nendo.argosy.ui.screens.musicbrowser.MusicBrowserScreen
+import com.nendo.argosy.data.storage.StorageCategory
+import com.nendo.argosy.ui.screens.settings.components.HardResetModal
 import com.nendo.argosy.ui.screens.settings.components.PlatformSettingsModal
 import com.nendo.argosy.ui.screens.settings.components.ReleaseChangelogModal
 import com.nendo.argosy.ui.screens.settings.components.SoundPickerPopup
@@ -236,6 +238,10 @@ fun SettingsScreen(
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             context.startActivity(intent)
         }
+    }
+
+    LaunchedEffect(onBack) {
+        viewModel.hardResetCompletedEvent.collect { onBack() }
     }
 
     LaunchedEffect(Unit) {
@@ -750,6 +756,27 @@ fun SettingsScreen(
             destructive = true,
             onConfirm = { viewModel.confirmPurgeAll() },
             onDismiss = { viewModel.cancelPurgeAll() }
+        )
+    }
+
+    if (uiState.storage.showHardResetModal) {
+        val snapshot = uiState.attribution.snapshot
+        val gamesBytes = snapshot?.categories?.get(StorageCategory.GAMES)?.bytes
+            ?: uiState.storage.downloadedGamesSize
+        val gamesCount = snapshot?.gamesPerPlatform?.takeIf { it.isNotEmpty() }
+            ?.sumOf { it.downloadedCount }
+            ?: uiState.storage.downloadedGamesCount
+        HardResetModal(
+            downloadedGamesCount = gamesCount,
+            downloadedGamesBytes = gamesBytes,
+            pendingUploads = uiState.storage.hardResetPendingUploads,
+            isResetting = uiState.storage.isHardResetting,
+            canSyncNow = uiState.server.connectionStatus == ConnectionStatus.ONLINE &&
+                !uiState.syncSettings.isSyncing,
+            onSyncNow = { viewModel.requestSyncSaves() },
+            onHoldStart = { viewModel.hardResetHoldStarted() },
+            onConfirm = { viewModel.confirmHardReset() },
+            onDismiss = { viewModel.cancelHardReset() }
         )
     }
 

@@ -33,6 +33,7 @@ import com.nendo.argosy.domain.usecase.sync.SyncLibraryUseCase
 import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.ui.ModalResetSignal
 import com.nendo.argosy.ui.input.HapticFeedbackManager
+import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.SoundFeedbackManager
@@ -176,6 +177,7 @@ class SettingsViewModel @Inject constructor(
     fun openPlatformBuiltinStatePathBrowser(platformId: Long) { viewModelScope.launch { _launchPlatformBuiltinStatePathPicker.emit(platformId) } }
     val resetPlatformStatePathEvent: SharedFlow<Long> = storageDelegate.resetStatePathEvent
     val openImageCachePickerEvent: SharedFlow<Unit> = syncDelegate.openImageCachePickerEvent
+    val hardResetCompletedEvent: SharedFlow<Unit> = storageDelegate.hardResetCompletedEvent
     val launchBiosFolderPicker: SharedFlow<Unit> = biosDelegate.launchFolderPicker
     val launchGpuDriverFilePicker: SharedFlow<Unit> = biosDelegate.launchGpuDriverFilePicker
 
@@ -1230,6 +1232,13 @@ class SettingsViewModel @Inject constructor(
     fun requestPurgeAll() = storageDelegate.requestPurgeAll(viewModelScope)
     fun confirmPurgeAll() = storageDelegate.confirmPurgeAll(viewModelScope)
     fun cancelPurgeAll() = storageDelegate.cancelPurgeAll()
+    fun requestHardReset() = storageDelegate.requestHardReset(viewModelScope)
+    fun cancelHardReset() = storageDelegate.cancelHardReset()
+    fun hardResetHoldStarted() = hapticManager.vibrate(HapticPattern.SELECTION)
+    fun confirmHardReset() {
+        hapticManager.vibrate(HapticPattern.ERROR)
+        storageDelegate.confirmHardReset(viewModelScope)
+    }
     fun confirmPlatformMigration() = storageDelegate.confirmPlatformMigration(viewModelScope)
     fun cancelPlatformMigration() = storageDelegate.cancelPlatformMigration()
     fun skipPlatformMigration() = storageDelegate.skipPlatformMigration(viewModelScope)

@@ -4,12 +4,18 @@ import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.download.DownloadManager
+import com.nendo.argosy.data.emulator.EmulatorDownloadManager
 import com.nendo.argosy.data.local.ALauncherDatabase
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.SessionStateStore
+import com.nendo.argosy.data.social.SocialRepository
+import com.nendo.argosy.data.steam.SteamContentManager
 import com.nendo.argosy.data.storage.StorageAttributionRepository
 import com.nendo.argosy.data.storage.StorageCategory
+import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.util.AppPaths
+import dagger.Lazy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,12 +25,25 @@ import javax.inject.Singleton
 
 private const val TAG = "DatabaseAdminRepository"
 
+enum class HardResetBlocker {
+    ACTIVE_SESSION,
+    PENDING_UPLOADS,
+    ACTIVE_DOWNLOADS,
+    EMULATOR_DOWNLOAD,
+    STEAM_DOWNLOAD
+}
+
 @Singleton
 class DatabaseAdminRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: ALauncherDatabase,
     private val imageCacheManager: ImageCacheManager,
-    private val attributionRepository: StorageAttributionRepository
+    private val attributionRepository: StorageAttributionRepository,
+    private val downloadManager: Lazy<DownloadManager>,
+    private val emulatorDownloadManager: Lazy<EmulatorDownloadManager>,
+    private val steamContentManager: Lazy<SteamContentManager>,
+    private val socialRepository: Lazy<SocialRepository>,
+    private val soundFeedbackManager: Lazy<SoundFeedbackManager>
 ) {
     private val sessionStateStore by lazy { SessionStateStore(context) }
 
@@ -54,6 +73,40 @@ class DatabaseAdminRepository @Inject constructor(
     suspend fun purgeAllLibrary() = withContext(Dispatchers.IO) {
         deleteCacheDirs(GameSource.entries)
         purgeDatabase(GameSource.entries, includeLocalCollections = true, clearImages = true)
+    }
+
+    /**
+     * Deletes all downloaded game files, the full library database, and every cache while
+     * keeping settings and logins. All-or-nothing: returns the first blocker without
+     * deleting anything, or null after a completed reset.
+     */
+    suspend fun hardReset(): HardResetBlocker? = withContext(Dispatchers.IO) {
+        checkHardResetBlockers()?.let { return@withContext it }
+
+        deleteDownloadedFiles(GameSource.entries)
+        purgeDatabase(GameSource.entries, includeLocalCollections = true, clearImages = true)
+        soundFeedbackManager.get().clearSfxCache()
+        if (!emulatorDownloadManager.get().clearApkCache()) {
+            Log.w(TAG, "hardReset: emulator APK cache skipped, download became active mid-reset")
+        }
+        if (!steamContentManager.get().clearDownloadData()) {
+            Log.w(TAG, "hardReset: steam download data skipped, download became active mid-reset")
+        }
+        socialRepository.get().clearPresenceCovers()
+        attributionRepository.refresh(force = true, deep = true)
+        null
+    }
+
+    private suspend fun checkHardResetBlockers(): HardResetBlocker? {
+        if (sessionStateStore.hasActiveSession()) return HardResetBlocker.ACTIVE_SESSION
+        if (database.saveCacheDao().countNeedingRemoteSync() > 0) return HardResetBlocker.PENDING_UPLOADS
+        val downloadState = downloadManager.get().state.value
+        if (downloadState.activeDownloads.isNotEmpty() || downloadState.queue.isNotEmpty()) {
+            return HardResetBlocker.ACTIVE_DOWNLOADS
+        }
+        if (emulatorDownloadManager.get().hasActiveDownload()) return HardResetBlocker.EMULATOR_DOWNLOAD
+        if (steamContentManager.get().hasBlockingDownloadState()) return HardResetBlocker.STEAM_DOWNLOAD
+        return null
     }
 
     suspend fun purgeDatabase(

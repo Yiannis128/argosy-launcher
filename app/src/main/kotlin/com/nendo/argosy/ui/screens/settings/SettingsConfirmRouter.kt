@@ -356,6 +356,9 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
         StorageItem.ResetLibrary -> vm.requestPurgeAll()
+        StorageItem.HardReset -> {
+            if (!state.storage.isHardResetting && !state.storage.isPurgingAll) vm.requestHardReset()
+        }
         else -> {}
     }
     return InputResult.HANDLED

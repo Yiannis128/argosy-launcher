@@ -692,6 +692,9 @@ data class StorageState(
     val showPurgeAllConfirm: Boolean = false,
     val purgeAllPendingUploads: Int = 0,
     val isPurgingAll: Boolean = false,
+    val showHardResetModal: Boolean = false,
+    val hardResetPendingUploads: Int = 0,
+    val isHardResetting: Boolean = false,
     val weeklyIntegrityCheckEnabled: Boolean = true,
     val busyPlatformIds: Set<Long> = emptySet(),
     val isLibrarySyncing: Boolean = false
