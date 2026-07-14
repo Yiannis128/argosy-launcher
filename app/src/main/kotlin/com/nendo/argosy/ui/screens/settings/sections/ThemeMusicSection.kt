@@ -42,13 +42,13 @@ internal sealed class ThemeMusicItem(
     data object BgmPlaylist : ThemeMusicItem("bgmPlaylist", "music", { it.bgmEnabled })
     data object BrowseServerMusic : ThemeMusicItem("browseServerMusic", "music", { it.bgmEnabled && it.musicApiSupported })
     data object BrowseLocalMusic : ThemeMusicItem("browseLocalMusic", "music", { it.bgmEnabled })
-    data object MusicLocation : ThemeMusicItem("musicLocation", "music", { it.bgmEnabled })
+    data object MusicLocation : ThemeMusicItem("musicLocation", "storage", { it.bgmEnabled })
     data object BgmShuffle : ThemeMusicItem("bgmShuffle", "music", { it.bgmEnabled })
     data object GameThemeToggle : ThemeMusicItem("gameDetailTheme", "music", { it.bgmEnabled && it.musicApiSupported })
 
     companion object {
         val ALL: List<ThemeMusicItem> = listOf(
-            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, MusicLocation, BgmShuffle, GameThemeToggle
+            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle, GameThemeToggle, MusicLocation
         )
     }
 }
@@ -61,6 +61,7 @@ private val themeMusicLayout = SettingsLayout<ThemeMusicItem, ThemeMusicLayoutSt
     sectionTitle = {
         when (it) {
             "music" -> "Background Music"
+            "storage" -> "Storage"
             else -> null
         }
     }
