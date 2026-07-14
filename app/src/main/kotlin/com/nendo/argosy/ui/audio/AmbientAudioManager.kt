@@ -100,6 +100,9 @@ class AmbientAudioManager @Inject constructor(
         }
     }
 
+    @Volatile
+    private var silenceHolds = 0
+
     val currentVolume: Float get() = targetVolume
 
     fun setVolume(volume: Int) {
@@ -481,9 +484,25 @@ class AmbientAudioManager @Inject constructor(
         }
     }
 
+    fun holdSilence() {
+        silenceHolds++
+        Log.d(TAG, "silence hold acquired ($silenceHolds)")
+        fadeOut()
+    }
+
+    fun releaseSilence() {
+        silenceHolds = (silenceHolds - 1).coerceAtLeast(0)
+        Log.d(TAG, "silence hold released ($silenceHolds)")
+        if (silenceHolds == 0) fadeIn()
+    }
+
     fun fadeIn(durationMs: Long = 500) {
         if (suspended) {
             Log.d(TAG, "fadeIn skipped: suspended (awaiting user input)")
+            return
+        }
+        if (silenceHolds > 0) {
+            Log.d(TAG, "fadeIn skipped: silence held")
             return
         }
         if (!enabled) {

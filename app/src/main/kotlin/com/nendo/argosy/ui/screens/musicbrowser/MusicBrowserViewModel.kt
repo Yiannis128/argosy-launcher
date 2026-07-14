@@ -82,10 +82,11 @@ class MusicBrowserViewModel @Inject constructor(
     private var loadJob: Job? = null
     private var noticeJob: Job? = null
     private var collectorsStarted = false
+    private var silenceHeld = false
 
     fun open(mode: MusicBrowserMode) {
         stopPreview()
-        ambientAudioManager.suspend()
+        acquireSilence()
         _uiState.update { st ->
             MusicBrowserState(
                 mode = mode,
@@ -514,7 +515,19 @@ class MusicBrowserViewModel @Inject constructor(
 
     fun onBrowserClosed() {
         stopPreview()
-        viewModelScope.launch { ambientAudioManager.resumeFromSuspend() }
+        releaseSilence()
+    }
+
+    private fun acquireSilence() {
+        if (silenceHeld) return
+        silenceHeld = true
+        ambientAudioManager.holdSilence()
+    }
+
+    private fun releaseSilence() {
+        if (!silenceHeld) return
+        silenceHeld = false
+        ambientAudioManager.releaseSilence()
     }
 
     private fun releasePlayer() {
@@ -642,7 +655,7 @@ class MusicBrowserViewModel @Inject constructor(
     override fun onCleared() {
         previewToken++
         releasePlayer()
-        ambientAudioManager.resumeFromSuspend()
+        releaseSilence()
     }
 
     private fun MusicTrackUi.toLookup() = MusicTrackLookup(
