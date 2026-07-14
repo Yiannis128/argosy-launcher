@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import android.graphics.Color as AndroidColor
 import kotlin.math.abs
 import kotlin.math.min
+import com.nendo.argosy.core.storage.StorageVolumeType
 import com.nendo.argosy.data.storage.StorageVolumeInfo
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -93,6 +94,32 @@ private const val MIN_SATURATION_FOR_HUES = 0.15f
 private const val VALUE_RAMP_STEP = 0.22f
 private val HUE_OFFSETS = listOf(40f, -40f, 80f, -80f, 120f, -120f, 160f)
 
+/**
+ * Shared volume->color assignment for storage screens: internal volumes take [neutral],
+ * external volumes take a theme-derived accent ramp, keyed by [StorageVolumeInfo.key].
+ */
+fun storageVolumeColors(
+    volumes: List<StorageVolumeInfo>,
+    neutral: Color,
+    primary: Color,
+    secondary: Color
+): Map<String, Color> {
+    val externalCount = volumes.count { it.type != StorageVolumeType.INTERNAL }
+    val accents = if (externalCount > 0) {
+        volumeMeterCategoryColors(primary, secondary, externalCount)
+    } else {
+        emptyList()
+    }
+    var accentIndex = 0
+    return volumes.associate { volume ->
+        volume.key to if (volume.type == StorageVolumeType.INTERNAL) {
+            neutral
+        } else {
+            accents[accentIndex++]
+        }
+    }
+}
+
 /** Non-focusable per-volume usage hero: segmented meters and shared legend. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -142,7 +169,7 @@ fun VolumeMeterHero(
                     val usedBytes = volume.totalBytes - volume.availableBytes
                     add(otherColor to (usedBytes - argosyBytes).coerceAtLeast(0L))
                 }
-                VolumeMeterBar(
+                SegmentedMeterBar(
                     totalBytes = volume.totalBytes,
                     segments = segments,
                     trackColor = trackColor
@@ -212,8 +239,9 @@ private fun LegendEntry(
     }
 }
 
+/** Segmented meter: fill fraction = segment bytes over [totalBytes], drawn left to right. */
 @Composable
-private fun VolumeMeterBar(
+fun SegmentedMeterBar(
     totalBytes: Long,
     segments: List<Pair<Color, Long>>,
     trackColor: Color,

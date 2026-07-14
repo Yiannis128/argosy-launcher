@@ -18,8 +18,10 @@ import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.buildGameDataItemsFromState
 import com.nendo.argosy.ui.screens.settings.sections.StorageItem
+import com.nendo.argosy.ui.screens.settings.sections.createStorageCachesLayoutInfo
 import com.nendo.argosy.ui.screens.settings.sections.createStorageLayoutInfo
 import com.nendo.argosy.ui.screens.settings.sections.gameDataItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.storageCachesFocusIndexOfSteam
 import com.nendo.argosy.ui.screens.settings.sections.storageFocusIndexOf
 import com.nendo.argosy.ui.screens.settings.sections.storageSteamVisibleLive
 import kotlinx.coroutines.flow.update
@@ -92,7 +94,17 @@ internal fun routeNavigateToStorageGames(vm: SettingsViewModel) {
 
 internal fun routeNavigateToStorageCaches(vm: SettingsViewModel, entryFocus: Int) {
     vm.attributionDelegate.setCachesEntryFocus(entryFocus)
-    vm._uiState.update { it.copy(currentSection = SettingsSection.STORAGE_CACHES, focusedIndex = 0) }
+    vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
+    vm.storageCachesDelegate.refreshOnOpen(vm.viewModelScope)
+    vm._uiState.update { state ->
+        val entered = state.copy(currentSection = SettingsSection.STORAGE_CACHES, focusedIndex = 0)
+        if (entryFocus == CACHES_ENTRY_STEAM) {
+            val steamFocus = storageCachesFocusIndexOfSteam(createStorageCachesLayoutInfo(entered))
+            entered.copy(focusedIndex = steamFocus.coerceAtLeast(0))
+        } else {
+            entered
+        }
+    }
 }
 
 internal fun routeNavigateToThemeBackdrop(vm: SettingsViewModel) {
@@ -532,11 +544,15 @@ internal fun routeDismissRegionPicker(vm: SettingsViewModel) {
 }
 
 internal fun routeToggleSyncScreenshots(vm: SettingsViewModel) {
-    vm.syncDelegate.toggleSyncScreenshots(vm.viewModelScope, vm._uiState.value.server.syncScreenshotsEnabled)
+    val current = vm._uiState.value.server.syncScreenshotsEnabled
+    vm.syncDelegate.toggleSyncScreenshots(vm.viewModelScope, current)
+    vm.serverDelegate.updateState(vm._uiState.value.server.copy(syncScreenshotsEnabled = !current))
 }
 
 internal fun routeToggleBoxArtCache(vm: SettingsViewModel) {
-    vm.syncDelegate.toggleBoxArtCache(vm.viewModelScope, vm._uiState.value.server.boxArtCacheEnabled)
+    val current = vm._uiState.value.server.boxArtCacheEnabled
+    vm.syncDelegate.toggleBoxArtCache(vm.viewModelScope, current)
+    vm.serverDelegate.updateState(vm._uiState.value.server.copy(boxArtCacheEnabled = !current))
 }
 
 internal fun routeToggleUploadScreenshots(vm: SettingsViewModel) {

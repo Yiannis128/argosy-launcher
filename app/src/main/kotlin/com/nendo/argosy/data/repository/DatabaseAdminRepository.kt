@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.ALauncherDatabase
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.data.storage.StorageAttributionRepository
 import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.util.AppPaths
@@ -25,6 +26,23 @@ class DatabaseAdminRepository @Inject constructor(
     private val imageCacheManager: ImageCacheManager,
     private val attributionRepository: StorageAttributionRepository
 ) {
+    private val sessionStateStore by lazy { SessionStateStore(context) }
+
+    /** Deletes all cached image files and reconciles DB paths; safe to re-download from the server. */
+    suspend fun clearImageCache() = withContext(Dispatchers.IO) {
+        imageCacheManager.clearCache()
+        imageCacheManager.validateAndCleanCache()
+        attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
+    }
+
+    /** Deletes extracted ROM working copies; returns false when blocked by an active game session. */
+    suspend fun clearRomExtractionCache(): Boolean = withContext(Dispatchers.IO) {
+        if (sessionStateStore.hasActiveSession()) return@withContext false
+        deleteQuietly(AppPaths.romCacheDir(context.filesDir))
+        attributionRepository.markDirty(StorageCategory.ROM_EXTRACTION)
+        true
+    }
+
     /** Wipes RomM-sourced library content AND its downloaded files so a server switch starts clean. */
     suspend fun purgeRomMLibrary() = withContext(Dispatchers.IO) {
         val sources = listOf(GameSource.ROMM_REMOTE, GameSource.ROMM_SYNCED)

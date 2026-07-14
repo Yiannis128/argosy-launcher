@@ -419,6 +419,7 @@ data class PlatformDetailState(
     val platformIndex: Int = 0,
     val builtinEnteredFromPlatform: Boolean = false,
     val enteredExternally: Boolean = false,
+    val enteredFromStorageGames: Boolean = false,
     val showRemoveConfirm: Boolean = false,
     val totalGames: Int = 0,
     val downloadedGames: Int = 0,
@@ -696,7 +697,7 @@ data class StorageState(
     val isLibrarySyncing: Boolean = false
 )
 
-enum class StorageGamesSortMode { SIZE, NAME }
+enum class StorageGamesSortMode { PLATFORM, SIZE }
 
 internal const val CACHES_ENTRY_TOP = 0
 internal const val CACHES_ENTRY_STEAM = 1
@@ -706,10 +707,28 @@ data class StorageAttributionState(
     val volumes: List<com.nendo.argosy.data.storage.StorageVolumeInfo> = emptyList(),
     val walkProgress: Map<com.nendo.argosy.data.storage.StorageCategory, com.nendo.argosy.data.storage.WalkState> = emptyMap(),
     val isRefreshing: Boolean = false,
-    val gamesSortMode: StorageGamesSortMode = StorageGamesSortMode.SIZE,
+    val gamesSortMode: StorageGamesSortMode = StorageGamesSortMode.PLATFORM,
     val musicEnteredFromStorage: Boolean = false,
     val cachesEntryFocus: Int = CACHES_ENTRY_TOP,
     val steamTileLatched: Boolean = false
+)
+
+enum class CachesClearTarget {
+    IMAGE_CACHE,
+    ROM_EXTRACTION,
+    SFX_CACHE,
+    EMULATOR_APKS,
+    MISC_DOWNLOADS,
+    SHADERS_CATALOG,
+    FRAMES,
+    STEAM_DOWNLOADS
+}
+
+data class StorageCachesState(
+    val pendingClear: CachesClearTarget? = null,
+    val busyClears: Set<CachesClearTarget> = emptySet(),
+    val steamDownloadBusy: Boolean = false,
+    val steamStagingBytes: Long? = null
 )
 
 data class PlatformMigrationInfo(
@@ -794,6 +813,9 @@ data class SyncSettingsState(
     val isImageCacheMigrating: Boolean = false,
     val showResetSaveCacheConfirm: Boolean = false,
     val isResettingSaveCache: Boolean = false,
+    val showClearStateCacheConfirm: Boolean = false,
+    val isClearingStateCache: Boolean = false,
+    val stateCacheEnabled: Boolean = true,
     val showClearPathCacheConfirm: Boolean = false,
     val isClearingPathCache: Boolean = false,
     val showForceSyncConfirm: Boolean = false,
@@ -1124,6 +1146,7 @@ data class SettingsUiState(
     val server: ServerState = ServerState(),
     val storage: StorageState = StorageState(),
     val attribution: StorageAttributionState = StorageAttributionState(),
+    val storageCaches: StorageCachesState = StorageCachesState(),
     val platformLibretro: PlatformLibretroState = PlatformLibretroState(),
     val syncSettings: SyncSettingsState = SyncSettingsState(),
     val steam: SteamSettingsState = SteamSettingsState(),

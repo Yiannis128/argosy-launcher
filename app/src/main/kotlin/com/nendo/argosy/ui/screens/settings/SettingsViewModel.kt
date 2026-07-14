@@ -103,6 +103,7 @@ class SettingsViewModel @Inject constructor(
     val serverDelegate: ServerSettingsDelegate,
     val storageDelegate: StorageSettingsDelegate,
     val attributionDelegate: StorageAttributionDelegate,
+    val storageCachesDelegate: com.nendo.argosy.ui.screens.settings.delegates.StorageCachesDelegate,
     val syncDelegate: SyncSettingsDelegate,
     val steamDelegate: SteamSettingsDelegate,
     val raDelegate: RASettingsDelegate,
@@ -277,7 +278,10 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(
             currentSection = SettingsSection.PLATFORM_DETAIL,
             focusedIndex = 0,
-            platformDetail = it.platformDetail.copy(platformIndex = platformIndex)
+            platformDetail = it.platformDetail.copy(
+                platformIndex = platformIndex,
+                enteredFromStorageGames = false
+            )
         ) }
         loadPlatformDetailStats(platformIndex)
     }
@@ -807,6 +811,39 @@ class SettingsViewModel @Inject constructor(
     fun navigateToStorageCaches() = routeNavigateToStorageCaches(this, CACHES_ENTRY_TOP)
     fun navigateToStorageCachesForSteam() = routeNavigateToStorageCaches(this, CACHES_ENTRY_STEAM)
     fun refreshStorageAttribution(deep: Boolean = false) = attributionDelegate.refresh(force = true, deep = deep)
+
+    fun toggleStateCache() = syncDelegate.toggleStateCache(viewModelScope)
+    fun requestClearStateCache() = syncDelegate.requestClearStateCache(viewModelScope)
+    fun cancelClearStateCache() = syncDelegate.cancelClearStateCache()
+    fun confirmClearStateCache() = syncDelegate.confirmClearStateCache(viewModelScope)
+
+    fun requestCachesClear(target: CachesClearTarget) {
+        val driverBusy = _uiState.value.drivers.activeDownload
+            ?.let { it.error == null && !it.isComplete } == true
+        storageCachesDelegate.requestClear(target, driverDownloadActive = driverBusy)
+    }
+
+    fun cancelCachesClear() = storageCachesDelegate.cancelClear()
+
+    fun confirmCachesClear() = storageCachesDelegate.confirmClear(viewModelScope) { target ->
+        if (target == CachesClearTarget.SHADERS_CATALOG) {
+            getShaderRegistry().invalidateInstalledCache()
+        }
+    }
+
+    fun toggleGamesSortMode() = attributionDelegate.setGamesSortMode(
+        when (_uiState.value.attribution.gamesSortMode) {
+            StorageGamesSortMode.PLATFORM -> StorageGamesSortMode.SIZE
+            StorageGamesSortMode.SIZE -> StorageGamesSortMode.PLATFORM
+        }
+    )
+
+    fun openPlatformDetailFromStorageGames(platformId: Long) {
+        val index = _uiState.value.emulators.platforms.indexOfFirst { it.platform.id == platformId }
+        if (index < 0) return
+        navigateToPlatformDetail(index)
+        _uiState.update { it.copy(platformDetail = it.platformDetail.copy(enteredFromStorageGames = true)) }
+    }
 
     fun openFontPicker(slot: FontSlot) {
         viewModelScope.launch { _openFontPickerEvent.emit(slot) }

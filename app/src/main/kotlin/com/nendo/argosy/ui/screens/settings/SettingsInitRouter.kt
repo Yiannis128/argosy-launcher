@@ -115,6 +115,10 @@ internal fun routeObserveDelegateStates(vm: SettingsViewModel) {
     }.launchIn(vm.viewModelScope)
     vm.attributionDelegate.initFlowCollection(vm.viewModelScope)
 
+    vm.storageCachesDelegate.state.onEach { storageCaches ->
+        vm._uiState.update { it.copy(storageCaches = storageCaches) }
+    }.launchIn(vm.viewModelScope)
+
     vm.syncDelegate.state.onEach { syncSettings ->
         vm._uiState.update { it.copy(syncSettings = syncSettings) }
     }.launchIn(vm.viewModelScope)
@@ -649,6 +653,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             totalPlatforms = platforms.count { it.gameCount > 0 },
             totalGames = platforms.sumOf { it.gameCount },
             saveSyncEnabled = prefs.saveSyncEnabled,
+            stateCacheEnabled = prefs.stateCacheEnabled,
             saveCacheLimit = prefs.saveCacheLimit,
             pendingUploadsCount = vm.saveCacheDao.countNeedingRemoteSync(),
             imageCachePath = prefs.imageCachePath,

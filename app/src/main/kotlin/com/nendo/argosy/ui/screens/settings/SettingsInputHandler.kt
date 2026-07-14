@@ -14,6 +14,8 @@ import com.nendo.argosy.ui.screens.settings.sections.input.DriversSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.InterfaceSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.LightSectionsInput
 import com.nendo.argosy.ui.screens.settings.sections.input.ShaderStackSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.StorageCachesSectionInput
+import com.nendo.argosy.ui.screens.settings.sections.input.StorageGamesSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.StorageSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.ThemeBackdropSectionInput
 import com.nendo.argosy.ui.screens.settings.sections.input.ThemeFontsSectionInput
@@ -66,13 +68,14 @@ class SettingsInputHandler(
         put(SettingsSection.SHADER_STACK, ShaderStackSectionInput(viewModel))
         put(SettingsSection.CORE_OPTIONS, CoreOptionsSectionInput(viewModel))
         put(SettingsSection.STORAGE, StorageSectionInput(viewModel))
+        put(SettingsSection.STORAGE_GAMES, StorageGamesSectionInput(viewModel))
+        put(SettingsSection.STORAGE_CACHES, StorageCachesSectionInput(viewModel))
         put(SettingsSection.DRIVERS, DriversSectionInput(viewModel))
         for (s in listOf(
             SettingsSection.BIOS, SettingsSection.SERVER, SettingsSection.HOME_SCREEN,
             SettingsSection.CONTROLS, SettingsSection.SYNC_SETTINGS,
             SettingsSection.ABOUT, SettingsSection.STEAM_SETTINGS, SettingsSection.CORE_MANAGEMENT,
-            SettingsSection.SOCIAL, SettingsSection.BUILTIN_EMULATOR,
-            SettingsSection.STORAGE_GAMES, SettingsSection.STORAGE_CACHES
+            SettingsSection.SOCIAL, SettingsSection.BUILTIN_EMULATOR
         )) {
             put(s, lightHandler)
         }

@@ -9,6 +9,8 @@ import com.nendo.argosy.R
 import com.nendo.argosy.core.input.SoundConfig
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.media.SfxTranscoder
+import com.nendo.argosy.data.storage.StorageAttributionRepository
+import com.nendo.argosy.data.storage.StorageCategory
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -18,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAG = "SoundFeedback"
 
@@ -45,7 +48,8 @@ enum class SoundPreset(val resourceId: Int?, val displayName: String) {
 
 @Singleton
 class SoundFeedbackManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val attributionRepository: StorageAttributionRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val initLock = Any()
@@ -304,5 +308,12 @@ class SoundFeedbackManager @Inject constructor(
 
     fun release() {
         releaseSoundPool()
+    }
+
+    /** Deletes transcoded SFX WAVs; loaded samples stay in memory and re-transcode on next load. */
+    suspend fun clearSfxCache() = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "sfx")
+        if (dir.exists()) dir.deleteRecursively()
+        attributionRepository.markDirty(StorageCategory.SFX_CACHE)
     }
 }

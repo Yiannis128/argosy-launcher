@@ -91,7 +91,8 @@ import com.nendo.argosy.ui.screens.settings.sections.RASettingsSection
 import com.nendo.argosy.ui.screens.settings.sections.ShaderStackSection
 import com.nendo.argosy.ui.screens.settings.sections.SocialSection
 import com.nendo.argosy.ui.screens.settings.sections.SteamSection
-import com.nendo.argosy.ui.screens.settings.sections.StorageDrillInPlaceholder
+import com.nendo.argosy.ui.screens.settings.sections.StorageCachesSection
+import com.nendo.argosy.ui.screens.settings.sections.StorageGamesSection
 import com.nendo.argosy.ui.screens.settings.sections.StorageSection
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsSection
 import com.nendo.argosy.data.preferences.FontSlot
@@ -549,8 +550,8 @@ fun SettingsScreen(
                     SettingsSection.STEAM_SETTINGS -> SteamSection(uiState, viewModel)
                     SettingsSection.RETRO_ACHIEVEMENTS -> RASettingsSection(uiState, viewModel)
                     SettingsSection.STORAGE -> StorageSection(uiState, viewModel)
-                    SettingsSection.STORAGE_GAMES -> StorageDrillInPlaceholder("Games")
-                    SettingsSection.STORAGE_CACHES -> StorageDrillInPlaceholder("Caches & System")
+                    SettingsSection.STORAGE_GAMES -> StorageGamesSection(uiState, viewModel)
+                    SettingsSection.STORAGE_CACHES -> StorageCachesSection(uiState, viewModel)
                     SettingsSection.THEME -> ThemeSection(uiState, viewModel)
                     SettingsSection.THEME_SOUNDS -> ThemeSoundsSection(uiState, viewModel)
                     SettingsSection.THEME_MUSIC -> ThemeMusicSection(uiState, viewModel)
@@ -770,6 +771,27 @@ fun SettingsScreen(
         destructive = true,
         onConfirm = { viewModel.confirmClearPathCache() },
         onDismiss = { viewModel.cancelClearPathCache() }
+    )
+
+    ArgosyConfirmModalHost(
+        visible = uiState.syncSettings.showClearStateCacheConfirm,
+        title = "Clear State Cache?",
+        message = "This will delete all locally cached save state snapshots and their pending sync operations. Save files and server copies are not affected.",
+        confirmLabel = "Clear",
+        destructive = true,
+        onConfirm = { viewModel.confirmClearStateCache() },
+        onDismiss = { viewModel.cancelClearStateCache() }
+    )
+
+    val pendingCachesClear = uiState.storageCaches.pendingClear
+    ArgosyConfirmModalHost(
+        visible = pendingCachesClear != null,
+        title = cachesClearConfirmTitle(pendingCachesClear),
+        message = cachesClearConfirmMessage(pendingCachesClear),
+        confirmLabel = "Clear",
+        destructive = true,
+        onConfirm = { viewModel.confirmCachesClear() },
+        onDismiss = { viewModel.cancelCachesClear() }
     )
 
     ArgosyConfirmModal(
@@ -1132,6 +1154,9 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
         if (uiState.currentSection == SettingsSection.STORAGE) {
             add(InputButton.X to "Refresh")
         }
+        if (uiState.currentSection == SettingsSection.STORAGE_GAMES) {
+            add(InputButton.X to "Sort")
+        }
         if (uiState.currentSection == SettingsSection.PLATFORM_DETAIL) {
             val config = uiState.emulators.platforms.getOrNull(uiState.platformDetail.platformIndex)
             val detail = uiState.platformDetail
@@ -1231,5 +1256,37 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
 
     FooterHints(hints = hints)
     FooterSpacer()
+}
+
+private fun cachesClearConfirmTitle(target: CachesClearTarget?): String = when (target) {
+    CachesClearTarget.IMAGE_CACHE -> "Clear Image Cache?"
+    CachesClearTarget.ROM_EXTRACTION -> "Clear Extracted ROMs?"
+    CachesClearTarget.SFX_CACHE -> "Clear Sound Effects Cache?"
+    CachesClearTarget.EMULATOR_APKS -> "Clear Emulator Installers?"
+    CachesClearTarget.MISC_DOWNLOADS -> "Clear Misc Downloads?"
+    CachesClearTarget.SHADERS_CATALOG -> "Clear Shader Catalog?"
+    CachesClearTarget.FRAMES -> "Clear Frame Overlays?"
+    CachesClearTarget.STEAM_DOWNLOADS -> "Clear Steam Download Data?"
+    null -> ""
+}
+
+private fun cachesClearConfirmMessage(target: CachesClearTarget?): String = when (target) {
+    CachesClearTarget.IMAGE_CACHE ->
+        "This will delete all cached covers, backgrounds, and screenshots. Images re-download from the server as you browse."
+    CachesClearTarget.ROM_EXTRACTION ->
+        "This will delete extracted working copies of compressed games. They re-extract the next time each game launches."
+    CachesClearTarget.SFX_CACHE ->
+        "This will delete transcoded custom sound files. They rebuild automatically the next time sounds load."
+    CachesClearTarget.MISC_DOWNLOADS ->
+        "This will delete friend presence covers and downloaded GPU driver packages. Installed drivers are not affected."
+    CachesClearTarget.EMULATOR_APKS ->
+        "This will delete downloaded emulator installer APKs. Installed emulators are not affected."
+    CachesClearTarget.SHADERS_CATALOG ->
+        "This will delete downloaded catalog shaders. Custom shaders are kept, and catalog shaders re-download on demand."
+    CachesClearTarget.FRAMES ->
+        "This will delete downloaded frame overlays. They re-download on demand when selected."
+    CachesClearTarget.STEAM_DOWNLOADS ->
+        "This will delete staged Steam downloads and clear the download queue. Installed games are not affected, but partial downloads restart from zero."
+    null -> ""
 }
 

@@ -2,7 +2,6 @@ package com.nendo.argosy.ui.screens.settings.sections
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,7 +38,6 @@ import com.nendo.argosy.data.storage.WalkState
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CategoryTile
 import com.nendo.argosy.ui.components.CyclePreference
-import com.nendo.argosy.ui.components.InfoDisplay
 import com.nendo.argosy.ui.components.ListSection
 import com.nendo.argosy.ui.components.SliderPreference
 import androidx.compose.material3.MaterialTheme
@@ -446,7 +444,11 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             StorageItem.BuiltinSavePath -> ActionPreference(
                 icon = Icons.Default.Save,
                 title = "Built-in Save Path",
-                subtitle = formatStoragePath(uiState.builtinVideo.savePath),
+                subtitle = if (uiState.builtinVideo.isCustomSavePath) {
+                    formatStoragePath(uiState.builtinVideo.savePath)
+                } else {
+                    "Internal (default)"
+                },
                 isFocused = isFocused(item),
                 onClick = { viewModel.openBuiltinSavePathBrowser() }
             )
@@ -454,7 +456,11 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             StorageItem.BuiltinStatePath -> ActionPreference(
                 icon = Icons.Default.History,
                 title = "Built-in State Path",
-                subtitle = formatStoragePath(uiState.builtinVideo.statePath),
+                subtitle = if (uiState.builtinVideo.isCustomStatePath) {
+                    formatStoragePath(uiState.builtinVideo.statePath)
+                } else {
+                    "Internal (default)"
+                },
                 isFocused = isFocused(item),
                 onClick = { viewModel.openBuiltinStatePathBrowser() }
             )
@@ -496,13 +502,6 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 )
             }
         }
-    }
-}
-
-@Composable
-fun StorageDrillInPlaceholder(title: String) {
-    Column(modifier = Modifier.fillMaxSize().padding(Dimens.spacingMd)) {
-        InfoDisplay(title = title, value = "Coming next checkpoint")
     }
 }
 

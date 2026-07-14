@@ -391,6 +391,34 @@ class SteamContentManager @Inject constructor(
             state is SteamDownloadState.Moving
     }
 
+    fun hasBlockingDownloadState(): Boolean =
+        hasActiveSteamDownload() || _downloadState.value is SteamDownloadState.Paused
+
+    /** Deletes staged download data and queue rows together; returns false while a download is active or paused. */
+    suspend fun clearDownloadData(): Boolean = withContext(Dispatchers.IO) {
+        if (hasBlockingDownloadState()) return@withContext false
+        val pending = steamDownloadQueueDao.getPendingDownloads()
+        for (entity in pending) {
+            gameDao.getBySteamAppId(entity.appId)?.let { game ->
+                if (game.localPath?.contains(AppPaths.STEAM_STAGING_DIR) == true) {
+                    gameDao.update(game.copy(localPath = null))
+                }
+            }
+            downloadTracker.clearForApp(entity.appId)
+            steamDownloadQueueDao.deleteByAppId(entity.appId)
+        }
+        steamDownloadQueueDao.clearFinished()
+        val stagingRoot = AppPaths.steamStagingRoot(context.filesDir)
+        if (stagingRoot.exists()) stagingRoot.deleteRecursively()
+        val legacyDownloads = File(context.filesDir, "steam_downloads")
+        if (legacyDownloads.exists()) legacyDownloads.deleteRecursively()
+        _downloadQueue.value = emptyList()
+        _activeDownload.value = null
+        _downloadState.value = SteamDownloadState.Idle
+        attributionRepository.markDirty(StorageCategory.STEAM)
+        true
+    }
+
     fun isConnected(): Boolean {
         val hasHandlers = depotManager.isConnected()
         val loggedIn = steamAuthManager.isLoggedIn.value

@@ -278,6 +278,22 @@ class EmulatorDownloadManager @Inject constructor(
         pendingInstall = null
     }
 
+    fun hasActiveDownload(): Boolean {
+        val state = _downloadProgress.value?.state
+        return state is EmulatorDownloadState.Downloading || state is EmulatorDownloadState.WaitingForInstall
+    }
+
+    /** Deletes downloaded emulator APKs; returns false while a download or install is in flight. */
+    suspend fun clearApkCache(): Boolean = withContext(Dispatchers.IO) {
+        if (hasActiveDownload()) return@withContext false
+        val cacheDir = File(context.cacheDir, "emulator_apks")
+        if (cacheDir.exists()) {
+            cacheDir.deleteRecursively()
+        }
+        attributionRepository.markDirty(StorageCategory.EMULATOR_APKS)
+        true
+    }
+
     fun canInstallPackages(): Boolean = appInstaller.canInstallPackages(context)
 
     fun openInstallPermissionSettings() = appInstaller.openInstallPermissionSettings(context)

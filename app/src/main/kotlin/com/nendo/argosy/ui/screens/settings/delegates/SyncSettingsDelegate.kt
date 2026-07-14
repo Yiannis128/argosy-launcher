@@ -14,6 +14,7 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.SaveCacheRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
+import com.nendo.argosy.data.repository.StateCacheManager
 import com.nendo.argosy.data.storage.StorageAttributionRepository
 import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.core.notification.NotificationManager
@@ -41,6 +42,7 @@ class SyncSettingsDelegate @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val saveSyncRepository: SaveSyncRepository,
     private val saveCacheRepository: SaveCacheRepository,
+    private val stateCacheManager: StateCacheManager,
     private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator,
     private val platformRepository: PlatformRepository,
     private val rommRepository: RomMRepository,
@@ -95,6 +97,7 @@ class SyncSettingsDelegate @Inject constructor(
                     downloadDefaults = downloadDefaults,
                     syncFilters = prefs.syncFilters,
                     saveSyncEnabled = prefs.saveSyncEnabled,
+                    stateCacheEnabled = prefs.stateCacheEnabled,
                     saveCacheLimit = prefs.saveCacheLimit,
                     hasStoragePermission = hasStoragePermission,
                     hasNotificationPermission = hasNotificationPermission,
@@ -831,9 +834,48 @@ class SyncSettingsDelegate @Inject constructor(
             val performed = saveCacheRepository.resetSaveCache()
             if (performed) {
                 _state.update { it.copy(isResettingSaveCache = false, saveCacheCount = 0, stateCacheCount = 0) }
+                attributionRepository.refreshOnOpen()
             } else {
                 notificationManager.showError("Cannot reset save cache while a game is running")
                 _state.update { it.copy(isResettingSaveCache = false) }
+            }
+        }
+    }
+
+    fun toggleStateCache(scope: CoroutineScope) {
+        scope.launch {
+            val newValue = !_state.value.stateCacheEnabled
+            preferencesRepository.setStateCacheEnabled(newValue)
+            _state.update { it.copy(stateCacheEnabled = newValue) }
+        }
+    }
+
+    fun requestClearStateCache(scope: CoroutineScope) {
+        scope.launch {
+            val pendingUploads = saveCacheRepository.getPendingSyncCounts().pendingUploads
+            _state.update {
+                it.copy(
+                    pendingUploadsCount = pendingUploads,
+                    showClearStateCacheConfirm = pendingUploads == 0
+                )
+            }
+        }
+    }
+
+    fun cancelClearStateCache() {
+        _state.update { it.copy(showClearStateCacheConfirm = false) }
+    }
+
+    fun confirmClearStateCache(scope: CoroutineScope) {
+        _state.update { it.copy(showClearStateCacheConfirm = false, isClearingStateCache = true) }
+        scope.launch {
+            val performed = stateCacheManager.clearAllCache()
+            if (performed) {
+                _state.update { it.copy(isClearingStateCache = false, stateCacheCount = 0) }
+                attributionRepository.refreshOnOpen()
+            } else {
+                notificationManager.showError("Cannot clear state cache while a game is running")
+                _state.update { it.copy(isClearingStateCache = false) }
             }
         }
     }

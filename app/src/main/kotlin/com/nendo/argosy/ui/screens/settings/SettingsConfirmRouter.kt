@@ -70,6 +70,15 @@ import com.nendo.argosy.ui.screens.settings.sections.mainSettingsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.permissionsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.storageFocusIndexOf
 import com.nendo.argosy.ui.screens.settings.sections.storageItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.StorageGamesItem
+import com.nendo.argosy.ui.screens.settings.sections.createStorageGamesLayoutInfo
+import com.nendo.argosy.ui.screens.settings.sections.storageGamesFocusIndexOfPlatform
+import com.nendo.argosy.ui.screens.settings.sections.storageGamesItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.storageGamesMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.StorageCachesItem
+import com.nendo.argosy.ui.screens.settings.sections.createStorageCachesLayoutInfo
+import com.nendo.argosy.ui.screens.settings.sections.storageCachesItemAtFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.storageCachesMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.GameDataItem
 import com.nendo.argosy.ui.screens.settings.sections.SyncSettingsItem
 import com.nendo.argosy.ui.screens.settings.sections.coreManagementMaxFocusIndex
@@ -230,8 +239,8 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             InputResult.HANDLED
         }
         SettingsSection.STORAGE -> routeStorageConfirm(vm, state)
-        SettingsSection.STORAGE_GAMES -> InputResult.HANDLED
-        SettingsSection.STORAGE_CACHES -> InputResult.HANDLED
+        SettingsSection.STORAGE_GAMES -> routeStorageGamesConfirm(vm, state)
+        SettingsSection.STORAGE_CACHES -> routeStorageCachesConfirm(vm, state)
         SettingsSection.THEME -> routeThemeConfirm(vm, state)
         SettingsSection.THEME_SOUNDS -> routeThemeSoundsConfirm(vm, state)
         SettingsSection.THEME_MUSIC -> routeThemeMusicConfirm(vm, state)
@@ -347,6 +356,72 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
         StorageItem.ResetLibrary -> vm.requestPurgeAll()
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeStorageGamesConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val info = createStorageGamesLayoutInfo(state)
+    when (val item = storageGamesItemAtFocusIndex(state.focusedIndex, info)) {
+        StorageGamesItem.IntegrityToggle -> {
+            vm.toggleWeeklyIntegrityCheck(!state.storage.weeklyIntegrityCheckEnabled)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        is StorageGamesItem.PlatformRow -> vm.openPlatformDetailFromStorageGames(item.usage.platformId)
+        else -> {}
+    }
+    return InputResult.HANDLED
+}
+
+private fun routeStorageCachesConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
+    val isOnline = state.server.connectionStatus == ConnectionStatus.ONLINE
+    val syncSettings = state.syncSettings
+    val pendingUploads = syncSettings.pendingUploadsCount
+    val item = storageCachesItemAtFocusIndex(state.focusedIndex, createStorageCachesLayoutInfo(state))
+    when (item) {
+        StorageCachesItem.PendingUploads -> if (isOnline && !syncSettings.isSyncing) vm.requestSyncSaves()
+        StorageCachesItem.SaveCacheClear -> {
+            val totalCached = syncSettings.saveCacheCount + syncSettings.stateCacheCount
+            if (!syncSettings.isResettingSaveCache && totalCached > 0) vm.requestResetSaveCache()
+        }
+        StorageCachesItem.StateCacheClear -> {
+            if (!syncSettings.isClearingStateCache && syncSettings.stateCacheCount > 0) vm.requestClearStateCache()
+        }
+        StorageCachesItem.PathCacheClear -> {
+            if (!syncSettings.isClearingPathCache && syncSettings.pathCacheCount > 0 && pendingUploads == 0) {
+                vm.requestClearPathCache()
+            }
+        }
+        StorageCachesItem.StateCacheToggle -> {
+            vm.toggleStateCache()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        StorageCachesItem.SaveCacheLimit -> {
+            vm.requestEnumPicker(StorageCachesItem.SaveCacheLimit.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        StorageCachesItem.ImageCacheClear -> {
+            if (!syncSettings.isImageCacheMigrating && !state.storage.isValidatingCache) {
+                vm.requestCachesClear(CachesClearTarget.IMAGE_CACHE)
+            }
+        }
+        StorageCachesItem.ValidateImageCache -> if (!state.storage.isValidatingCache) vm.validateImageCache()
+        StorageCachesItem.ScreenshotsToggle -> {
+            vm.toggleSyncScreenshots()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        StorageCachesItem.BoxArtToggle -> {
+            vm.toggleBoxArtCache()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        StorageCachesItem.RomExtractionClear -> vm.requestCachesClear(CachesClearTarget.ROM_EXTRACTION)
+        StorageCachesItem.SfxCacheClear -> vm.requestCachesClear(CachesClearTarget.SFX_CACHE)
+        StorageCachesItem.EmulatorApksClear -> vm.requestCachesClear(CachesClearTarget.EMULATOR_APKS)
+        StorageCachesItem.MiscDownloadsClear -> vm.requestCachesClear(CachesClearTarget.MISC_DOWNLOADS)
+        StorageCachesItem.ShadersCatalogClear -> vm.requestCachesClear(CachesClearTarget.SHADERS_CATALOG)
+        StorageCachesItem.FramesClear -> vm.requestCachesClear(CachesClearTarget.FRAMES)
+        StorageCachesItem.SteamClear -> vm.requestCachesClear(CachesClearTarget.STEAM_DOWNLOADS)
         else -> {}
     }
     return InputResult.HANDLED
@@ -882,6 +957,16 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
         state.currentSection == SettingsSection.PLATFORM_DETAIL && state.platformDetail.showRemoveConfirm -> {
             vm._uiState.update { it.copy(platformDetail = it.platformDetail.copy(showRemoveConfirm = false)) }; true
         }
+        state.currentSection == SettingsSection.PLATFORM_DETAIL && state.platformDetail.enteredFromStorageGames -> {
+            val platformId = state.emulators.platforms
+                .getOrNull(state.platformDetail.platformIndex)?.platform?.id
+            val focusIdx = storageGamesFocusIndexOfPlatform(platformId, createStorageGamesLayoutInfo(state))
+            vm._uiState.update { it.copy(
+                currentSection = SettingsSection.STORAGE_GAMES,
+                focusedIndex = focusIdx,
+                platformDetail = it.platformDetail.copy(enteredFromStorageGames = false)
+            ) }; true
+        }
         state.currentSection == SettingsSection.PLATFORM_DETAIL && state.platformDetail.enteredExternally -> false
         state.currentSection == SettingsSection.PLATFORM_DETAIL -> {
             val toggledId = state.emulators.platforms
@@ -962,8 +1047,8 @@ private fun computeMaxFocusIndex(
         else -> RA_PROXY_TOGGLE_INDEX
     }
     SettingsSection.STORAGE -> createStorageLayoutInfo(state).let { it.layout.maxFocusIndex(it.state) }
-    SettingsSection.STORAGE_GAMES -> 0
-    SettingsSection.STORAGE_CACHES -> 0
+    SettingsSection.STORAGE_GAMES -> storageGamesMaxFocusIndex(createStorageGamesLayoutInfo(state))
+    SettingsSection.STORAGE_CACHES -> storageCachesMaxFocusIndex(createStorageCachesLayoutInfo(state))
     SettingsSection.THEME -> themeMaxFocusIndex()
     SettingsSection.THEME_SOUNDS -> themeSoundsMaxFocusIndex(ThemeSoundsLayoutState.from(state))
     SettingsSection.THEME_MUSIC -> themeMusicMaxFocusIndex(ThemeMusicLayoutState.from(state))
