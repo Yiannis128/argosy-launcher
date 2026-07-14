@@ -1070,19 +1070,19 @@ object EmulatorRegistry {
         "vic20" to "vice_xvic",
         "amiga" to "puae",
         "pc9800" to "np2kai",
-        "pico8" to "fake08"
+        "pico8" to "retro8"
     )
 
     fun getRetroArchCorePatterns(): Map<String, List<String>> = mapOf(
         "nes" to listOf("fceumm", "nestopia", "quicknes", "mesen"),
         "snes" to listOf("snes9x", "bsnes", "mesen"),
-        "n64" to listOf("mupen64plus_next", "parallel_n64"),
+        "n64" to listOf("mupen64plus_next_gles3", "mupen64plus_next_gles2", "parallel_n64"),
         "gc" to listOf("dolphin"),
         "ngc" to listOf("dolphin"),
         "wii" to listOf("dolphin"),
         "gb" to listOf("gambatte", "mgba", "sameboy", "gearboy", "tgbdual"),
         "gbc" to listOf("gambatte", "mgba", "sameboy", "gearboy", "tgbdual"),
-        "gba" to listOf("mgba", "vba", "gpsp"),
+        "gba" to listOf("mgba", "vbam", "gpsp"),
         "nds" to listOf("melondsds", "melonds", "desmume"),
         "3ds" to listOf("citra"),
         "genesis" to listOf("genesis_plus_gx", "picodrive"),
@@ -1097,7 +1097,7 @@ object EmulatorRegistry {
         "dc" to listOf("flycast"),
         "tg16" to listOf("mednafen_pce"),
         "tgcd" to listOf("mednafen_pce"),
-        "pcfx" to listOf("pcfx"),
+        "pcfx" to listOf("mednafen_pcfx"),
         "3do" to listOf("opera"),
         "atari2600" to listOf("stella"),
         "atari5200" to listOf("atari800", "a5200"),
@@ -1119,7 +1119,7 @@ object EmulatorRegistry {
         "wsc" to listOf("mednafen_wswan"),
         "pokemini" to listOf("pokemini"),
         "gameandwatch" to listOf("gw", "mamemess"),
-        "pico8" to listOf("fake08", "retro8"),
+        "pico8" to listOf("retro8"),
         "c64" to listOf("vice_x64", "vice_x64sc"),
         "vic20" to listOf("vice_xvic"),
         "amiga" to listOf("puae", "puae2021"),
@@ -1173,8 +1173,7 @@ object EmulatorRegistry {
             RetroArchCore("desmume2015", "DeSmuME 2015"),
         ),
         "3ds" to listOf(
-            RetroArchCore("citra", "Citra"),
-            RetroArchCore("citra_canary", "Citra Canary")
+            RetroArchCore("citra", "Citra")
         ),
         "genesis" to listOf(
             RetroArchCore("genesis_plus_gx", "Genesis Plus GX"),
@@ -1335,7 +1334,6 @@ object EmulatorRegistry {
             RetroArchCore("np2kai", "Neko Project II Kai")
         ),
         "pico8" to listOf(
-            RetroArchCore("fake08", "FAKE-08"),
             RetroArchCore("retro8", "Retro8")
         )
     )
@@ -1415,8 +1413,7 @@ object EmulatorRegistry {
         "vice_x64sc" to "VICE x64sc",
         "vice_xvic" to "VICE xvic",
         "virtualjaguar" to "Virtual Jaguar",
-        "np2kai" to "Neko Project II Kai",
-        "fake08" to "FAKE-08"
+        "np2kai" to "Neko Project II Kai"
     )
 
     /**
