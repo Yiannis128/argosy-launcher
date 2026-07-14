@@ -4,6 +4,7 @@ import android.util.Log
 import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.data.music.BgmPlaylistRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.domain.usecase.music.MeasureTrackLoudnessUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,9 +12,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,11 +30,15 @@ private const val TAG = "BgmPlaylistCoordinator"
 class BgmPlaylistCoordinator @Inject constructor(
     private val repository: BgmPlaylistRepository,
     private val ambientAudioManager: AmbientAudioManager,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
+    private val measureTrackLoudness: MeasureTrackLoudnessUseCase
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var watchJob: Job? = null
     private var activated = false
+    private var measureJob: Job? = null
+    @Volatile private var measureQueue: List<String> = emptyList()
+    private val measureAttempted: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     val entries: Flow<List<BgmPlaylistEntity>> = repository.observeAll()
 
@@ -94,6 +101,18 @@ class BgmPlaylistCoordinator @Inject constructor(
             ambientAudioManager.setPlaylistSource(paths) {
                 repository.reconcileFolderSources()
                 repository.resolvePlaybackPaths()
+            }
+        }
+        scheduleLoudnessMeasurement(paths)
+    }
+
+    private fun scheduleLoudnessMeasurement(paths: List<String>) {
+        measureQueue = paths
+        if (measureJob?.isActive == true) return
+        measureJob = scope.launch(Dispatchers.IO) {
+            while (isActive) {
+                val next = measureQueue.firstOrNull { measureAttempted.add(it) } ?: break
+                measureTrackLoudness(next)
             }
         }
     }

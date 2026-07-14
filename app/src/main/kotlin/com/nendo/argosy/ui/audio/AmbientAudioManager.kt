@@ -6,8 +6,10 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.util.Log
+import com.nendo.argosy.data.music.AudioLoudnessRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +23,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 private const val TAG = "AmbientAudio"
+private const val TARGET_LOUDNESS_DB = -14.0
+private const val GAIN_MIN_DB = -12.0
+private const val GAIN_MAX_DB = 10.0
 
 sealed interface AmbientOverrideSource {
     val displayName: String
@@ -41,7 +48,8 @@ sealed interface AmbientOverrideSource {
 
 @Singleton
 class AmbientAudioManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val loudnessRepository: AudioLoudnessRepository
 ) {
     companion object {
         const val AMBIENT_SOURCE_PLAYLIST = "playlist:"
@@ -69,6 +77,10 @@ class AmbientAudioManager @Inject constructor(
     private var overrideToken = 0
     private var stashedPlaylistPlayer: MediaPlayer? = null
 
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var trackGainDb = 0f
+    private var logicalVolume = 0f
+
     private val audioAttributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -91,7 +103,58 @@ class AmbientAudioManager @Inject constructor(
     fun setVolume(volume: Int) {
         this.targetVolume = (volume / 100f).coerceIn(0f, 1f)
         Log.d(TAG, "setVolume=$volume (${this.targetVolume})")
-        mediaPlayer?.setVolume(targetVolume, targetVolume)
+        mediaPlayer?.let { applyPlayerVolume(it, targetVolume) }
+    }
+
+    private fun applyPlayerVolume(player: MediaPlayer, volume: Float) {
+        logicalVolume = volume
+        val attenuation = if (trackGainDb < 0f) 10.0.pow(trackGainDb / 20.0).toFloat() else 1f
+        val level = (volume * attenuation).coerceIn(0f, 1f)
+        runCatching { player.setVolume(level, level) }
+    }
+
+    private fun attachLeveling(player: MediaPlayer, localPath: String?) {
+        releaseEnhancer()
+        trackGainDb = 0f
+        loudnessEnhancer = try {
+            LoudnessEnhancer(player.audioSessionId)
+        } catch (e: Exception) {
+            Log.w(TAG, "LoudnessEnhancer unavailable, attenuation-only leveling: ${e.message}")
+            null
+        }
+        if (localPath == null) {
+            applyLeveling(player)
+            return
+        }
+        scope.launch {
+            val meanDb = loudnessRepository.playbackMeanDb(localPath)
+            if (mediaPlayer !== player) return@launch
+            trackGainDb = computeGainDb(meanDb)
+            applyLeveling(player)
+        }
+    }
+
+    private fun computeGainDb(meanDb: Double?): Float =
+        if (meanDb == null) 0f
+        else (TARGET_LOUDNESS_DB - meanDb).coerceIn(GAIN_MIN_DB, GAIN_MAX_DB).toFloat()
+
+    private fun applyLeveling(player: MediaPlayer) {
+        val boostMb = (trackGainDb.coerceAtLeast(0f) * 100).roundToInt()
+        loudnessEnhancer?.let { enhancer ->
+            try {
+                enhancer.setTargetGain(boostMb)
+                enhancer.setEnabled(boostMb > 0)
+            } catch (e: Exception) {
+                Log.w(TAG, "LoudnessEnhancer apply failed, attenuation-only leveling: ${e.message}")
+                releaseEnhancer()
+            }
+        }
+        applyPlayerVolume(player, logicalVolume)
+    }
+
+    private fun releaseEnhancer() {
+        loudnessEnhancer?.let { runCatching { it.release() } }
+        loudnessEnhancer = null
     }
 
     fun setShuffle(shuffle: Boolean) {
@@ -205,6 +268,7 @@ class AmbientAudioManager @Inject constructor(
                 }
                 prepareAsync()
             }
+            mediaPlayer?.let { attachLeveling(it, path) }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to prepare MediaPlayer", e)
             mediaPlayer = null
@@ -220,6 +284,7 @@ class AmbientAudioManager @Inject constructor(
         if (playlist.isEmpty()) return
 
         val wasPlaying = _isPlaying.value
+        releaseEnhancer()
         mediaPlayer?.release()
         mediaPlayer = null
 
@@ -261,6 +326,7 @@ class AmbientAudioManager @Inject constructor(
             releaseStash()
             return
         }
+        releaseEnhancer()
         mediaPlayer?.release()
         mediaPlayer = null
         updateCurrentTrackName()
@@ -269,7 +335,7 @@ class AmbientAudioManager @Inject constructor(
         if (resume && enabled && !suspended) {
             mediaPlayer?.setOnPreparedListener {
                 try {
-                    it.setVolume(targetVolume, targetVolume)
+                    applyPlayerVolume(it, targetVolume)
                     it.start()
                     _isPlaying.value = true
                 } catch (e: Exception) {
@@ -323,6 +389,7 @@ class AmbientAudioManager @Inject constructor(
             if (token != overrideToken || overrideActive) return@fadeOut
             val outgoing = mediaPlayer
             mediaPlayer = null
+            releaseEnhancer()
             runCatching { outgoing?.release() }
             resumePlaylistAfterOverride()
         }
@@ -355,6 +422,7 @@ class AmbientAudioManager @Inject constructor(
                     return@setOnPreparedListener
                 }
                 mediaPlayer = player
+                attachLeveling(player, (source as? AmbientOverrideSource.Local)?.path)
                 _currentTrackName.value = source.displayName
                 if (enabled && !suspended) fadeIn()
             }
@@ -384,6 +452,7 @@ class AmbientAudioManager @Inject constructor(
         }
         if (stash != null) {
             mediaPlayer = stash
+            attachLeveling(stash, playlist.getOrNull(playlistIndex))
             if (!suspended) fadeIn()
         } else {
             restartAtCurrentIndex(resume = true)
@@ -430,7 +499,7 @@ class AmbientAudioManager @Inject constructor(
         fadeAnimator?.cancel()
 
         try {
-            player.setVolume(0f, 0f)
+            applyPlayerVolume(player, 0f)
             if (!player.isPlaying) {
                 player.start()
             }
@@ -440,7 +509,7 @@ class AmbientAudioManager @Inject constructor(
                 duration = durationMs
                 addUpdateListener { animator ->
                     val vol = animator.animatedValue as Float
-                    mediaPlayer?.setVolume(vol, vol)
+                    mediaPlayer?.let { applyPlayerVolume(it, vol) }
                 }
                 start()
             }
@@ -464,7 +533,7 @@ class AmbientAudioManager @Inject constructor(
             duration = durationMs
             addUpdateListener { animator ->
                 val vol = animator.animatedValue as Float
-                mediaPlayer?.setVolume(vol, vol)
+                mediaPlayer?.let { applyPlayerVolume(it, vol) }
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
@@ -495,6 +564,7 @@ class AmbientAudioManager @Inject constructor(
         overrideToken++
         overrideActive = false
         releaseStash()
+        releaseEnhancer()
 
         try {
             mediaPlayer?.stop()

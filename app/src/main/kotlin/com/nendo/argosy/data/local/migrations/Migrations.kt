@@ -2023,3 +2023,16 @@ object Migration_140_141 : Migration(140, 141) {
         db.execSQL("ALTER TABLE `bgm_playlist` ADD COLUMN `enabled` INTEGER NOT NULL DEFAULT 1")
     }
 }
+
+object Migration_141_142 : Migration(141, 142) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `audio_loudness` (" +
+                "`filePath` TEXT NOT NULL, " +
+                "`fileKey` TEXT NOT NULL, " +
+                "`meanDb` REAL NOT NULL, " +
+                "`measuredAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`filePath`))"
+        )
+    }
+}
