@@ -3,9 +3,12 @@ package com.nendo.argosy.ui.audio
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.Uri
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,8 +24,25 @@ import javax.inject.Singleton
 
 private const val TAG = "AmbientAudio"
 
+sealed interface AmbientOverrideSource {
+    val displayName: String
+
+    data class Local(
+        val path: String,
+        override val displayName: String
+    ) : AmbientOverrideSource
+
+    data class Remote(
+        val url: String,
+        val headers: Map<String, String>,
+        override val displayName: String
+    ) : AmbientOverrideSource
+}
+
 @Singleton
-class AmbientAudioManager @Inject constructor() {
+class AmbientAudioManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
     companion object {
         const val AMBIENT_SOURCE_PLAYLIST = "playlist:"
     }
@@ -44,6 +64,10 @@ class AmbientAudioManager @Inject constructor() {
     private var playlist: List<String> = emptyList()
     private var playlistIndex = 0
     private var shuffle = false
+
+    private var overrideActive = false
+    private var overrideToken = 0
+    private var stashedPlaylistPlayer: MediaPlayer? = null
 
     private val audioAttributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -88,13 +112,15 @@ class AmbientAudioManager @Inject constructor() {
         refreshJob?.cancel()
 
         if (!sourceSet) {
-            stopAndRelease()
+            if (!overrideActive) {
+                stopAndRelease()
+            }
             sourceSet = true
             sourcePaths = paths
             playlist = if (shuffle) paths.shuffled() else paths
             playlistIndex = 0
             updateCurrentTrackName()
-            if (enabled && playlist.isNotEmpty()) {
+            if (enabled && playlist.isNotEmpty() && !overrideActive) {
                 preparePlayer(playlist[playlistIndex])
             }
             return
@@ -116,7 +142,11 @@ class AmbientAudioManager @Inject constructor() {
 
         if (updated.isEmpty()) {
             Log.w(TAG, "Playlist emptied while active")
-            stopAndRelease()
+            if (overrideActive) {
+                releaseStash()
+            } else {
+                stopAndRelease()
+            }
             playlistIndex = 0
             updateCurrentTrackName()
             return
@@ -145,6 +175,7 @@ class AmbientAudioManager @Inject constructor() {
     }
 
     private fun updateCurrentTrackName() {
+        if (overrideActive) return
         _currentTrackName.value = playlist.getOrNull(playlistIndex)?.substringAfterLast("/")
     }
 
@@ -182,6 +213,10 @@ class AmbientAudioManager @Inject constructor() {
     }
 
     private fun playNextTrack() {
+        if (overrideActive) {
+            releaseStash()
+            return
+        }
         if (playlist.isEmpty()) return
 
         val wasPlaying = _isPlaying.value
@@ -222,6 +257,10 @@ class AmbientAudioManager @Inject constructor() {
     }
 
     private fun restartAtCurrentIndex(resume: Boolean) {
+        if (overrideActive) {
+            releaseStash()
+            return
+        }
         mediaPlayer?.release()
         mediaPlayer = null
         updateCurrentTrackName()
@@ -249,6 +288,114 @@ class AmbientAudioManager @Inject constructor() {
         }
     }
 
+    /**
+     * Fades out current playback and loops the given track on top of the playlist,
+     * leaving playlist position untouched until [clearOverride].
+     */
+    suspend fun playOverride(source: AmbientOverrideSource) = withContext(Dispatchers.Main.immediate) {
+        if (!enabled) {
+            Log.d(TAG, "playOverride skipped: disabled")
+            return@withContext
+        }
+        if (source is AmbientOverrideSource.Local && !validatePath(source.path)) {
+            Log.w(TAG, "playOverride skipped: unreadable path ${source.path}")
+            return@withContext
+        }
+        overrideToken++
+        val token = overrideToken
+        overrideActive = true
+        Log.d(TAG, "playOverride: ${source.displayName}")
+        fadeOut {
+            if (token != overrideToken) return@fadeOut
+            detachCurrentPlayerForOverride()
+            prepareOverride(source, token)
+        }
+    }
+
+    /** Fades out an active override and resumes the underlying playlist where it left off. */
+    fun clearOverride() {
+        if (!overrideActive) return
+        overrideToken++
+        val token = overrideToken
+        overrideActive = false
+        Log.d(TAG, "clearOverride")
+        fadeOut {
+            if (token != overrideToken || overrideActive) return@fadeOut
+            val outgoing = mediaPlayer
+            mediaPlayer = null
+            runCatching { outgoing?.release() }
+            resumePlaylistAfterOverride()
+        }
+    }
+
+    private fun detachCurrentPlayerForOverride() {
+        val outgoing = mediaPlayer ?: return
+        mediaPlayer = null
+        if (stashedPlaylistPlayer == null) {
+            stashedPlaylistPlayer = outgoing
+        } else {
+            runCatching { outgoing.release() }
+        }
+    }
+
+    private fun prepareOverride(source: AmbientOverrideSource, token: Int) {
+        try {
+            val player = MediaPlayer()
+            player.setAudioAttributes(audioAttributes)
+            when (source) {
+                is AmbientOverrideSource.Local -> player.setDataSource(source.path)
+                is AmbientOverrideSource.Remote ->
+                    player.setDataSource(context, Uri.parse(source.url), source.headers)
+            }
+            player.isLooping = true
+            player.setVolume(0f, 0f)
+            player.setOnPreparedListener {
+                if (token != overrideToken || !overrideActive) {
+                    runCatching { it.release() }
+                    return@setOnPreparedListener
+                }
+                mediaPlayer = player
+                _currentTrackName.value = source.displayName
+                if (enabled && !suspended) fadeIn()
+            }
+            player.setOnErrorListener { _, what, extra ->
+                Log.e(TAG, "Override error: what=$what extra=$extra")
+                if (token == overrideToken && overrideActive) {
+                    clearOverride()
+                } else {
+                    runCatching { player.release() }
+                }
+                true
+            }
+            player.prepareAsync()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to prepare override", e)
+            if (token == overrideToken && overrideActive) clearOverride()
+        }
+    }
+
+    private fun resumePlaylistAfterOverride() {
+        val stash = stashedPlaylistPlayer
+        stashedPlaylistPlayer = null
+        updateCurrentTrackName()
+        if (!enabled) {
+            runCatching { stash?.release() }
+            return
+        }
+        if (stash != null) {
+            mediaPlayer = stash
+            if (!suspended) fadeIn()
+        } else {
+            restartAtCurrentIndex(resume = true)
+        }
+    }
+
+    private fun releaseStash() {
+        val stash = stashedPlaylistPlayer ?: return
+        stashedPlaylistPlayer = null
+        runCatching { stash.release() }
+    }
+
     fun suspend() {
         suspended = true
         fadeOut()
@@ -273,7 +420,7 @@ class AmbientAudioManager @Inject constructor() {
             return
         }
 
-        if (mediaPlayer == null && playlist.isNotEmpty()) {
+        if (mediaPlayer == null && !overrideActive && playlist.isNotEmpty()) {
             preparePlayer(playlist[playlistIndex])
         }
 
@@ -345,6 +492,9 @@ class AmbientAudioManager @Inject constructor() {
     private fun stopAndRelease() {
         fadeAnimator?.cancel()
         fadeAnimator = null
+        overrideToken++
+        overrideActive = false
+        releaseStash()
 
         try {
             mediaPlayer?.stop()

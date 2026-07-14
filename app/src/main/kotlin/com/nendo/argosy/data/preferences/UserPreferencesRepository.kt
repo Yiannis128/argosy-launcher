@@ -148,6 +148,7 @@ class UserPreferencesRepository @Inject constructor(
             ambientAudioVolume = controls.ambientAudioVolume,
             ambientAudioUri = controls.ambientAudioUri,
             ambientAudioShuffle = controls.ambientAudioShuffle,
+            gameDetailThemeEnabled = controls.gameDetailThemeEnabled,
             imageCachePath = sync.imageCachePath,
             screenDimmerEnabled = display.screenDimmerEnabled,
             screenDimmerTimeoutMinutes = display.screenDimmerTimeoutMinutes,
@@ -343,6 +344,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setAmbientAudioVolume(volume: Int) = controlsPrefs.setAmbientAudioVolume(volume)
     suspend fun setAmbientAudioUri(uri: String?) = controlsPrefs.setAmbientAudioUri(uri)
     suspend fun setAmbientAudioShuffle(shuffle: Boolean) = controlsPrefs.setAmbientAudioShuffle(shuffle)
+    suspend fun setGameDetailThemeEnabled(enabled: Boolean) = controlsPrefs.setGameDetailThemeEnabled(enabled)
     suspend fun setMenuWrapMode(mode: MenuWrapMode) = controlsPrefs.setMenuWrapMode(mode)
 
     // --- Storage delegates ---
@@ -656,6 +658,7 @@ data class UserPreferences(
     val ambientAudioVolume: Int = 50,
     val ambientAudioUri: String? = null,
     val ambientAudioShuffle: Boolean = false,
+    val gameDetailThemeEnabled: Boolean = false,
     val imageCachePath: String? = null,
     val screenDimmerEnabled: Boolean = true,
     val screenDimmerTimeoutMinutes: Int = 2,

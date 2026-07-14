@@ -908,6 +908,7 @@ class SettingsViewModel @Inject constructor(
     fun cycleAmbientAudioVolume() = routeCycleAmbientAudioVolume(this)
 
     fun setAmbientAudioShuffle(shuffle: Boolean) = ambientAudioDelegate.setShuffle(viewModelScope, shuffle)
+    fun setGameDetailThemeEnabled(enabled: Boolean) = ambientAudioDelegate.setGameDetailTheme(viewModelScope, enabled)
     fun addBgmPlaylistEntry(path: String) = ambientAudioDelegate.addPlaylistEntry(viewModelScope, path)
     fun openBgmPlaylistManager() = ambientAudioDelegate.openPlaylistManager(viewModelScope)
     fun openBgmAddMusicBrowser() = ambientAudioDelegate.openAddMusicBrowser(viewModelScope)

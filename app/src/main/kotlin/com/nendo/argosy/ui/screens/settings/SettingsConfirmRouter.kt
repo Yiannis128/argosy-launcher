@@ -401,6 +401,10 @@ private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
             return InputResult.handled(SoundType.TOGGLE)
         }
+        ThemeMusicItem.GameThemeToggle -> {
+            vm.setGameDetailThemeEnabled(!state.ambientAudio.gameDetailThemeEnabled)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         null -> {}
     }
     return InputResult.HANDLED

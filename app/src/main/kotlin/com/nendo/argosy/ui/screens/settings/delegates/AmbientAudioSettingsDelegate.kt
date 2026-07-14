@@ -85,6 +85,13 @@ class AmbientAudioSettingsDelegate @Inject constructor(
         }
     }
 
+    fun setGameDetailTheme(scope: CoroutineScope, enabled: Boolean) {
+        scope.launch {
+            preferencesRepository.setGameDetailThemeEnabled(enabled)
+            _state.update { it.copy(gameDetailThemeEnabled = enabled) }
+        }
+    }
+
     fun addPlaylistEntry(scope: CoroutineScope, path: String) {
         scope.launch {
             playlistCoordinator.addLocalPath(path)

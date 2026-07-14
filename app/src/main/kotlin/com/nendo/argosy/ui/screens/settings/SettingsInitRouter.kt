@@ -510,6 +510,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             enabled = prefs.ambientAudioEnabled,
             volume = prefs.ambientAudioVolume,
             shuffle = prefs.ambientAudioShuffle,
+            gameDetailThemeEnabled = prefs.gameDetailThemeEnabled,
             currentTrackName = vm.ambientAudioDelegate.state.value.currentTrackName,
             playlistEntryCount = vm.ambientAudioDelegate.state.value.playlistEntryCount
         ))

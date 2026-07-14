@@ -42,10 +42,11 @@ internal sealed class ThemeMusicItem(
     data object BrowseServerMusic : ThemeMusicItem("browseServerMusic", "music", { it.bgmEnabled && it.musicApiSupported })
     data object BrowseLocalMusic : ThemeMusicItem("browseLocalMusic", "music", { it.bgmEnabled })
     data object BgmShuffle : ThemeMusicItem("bgmShuffle", "music", { it.bgmEnabled })
+    data object GameThemeToggle : ThemeMusicItem("gameDetailTheme", "music", { it.bgmEnabled && it.musicApiSupported })
 
     companion object {
         val ALL: List<ThemeMusicItem> = listOf(
-            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle
+            BgmToggle, BgmVolume, BgmPlaylist, BrowseServerMusic, BrowseLocalMusic, BgmShuffle, GameThemeToggle
         )
     }
 }
@@ -166,6 +167,14 @@ fun ThemeMusicSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 isEnabled = uiState.ambientAudio.shuffle,
                 isFocused = isFocused(item),
                 onToggle = { viewModel.setAmbientAudioShuffle(it) }
+            )
+
+            ThemeMusicItem.GameThemeToggle -> SwitchPreference(
+                title = "Game Themes",
+                subtitle = "Play a game's title theme on its details page",
+                isEnabled = uiState.ambientAudio.gameDetailThemeEnabled,
+                isFocused = isFocused(item),
+                onToggle = { viewModel.setGameDetailThemeEnabled(it) }
             )
         }
     }

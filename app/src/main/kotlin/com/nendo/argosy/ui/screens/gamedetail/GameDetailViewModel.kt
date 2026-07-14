@@ -114,7 +114,8 @@ class GameDetailViewModel @Inject constructor(
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
     private val downloadManager: com.nendo.argosy.data.download.DownloadManager,
     private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
-    private val getRelatedGamesUseCase: com.nendo.argosy.domain.usecase.game.GetRelatedGamesUseCase
+    private val getRelatedGamesUseCase: com.nendo.argosy.domain.usecase.game.GetRelatedGamesUseCase,
+    private val gameThemeAudio: com.nendo.argosy.ui.audio.GameThemeAudioCoordinator
 ) : ViewModel() {
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
@@ -144,6 +145,7 @@ class GameDetailViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         imageCacheManager.resumeBackgroundCaching()
+        gameThemeAudio.exit(currentGameId)
     }
 
     @Deprecated("Hardcore conflict is now handled by GameLaunchDelegate callbacks")
@@ -403,6 +405,7 @@ class GameDetailViewModel @Inject constructor(
         pageLoadTime = System.currentTimeMillis()
         downloadDelegate.reset()
         imageCacheManager.pauseBackgroundCaching()
+        gameThemeAudio.enter(gameId)
         viewModelScope.launch {
             if (emulatorDetector.installedEmulators.value.isEmpty()) {
                 emulatorDetector.detectEmulators()

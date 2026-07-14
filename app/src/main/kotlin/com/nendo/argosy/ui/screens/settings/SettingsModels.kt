@@ -314,6 +314,7 @@ data class AmbientAudioState(
     val enabled: Boolean = false,
     val volume: Int = 50,
     val shuffle: Boolean = false,
+    val gameDetailThemeEnabled: Boolean = false,
     val currentTrackName: String? = null,
     val playlistEntryCount: Int = 0
 )

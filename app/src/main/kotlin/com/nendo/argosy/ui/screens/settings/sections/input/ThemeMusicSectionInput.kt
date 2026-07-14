@@ -65,6 +65,8 @@ internal class ThemeMusicSectionInput(
             }
             ThemeMusicItem.BgmShuffle ->
                 return toggleLeftRight(direction, state.ambientAudio.shuffle) { viewModel.setAmbientAudioShuffle(it) }
+            ThemeMusicItem.GameThemeToggle ->
+                return toggleLeftRight(direction, state.ambientAudio.gameDetailThemeEnabled) { viewModel.setGameDetailThemeEnabled(it) }
             else -> {}
         }
         return InputResult.UNHANDLED
