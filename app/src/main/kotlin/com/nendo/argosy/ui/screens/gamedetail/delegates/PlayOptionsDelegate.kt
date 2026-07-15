@@ -11,6 +11,7 @@ import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.LaunchEvent
 import com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionAction
+import com.nendo.argosy.ui.screens.gamedetail.modals.buildPlayOptions
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,17 +33,7 @@ data class PlayOptionsState(
     val hasRASupport: Boolean = false,
     val isRALoggedIn: Boolean = false,
     val isOnline: Boolean = false
-) {
-    /** Hardcore requires a RetroAchievements login. */
-    val hardcoreAvailable: Boolean get() = hasRASupport && isRALoggedIn
-
-    /**
-     * Continue-in-hardcore is offered whenever hardcore is available and there is any resumable
-     * save. RESUME_HARDCORE loads the latest hardcore save if present, else falls back to the
-     * active SRAM -- so a casual save can be continued in a hardcore session.
-     */
-    val showResumeHardcore: Boolean get() = hardcoreAvailable && (hasCasualSaves || hasHardcoreSave)
-}
+)
 
 class PlayOptionsDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -90,16 +81,20 @@ class PlayOptionsDelegate @Inject constructor(
     }
 
     /**
-     * The play options shown, in display order -- the single source of truth for the modal's row
-     * layout, its focus bounds, and confirm mapping. Must match [PlayOptionsModal]'s rendering.
+     * The play options shown, in display order -- drives the modal's focus bounds and confirm
+     * mapping. Derived from the same [buildPlayOptions] source of truth the modal renders from, so
+     * focus index and row layout cannot diverge. `canSkipSync` mirrors the screen's wiring
+     * (`canSkipSync = isOnline`).
      */
-    private fun visibleActions(state: PlayOptionsState): List<PlayOptionAction> = buildList {
-        if (state.hasCasualSaves) add(PlayOptionAction.Resume)
-        if (state.hasCasualSaves && state.isOnline) add(PlayOptionAction.ResumeNoSync)
-        if (state.showResumeHardcore) add(PlayOptionAction.ResumeHardcore)
-        add(PlayOptionAction.NewCasual)
-        if (state.hardcoreAvailable) add(PlayOptionAction.NewHardcore)
-    }
+    private fun visibleActions(state: PlayOptionsState): List<PlayOptionAction> =
+        buildPlayOptions(
+            hasSaves = state.hasCasualSaves,
+            hasHardcoreSave = state.hasHardcoreSave,
+            hasRASupport = state.hasRASupport,
+            isRALoggedIn = state.isRALoggedIn,
+            isOnline = state.isOnline,
+            canSkipSync = state.isOnline
+        ).map { it.action }
 
     /** Show the play-options modal, pre-focusing [preferred] if present (else the first row). */
     private fun openModal(state: PlayOptionsState, preferred: PlayOptionAction?) {
