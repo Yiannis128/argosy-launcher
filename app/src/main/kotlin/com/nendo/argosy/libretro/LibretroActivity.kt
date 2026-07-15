@@ -159,6 +159,7 @@ class LibretroActivity : ComponentActivity() {
     private var coreLoadedSuccessfully = false
     @Volatile private var coreDestroyed = false
     @Volatile private var hwCoreTornDownForBackground = false
+    @Volatile private var hwTeardownThread: Thread? = null
     private var autoSaveStateCaptured = false
     private lateinit var retroView: GLRetroView
     private val portResolver = ControllerPortResolver()
@@ -2204,6 +2205,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (hwCoreTornDownForBackground) {
+            awaitHwTeardown()
             recreate()
             return
         }
@@ -2220,20 +2222,36 @@ class LibretroActivity : ComponentActivity() {
 
     private fun saveResumeStateAndTeardown() {
         hwCoreTornDownForBackground = true
-        if (!isGuestJoinedSession) {
-            saveStateManager.saveSram(retroView)
-        }
-        if (!hardcoreMode && statesSupported) {
-            try {
-                val stateData = retroView.serializeState()
-                saveStateManager.performSlotSave(SaveStateManager.RESUME_SLOT, stateData, null)
-            } catch (e: Exception) {
-                Log.w(TAG, "Resume-state save failed", e)
-            }
-        }
         coreDestroyed = true
-        retroView.destroyNative()
-        retroView.onPause()
+        val view = retroView
+        val guest = isGuestJoinedSession
+        val canSaveState = !hardcoreMode && statesSupported
+        hwTeardownThread = Thread {
+            try {
+                if (!guest) saveStateManager.saveSram(view)
+                if (canSaveState) {
+                    try {
+                        val stateData = view.serializeState()
+                        saveStateManager.performSlotSave(SaveStateManager.RESUME_SLOT, stateData, null)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Resume-state save failed", e)
+                    }
+                }
+                view.destroyNative()
+            } catch (e: Exception) {
+                Log.w(TAG, "HW core teardown failed", e)
+            }
+        }.also { it.start() }
+    }
+
+    private fun awaitHwTeardown() {
+        val thread = hwTeardownThread ?: return
+        try {
+            thread.join(HW_TEARDOWN_JOIN_MS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+        hwTeardownThread = null
     }
 
     override fun onUserLeaveHint() {
@@ -2292,9 +2310,9 @@ class LibretroActivity : ComponentActivity() {
         requestedOrientation = if (!locked) {
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
         } else if (currentOrientationState == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         } else {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
     }
 
@@ -2478,6 +2496,7 @@ class LibretroActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "LibretroActivity"
+        private const val HW_TEARDOWN_JOIN_MS = 2500L
 
         private const val CORE_INPUT_PULSE_MS = 50L
 
