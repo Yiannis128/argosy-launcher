@@ -502,7 +502,10 @@ class GameDetailViewModel @Inject constructor(
                 SavePathRegistry.getConfig(emulatorId) != null
 
             val saveStatusInfo = if (canManageSaves) {
-                saveManagement.loadSaveStatusInfo(gameId, emulatorId!!, game.activeSaveChannel, game.activeSaveTimestamp)
+                saveManagement.loadSaveStatusInfo(
+                    gameId, emulatorId!!, game.activeSaveChannel, game.activeSaveTimestamp,
+                    includeServer = com.nendo.argosy.util.NetworkUtils.isOnline(context)
+                )
             } else null
 
             val (updateFilesUi, dlcFilesUi) = loadUpdateAndDlcFiles(gameId, game.platformSlug, game.localPath)
@@ -1295,7 +1298,8 @@ class GameDetailViewModel @Inject constructor(
                 ?: return@launch
             val fresh = saveManagement.loadSaveStatusInfo(
                 currentGameId, emulatorId, event.channelName,
-                event.timestamp ?: state.saveStatusInfo?.activeSaveTimestamp
+                event.timestamp ?: state.saveStatusInfo?.activeSaveTimestamp,
+                includeServer = com.nendo.argosy.util.NetworkUtils.isOnline(context)
             )
             if (fresh != null) {
                 _uiState.update { it.copy(saveStatusInfo = fresh) }
