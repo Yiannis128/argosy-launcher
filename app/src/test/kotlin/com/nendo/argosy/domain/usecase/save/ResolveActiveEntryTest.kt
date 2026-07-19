@@ -79,6 +79,20 @@ class ResolveActiveEntryTest {
     }
 
     @Test
+    fun `named channel with no entries resolves to null, not another channel's save`() {
+        // An empty named channel means no active save. Falling back cross-channel would disagree
+        // with SaveStateManager, which restores strictly within the channel and finds nothing.
+        val otherChannel = entry(timestampMillis = 3000, channelName = "slot2", isHardcore = true)
+        val unchannelled = entry(timestampMillis = 5000, isLatest = true)
+        val active = resolveActiveEntry(
+            listOf(otherChannel, unchannelled),
+            activeChannel = "slot1",
+            activeSaveTimestamp = null
+        )
+        assertNull(active)
+    }
+
+    @Test
     fun `literal autosave channel is not looked up as a named channel`() {
         // A named entry literally called "autosave" must NOT be selected; the coordinate means the
         // latest/null bucket (invariant A: activeSaveChannel is null OR the literal "autosave").

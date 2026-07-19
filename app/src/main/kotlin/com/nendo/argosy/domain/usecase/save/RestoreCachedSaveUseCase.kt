@@ -81,8 +81,14 @@ class RestoreCachedSaveUseCase @Inject constructor(
                 // readers and the next active-save resolution misread it. downloadSaveById stays the
                 // live restore because it is layout-aware (GCI/Switch/folder); caching separately
                 // reuses the proven server-download cache path instead of duplicating that layout logic.
-                if (downloaded) {
-                    saveSyncRepository.downloadAndCacheSave(serverSaveId, gameId, entry.channelName)
+                // Opportunistic, not part of the restore contract: the save is already on disk, so a
+                // failed cache write only degrades the unified view back to server-only until the
+                // next sync. Log and carry on -- reporting Error here would tell the user a restore
+                // that succeeded had failed.
+                if (downloaded &&
+                    !saveSyncRepository.downloadAndCacheSave(serverSaveId, gameId, entry.channelName)
+                ) {
+                    Log.w(TAG, "Restored server save $serverSaveId but failed to cache it locally; unified view stays server-only until the next sync")
                 }
                 downloaded
             }

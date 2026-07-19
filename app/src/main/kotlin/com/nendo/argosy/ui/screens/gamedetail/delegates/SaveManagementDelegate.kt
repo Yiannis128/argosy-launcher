@@ -59,8 +59,16 @@ class SaveManagementDelegate @Inject constructor(
 
         // Unified view so a server-only cloud save (no local cache, no sync row -- the common
         // freshly-synced case) is not misreported as NO_SAVE.
+        // Resolve against the coordinates passed in, not the game row's -- a save event can carry a
+        // channel the row has not been updated to yet, and mixing the two reports one channel's
+        // timestamp under another channel's status.
         val serverTimestamp = if (cacheTimestamp == null && syncEntity == null) {
-            getUnifiedSavesUseCase.resolveActive(gameId, includeServer)?.timestamp
+            getUnifiedSavesUseCase.resolveActive(
+                gameId = gameId,
+                activeChannel = activeChannel,
+                activeSaveTimestamp = activeSaveTimestamp,
+                includeServer = includeServer
+            )?.timestamp
         } else {
             null
         }
