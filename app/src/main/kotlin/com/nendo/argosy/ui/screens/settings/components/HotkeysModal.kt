@@ -43,7 +43,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.R
+import com.nendo.argosy.data.repository.InputPresets
 import com.nendo.argosy.ui.input.LocalGamepadInputHandler
 import com.nendo.argosy.data.local.entity.CoreInputMode
 import com.nendo.argosy.data.local.entity.HotkeyAction
@@ -56,6 +59,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -104,7 +108,8 @@ private sealed interface MenuRow {
         val combo: List<Int>,
         val holdMs: Long,
         val conflicting: Boolean,
-        val inherited: Boolean
+        val inherited: Boolean,
+        val shadowedByConsoleButton: Boolean
     ) : MenuRow {
         override val focusable get() = true
     }
@@ -153,8 +158,8 @@ fun HotkeysModal(
         findConflictingActions(hotkeys, activeScopeType, activeScopeKey)
     }
 
-    val rows = remember(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey) {
-        buildRows(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey)
+    val rows = remember(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey, platformSlug) {
+        buildRows(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey, platformSlug)
     }
     val focusableRows = remember(rows) { rows.filter { it.focusable } }
 
@@ -297,7 +302,8 @@ private fun buildRows(
     coreName: String?,
     conflictingActions: Set<HotkeyAction>,
     scopeType: HotkeyScopeType,
-    scopeKey: String?
+    scopeKey: String?,
+    platformSlug: String?
 ): List<MenuRow> = buildList {
     add(MenuRow.Header("System Hotkeys", dimmed = false))
     HOTKEY_ACTIONS.forEach { action ->
@@ -309,13 +315,17 @@ private fun buildRows(
             } else {
                 null
             }
+        val combo = displayEntity?.let { parseComboJson(it.buttonComboJson) } ?: emptyList()
+        val shadowed = platformSlug != null && combo.size == 1 &&
+            InputPresets.keyMapsToConsoleButton(combo.first(), platformSlug)
         add(
             MenuRow.System(
                 action = action,
-                combo = displayEntity?.let { parseComboJson(it.buttonComboJson) } ?: emptyList(),
+                combo = combo,
                 holdMs = displayEntity?.holdMs ?: 0L,
                 conflicting = action in conflictingActions,
-                inherited = inherited
+                inherited = inherited,
+                shadowedByConsoleButton = shadowed
             )
         )
     }
@@ -388,6 +398,7 @@ private fun MenuListContent(
                             isFocused = fIndex == focusedIndex,
                             isConflicting = row.conflicting,
                             inherited = row.inherited,
+                            shadowedByConsoleButton = row.shadowedByConsoleButton,
                             onClick = { onSelect(fIndex) },
                             onSecondaryClick = { onCycleHoldDelay(fIndex) }
                         )
@@ -442,17 +453,22 @@ private fun HotkeyRow(
     isFocused: Boolean,
     isConflicting: Boolean,
     inherited: Boolean = false,
+    shadowedByConsoleButton: Boolean = false,
     onClick: () -> Unit,
     onSecondaryClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
+    val warningColor = LocalLauncherTheme.current.semanticColors.warning
+    val showWarning = shadowedByConsoleButton && !isConflicting
     val backgroundColor = when {
         isFocused && isConflicting -> MaterialTheme.colorScheme.errorContainer
+        isFocused && showWarning -> warningColor.copy(alpha = 0.15f)
         isFocused -> theme.focusAccent.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
     val borderColor = when {
         isConflicting -> MaterialTheme.colorScheme.error
+        showWarning -> warningColor
         isFocused -> theme.focusAccent
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
@@ -460,6 +476,7 @@ private fun HotkeyRow(
         isFocused && isConflicting -> MaterialTheme.colorScheme.onErrorContainer
         isFocused -> lerp(theme.focusAccent, Color.White, 0.45f)
         isConflicting -> MaterialTheme.colorScheme.error
+        showWarning -> warningColor
         else -> MaterialTheme.colorScheme.onSurface
     }
     val secondaryAlpha = if (isFocused) 1.0f else 0.7f
@@ -484,6 +501,14 @@ private fun HotkeyRow(
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (showWarning) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_controller),
+                    contentDescription = "Used by the console on this system",
+                    modifier = Modifier.size(14.dp),
+                    tint = warningColor
+                )
+            }
             if (holdMs > 0L) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
