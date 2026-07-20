@@ -64,9 +64,9 @@ class DriverFetcherRepository @Inject constructor(
             titlePrefixesToStrip = listOf("vturnip_mrpurple_", "turnip_mrpurple_"),
             titleSuffixesToStrip = listOf(".adpkg")
         ),
-        DriverRepo("GameHub Adreno 8xx", "crueter/GameHub-8Elite-Drivers", 1),
-        DriverRepo("KIMCHI Turnip", "K11MCH1/AdrenoToolsDrivers", 2, useTagName = true, sortMode = SortMode.PublishTime),
-        DriverRepo("Weab-Chan Freedreno", "Weab-chan/freedreno_turnip-CI", 3)
+        DriverRepo("StevenMX Turnip", "StevenMXZ/Adreno-Tools-Drivers", 1, sortMode = SortMode.PublishTime),
+        DriverRepo("GameHub Adreno 8xx", "crueter/GameHub-8Elite-Drivers", 2),
+        DriverRepo("KIMCHI Turnip", "K11MCH1/AdrenoToolsDrivers", 3, useTagName = true, sortMode = SortMode.PublishTime)
     )
 
     private val driverMap: List<Pair<IntRange, String>> = listOf(
