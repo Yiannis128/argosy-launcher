@@ -171,7 +171,7 @@ public class LibretroDroid {
     public static native Controller[][] getControllers();
     public static native void setControllerType(int port, int type);
 
-    public static native void initRewindBuffer(int slotCount, int maxStateSize);
+    public static native void initRewindBuffer(int maxSlots, long budgetBytes);
     public static native void clearRewindBuffer();
     public static native void destroyRewindBuffer();
     public static native float getRewindBufferUsage();

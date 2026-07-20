@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include <unordered_set>
+#include <new>
 
 #include "libretrodroid.h"
 #include "utils/libretrodroidexception.h"
@@ -744,9 +745,36 @@ void LibretroDroid::setRewindSpeed(unsigned int speed) {
     rewindSpeed = speed;
 }
 
-void LibretroDroid::initRewindBuffer(int slotCount, int maxStateSize) {
-    rewindBuffer = std::make_unique<RewindBuffer>(slotCount, maxStateSize);
-    rewindTempBuffer.resize(maxStateSize);
+void LibretroDroid::initRewindBuffer(int maxSlots, jlong budgetBytes) {
+    constexpr size_t MIN_SLOTS = 4;
+
+    size_t stateSize = core->retro_serialize_size();
+    if (stateSize == 0 || maxSlots <= 0 || budgetBytes <= 0) {
+        LOGE("Rewind unavailable: stateSize=%zu maxSlots=%d budget=%lld",
+             stateSize, maxSlots, (long long) budgetBytes);
+        return;
+    }
+
+    size_t slots = std::min((size_t) maxSlots, (size_t) budgetBytes / stateSize);
+    if (slots < MIN_SLOTS) {
+        LOGE("Rewind unavailable: state size %zu does not fit budget %lld",
+             stateSize, (long long) budgetBytes);
+        return;
+    }
+
+    try {
+        rewindBuffer = std::make_unique<RewindBuffer>(slots, stateSize);
+        rewindTempBuffer.resize(stateSize);
+    } catch (const std::bad_alloc&) {
+        LOGE("Rewind unavailable: failed to allocate %zu slots of %zu bytes", slots, stateSize);
+        rewindBuffer.reset();
+        rewindTempBuffer.clear();
+        rewindTempBuffer.shrink_to_fit();
+        return;
+    }
+
+    LOGD("Rewind buffer: %zu slots x %zu bytes (%zu MiB), requested %d slots",
+         slots, stateSize, (slots * stateSize) / (1024 * 1024), maxSlots);
 }
 
 void LibretroDroid::destroyRewindBuffer() {

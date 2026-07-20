@@ -854,10 +854,10 @@ JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_setRotatio
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_initRewindBuffer(
     JNIEnv* env,
     jclass obj,
-    jint slotCount,
-    jint maxStateSize
+    jint maxSlots,
+    jlong budgetBytes
 ) {
-    LibretroDroid::getInstance().initRewindBuffer(slotCount, maxStateSize);
+    LibretroDroid::getInstance().initRewindBuffer(maxSlots, budgetBytes);
 }
 
 JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_clearRewindBuffer(

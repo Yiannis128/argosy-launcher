@@ -1,6 +1,7 @@
 package com.nendo.argosy.libretro
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -126,6 +127,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -166,6 +168,7 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var hotkeyDispatcher: LibretroHotkeyDispatcher
     private lateinit var motionProcessor: MotionEventProcessor
     private var vibrator: Vibrator? = null
+    private var rewindSetupJob: Job? = null
     private lateinit var romPath: String
 
     private lateinit var saveStateManager: SaveStateManager
@@ -581,6 +584,8 @@ class LibretroActivity : ComponentActivity() {
             if (enabled && !hardcoreMode) {
                 setupRewind(settings)
             } else if (!enabled) {
+                rewindSetupJob?.cancel()
+                rewindSetupJob = null
                 retroView.rewindEnabled = false
                 retroView.destroyRewindBuffer()
             }
@@ -1648,17 +1653,29 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun rewindBudgetBytes(): Long {
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val memoryInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        return RewindBudget.budgetBytes(memoryInfo.availMem, LibretroBuildbot.processIs64Bit)
+    }
+
     private fun setupRewind(settings: BuiltinEmulatorSettings) {
-        lifecycleScope.launch {
+        rewindSetupJob?.cancel()
+        rewindSetupJob = lifecycleScope.launch {
             retroView.getGLRetroEvents().collect { event ->
                 if (event is GLRetroView.GLRetroEvents.SurfaceCreated) {
                     val fps = LibretroDroid.getContentFps()
-                    val slotCount = (settings.rewindBufferDuration * fps).toInt()
-                    val maxStateSize = 4 * 1024 * 1024
-                    retroView.initRewindBuffer(slotCount, maxStateSize)
+                    val duration = RewindBudget.durationSeconds(
+                        settings.rewindBufferDuration,
+                        LibretroBuildbot.processIs64Bit
+                    )
+                    val maxSlots = (duration * fps).toInt()
+                    val budget = rewindBudgetBytes()
+                    retroView.initRewindBuffer(maxSlots, budget)
                     retroView.rewindEnabled = true
                     retroView.rewindSpeed = settings.rewindSpeed
-                    Log.d(TAG, "Rewind buffer initialized: $slotCount slots (${settings.rewindBufferDuration}s), speed=${settings.rewindSpeed}x")
+                    Log.d(TAG, "Rewind requested: $maxSlots slots (${duration}s), budget=${budget / (1024 * 1024)}MiB, speed=${settings.rewindSpeed}x")
                     cheatManager.applyAllEnabledCheats(hardcoreMode)
                 }
             }

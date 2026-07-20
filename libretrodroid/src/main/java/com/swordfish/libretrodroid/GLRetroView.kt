@@ -364,8 +364,8 @@ class GLRetroView(
         LibretroDroid.setRewindSpeed(value)
     }
 
-    fun initRewindBuffer(slotCount: Int, maxStateSize: Int) = runOnGLThread {
-        LibretroDroid.initRewindBuffer(slotCount, maxStateSize)
+    fun initRewindBuffer(maxSlots: Int, budgetBytes: Long) = runOnGLThread {
+        LibretroDroid.initRewindBuffer(maxSlots, budgetBytes)
     }
 
     fun clearRewindBuffer() = runOnGLThread {

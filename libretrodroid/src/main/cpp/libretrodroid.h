@@ -153,7 +153,7 @@ public:
     void setRewindEnabled(bool enabled);
     void setRewinding(bool rewinding);
     void setRewindSpeed(unsigned int speed);
-    void initRewindBuffer(int slotCount, int maxStateSize);
+    void initRewindBuffer(int maxSlots, jlong budgetBytes);
     void destroyRewindBuffer();
     void clearRewindBuffer();
     float getRewindBufferUsage() const;
