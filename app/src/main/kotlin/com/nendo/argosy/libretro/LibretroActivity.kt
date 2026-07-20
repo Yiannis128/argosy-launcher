@@ -63,6 +63,8 @@ import com.nendo.argosy.data.preferences.EffectiveLibretroSettingsResolver
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.InputConfigRepository
 import com.nendo.argosy.data.repository.InputSource
+import com.nendo.argosy.data.repository.MappingPlatforms
+import com.nendo.argosy.data.repository.RetroButton
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
 import com.nendo.argosy.data.netplay.CoreHashCache
 import com.nendo.argosy.data.social.ArgosSocialService
@@ -455,7 +457,8 @@ class LibretroActivity : ComponentActivity() {
             inputMapper = inputMapper,
             portResolver = portResolver,
             videoSettings = videoSettings,
-            getRetroView = { retroView }
+            getRetroView = { retroView },
+            rightStickDeadzone = rightStickDeadzoneForPlatform()
         )
 
         buildContentView()
@@ -2448,6 +2451,11 @@ class LibretroActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    private fun rightStickDeadzoneForPlatform(): Float {
+        val canonical = com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug)
+        return if (canonical in PLATFORMS_WITH_DIGITAL_RIGHT_STICK) DIGITAL_RIGHT_STICK_DEADZONE else 0f
+    }
+
     private fun getControllerId(device: InputDevice): String {
         return "${device.vendorId}:${device.productId}:${device.descriptor}"
     }
@@ -2464,11 +2472,9 @@ class LibretroActivity : ComponentActivity() {
 
         if (!isL1R1 && !isL2R2) return false
 
-        val canonicalPlatform = com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug)
-        if (isL1R1 && canonicalPlatform in PLATFORMS_WITHOUT_SHOULDERS) return true
-        if (isL2R2 && canonicalPlatform !in PLATFORMS_WITH_L2_R2) return true
-
-        return false
+        val buttons = MappingPlatforms.profileForSlug(platformSlug).buttons
+        if (isL1R1) return RetroButton.L !in buttons && RetroButton.R !in buttons
+        return RetroButton.L2 !in buttons && RetroButton.R2 !in buttons
     }
 
     companion object {
@@ -2497,23 +2503,9 @@ class LibretroActivity : ComponentActivity() {
         const val ACTION_SHOW_MENU = "com.nendo.argosy.action.SHOW_MENU"
         const val ACTION_QUIT = "com.nendo.argosy.action.QUIT"
 
-        private val PLATFORMS_WITHOUT_SHOULDERS = setOf(
-            "gb", "gbc",
-            "nes", "fds",
-            "sg1000", "sms", "gg",
-            "atari2600", "atari5200", "atari7800",
-            "coleco", "intellivision", "odyssey2", "vectrex"
-        )
-
-        private val PLATFORMS_WITH_L2_R2 = setOf(
-            "psx", "ps1", "playstation",
-            "dreamcast", "dc",
-            "saturn",
-            "gc", "ngc", "gamecube", "wii",
-            "psp",
-            "3do"
-        )
-
         private val PLATFORMS_WITHOUT_STATE_SUPPORT = setOf("psp")
+
+        private const val DIGITAL_RIGHT_STICK_DEADZONE = 0.5f
+        private val PLATFORMS_WITH_DIGITAL_RIGHT_STICK = setOf("n64", "n64dd")
     }
 }
