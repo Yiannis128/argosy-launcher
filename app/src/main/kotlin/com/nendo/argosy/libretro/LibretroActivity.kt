@@ -1604,20 +1604,22 @@ class LibretroActivity : ComponentActivity() {
                     inputConfig.refreshInputMappings()
                 }
             },
-            onSaveHotkey = { action, keyCodes ->
-                repo.setHotkey(action, keyCodes)
+            onSaveHotkey = { action, keyCodes, scopeType, scopeKey ->
+                repo.setHotkey(action, keyCodes, scopeType = scopeType, scopeKey = scopeKey)
                 inputConfig.refreshHotkeys()
             },
-            onClearHotkey = { action ->
-                repo.deleteHotkey(action)
+            onClearHotkey = { action, scopeType, scopeKey ->
+                repo.clearScopedHotkey(action, scopeType, scopeKey)
                 inputConfig.refreshHotkeys()
             },
-            onSetHotkeyHoldMs = { action, holdMs ->
-                repo.setHotkeyHoldMs(action, holdMs)
+            onSetHotkeyHoldMs = { action, holdMs, scopeType, scopeKey ->
+                repo.setHotkeyHoldMs(action, holdMs, scopeType = scopeType, scopeKey = scopeKey)
                 inputConfig.refreshHotkeys()
             },
             coreId = resolvedCoreId,
             coreName = resolvedCoreId?.let { LibretroCoreRegistry.getCoreById(it)?.displayName },
+            platformSlug = platformSlug,
+            platformName = com.nendo.argosy.data.platform.PlatformDefinitions.deriveDisplayName(platformSlug)?.first,
             coreControls = resolvedCoreId?.let { CoreControlManifestRegistry.getManifest(it)?.controls } ?: emptyList(),
             onSaveCoreControl = { retropadId, mode, keyCodes ->
                 resolvedCoreId?.let { coreId ->

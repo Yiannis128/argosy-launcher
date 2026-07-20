@@ -516,19 +516,30 @@ class SettingsViewModel @Inject constructor(
     fun hideHotkeysModal() = routeHideHotkeysModal(this)
     fun observeHotkeys() = inputConfigRepository.observeHotkeys()
 
-    suspend fun saveHotkey(action: com.nendo.argosy.data.local.entity.HotkeyAction, keyCodes: List<Int>) {
-        inputConfigRepository.setHotkey(action, keyCodes)
+    suspend fun saveHotkey(
+        action: com.nendo.argosy.data.local.entity.HotkeyAction,
+        keyCodes: List<Int>,
+        scopeType: com.nendo.argosy.data.local.entity.HotkeyScopeType,
+        scopeKey: String?
+    ) {
+        inputConfigRepository.setHotkey(action, keyCodes, scopeType = scopeType, scopeKey = scopeKey)
     }
 
-    suspend fun clearHotkey(action: com.nendo.argosy.data.local.entity.HotkeyAction) {
-        inputConfigRepository.deleteHotkey(action)
+    suspend fun clearHotkey(
+        action: com.nendo.argosy.data.local.entity.HotkeyAction,
+        scopeType: com.nendo.argosy.data.local.entity.HotkeyScopeType,
+        scopeKey: String?
+    ) {
+        inputConfigRepository.clearScopedHotkey(action, scopeType, scopeKey)
     }
 
     suspend fun setHotkeyHoldMs(
         action: com.nendo.argosy.data.local.entity.HotkeyAction,
-        holdMs: Long
+        holdMs: Long,
+        scopeType: com.nendo.argosy.data.local.entity.HotkeyScopeType,
+        scopeKey: String?
     ) {
-        inputConfigRepository.setHotkeyHoldMs(action, holdMs)
+        inputConfigRepository.setHotkeyHoldMs(action, holdMs, scopeType = scopeType, scopeKey = scopeKey)
     }
 
     suspend fun saveCoreControlHotkey(

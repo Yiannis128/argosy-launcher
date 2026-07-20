@@ -99,7 +99,13 @@ private sealed interface MenuRow {
         override val focusable get() = false
     }
 
-    data class System(val action: HotkeyAction, val combo: List<Int>, val holdMs: Long, val conflicting: Boolean) : MenuRow {
+    data class System(
+        val action: HotkeyAction,
+        val combo: List<Int>,
+        val holdMs: Long,
+        val conflicting: Boolean,
+        val inherited: Boolean
+    ) : MenuRow {
         override val focusable get() = true
     }
 
@@ -122,12 +128,14 @@ private sealed class HotkeysState {
 @Composable
 fun HotkeysModal(
     hotkeys: List<HotkeyEntity>,
-    onSaveHotkey: suspend (HotkeyAction, List<Int>) -> Unit,
-    onClearHotkey: suspend (HotkeyAction) -> Unit,
-    onSetHoldMs: suspend (HotkeyAction, Long) -> Unit,
+    onSaveHotkey: suspend (HotkeyAction, List<Int>, HotkeyScopeType, String?) -> Unit,
+    onClearHotkey: suspend (HotkeyAction, HotkeyScopeType, String?) -> Unit,
+    onSetHoldMs: suspend (HotkeyAction, Long, HotkeyScopeType, String?) -> Unit,
     onDismiss: () -> Unit,
     coreId: String? = null,
     coreName: String? = null,
+    platformSlug: String? = null,
+    platformName: String? = null,
     coreControls: List<CoreControlDef> = emptyList(),
     onSaveCoreControl: suspend (Int, CoreInputMode, List<Int>) -> Unit = { _, _, _ -> },
     onClearCoreBind: suspend (Long) -> Unit = {}
@@ -136,18 +144,28 @@ fun HotkeysModal(
     val scope = rememberCoroutineScope()
     val gamepadInputHandler = LocalGamepadInputHandler.current
 
-    val conflictingActions = remember(hotkeys) { findConflictingActions(hotkeys) }
+    val canScopePlatform = platformSlug != null
+    var scopeToPlatform by remember(canScopePlatform) { mutableStateOf(false) }
+    val activeScopeType = if (scopeToPlatform && canScopePlatform) HotkeyScopeType.PLATFORM else HotkeyScopeType.GLOBAL
+    val activeScopeKey = if (activeScopeType == HotkeyScopeType.PLATFORM) platformSlug else null
 
-    val rows = remember(hotkeys, coreControls, coreId, coreName, conflictingActions) {
-        buildRows(hotkeys, coreControls, coreId, coreName, conflictingActions)
+    val conflictingActions = remember(hotkeys, activeScopeType, activeScopeKey) {
+        findConflictingActions(hotkeys, activeScopeType, activeScopeKey)
+    }
+
+    val rows = remember(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey) {
+        buildRows(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey)
     }
     val focusableRows = remember(rows) { rows.filter { it.focusable } }
 
+    fun scopedSystemEntity(action: HotkeyAction): HotkeyEntity? =
+        hotkeys.find { it.action == action && it.scopeType == activeScopeType && it.scopeKey == activeScopeKey }
+
     fun cycleHoldDelay(action: HotkeyAction) {
-        val current = hotkeys.find { it.action == action }?.holdMs ?: 0L
+        val current = scopedSystemEntity(action)?.holdMs ?: 0L
         val currentIdx = HOLD_DELAY_CYCLE.indexOf(current).coerceAtLeast(0)
         val nextHoldMs = HOLD_DELAY_CYCLE[(currentIdx + 1) % HOLD_DELAY_CYCLE.size]
-        scope.launch { onSetHoldMs(action, nextHoldMs) }
+        scope.launch { onSetHoldMs(action, nextHoldMs, activeScopeType, activeScopeKey) }
     }
 
     fun startRecording(focusableIndex: Int) {
@@ -161,7 +179,7 @@ fun HotkeysModal(
 
     fun clearBind(focusableIndex: Int) {
         when (val row = focusableRows.getOrNull(focusableIndex)) {
-            is MenuRow.System -> scope.launch { onClearHotkey(row.action) }
+            is MenuRow.System -> scope.launch { onClearHotkey(row.action, activeScopeType, activeScopeKey) }
             is MenuRow.Core -> row.boundEntity?.let { entity -> scope.launch { onClearCoreBind(entity.id) } }
             else -> {}
         }
@@ -183,6 +201,7 @@ fun HotkeysModal(
                             KeyEvent.KEYCODE_BUTTON_A -> startRecording(currentState.focusedIndex)
                             KeyEvent.KEYCODE_BUTTON_Y -> clearBind(currentState.focusedIndex)
                             KeyEvent.KEYCODE_BUTTON_X -> cycleHoldDelayAt(currentState.focusedIndex)
+                            KeyEvent.KEYCODE_BUTTON_SELECT -> if (canScopePlatform) scopeToPlatform = !scopeToPlatform
                             KeyEvent.KEYCODE_DPAD_UP -> {
                                 if (currentState.focusedIndex > 0) {
                                     state = currentState.copy(focusedIndex = currentState.focusedIndex - 1)
@@ -225,11 +244,24 @@ fun HotkeysModal(
         }
     }
 
+    val subtitle = when {
+        !canScopePlatform -> "Configure button shortcuts"
+        scopeToPlatform -> "Editing ${platformName ?: platformSlug} only"
+        else -> "Editing all systems"
+    }
+    val scopeHint = if (canScopePlatform) {
+        InputButton.SELECT to if (scopeToPlatform) "All systems" else "This system"
+    } else {
+        null
+    }
+
     when (val currentState = state) {
         is HotkeysState.ActionList -> MenuListContent(
             rows = rows,
             focusableRows = focusableRows,
             focusedIndex = currentState.focusedIndex,
+            subtitle = subtitle,
+            scopeHint = scopeHint,
             onSelect = ::startRecording,
             onCycleHoldDelay = ::cycleHoldDelayAt,
             onDismiss = onDismiss
@@ -241,7 +273,7 @@ fun HotkeysModal(
             onComplete = { keys ->
                 scope.launch {
                     when (val target = currentState.target) {
-                        is RecordTarget.System -> onSaveHotkey(target.action, keys.toList())
+                        is RecordTarget.System -> onSaveHotkey(target.action, keys.toList(), activeScopeType, activeScopeKey)
                         is RecordTarget.Core -> onSaveCoreControl(target.def.retropadId, target.def.mode, keys.toList())
                     }
                     delay(500)
@@ -263,17 +295,27 @@ private fun buildRows(
     coreControls: List<CoreControlDef>,
     coreId: String?,
     coreName: String?,
-    conflictingActions: Set<HotkeyAction>
+    conflictingActions: Set<HotkeyAction>,
+    scopeType: HotkeyScopeType,
+    scopeKey: String?
 ): List<MenuRow> = buildList {
     add(MenuRow.Header("System Hotkeys", dimmed = false))
     HOTKEY_ACTIONS.forEach { action ->
-        val entity = hotkeys.find { it.action == action }
+        val scopeEntity = hotkeys.find { it.action == action && it.scopeType == scopeType && it.scopeKey == scopeKey }
+        val inherited = scopeType == HotkeyScopeType.PLATFORM && scopeEntity == null
+        val displayEntity = scopeEntity
+            ?: if (inherited) {
+                hotkeys.find { it.action == action && it.scopeType == HotkeyScopeType.GLOBAL && it.scopeKey == null }
+            } else {
+                null
+            }
         add(
             MenuRow.System(
                 action = action,
-                combo = entity?.let { parseComboJson(it.buttonComboJson) } ?: emptyList(),
-                holdMs = entity?.holdMs ?: 0L,
-                conflicting = action in conflictingActions
+                combo = displayEntity?.let { parseComboJson(it.buttonComboJson) } ?: emptyList(),
+                holdMs = displayEntity?.holdMs ?: 0L,
+                conflicting = action in conflictingActions,
+                inherited = inherited
             )
         )
     }
@@ -301,6 +343,8 @@ private fun MenuListContent(
     rows: List<MenuRow>,
     focusableRows: List<MenuRow>,
     focusedIndex: Int,
+    subtitle: String,
+    scopeHint: Pair<InputButton, String>?,
     onSelect: (Int) -> Unit,
     onCycleHoldDelay: (Int) -> Unit,
     onDismiss: () -> Unit
@@ -313,14 +357,15 @@ private fun MenuListContent(
 
     Modal(
         title = "Hotkeys",
-        subtitle = "Configure button shortcuts",
+        subtitle = subtitle,
         baseWidth = 520.dp,
         onDismiss = onDismiss,
-        footerHints = listOf(
+        footerHints = listOfNotNull(
             InputButton.A to "Record",
             InputButton.B to "Back",
             InputButton.X to "Hold delay",
-            InputButton.Y to "Clear"
+            InputButton.Y to "Clear",
+            scopeHint
         )
     ) {
         LazyColumn(
@@ -342,6 +387,7 @@ private fun MenuListContent(
                             holdMs = row.holdMs,
                             isFocused = fIndex == focusedIndex,
                             isConflicting = row.conflicting,
+                            inherited = row.inherited,
                             onClick = { onSelect(fIndex) },
                             onSecondaryClick = { onCycleHoldDelay(fIndex) }
                         )
@@ -395,6 +441,7 @@ private fun HotkeyRow(
     holdMs: Long,
     isFocused: Boolean,
     isConflicting: Boolean,
+    inherited: Boolean = false,
     onClick: () -> Unit,
     onSecondaryClick: () -> Unit
 ) {
@@ -462,9 +509,13 @@ private fun HotkeyRow(
                 )
             }
             Text(
-                text = HotkeyManager.formatCombo(combo),
+                text = when {
+                    inherited && combo.isNotEmpty() -> "${HotkeyManager.formatCombo(combo)} · inherited"
+                    inherited -> "Inherited"
+                    else -> HotkeyManager.formatCombo(combo)
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = if (combo.isNotEmpty()) {
+                color = if (combo.isNotEmpty() && !inherited) {
                     contentColor.copy(alpha = secondaryAlpha)
                 } else {
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
@@ -621,9 +672,14 @@ private fun getActionDisplayName(action: HotkeyAction): String {
     }
 }
 
-private fun findConflictingActions(hotkeys: List<HotkeyEntity>): Set<HotkeyAction> {
+private fun findConflictingActions(
+    hotkeys: List<HotkeyEntity>,
+    scopeType: HotkeyScopeType,
+    scopeKey: String?
+): Set<HotkeyAction> {
     val grouped = hotkeys
         .filter { it.action != HotkeyAction.CYCLE_CORE_OPTION && it.action != HotkeyAction.SEND_CORE_INPUT }
+        .filter { it.scopeType == scopeType && it.scopeKey == scopeKey }
         .filter { it.buttonComboJson.isNotBlank() }
         .mapNotNull { entity ->
             val combo = parseComboJson(entity.buttonComboJson)
