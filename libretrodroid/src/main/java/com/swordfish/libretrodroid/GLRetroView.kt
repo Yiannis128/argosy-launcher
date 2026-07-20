@@ -146,6 +146,25 @@ class GLRetroView(
         setRenderer(Renderer())
         renderMode = RENDERMODE_CONTINUOUSLY
         keepScreenOn = true
+        holder.addCallback(object : android.view.SurfaceHolder.Callback {
+            override fun surfaceCreated(h: android.view.SurfaceHolder) {}
+            override fun surfaceChanged(h: android.view.SurfaceHolder, f: Int, w: Int, ht: Int) {}
+            override fun surfaceDestroyed(h: android.view.SurfaceHolder) {
+                Log.i(TAG_LOG, "TEARDOWN surfaceDestroyed callback ran (GLSurfaceView internal survived) destroyed=$isDestroyed")
+            }
+        })
+    }
+
+    override fun onPause() {
+        Log.i(TAG_LOG, "TEARDOWN GLSurfaceView.onPause BEGIN destroyed=$isDestroyed")
+        super<GLSurfaceView>.onPause()
+        Log.i(TAG_LOG, "TEARDOWN GLSurfaceView.onPause END")
+    }
+
+    override fun onDetachedFromWindow() {
+        Log.i(TAG_LOG, "TEARDOWN onDetachedFromWindow BEGIN destroyed=$isDestroyed")
+        super<GLSurfaceView>.onDetachedFromWindow()
+        Log.i(TAG_LOG, "TEARDOWN onDetachedFromWindow END")
     }
 
     override fun onCreate(owner: LifecycleOwner) = catchExceptions {
@@ -379,6 +398,7 @@ class GLRetroView(
     fun destroyNative() {
         if (isDestroyed) return
         isDestroyed = true
+        renderMode = RENDERMODE_WHEN_DIRTY
         runOnGLThreadVoid {
             LibretroDroid.destroy()
         }
@@ -490,6 +510,7 @@ class GLRetroView(
         private var bfiShowBlackNext = false
 
         override fun onDrawFrame(gl: GL10) = catchExceptions {
+            if (isDestroyed) return@catchExceptions
             val tick = netplayTick
             if (tick != null) {
                 if (isEmulationReady) {

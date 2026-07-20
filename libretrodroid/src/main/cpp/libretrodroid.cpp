@@ -515,6 +515,13 @@ void LibretroDroid::loadGameFromVirtualFiles(std::vector<VFSFile> virtualFiles) 
 void LibretroDroid::destroy() {
     LOGD("Performing libretrodroid destroy");
 
+    auto contextDestroy = Environment::getInstance().getHwContextDestroy();
+    if (contextDestroy != nullptr && video && video->isHWAccelerated()) {
+        video->bindHWContext();
+        contextDestroy();
+        video->bindMainContext();
+    }
+
     if (core) {
         core->retro_unload_game();
         core->retro_deinit();
