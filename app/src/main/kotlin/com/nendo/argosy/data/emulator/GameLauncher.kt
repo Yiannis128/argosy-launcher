@@ -1942,10 +1942,10 @@ class GameLauncher @Inject constructor(
         }
 
         java.util.zip.ZipFile(archiveFile).use { zip ->
-            val entry = ArchiveRomNaming.primaryEntry(zip)
+            val entry = ArchiveRomNaming.primaryZipEntry(zip)
                 ?: throw IllegalStateException("Archive is empty")
 
-            val fileName = ArchiveRomNaming.launchFileName(entry)
+            val fileName = ArchiveRomNaming.launchFileName(entry.name)
             val targetFile = File(targetDir, fileName)
 
             zip.getInputStream(entry).use { input ->
@@ -1966,8 +1966,8 @@ class GameLauncher @Inject constructor(
             .use { sevenZ ->
                 var entry = sevenZ.nextEntry
                 while (entry != null) {
-                    if (!entry.isDirectory && !entry.name.startsWith("._")) {
-                        val fileName = File(entry.name).name
+                    if (ArchiveRomNaming.isUsableEntry(entry.name, entry.isDirectory)) {
+                        val fileName = ArchiveRomNaming.launchFileName(entry.name)
                         val targetFile = File(targetDir, fileName)
 
                         targetFile.outputStream().use { output ->

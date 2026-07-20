@@ -3,6 +3,8 @@ package com.nendo.argosy.data.emulator
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -25,6 +27,31 @@ class ArchiveRomNamingTest {
             }
         }
         return archive
+    }
+
+    private fun sevenZWith(archiveName: String, vararg entryNames: String): File {
+        val archive = temp.newFile(archiveName)
+        SevenZOutputFile(archive).use { out ->
+            entryNames.forEach { name ->
+                val entry = SevenZArchiveEntry().apply { this.name = name }
+                out.putArchiveEntry(entry)
+                out.write(byteArrayOf(1, 2, 3))
+                out.closeArchiveEntry()
+            }
+        }
+        return archive
+    }
+
+    @Test
+    fun `7z launch base name comes from the entry not the archive`() {
+        val archive = sevenZWith("Chrono Trigger (USA).7z", "Chrono Trigger (U) [!].sfc")
+        assertEquals("Chrono Trigger (U) [!]", ArchiveRomNaming.launchBaseName(archive))
+    }
+
+    @Test
+    fun `format is detected by magic bytes not extension`() {
+        val misnamed = sevenZWith("Actually7z.zip", "Final Fantasy VI (U).sfc")
+        assertEquals("Final Fantasy VI (U)", ArchiveRomNaming.launchBaseName(misnamed))
     }
 
     @Test
