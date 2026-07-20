@@ -217,9 +217,18 @@ JNIEXPORT jboolean JNICALL LibretroDroid::unserializeSRAM(int8_t* data, size_t s
 }
 
 std::pair<int8_t*, size_t> LibretroDroid::serializeSRAM() {
+    if (core == nullptr) {
+        return std::pair(nullptr, 0);
+    }
+
     size_t size = core->retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+    void* memoryData = core->retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+    if (size == 0 || memoryData == nullptr) {
+        return std::pair(nullptr, 0);
+    }
+
     auto* data = new int8_t[size];
-    memcpy(data, (int8_t*) core->retro_get_memory_data(RETRO_MEMORY_SAVE_RAM), size);
+    memcpy(data, memoryData, size);
 
     return std::pair(data, size);
 }

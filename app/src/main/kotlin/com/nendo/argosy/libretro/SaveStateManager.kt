@@ -233,6 +233,7 @@ class SaveStateManager(
         }
     }
 
+    @Synchronized
     fun saveSram(retroView: GLRetroView) {
         if (usesExternalMemcard) return
         try {

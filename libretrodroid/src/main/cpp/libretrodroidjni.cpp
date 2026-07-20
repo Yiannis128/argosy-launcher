@@ -316,7 +316,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_seri
         auto [data, size] = LibretroDroid::getInstance().serializeSRAM();
 
         jbyteArray result = env->NewByteArray(size);
-        env->SetByteArrayRegion(result, 0, size, (jbyte *) data);
+        if (size > 0 && data != nullptr) {
+            env->SetByteArrayRegion(result, 0, size, (jbyte *) data);
+        }
 
         delete[] data;
 

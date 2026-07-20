@@ -130,6 +130,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -171,6 +172,7 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var motionProcessor: MotionEventProcessor
     private var vibrator: Vibrator? = null
     private var rewindSetupJob: Job? = null
+    private var rollingSaveJob: Job? = null
     private lateinit var romPath: String
 
     private lateinit var saveStateManager: SaveStateManager
@@ -690,6 +692,7 @@ class LibretroActivity : ComponentActivity() {
                             }
                             attemptAutoRestore()
                             netplay.triggerPendingNetplayJoin()
+                            startRollingSave()
                         }
                     }
                 }
@@ -1656,6 +1659,23 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun startRollingSave() {
+        if (!firstFrameRendered || coreDestroyed || isGuestJoinedSession) return
+        if (rollingSaveJob?.isActive == true) return
+        rollingSaveJob = lifecycleScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                delay(ROLLING_SAVE_INTERVAL_MS)
+                if (coreDestroyed) break
+                saveStateManager.saveSram(retroView)
+            }
+        }
+    }
+
+    private fun stopRollingSave() {
+        rollingSaveJob?.cancel()
+        rollingSaveJob = null
+    }
+
     private fun rewindBudgetBytes(): Long {
         val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         val memoryInfo = ActivityManager.MemoryInfo()
@@ -2225,6 +2245,7 @@ class LibretroActivity : ComponentActivity() {
         autoSaveStateCaptured = false
         enterImmersiveMode()
         retroView.onResume()
+        startRollingSave()
     }
 
     private val isHwCore: Boolean
@@ -2256,6 +2277,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        stopRollingSave()
         if (::netplay.isInitialized) netplay.gracefullyEndIfActive()
         if (isClosing) {
             super.onPause()
@@ -2481,6 +2503,8 @@ class LibretroActivity : ComponentActivity() {
         private const val TAG = "LibretroActivity"
 
         private const val CORE_INPUT_PULSE_MS = 50L
+
+        private const val ROLLING_SAVE_INTERVAL_MS = 30_000L
 
         private const val SPEEDRUN_PANEL_FRACTION_DEFAULT = 0.30f
         private val SPEEDRUN_PANEL_FRACTION_RANGE = 0.20f..0.40f
