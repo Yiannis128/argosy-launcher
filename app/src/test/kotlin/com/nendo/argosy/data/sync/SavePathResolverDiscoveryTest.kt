@@ -50,6 +50,13 @@ class SavePathResolverDiscoveryTest {
     private val switchSaveHandler = mockk<SwitchSaveHandler>(relaxed = true)
     private val gciSaveHandler = mockk<GciSaveHandler>(relaxed = true)
     private val saveHandlerRegistry = mockk<PlatformSaveHandlerRegistry>(relaxed = true)
+    private val builtinPreferences =
+        mockk<com.nendo.argosy.data.preferences.BuiltinEmulatorPreferencesRepository>(relaxed = true)
+    private val platformLibretroSettingsDao =
+        mockk<com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao>(relaxed = true)
+
+    private var builtinSettings =
+        com.nendo.argosy.data.preferences.BuiltinEmulatorSettings()
 
     private val titleId = "01007EF00011E000"
     private lateinit var basePath: File
@@ -78,7 +85,90 @@ class SavePathResolverDiscoveryTest {
             context, realFsFal(), emulatorSaveConfigDao, emulatorConfigDao, gameDao, retroArchConfigParser,
             retroArchPathResolver, titleIdExtractor, titleDbRepository, saveArchiver,
             switchSaveHandler, gciSaveHandler, saveHandlerRegistry,
+            builtinPreferences, platformLibretroSettingsDao,
         )
+    }
+
+    private fun zipContaining(archive: File, entryName: String): File {
+        archive.parentFile?.mkdirs()
+        java.util.zip.ZipOutputStream(archive.outputStream()).use { out ->
+            out.putNextEntry(java.util.zip.ZipEntry(entryName))
+            out.write(byteArrayOf(1, 2, 3))
+            out.closeEntry()
+        }
+        return archive
+    }
+
+    private fun stubBuiltinSettings() {
+        every { builtinPreferences.getBuiltinEmulatorSettings() } returns
+            kotlinx.coroutines.flow.flowOf(builtinSettings)
+        coEvery { platformLibretroSettingsDao.getByPlatformId(any()) } returns null
+    }
+
+    @Test
+    fun `zipped rom save is found under the extracted entry name`() = runTest {
+        stubBuiltinSettings()
+        val savesDir = File(tempDir, "libretro/saves").apply { mkdirs() }
+        File(savesDir, "Pokemon - Emerald Version (U).srm").writeBytes(byteArrayOf(9))
+        val rom = zipContaining(
+            File(tempDir, "roms/Pokemon Emerald (USA).zip"),
+            "Pokemon - Emerald Version (U).gba"
+        )
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "builtin",
+            gameTitle = "Totally Unrelated Title",
+            platformSlug = "gba",
+            romPath = rom.absolutePath,
+            gameId = 1L,
+        )
+
+        assertEquals(File(savesDir, "Pokemon - Emerald Version (U).srm").absolutePath, result)
+    }
+
+    @Test
+    fun `unzipped rom save is still found under the rom name`() = runTest {
+        stubBuiltinSettings()
+        val savesDir = File(tempDir, "libretro/saves").apply { mkdirs() }
+        File(savesDir, "Sonic.srm").writeBytes(byteArrayOf(9))
+        val rom = File(tempDir, "roms/Sonic.md").apply {
+            parentFile?.mkdirs()
+            writeBytes(byteArrayOf(1))
+        }
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "builtin",
+            gameTitle = "Totally Unrelated Title",
+            platformSlug = "genesis",
+            romPath = rom.absolutePath,
+            gameId = 1L,
+        )
+
+        assertEquals(File(savesDir, "Sonic.srm").absolutePath, result)
+    }
+
+    @Test
+    fun `builtin custom save path is searched`() = runTest {
+        val customDir = File(tempDir, "custom/saves").apply { mkdirs() }
+        builtinSettings = com.nendo.argosy.data.preferences.BuiltinEmulatorSettings(
+            customSavePath = customDir.absolutePath
+        )
+        stubBuiltinSettings()
+        File(customDir, "Zelda.srm").writeBytes(byteArrayOf(9))
+        val rom = File(tempDir, "roms/Zelda.gba").apply {
+            parentFile?.mkdirs()
+            writeBytes(byteArrayOf(1))
+        }
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "builtin",
+            gameTitle = "Totally Unrelated Title",
+            platformSlug = "gba",
+            romPath = rom.absolutePath,
+            gameId = 1L,
+        )
+
+        assertEquals(File(customDir, "Zelda.srm").absolutePath, result)
     }
 
     @After

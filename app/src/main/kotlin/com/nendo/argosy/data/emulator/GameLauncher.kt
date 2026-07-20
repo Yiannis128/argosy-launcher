@@ -1942,13 +1942,10 @@ class GameLauncher @Inject constructor(
         }
 
         java.util.zip.ZipFile(archiveFile).use { zip ->
-            val entries = zip.entries().toList().filter { !it.isDirectory && !it.name.startsWith("._") }
-            if (entries.isEmpty()) {
-                throw IllegalStateException("Archive is empty")
-            }
+            val entry = ArchiveRomNaming.primaryEntry(zip)
+                ?: throw IllegalStateException("Archive is empty")
 
-            val entry = entries.first()
-            val fileName = File(entry.name).name
+            val fileName = ArchiveRomNaming.launchFileName(entry)
             val targetFile = File(targetDir, fileName)
 
             zip.getInputStream(entry).use { input ->

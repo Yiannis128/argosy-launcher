@@ -18,6 +18,7 @@ import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SaveDebugLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -39,7 +40,9 @@ class SavePathResolver @Inject constructor(
     private val saveArchiver: SaveArchiver,
     private val switchSaveHandler: SwitchSaveHandler,
     private val gciSaveHandler: GciSaveHandler,
-    private val saveHandlerRegistry: PlatformSaveHandlerRegistry
+    private val saveHandlerRegistry: PlatformSaveHandlerRegistry,
+    private val builtinPreferences: com.nendo.argosy.data.preferences.BuiltinEmulatorPreferencesRepository,
+    private val platformLibretroSettingsDao: com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao
 ) {
     suspend fun discoverSavePath(
         emulatorId: String,
@@ -205,7 +208,7 @@ class SavePathResolver @Inject constructor(
                 retroArchPathResolver.resolveSaveDirectoriesForPlatform(req, platformSlug)
             }
         } else {
-            resolveSavePaths(config, platformSlug)
+            builtinSaveDirOverrides(effectiveEmulatorId, gameId) + resolveSavePaths(config, platformSlug)
         }
 
         Logger.debug(TAG, "discoverSavePath: searching ${paths.size} paths for '$gameTitle' (romPath=$romPath)")
@@ -442,37 +445,58 @@ class SavePathResolver @Inject constructor(
 
         val romFile = File(romPath)
         val romName = romFile.nameWithoutExtension
-        val isZipContainer = romFile.extension.equals("zip", ignoreCase = true)
+        val candidateNames = listOfNotNull(
+            romName,
+            com.nendo.argosy.data.emulator.ArchiveRomNaming.launchBaseName(romFile)
+        ).distinct()
 
         Logger.verbose(TAG) {
-            "findSaveByRomName: romPath=${romFile.name}, romName=$romName, isZip=$isZipContainer, extensions=$extensions, searchDir=$basePath"
+            "findSaveByRomName: romPath=${romFile.name}, candidates=$candidateNames, extensions=$extensions, searchDir=$basePath"
         }
 
-        if (isZipContainer) {
-            Logger.verbose(TAG) {
-                "findSaveByRomName: WARNING - ROM is in ZIP container, save filename may differ from container name '$romName'"
-            }
-        }
-
-        for (ext in extensions) {
-            if (ext == "*") continue
-            val savePath = "$basePath/$romName.$ext"
-            Logger.verbose(TAG) { "findSaveByRomName: checking $romName.$ext -> exists=${fal.exists(savePath)}" }
-            if (fal.exists(savePath) && fal.isFile(savePath)) {
-                Logger.debug(TAG, "findSaveByRomName: found $savePath")
-                return savePath
+        for (candidate in candidateNames) {
+            for (ext in extensions) {
+                if (ext == "*") continue
+                val savePath = "$basePath/$candidate.$ext"
+                Logger.verbose(TAG) { "findSaveByRomName: checking $candidate.$ext -> exists=${fal.exists(savePath)}" }
+                if (fal.exists(savePath) && fal.isFile(savePath)) {
+                    Logger.debug(TAG, "findSaveByRomName: found $savePath")
+                    return savePath
+                }
             }
         }
 
         if (Logger.isVerbose) {
             val existingFiles = fal.listFiles(basePath)?.filter { it.isFile }?.map { it.name } ?: emptyList()
             Logger.verbose(TAG) {
-                "findSaveByRomName: no match for '$romName' in $basePath, existing files (${existingFiles.size}): ${existingFiles.take(10).joinToString()}" +
+                "findSaveByRomName: no match for $candidateNames in $basePath, existing files (${existingFiles.size}): ${existingFiles.take(10).joinToString()}" +
                     if (existingFiles.size > 10) "..." else ""
             }
         }
 
         return null
+    }
+
+    /**
+     * Save directories the built-in core may have been launched with. GameLauncher honours a
+     * per-platform override then a global custom path, neither of which is stored in
+     * emulatorSaveConfig, so detection has to resolve them the same way or it searches only
+     * the defaults.
+     */
+    private suspend fun builtinSaveDirOverrides(emulatorId: String, gameId: Long?): List<String> {
+        if (emulatorId != "builtin") return emptyList()
+
+        val platformOverride = gameId
+            ?.let { gameDao.getById(it) }
+            ?.let { platformLibretroSettingsDao.getByPlatformId(it.platformId) }
+            ?.savePath
+            ?.takeIf { it.isNotBlank() }
+
+        val globalOverride = builtinPreferences.getBuiltinEmulatorSettings().first()
+            .customSavePath
+            ?.takeIf { it.isNotBlank() }
+
+        return listOfNotNull(platformOverride, globalOverride).distinct()
     }
 
     private fun findSaveInPath(basePath: String, gameTitle: String, extensions: List<String>): String? {
