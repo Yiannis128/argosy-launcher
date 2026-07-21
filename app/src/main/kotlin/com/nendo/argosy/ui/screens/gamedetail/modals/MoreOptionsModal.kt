@@ -31,6 +31,8 @@ import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.screens.gamedetail.GameDetailUi
 import com.nendo.argosy.ui.screens.gamedetail.MoreOptionAction
+import com.nendo.argosy.ui.screens.gamedetail.MoreOptionsContext
+import com.nendo.argosy.ui.screens.gamedetail.buildMoreOptions
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 
 private sealed interface MoreMenuEntry {
@@ -45,6 +47,50 @@ private sealed interface MoreMenuEntry {
     data object Divider : MoreMenuEntry
 }
 
+private fun MoreOptionAction.toMenuEntry(game: GameDetailUi): MoreMenuEntry.Option = when (this) {
+    MoreOptionAction.ManageSaves ->
+        MoreMenuEntry.Option(Icons.Default.Save, "Manage Cached Saves", action = this)
+    MoreOptionAction.RatingsStatus ->
+        MoreMenuEntry.Option(Icons.Default.Star, "Ratings & Status", action = this)
+    MoreOptionAction.ChangeSteamLauncher ->
+        MoreMenuEntry.Option(label = "Change Launcher", value = game.steamLauncherName ?: "Auto", action = this)
+    MoreOptionAction.SpeedrunSplits ->
+        MoreMenuEntry.Option(Icons.Default.Timer, "Speedrun Splits", action = this)
+    MoreOptionAction.RefreshTitleId ->
+        MoreMenuEntry.Option(Icons.Default.Tag, "Title ID", value = game.titleId ?: "Not detected", action = this)
+    MoreOptionAction.SelectDisc ->
+        MoreMenuEntry.Option(Icons.Default.Album, "Select Disc", action = this)
+    MoreOptionAction.SelectVariant ->
+        MoreMenuEntry.Option(Icons.Default.SwapHoriz, "Select Variant", action = this)
+    MoreOptionAction.Files ->
+        MoreMenuEntry.Option(Icons.Default.Checklist, "Files", action = this)
+    MoreOptionAction.RefreshData ->
+        MoreMenuEntry.Option(Icons.Default.Refresh, "Refresh Game Data", action = this)
+    MoreOptionAction.AddToCollection ->
+        MoreMenuEntry.Option(Icons.Default.FolderSpecial, "Add to Collection", action = this)
+    MoreOptionAction.ChangeCover ->
+        MoreMenuEntry.Option(Icons.Default.Image, "Change Cover Art", action = this)
+    MoreOptionAction.ResetCover ->
+        MoreMenuEntry.Option(Icons.Default.Restore, "Reset Cover Art", action = this)
+    MoreOptionAction.Delete -> MoreMenuEntry.Option(
+        icon = Icons.Default.DeleteOutline,
+        label = when {
+            game.isAndroidApp -> "Uninstall"
+            game.isExternallyManaged -> "Unlink from ${game.managingLauncherDisplayName ?: "Launcher"}"
+            else -> "Delete Download"
+        },
+        isDangerous = !game.isExternallyManaged,
+        action = this
+    )
+    MoreOptionAction.ToggleHide -> MoreMenuEntry.Option(
+        icon = if (game.isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+        label = if (game.isHidden) "Show" else "Hide",
+        isDangerous = !game.isHidden,
+        action = this
+    )
+    else -> MoreMenuEntry.Option(label = "", action = this)
+}
+
 @Composable
 fun MoreOptionsModal(
     game: GameDetailUi,
@@ -57,68 +103,33 @@ fun MoreOptionsModal(
     onAction: (MoreOptionAction) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val canTrackProgress = game.isRommGame || game.isAndroidApp
-    val isEmulatedGame = !game.isSteamGame && !game.isAndroidApp
-    val hasUpdates = updateCount > 0
-    val usesTitleId = game.platformSlug in com.nendo.argosy.data.platform.PlatformDefinitions.TITLE_ID_PLATFORMS
+    val actions = buildMoreOptions(
+        MoreOptionsContext(
+            isDownloaded = isDownloaded,
+            isRommGame = game.isRommGame,
+            isAndroidApp = game.isAndroidApp,
+            isSteamGame = game.isSteamGame,
+            canManageSaves = game.canManageSaves,
+            isMultiDisc = game.isMultiDisc,
+            hasVariants = hasVariants,
+            hasUpdates = updateCount > 0,
+            hasManageableFiles = hasManageableFiles,
+            platformSlug = game.platformSlug,
+            canSearchCovers = canSearchCovers,
+            coverSetManually = game.coverSetManually
+        )
+    )
 
     val entries = buildList<MoreMenuEntry> {
-        if (game.canManageSaves) {
-            add(MoreMenuEntry.Option(Icons.Default.Save, "Manage Cached Saves", action = MoreOptionAction.ManageSaves))
-        }
-        if (canTrackProgress) {
-            add(MoreMenuEntry.Option(Icons.Default.Star, "Ratings & Status", action = MoreOptionAction.RatingsStatus))
-        }
-        if (game.isSteamGame) {
-            add(MoreMenuEntry.Option(label = "Change Launcher", value = game.steamLauncherName ?: "Auto", action = MoreOptionAction.ChangeSteamLauncher))
-        }
-        if (isEmulatedGame) {
-            add(MoreMenuEntry.Option(Icons.Default.Timer, "Speedrun Splits", action = MoreOptionAction.SpeedrunSplits))
-        }
-        if (usesTitleId && isEmulatedGame) {
-            add(MoreMenuEntry.Option(Icons.Default.Tag, "Title ID", value = game.titleId ?: "Not detected", action = MoreOptionAction.RefreshTitleId))
-        }
-        if (game.isMultiDisc) {
-            add(MoreMenuEntry.Option(Icons.Default.Album, "Select Disc", action = MoreOptionAction.SelectDisc))
-        }
-        if (hasVariants && isEmulatedGame) {
-            add(MoreMenuEntry.Option(Icons.Default.SwapHoriz, "Select Variant", action = MoreOptionAction.SelectVariant))
-        }
-        if ((hasManageableFiles || hasUpdates) && isDownloaded) {
-            add(MoreMenuEntry.Option(Icons.Default.Checklist, "Files", action = MoreOptionAction.Files))
-        }
-        if (canTrackProgress) {
-            add(MoreMenuEntry.Option(Icons.Default.Refresh, "Refresh Game Data", action = MoreOptionAction.RefreshData))
-        }
-        add(MoreMenuEntry.Option(Icons.Default.FolderSpecial, "Add to Collection", action = MoreOptionAction.AddToCollection))
-        if (canSearchCovers) {
-            add(MoreMenuEntry.Option(Icons.Default.Image, "Change Cover Art", action = MoreOptionAction.ChangeCover))
-        }
-        if (game.coverSetManually) {
-            add(MoreMenuEntry.Option(Icons.Default.Restore, "Reset Cover Art", action = MoreOptionAction.ResetCover))
-        }
-
-        add(MoreMenuEntry.Divider)
-
-        if (isDownloaded || game.isAndroidApp) {
-            val label = when {
-                game.isAndroidApp -> "Uninstall"
-                game.isExternallyManaged -> "Unlink from ${game.managingLauncherDisplayName ?: "Launcher"}"
-                else -> "Delete Download"
+        var dividerAdded = false
+        actions.forEach { action ->
+            val isTailAction = action is MoreOptionAction.Delete || action is MoreOptionAction.ToggleHide
+            if (isTailAction && !dividerAdded) {
+                add(MoreMenuEntry.Divider)
+                dividerAdded = true
             }
-            add(MoreMenuEntry.Option(
-                icon = Icons.Default.DeleteOutline,
-                label = label,
-                isDangerous = !game.isExternallyManaged,
-                action = MoreOptionAction.Delete
-            ))
+            add(action.toMenuEntry(game))
         }
-        add(MoreMenuEntry.Option(
-            icon = if (game.isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-            label = if (game.isHidden) "Show" else "Hide",
-            isDangerous = !game.isHidden,
-            action = MoreOptionAction.ToggleHide
-        ))
     }
 
     val listState = rememberLazyListState()

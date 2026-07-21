@@ -1017,23 +1017,26 @@ class GameDetailViewModel @Inject constructor(
 
     fun toggleMoreOptions() = moreOptionsDelegate.toggleMoreOptions()
 
-    fun moveOptionsFocus(delta: Int) {
+    private fun moreOptionsContext(): MoreOptionsContext {
         val state = _uiState.value
-        moreOptionsDelegate.moveOptionsFocus(
-            delta = delta,
-            downloadStatus = state.downloadStatus,
+        return MoreOptionsContext(
+            isDownloaded = state.downloadStatus == GameDownloadStatus.DOWNLOADED,
             isRommGame = state.game?.isRommGame == true,
             isAndroidApp = state.game?.isAndroidApp == true,
+            isSteamGame = state.game?.isSteamGame == true,
             canManageSaves = state.game?.canManageSaves == true,
             isMultiDisc = state.game?.isMultiDisc == true,
             hasVariants = state.hasVariants,
-            isSteamGame = state.game?.isSteamGame == true,
             hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
             hasManageableFiles = state.hasManageableFiles,
             platformSlug = state.game?.platformSlug,
             canSearchCovers = state.canSearchCovers,
             coverSetManually = state.game?.coverSetManually == true
         )
+    }
+
+    fun moveOptionsFocus(delta: Int) {
+        moreOptionsDelegate.moveOptionsFocus(delta, moreOptionsContext())
     }
 
     fun handleMoreOptionAction(
@@ -1094,20 +1097,7 @@ class GameDetailViewModel @Inject constructor(
         onNavigateToPlatformSettings: (Long) -> Unit = {}
     ) {
         val state = _uiState.value
-        val action = moreOptionsDelegate.resolveOptionAction(
-            downloadStatus = state.downloadStatus,
-            isRommGame = state.game?.isRommGame == true,
-            isAndroidApp = state.game?.isAndroidApp == true,
-            canManageSaves = state.game?.canManageSaves == true,
-            isMultiDisc = state.game?.isMultiDisc == true,
-            hasVariants = state.hasVariants,
-            isSteamGame = state.game?.isSteamGame == true,
-            hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
-            hasManageableFiles = state.hasManageableFiles,
-            platformSlug = state.game?.platformSlug,
-            canSearchCovers = state.canSearchCovers,
-            coverSetManually = state.game?.coverSetManually == true
-        )
+        val action = moreOptionsDelegate.resolveOptionAction(moreOptionsContext())
         if (action != null) {
             handleMoreOptionAction(action, onBack, onNavigateToPlatformSettings)
         } else {

@@ -138,6 +138,46 @@ data class CoverCandidate(
         get() = if (width != null && height != null) "$width x $height" else null
 }
 
+data class MoreOptionsContext(
+    val isDownloaded: Boolean = false,
+    val isRommGame: Boolean = false,
+    val isAndroidApp: Boolean = false,
+    val isSteamGame: Boolean = false,
+    val canManageSaves: Boolean = false,
+    val isMultiDisc: Boolean = false,
+    val hasVariants: Boolean = false,
+    val hasUpdates: Boolean = false,
+    val hasManageableFiles: Boolean = false,
+    val platformSlug: String? = null,
+    val canSearchCovers: Boolean = false,
+    val coverSetManually: Boolean = false
+)
+
+/**
+ * The focusable option rows, in render order. Single source of truth: the modal renders
+ * these and the delegate indexes into them, so order and visibility cannot drift apart.
+ */
+fun buildMoreOptions(ctx: MoreOptionsContext): List<MoreOptionAction> = buildList {
+    val canTrackProgress = ctx.isRommGame || ctx.isAndroidApp
+    val isEmulatedGame = !ctx.isSteamGame && !ctx.isAndroidApp
+    val usesTitleId = ctx.platformSlug in com.nendo.argosy.data.platform.PlatformDefinitions.TITLE_ID_PLATFORMS
+
+    if (ctx.canManageSaves) add(MoreOptionAction.ManageSaves)
+    if (canTrackProgress) add(MoreOptionAction.RatingsStatus)
+    if (ctx.isSteamGame) add(MoreOptionAction.ChangeSteamLauncher)
+    if (isEmulatedGame) add(MoreOptionAction.SpeedrunSplits)
+    if (usesTitleId && isEmulatedGame) add(MoreOptionAction.RefreshTitleId)
+    if (ctx.isMultiDisc) add(MoreOptionAction.SelectDisc)
+    if (ctx.hasVariants && isEmulatedGame) add(MoreOptionAction.SelectVariant)
+    if ((ctx.hasManageableFiles || ctx.hasUpdates) && ctx.isDownloaded) add(MoreOptionAction.Files)
+    if (canTrackProgress) add(MoreOptionAction.RefreshData)
+    add(MoreOptionAction.AddToCollection)
+    if (ctx.canSearchCovers) add(MoreOptionAction.ChangeCover)
+    if (ctx.coverSetManually) add(MoreOptionAction.ResetCover)
+    if (ctx.isDownloaded || ctx.isAndroidApp) add(MoreOptionAction.Delete)
+    add(MoreOptionAction.ToggleHide)
+}
+
 sealed class MoreOptionAction {
     data object ManageSaves : MoreOptionAction()
     data object RatingsStatus : MoreOptionAction()
