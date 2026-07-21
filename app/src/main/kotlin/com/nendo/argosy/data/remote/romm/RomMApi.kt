@@ -47,6 +47,11 @@ interface RomMApi {
         @Body body: RomMRARefreshRequest = RomMRARefreshRequest()
     ): Response<Unit>
 
+    @GET("api/search/cover")
+    suspend fun searchCovers(
+        @Query("search_term") searchTerm: String
+    ): Response<List<RomMCoverSearchResult>>
+
     @GET("api/platforms")
     suspend fun getPlatforms(): Response<List<RomMPlatform>>
 

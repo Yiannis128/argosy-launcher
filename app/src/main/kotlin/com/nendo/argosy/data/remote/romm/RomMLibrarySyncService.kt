@@ -529,11 +529,16 @@ class RomMLibrarySyncService @Inject constructor(
 
         val coverUrl = rom.coverLarge?.let { apiClient.buildMediaUrl(it) }
         val cachedCover = when {
+            existing?.coverSetManually == true -> existing.coverPath
             !contentChanged && existing?.coverPath?.startsWith("/") == true -> existing.coverPath
             coverUrl != null -> {
                 imageCacheManager.queueCoverCache(coverUrl, rom.id, rom.name)
                 coverUrl
             }
+            else -> null
+        }
+        val syncedOriginalCover = when {
+            existing?.coverSetManually == true -> existing.originalCoverPath
             else -> null
         }
 
@@ -595,6 +600,8 @@ class RomMLibrarySyncService @Inject constructor(
                 else -> GameSource.ROMM_REMOTE
             },
             coverPath = cachedCover,
+            originalCoverPath = syncedOriginalCover,
+            coverSetManually = existing?.coverSetManually ?: false,
             backgroundPath = cachedBackground,
             boxBackPath = cachedBoxBack,
             boxSpinePath = cachedBoxSpine,

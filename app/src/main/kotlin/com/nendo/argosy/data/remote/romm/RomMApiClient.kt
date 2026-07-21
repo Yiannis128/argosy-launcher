@@ -224,6 +224,24 @@ class RomMApiClient @Inject constructor(
         }
     }
 
+    suspend fun searchCovers(searchTerm: String): RomMResult<List<RomMCoverResource>> {
+        val currentApi = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = currentApi.searchCovers(searchTerm)
+            if (response.isSuccessful) {
+                val covers = response.body()
+                    ?.flatMap { it.resources ?: emptyList() }
+                    ?.filter { it.fullResUrl != null }
+                    ?: emptyList()
+                RomMResult.Success(covers)
+            } else {
+                RomMResult.Error("Cover search failed", response.code())
+            }
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Cover search failed")
+        }
+    }
+
     suspend fun getPlatformCount(): RomMResult<Int> {
         val currentApi = api ?: return RomMResult.Error("Not connected")
         return try {

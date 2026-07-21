@@ -293,6 +293,32 @@ data class RomMHeartbeatResponse(
 
     val libretroApiEnabled: Boolean?
         get() = metadataSources?.libretroApiEnabled
+
+    val steamGridDbEnabled: Boolean?
+        get() = metadataSources?.steamGridDbEnabled
+}
+
+@JsonClass(generateAdapter = true)
+data class RomMCoverSearchResult(
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "resources") val resources: List<RomMCoverResource>? = null
+)
+
+/** SteamGridDB grid. Fields beyond thumb/url/type only exist on newer servers. */
+@JsonClass(generateAdapter = true)
+data class RomMCoverResource(
+    @Json(name = "url") val url: String? = null,
+    @Json(name = "thumb") val thumb: String? = null,
+    @Json(name = "type") val type: String? = null,
+    @Json(name = "width") val width: Int? = null,
+    @Json(name = "height") val height: Int? = null,
+    @Json(name = "style") val style: String? = null,
+    @Json(name = "nsfw") val nsfw: Boolean? = null,
+    @Json(name = "humor") val humor: Boolean? = null,
+    @Json(name = "epilepsy") val epilepsy: Boolean? = null
+) {
+    /** SteamGridDB serves full resolution under /grids/; thumbs are the same url under /thumb/. */
+    val fullResUrl: String? get() = url ?: thumb?.replace("/thumb/", "/grid/")
 }
 
 @JsonClass(generateAdapter = true)
@@ -303,7 +329,8 @@ data class RomMSystem(
 
 @JsonClass(generateAdapter = true)
 data class RomMMetadataSources(
-    @Json(name = "LIBRETRO_API_ENABLED") val libretroApiEnabled: Boolean? = null
+    @Json(name = "LIBRETRO_API_ENABLED") val libretroApiEnabled: Boolean? = null,
+    @Json(name = "STEAMGRIDDB_API_ENABLED") val steamGridDbEnabled: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)

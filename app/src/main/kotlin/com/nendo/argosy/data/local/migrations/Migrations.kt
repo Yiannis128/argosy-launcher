@@ -2064,3 +2064,10 @@ object Migration_142_143 : Migration(142, 143) {
         db.execSQL("ALTER TABLE `games` ADD COLUMN `isIdentified` INTEGER NOT NULL DEFAULT 1")
     }
 }
+
+object Migration_143_144 : Migration(143, 144) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `originalCoverPath` TEXT")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `coverSetManually` INTEGER NOT NULL DEFAULT 0")
+    }
+}

@@ -10,6 +10,7 @@ data class RomMCapabilities(
     val supportsDeviceAuth: Boolean,
     val supportsScreenshotUpload: Boolean,
     val supportsMusicApi: Boolean,
+    val supportsCoverSearch: Boolean = false,
 ) {
     companion object {
         const val SYNC_ENGINE_MIN_VERSION = "4.9.0"
@@ -31,7 +32,11 @@ data class RomMCapabilities(
             supportsMusicApi = false,
         )
 
-        fun from(version: String?, libretroEnabled: Boolean? = null): RomMCapabilities {
+        fun from(
+            version: String?,
+            libretroEnabled: Boolean? = null,
+            steamGridDbEnabled: Boolean? = null
+        ): RomMCapabilities {
             if (version.isNullOrBlank() || version == "unknown") return NONE
             val syncEngine = compareVersions(version, SYNC_ENGINE_MIN_VERSION) >= 0
             val deviceSync = compareVersions(version, DEVICE_SYNC_MIN_VERSION) >= 0
@@ -45,6 +50,7 @@ data class RomMCapabilities(
                 supportsDeviceAuth = compareVersions(version, DEVICE_AUTH_MIN_VERSION) >= 0,
                 supportsScreenshotUpload = compareVersions(version, SCREENSHOT_UPLOAD_MIN_VERSION) >= 0,
                 supportsMusicApi = compareVersions(version, MUSIC_API_MIN_VERSION) >= 0,
+                supportsCoverSearch = steamGridDbEnabled == true,
             )
         }
 

@@ -239,7 +239,7 @@ class RomMConnectionManager @Inject constructor(
                     biosRepository.setApi(api)
                     val body = response.body()
                     val version = body?.version ?: "unknown"
-                    val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled)
+                    val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled, body?.steamGridDbEnabled)
                     _connectionState.value = ConnectionState.Connected(version, capabilities)
                     saveSyncRepository.get().setCapabilities(capabilities)
                     reconnectPending = false
@@ -403,7 +403,7 @@ class RomMConnectionManager @Inject constructor(
 
         val heartbeat = try { newApi.heartbeat() } catch (_: Exception) { null }
         val version = heartbeat?.body()?.version ?: "unknown"
-        val capabilities = RomMCapabilities.from(version, heartbeat?.body()?.libretroApiEnabled)
+        val capabilities = RomMCapabilities.from(version, heartbeat?.body()?.libretroApiEnabled, heartbeat?.body()?.steamGridDbEnabled)
         _connectionState.value = ConnectionState.Connected(version, capabilities)
         saveSyncRepository.get().setCapabilities(capabilities)
 
@@ -461,7 +461,7 @@ class RomMConnectionManager @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()
                 val version = body?.version ?: "unknown"
-                val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled)
+                val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled, body?.steamGridDbEnabled)
                 _connectionState.value = ConnectionState.Connected(version, capabilities)
                 saveSyncRepository.get().setCapabilities(capabilities)
                 reconnectPending = false
