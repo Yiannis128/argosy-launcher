@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FolderSpecial
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
@@ -51,6 +53,7 @@ fun MoreOptionsModal(
     hasVariants: Boolean = false,
     updateCount: Int = 0,
     hasManageableFiles: Boolean = false,
+    canSearchCovers: Boolean = false,
     onAction: (MoreOptionAction) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -88,6 +91,12 @@ fun MoreOptionsModal(
             add(MoreMenuEntry.Option(Icons.Default.Refresh, "Refresh Game Data", action = MoreOptionAction.RefreshData))
         }
         add(MoreMenuEntry.Option(Icons.Default.FolderSpecial, "Add to Collection", action = MoreOptionAction.AddToCollection))
+        if (canSearchCovers) {
+            add(MoreMenuEntry.Option(Icons.Default.Image, "Change Cover Art", action = MoreOptionAction.ChangeCover))
+        }
+        if (game.coverSetManually) {
+            add(MoreMenuEntry.Option(Icons.Default.Restore, "Reset Cover Art", action = MoreOptionAction.ResetCover))
+        }
 
         add(MoreMenuEntry.Divider)
 

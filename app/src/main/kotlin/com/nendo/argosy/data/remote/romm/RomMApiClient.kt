@@ -30,6 +30,8 @@ class RomMApiClient @Inject constructor(
     fun isVersionAtLeast(minVersion: String): Boolean =
         connectionManager.isVersionAtLeast(minVersion)
 
+    fun getCapabilities(): RomMCapabilities = connectionManager.getCapabilities()
+
     fun buildRomsQueryParams(
         platformId: Long? = null,
         searchTerm: String? = null,

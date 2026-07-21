@@ -131,6 +131,8 @@ class RomMRepository @Inject constructor(
     suspend fun searchCovers(searchTerm: String): RomMResult<List<RomMCoverResource>> =
         apiClient.searchCovers(searchTerm)
 
+    fun getCapabilities(): RomMCapabilities = apiClient.getCapabilities()
+
     suspend fun fetchAndStorePlatforms(
         defaultSyncEnabled: Boolean = true
     ): RomMResult<List<PlatformEntity>> = apiClient.fetchAndStorePlatforms(defaultSyncEnabled)

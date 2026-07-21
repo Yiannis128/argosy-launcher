@@ -48,11 +48,17 @@ data class PickerModalState(
     val filePickerSelectedVersions: Set<Long> = emptySet(),
     val filePickerFocusIndex: Int = 0,
     val filePickerManageMode: Boolean = false,
-    val filePickerCollapsed: Set<String> = emptySet()
+    val filePickerCollapsed: Set<String> = emptySet(),
+
+    val showCoverPicker: Boolean = false,
+    val coverCandidates: List<com.nendo.argosy.ui.screens.gamedetail.CoverCandidate> = emptyList(),
+    val coverPickerFocusIndex: Int = 0,
+    val coverPickerLoading: Boolean = false,
+    val coverPickerError: String? = null
 ) {
     val hasAnyPickerOpen: Boolean
         get() = showEmulatorPicker || showCorePicker || showSteamLauncherPicker ||
-                showDiscPicker || showVariantPicker || showFilePicker
+                showDiscPicker || showVariantPicker || showFilePicker || showCoverPicker
 
     val visibleFilePickerRows: List<com.nendo.argosy.data.model.FilePickerRow>
         get() = filePickerRows.visibleWithCollapsed(filePickerCollapsed)
@@ -81,6 +87,52 @@ class PickerModalDelegate @Inject constructor(
 
     fun clearSelection() {
         _selection.value = null
+    }
+
+    fun showCoverPicker() {
+        _state.update {
+            it.copy(
+                showCoverPicker = true,
+                coverCandidates = emptyList(),
+                coverPickerFocusIndex = 0,
+                coverPickerLoading = true,
+                coverPickerError = null
+            )
+        }
+        soundManager.play(SoundType.OPEN_MODAL)
+    }
+
+    fun setCoverCandidates(candidates: List<com.nendo.argosy.ui.screens.gamedetail.CoverCandidate>) {
+        _state.update {
+            it.copy(
+                coverCandidates = candidates,
+                coverPickerFocusIndex = 0,
+                coverPickerLoading = false,
+                coverPickerError = null
+            )
+        }
+    }
+
+    fun setCoverPickerError(message: String) {
+        _state.update {
+            it.copy(coverPickerLoading = false, coverPickerError = message)
+        }
+    }
+
+    fun dismissCoverPicker() {
+        _state.update {
+            it.copy(showCoverPicker = false, coverCandidates = emptyList(), coverPickerError = null)
+        }
+        soundManager.play(SoundType.CLOSE_MODAL)
+    }
+
+    /** Grid navigation: [delta] of +/-1 steps within a row, +/-columns moves between rows. */
+    fun moveCoverPickerFocus(delta: Int) {
+        _state.update { state ->
+            if (state.coverCandidates.isEmpty()) return@update state
+            val target = state.coverPickerFocusIndex + delta
+            state.copy(coverPickerFocusIndex = target.coerceIn(0, state.coverCandidates.lastIndex))
+        }
     }
 
     // region Emulator Picker

@@ -892,6 +892,7 @@ private fun GameDetailModals(
             hasVariants = uiState.hasVariants,
             updateCount = uiState.updateFiles.size + uiState.dlcFiles.size,
             hasManageableFiles = uiState.hasManageableFiles,
+            canSearchCovers = uiState.canSearchCovers,
             onAction = { action -> viewModel.handleMoreOptionAction(action, onBack, onNavigateToPlatformSettings) },
             onDismiss = viewModel::toggleMoreOptions
         )
@@ -1098,6 +1099,22 @@ private fun GameDetailModals(
             activeFileId = pickerState.variantPickerActiveFileId,
             showActiveMarker = true,
             onDismiss = viewModel.pickerModalDelegate::dismissVariantPicker
+        )
+    }
+
+    AnimatedVisibility(
+        visible = pickerState.showCoverPicker,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        com.nendo.argosy.ui.screens.gamedetail.modals.CoverPickerModal(
+            gameTitle = uiState.game?.title ?: "",
+            covers = pickerState.coverCandidates,
+            focusIndex = pickerState.coverPickerFocusIndex,
+            isLoading = pickerState.coverPickerLoading,
+            errorMessage = pickerState.coverPickerError,
+            onSelect = viewModel::selectCover,
+            onDismiss = viewModel::dismissCoverPicker
         )
     }
 

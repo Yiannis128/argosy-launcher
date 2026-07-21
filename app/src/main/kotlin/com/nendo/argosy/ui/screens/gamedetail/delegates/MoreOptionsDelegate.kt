@@ -55,7 +55,9 @@ class MoreOptionsDelegate @Inject constructor(
         isSteamGame: Boolean,
         hasUpdates: Boolean,
         hasManageableFiles: Boolean,
-        platformSlug: String?
+        platformSlug: String?,
+        canSearchCovers: Boolean,
+        coverSetManually: Boolean
     ) {
         val canTrackProgress = isRommGame || isAndroidApp
         val isEmulatedGame = !isSteamGame && !isAndroidApp
@@ -71,6 +73,8 @@ class MoreOptionsDelegate @Inject constructor(
         if (isMultiDisc) optionCount++
         if (hasVariants && isEmulatedGame) optionCount++
         if ((hasManageableFiles || hasUpdates) && isDownloaded) optionCount++
+        if (canSearchCovers) optionCount++
+        if (coverSetManually) optionCount++
         if (isDownloaded || isAndroidApp) optionCount++
 
         val maxIndex = optionCount - 1
@@ -90,7 +94,9 @@ class MoreOptionsDelegate @Inject constructor(
         isSteamGame: Boolean,
         hasUpdates: Boolean,
         hasManageableFiles: Boolean,
-        platformSlug: String?
+        platformSlug: String?,
+        canSearchCovers: Boolean,
+        coverSetManually: Boolean
     ): MoreOptionAction? {
         val canTrackProgress = isRommGame || isAndroidApp
         val isEmulatedGame = !isSteamGame && !isAndroidApp
@@ -109,6 +115,8 @@ class MoreOptionsDelegate @Inject constructor(
         val filesIdx = if ((hasManageableFiles || hasUpdates) && isDownloaded) currentIdx++ else -1
         val refreshIdx = if (canTrackProgress) currentIdx++ else -1
         val addToCollectionIdx = currentIdx++
+        val changeCoverIdx = if (canSearchCovers) currentIdx++ else -1
+        val resetCoverIdx = if (coverSetManually) currentIdx++ else -1
         val deleteIdx = if (isDownloaded || isAndroidApp) currentIdx++ else -1
         val hideIdx = currentIdx
 
@@ -123,6 +131,8 @@ class MoreOptionsDelegate @Inject constructor(
             filesIdx -> MoreOptionAction.Files
             refreshIdx -> MoreOptionAction.RefreshData
             addToCollectionIdx -> MoreOptionAction.AddToCollection
+            changeCoverIdx -> MoreOptionAction.ChangeCover
+            resetCoverIdx -> MoreOptionAction.ResetCover
             deleteIdx -> MoreOptionAction.Delete
             hideIdx -> MoreOptionAction.ToggleHide
             else -> null

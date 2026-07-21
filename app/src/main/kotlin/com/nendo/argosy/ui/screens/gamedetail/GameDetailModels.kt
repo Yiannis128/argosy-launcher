@@ -64,6 +64,7 @@ data class GameDetailUi(
     val platformSlug: String,
     val platformName: String,
     val coverPath: String?,
+    val coverSetManually: Boolean = false,
     val backgroundPath: String?,
     val boxBackPath: String? = null,
     val boxSpinePath: String? = null,
@@ -127,6 +128,16 @@ enum class RatingType { OPINION, DIFFICULTY }
 
 enum class PermissionModalType { STORAGE, SAF }
 
+data class CoverCandidate(
+    val url: String,
+    val thumbUrl: String? = null,
+    val width: Int? = null,
+    val height: Int? = null
+) {
+    val dimensionLabel: String?
+        get() = if (width != null && height != null) "$width x $height" else null
+}
+
 sealed class MoreOptionAction {
     data object ManageSaves : MoreOptionAction()
     data object RatingsStatus : MoreOptionAction()
@@ -144,6 +155,8 @@ sealed class MoreOptionAction {
     data object AddToCollection : MoreOptionAction()
     data object RefreshTitleId : MoreOptionAction()
     data object SpeedrunSplits : MoreOptionAction()
+    data object ChangeCover : MoreOptionAction()
+    data object ResetCover : MoreOptionAction()
     data object Delete : MoreOptionAction()
     data object ToggleHide : MoreOptionAction()
 }
@@ -166,6 +179,7 @@ data class GameDetailUiState(
     val hasRASupport: Boolean = false,
     val isRALoggedIn: Boolean = false,
     val isOnline: Boolean = false,
+    val canSearchCovers: Boolean = false,
     val isLoading: Boolean = true,
     val isRefreshingGameData: Boolean = false,
     val downloadStatus: GameDownloadStatus = GameDownloadStatus.NOT_DOWNLOADED,

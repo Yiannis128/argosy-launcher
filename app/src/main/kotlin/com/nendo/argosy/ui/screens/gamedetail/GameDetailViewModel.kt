@@ -30,6 +30,7 @@ import com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
 import com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.screens.gamedetail.modals.COVER_PICKER_COLUMNS
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.navigation.GameNavigationContext
@@ -541,6 +542,7 @@ class GameDetailViewModel @Inject constructor(
                         canManageSaves = canManageSaves,
                         steamLauncherName = steamLauncherName
                     ),
+                    canSearchCovers = romMRepository.getCapabilities().supportsCoverSearch,
                     isLoading = false,
                     selectedCoreId = selectedCoreId,
                     saveChannel = state.saveChannel.copy(activeChannel = game.activeSaveChannel),
@@ -1028,7 +1030,9 @@ class GameDetailViewModel @Inject constructor(
             isSteamGame = state.game?.isSteamGame == true,
             hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
             hasManageableFiles = state.hasManageableFiles,
-            platformSlug = state.game?.platformSlug
+            platformSlug = state.game?.platformSlug,
+            canSearchCovers = state.canSearchCovers,
+            coverSetManually = state.game?.coverSetManually == true
         )
     }
 
@@ -1061,6 +1065,8 @@ class GameDetailViewModel @Inject constructor(
                 speedrunSplitsDelegate.open(viewModelScope, currentGameId, _uiState.value.game?.title ?: "")
             }
             MoreOptionAction.AddToCollection -> showAddToCollectionModal()
+            MoreOptionAction.ChangeCover -> showCoverPicker()
+            MoreOptionAction.ResetCover -> resetCoverArt()
             MoreOptionAction.Delete -> {
                 toggleMoreOptions()
                 val gameUi = _uiState.value.game
@@ -1098,7 +1104,9 @@ class GameDetailViewModel @Inject constructor(
             isSteamGame = state.game?.isSteamGame == true,
             hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
             hasManageableFiles = state.hasManageableFiles,
-            platformSlug = state.game?.platformSlug
+            platformSlug = state.game?.platformSlug,
+            canSearchCovers = state.canSearchCovers,
+            coverSetManually = state.game?.coverSetManually == true
         )
         if (action != null) {
             handleMoreOptionAction(action, onBack, onNavigateToPlatformSettings)
@@ -1432,6 +1440,58 @@ class GameDetailViewModel @Inject constructor(
     }
 
     // --- Picker delegate forwarding ---
+
+    fun showCoverPicker() {
+        val game = _uiState.value.game ?: return
+        moreOptionsDelegate.reset()
+        pickerModalDelegate.showCoverPicker()
+        viewModelScope.launch {
+            when (val result = romMRepository.searchCovers(game.title)) {
+                is RomMResult.Success -> pickerModalDelegate.setCoverCandidates(
+                    result.data.mapNotNull { resource ->
+                        val url = resource.fullResUrl ?: return@mapNotNull null
+                        CoverCandidate(
+                            url = url,
+                            thumbUrl = resource.thumb,
+                            width = resource.width,
+                            height = resource.height
+                        )
+                    }
+                )
+                is RomMResult.Error -> pickerModalDelegate.setCoverPickerError(
+                    "Could not search cover art. ${result.message}"
+                )
+            }
+        }
+    }
+
+    fun selectCover(candidate: CoverCandidate) {
+        val gameId = currentGameId
+        pickerModalDelegate.dismissCoverPicker()
+        viewModelScope.launch {
+            imageCacheManager.applyManualCover(gameId, candidate.url)
+            loadGame(gameId)
+        }
+    }
+
+    fun resetCoverArt() {
+        val gameId = currentGameId
+        moreOptionsDelegate.reset()
+        viewModelScope.launch {
+            imageCacheManager.resetManualCover(gameId)
+            loadGame(gameId)
+        }
+    }
+
+    fun moveCoverPickerFocus(delta: Int) = pickerModalDelegate.moveCoverPickerFocus(delta)
+
+    private fun confirmFocusedCover() {
+        val pickerState = pickerModalDelegate.state.value
+        val candidate = pickerState.coverCandidates.getOrNull(pickerState.coverPickerFocusIndex) ?: return
+        selectCover(candidate)
+    }
+
+    fun dismissCoverPicker() = pickerModalDelegate.dismissCoverPicker()
 
     fun showEmulatorPicker() {
         val game = _uiState.value.game ?: return
@@ -1823,6 +1883,7 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showFilePicker -> { moveFilePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showCorePicker -> { moveCorePickerFocus(-1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(-1); InputResult.HANDLED }
+                pickerState.showCoverPicker -> { moveCoverPickerFocus(-COVER_PICKER_COLUMNS); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showEmulatorPicker -> { moveEmulatorPickerFocus(-1); InputResult.HANDLED }
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(-1); InputResult.HANDLED }
@@ -1853,6 +1914,7 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showFilePicker -> { moveFilePickerFocus(1); InputResult.HANDLED }
                 pickerState.showCorePicker -> { moveCorePickerFocus(1); InputResult.HANDLED }
                 pickerState.showDiscPicker -> { navigateDiscPicker(1); InputResult.HANDLED }
+                pickerState.showCoverPicker -> { moveCoverPickerFocus(COVER_PICKER_COLUMNS); InputResult.HANDLED }
                 pickerState.showVariantPicker -> { pickerModalDelegate.moveVariantPickerFocus(1); InputResult.HANDLED }
                 pickerState.showEmulatorPicker -> { moveEmulatorPickerFocus(1); InputResult.HANDLED }
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(1); InputResult.HANDLED }
@@ -1878,6 +1940,7 @@ class GameDetailViewModel @Inject constructor(
                     }
                     return InputResult.HANDLED
                 }
+                pickerState.showCoverPicker -> { moveCoverPickerFocus(-1); return InputResult.HANDLED }
                 state.showScreenshotViewer -> { moveViewerIndex(-1); return InputResult.HANDLED }
                 state.showRatingPicker -> { changeRatingValue(-1); return InputResult.HANDLED }
                 state.showPermissionModal -> return InputResult.HANDLED
@@ -1908,6 +1971,7 @@ class GameDetailViewModel @Inject constructor(
                     }
                     return InputResult.HANDLED
                 }
+                pickerState.showCoverPicker -> { moveCoverPickerFocus(1); return InputResult.HANDLED }
                 state.showScreenshotViewer -> { moveViewerIndex(1); return InputResult.HANDLED }
                 state.showRatingPicker -> { changeRatingValue(1); return InputResult.HANDLED }
                 state.showPermissionModal -> return InputResult.HANDLED
@@ -1990,6 +2054,7 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showFilePicker -> activateFocusedFilePickerItem()
                 pickerState.showCorePicker -> confirmCoreSelection()
                 pickerState.showDiscPicker -> selectFocusedDisc()
+                pickerState.showCoverPicker -> confirmFocusedCover()
                 pickerState.showVariantPicker -> confirmOrDownloadFocusedVariant()
                 pickerState.showEmulatorPicker -> confirmEmulatorSelection()
                 pickerState.showSteamLauncherPicker -> confirmSteamLauncherSelection()
@@ -2028,6 +2093,7 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showFilePicker -> dismissFilePicker()
                 pickerState.showCorePicker -> dismissCorePicker()
                 pickerState.showDiscPicker -> dismissDiscPicker()
+                pickerState.showCoverPicker -> dismissCoverPicker()
                 pickerState.showVariantPicker -> pickerModalDelegate.dismissVariantPicker()
                 pickerState.showEmulatorPicker -> dismissEmulatorPicker()
                 pickerState.showSteamLauncherPicker -> dismissSteamLauncherPicker()
