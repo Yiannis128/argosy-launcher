@@ -260,6 +260,10 @@ class GLRetroView(
         LibretroDroid.unserializeState(data)
     }
 
+    fun unserializePersistedState(data: ByteArray): Boolean = runOnGLThread {
+        LibretroDroid.unserializePersistedState(data)
+    }
+
     fun serializeSRAM(): ByteArray =
         if (isDestroyed) ByteArray(0) else runOnGLThread { LibretroDroid.serializeSRAM() }
 
