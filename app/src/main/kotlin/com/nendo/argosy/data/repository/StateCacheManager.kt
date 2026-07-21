@@ -216,7 +216,16 @@ class StateCacheManager @Inject constructor(
                 Log.d(TAG, "No screenshot found for state: $statePath")
             }
 
+            val existing = stateCacheDao.getBySlotAndCore(
+                gameId = gameId,
+                emulatorId = emulatorId,
+                slotNumber = slotNumber,
+                channelName = channelName,
+                coreId = coreId
+            )
+
             val entity = StateCacheEntity(
+                id = existing?.id ?: 0,
                 gameId = gameId,
                 platformSlug = platformSlug,
                 emulatorId = emulatorId,
@@ -229,7 +238,11 @@ class StateCacheManager @Inject constructor(
                 coreId = coreId,
                 coreVersion = coreVersion,
                 isLocked = isLocked,
-                note = null
+                note = existing?.note,
+                rommSaveId = existing?.rommSaveId,
+                syncStatus = existing?.syncStatus,
+                serverUpdatedAt = existing?.serverUpdatedAt,
+                lastUploadedHash = existing?.lastUploadedHash
             )
 
             val id = stateCacheDao.upsert(entity)
@@ -1030,7 +1043,7 @@ class StateCacheManager @Inject constructor(
         }
     }
 
-    private fun parseTimestamp(timestamp: String): Instant? {
+    fun parseTimestamp(timestamp: String): Instant? {
         return try {
             ZonedDateTime.parse(timestamp, DateTimeFormatter.ISO_DATE_TIME).toInstant()
         } catch (e: Exception) {
