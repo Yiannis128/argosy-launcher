@@ -165,28 +165,30 @@ sealed class LibretroSettingDef(
     )
 
     companion object {
-        val ALL: List<LibretroSettingDef> = listOf(
-            Shader,
-            Filter,
-            Frame,
-            AspectRatio,
-            PortraitPosition,
-            Rotation,
-            OverscanCrop,
-            BlackFrameInsertion,
-            VSync,
-            FastForwardEnabled,
-            FastForwardSpeed,
-            RewindEnabled,
-            RewindSpeed,
-            RewindBufferDuration,
-            SkipDuplicateFrames,
-            LowLatencyAudio,
-            AudioVolume,
-            AutoSaveState,
-            AutoRestoreState,
-            HwCoreSaveStates
-        )
+        val ALL: List<LibretroSettingDef> by lazy {
+            listOf(
+                Shader,
+                Filter,
+                Frame,
+                AspectRatio,
+                PortraitPosition,
+                Rotation,
+                OverscanCrop,
+                BlackFrameInsertion,
+                VSync,
+                FastForwardEnabled,
+                FastForwardSpeed,
+                RewindEnabled,
+                RewindSpeed,
+                RewindBufferDuration,
+                SkipDuplicateFrames,
+                LowLatencyAudio,
+                AudioVolume,
+                AutoSaveState,
+                AutoRestoreState,
+                HwCoreSaveStates
+            )
+        }
 
         val SECTIONS: Map<String, String> = mapOf(
             "shaders" to "Shaders",
