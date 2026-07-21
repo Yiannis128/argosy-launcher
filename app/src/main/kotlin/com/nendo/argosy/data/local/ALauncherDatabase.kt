@@ -139,7 +139,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         BgmPlaylistEntity::class,
         AudioLoudnessEntity::class
     ],
-    version = 142,
+    version = 143,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

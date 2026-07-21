@@ -2036,3 +2036,31 @@ object Migration_141_142 : Migration(141, 142) {
         )
     }
 }
+
+object Migration_142_143 : Migration(142, 143) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        listOf(
+            "`alternativeNames` TEXT",
+            "`ageRatings` TEXT",
+            "`mobyId` INTEGER",
+            "`sgdbId` INTEGER",
+            "`ssId` INTEGER",
+            "`launchboxId` INTEGER",
+            "`hasheousId` INTEGER",
+            "`tgdbId` INTEGER",
+            "`hltbId` INTEGER",
+            "`flashpointId` TEXT",
+            "`gamelistId` TEXT",
+            "`libretroId` TEXT",
+            "`crcHash` TEXT",
+            "`md5Hash` TEXT",
+            "`sha1Hash` TEXT",
+            "`raHash` TEXT",
+            "`manualPath` TEXT"
+        ).forEach { db.execSQL("ALTER TABLE `games` ADD COLUMN $it") }
+
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `hasManual` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `remoteHasSoundtrack` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `isIdentified` INTEGER NOT NULL DEFAULT 1")
+    }
+}
