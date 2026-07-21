@@ -592,7 +592,6 @@ class RomMConnectionManager @Inject constructor(
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
-            .connectionPool(okhttp3.ConnectionPool(0, 1, TimeUnit.NANOSECONDS))
             .dns(okhttp3.Dns.SYSTEM)
             .withUserCertTrust(true)
             .build()

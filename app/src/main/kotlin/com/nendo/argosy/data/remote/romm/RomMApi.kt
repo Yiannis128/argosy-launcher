@@ -50,6 +50,9 @@ interface RomMApi {
     @GET("api/platforms")
     suspend fun getPlatforms(): Response<List<RomMPlatform>>
 
+    @GET("api/platforms/identifiers")
+    suspend fun getPlatformIdentifiers(): Response<List<Long>>
+
     @GET("api/platforms/{id}")
     suspend fun getPlatform(
         @Path("id") platformId: Long

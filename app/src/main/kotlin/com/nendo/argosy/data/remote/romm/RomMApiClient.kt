@@ -33,7 +33,7 @@ class RomMApiClient @Inject constructor(
     fun buildRomsQueryParams(
         platformId: Long? = null,
         searchTerm: String? = null,
-        orderBy: String = "name",
+        orderBy: String = "id",
         orderDir: String = "asc",
         limit: Int = 100,
         offset: Int = 0,
@@ -49,6 +49,8 @@ class RomMApiClient @Inject constructor(
             put("order_dir", orderDir)
             put("limit", limit.toString())
             put("offset", offset.toString())
+            put("with_char_index", "false")
+            put("with_filter_values", "false")
             if (includeFiles) {
                 put("with_files", "true")
             }
@@ -213,15 +215,32 @@ class RomMApiClient @Inject constructor(
             val response = currentApi.getPlatforms()
             if (response.isSuccessful) {
                 val platforms = response.body() ?: emptyList()
-                val platformCount = platforms.size
-                val totalRoms = platforms.sumOf { it.romCount }
-                RomMResult.Success(platformCount to totalRoms)
+                RomMResult.Success(platforms.size to platforms.sumOf { it.romCount })
             } else {
                 RomMResult.Error("Failed to fetch library", response.code())
             }
         } catch (e: Exception) {
             RomMResult.Error(e.message ?: "Failed to fetch library")
         }
+    }
+
+    suspend fun getPlatformCount(): RomMResult<Int> {
+        val currentApi = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = currentApi.getPlatformIdentifiers()
+            if (response.isSuccessful) {
+                RomMResult.Success(response.body()?.size ?: 0)
+            } else {
+                cachedPlatformCount() ?: RomMResult.Error("Failed to fetch platform count", response.code())
+            }
+        } catch (e: Exception) {
+            cachedPlatformCount() ?: RomMResult.Error(e.message ?: "Failed to fetch platform count")
+        }
+    }
+
+    private suspend fun cachedPlatformCount(): RomMResult<Int>? {
+        val cached = platformDao.getTotalPlatformCount()
+        return if (cached > 0) RomMResult.Success(cached) else null
     }
 
     suspend fun fetchAndStorePlatforms(

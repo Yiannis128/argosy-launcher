@@ -126,6 +126,8 @@ class RomMRepository @Inject constructor(
 
     suspend fun getLibrarySummary(): RomMResult<Pair<Int, Int>> = apiClient.getLibrarySummary()
 
+    suspend fun getPlatformCount(): RomMResult<Int> = apiClient.getPlatformCount()
+
     suspend fun fetchAndStorePlatforms(
         defaultSyncEnabled: Boolean = true
     ): RomMResult<List<PlatformEntity>> = apiClient.fetchAndStorePlatforms(defaultSyncEnabled)

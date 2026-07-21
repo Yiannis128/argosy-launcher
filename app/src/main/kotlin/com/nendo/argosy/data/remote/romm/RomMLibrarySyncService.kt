@@ -38,11 +38,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val SYNC_PAGE_SIZE = 100
+private const val SYNC_RESUME_TTL_HOURS = 24L
+private const val PLATFORM_FETCH_ATTEMPTS = 3
+private const val PLATFORM_FETCH_BACKOFF_MS = 2000L
 private const val TAG = "RomMLibrarySyncService"
 private const val ANDROID_SLUG = "android"
 
@@ -251,7 +256,9 @@ class RomMLibrarySyncService @Inject constructor(
         _syncProgress.value = SyncProgress(isSyncing = true)
 
         try {
-            val platformsResponse = currentApi.getPlatforms()
+            val platformsResponse = retryOnThrow(PLATFORM_FETCH_ATTEMPTS, PLATFORM_FETCH_BACKOFF_MS) {
+                currentApi.getPlatforms()
+            }
 
             if (!platformsResponse.isSuccessful) {
                 val errorMsg = when (platformsResponse.code()) {
@@ -275,6 +282,17 @@ class RomMLibrarySyncService @Inject constructor(
                 local?.syncEnabled != false
             }
 
+            val syncStartedAt = Instant.now()
+            val resumeGeneration = userPreferencesRepository.getSyncResumeGeneration()
+            val resuming = resumeGeneration != null &&
+                Duration.between(resumeGeneration, syncStartedAt) < Duration.ofHours(SYNC_RESUME_TTL_HOURS)
+            val completedPlatformIds = if (resuming) {
+                userPreferencesRepository.getSyncResumeCompletedPlatformIds()
+            } else {
+                userPreferencesRepository.startSyncGeneration(syncStartedAt)
+                emptySet()
+            }
+
             _syncProgress.value = _syncProgress.value.copy(platformsTotal = enabledPlatforms.size)
 
             for ((index, platform) in enabledPlatforms.withIndex()) {
@@ -286,6 +304,10 @@ class RomMLibrarySyncService @Inject constructor(
                 )
 
                 val storageId = storagePlatformId(platform)
+                if (storageId in completedPlatformIds) {
+                    platformsSynced++
+                    continue
+                }
                 gameDao.markSyncDirty(storageId, ROMM_SOURCES)
 
                 val result = syncPlatformRoms(currentApi, platform, filters)
@@ -296,9 +318,14 @@ class RomMLibrarySyncService @Inject constructor(
                 gamesDeleted += processPostPlatformSync(currentApi, storageId, result, filters)
 
                 platformsSynced++
+                if (result.error == null) {
+                    userPreferencesRepository.addSyncResumeCompletedPlatform(storageId)
+                }
             }
 
             gameDao.clearAllSyncDirty()
+
+            userPreferencesRepository.clearSyncResume()
 
             cleanupLegacyPlatforms(platforms)
 
@@ -319,6 +346,20 @@ class RomMLibrarySyncService @Inject constructor(
         gameRepository.get().cleanupEmptyNumericFolders()
 
         return SyncResult(platformsSynced, gamesAdded, gamesUpdated, gamesDeleted, errors)
+    }
+
+    private suspend fun <T> retryOnThrow(attempts: Int, backoffMs: Long, block: suspend () -> T): T {
+        var lastError: Exception? = null
+        repeat(attempts) { attempt ->
+            try {
+                return block()
+            } catch (e: Exception) {
+                lastError = e
+                Logger.warn(TAG, "retryOnThrow: attempt ${attempt + 1}/$attempts failed: ${e.message}")
+                if (attempt < attempts - 1) delay(backoffMs * (attempt + 1))
+            }
+        }
+        throw lastError ?: IllegalStateException("retryOnThrow: no attempts made")
     }
 
     private fun storagePlatformId(platform: RomMPlatform): Long {
