@@ -28,7 +28,8 @@ data class CompanionInGameState(
     val isDirty: Boolean = false,
     val currentPanel: CompanionPanel = CompanionPanel.DASHBOARD,
     val isLoaded: Boolean = false,
-    val quickActionsAvailable: Boolean = false
+    val quickActionsAvailable: Boolean = false,
+    val hasQuickSave: Boolean = false
 )
 
 class CompanionSessionTimer {

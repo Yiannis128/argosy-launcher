@@ -27,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -539,6 +540,11 @@ class LibretroActivity : ComponentActivity() {
             hardcoreMode = true
         }
         saveStateManager.initializeFromExistingSave(restoreResult.sramData)
+        lifecycleScope.launch {
+            snapshotFlow { saveStateManager.hasQuickSave }.collect { has ->
+                com.nendo.argosy.DualScreenManagerHolder.instance?.updateCompanionHasQuickSave(has)
+            }
+        }
     }
 
     private fun initializeInputHandlers() {

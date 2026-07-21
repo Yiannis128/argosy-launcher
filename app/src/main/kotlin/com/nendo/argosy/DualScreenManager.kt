@@ -187,6 +187,7 @@ class DualScreenManager(
         fun onSavesSyncDone()
         fun onDownloadCompleted(gameId: Long)
         fun onSessionActionsChanged(available: Boolean)
+        fun onHasQuickSaveChanged(hasQuickSave: Boolean)
         fun finishCompanion()
     }
 
@@ -201,6 +202,11 @@ class DualScreenManager(
             field = value
             companionHost?.onSessionActionsChanged(value != null)
         }
+
+    fun updateCompanionHasQuickSave(hasQuickSave: Boolean) {
+        _swappedCompanionState.value = _swappedCompanionState.value.copy(hasQuickSave = hasQuickSave)
+        companionHost?.onHasQuickSaveChanged(hasQuickSave)
+    }
 
     var sessionRefocus: (() -> Unit)? = null
 

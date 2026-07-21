@@ -407,6 +407,12 @@ class SecondaryHomeActivity :
         }
     }
 
+    override fun onHasQuickSaveChanged(hasQuickSave: Boolean) {
+        runOnUiThread {
+            companionInGameState = companionInGameState.copy(hasQuickSave = hasQuickSave)
+        }
+    }
+
     override fun onSessionStarted(
         gameId: Long, isHardcore: Boolean, channelName: String?
     ) {
