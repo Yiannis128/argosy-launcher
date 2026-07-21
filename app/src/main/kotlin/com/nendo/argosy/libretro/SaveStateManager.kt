@@ -368,7 +368,7 @@ class SaveStateManager(
     }
 
     private fun deleteAllStates() {
-        for (slot in RESUME_SLOT..MAX_SLOT) {
+        for (slot in LibretroStateSlots.ALL_SLOTS) {
             val stateFile = getSlotFile(slot)
             val screenshotFile = getSlotScreenshotFile(slot)
             if (stateFile.exists()) {
