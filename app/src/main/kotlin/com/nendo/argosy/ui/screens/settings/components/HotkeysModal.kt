@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +27,10 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -117,6 +119,10 @@ private sealed interface MenuRow {
     data class Core(val def: CoreControlDef, val boundEntity: HotkeyEntity?) : MenuRow {
         override val focusable get() = true
     }
+
+    data class ScopeToggle(val platformLabel: String, val enabled: Boolean) : MenuRow {
+        override val focusable get() = true
+    }
 }
 
 private sealed class HotkeysState {
@@ -158,8 +164,10 @@ fun HotkeysModal(
         findConflictingActions(hotkeys, activeScopeType, activeScopeKey)
     }
 
-    val rows = remember(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey, platformSlug) {
-        buildRows(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey, platformSlug)
+    val scopeLabel = if (canScopePlatform) platformName ?: platformSlug else null
+
+    val rows = remember(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey, platformSlug, scopeLabel) {
+        buildRows(hotkeys, coreControls, coreId, coreName, conflictingActions, activeScopeType, activeScopeKey, platformSlug, scopeLabel)
     }
     val focusableRows = remember(rows) { rows.filter { it.focusable } }
 
@@ -177,6 +185,10 @@ fun HotkeysModal(
         val target = when (val row = focusableRows.getOrNull(focusableIndex)) {
             is MenuRow.System -> RecordTarget.System(row.action)
             is MenuRow.Core -> RecordTarget.Core(row.def)
+            is MenuRow.ScopeToggle -> {
+                scopeToPlatform = !scopeToPlatform
+                return
+            }
             else -> return
         }
         state = HotkeysState.Recording(target = target, returnFocusIndex = focusableIndex)
@@ -206,7 +218,6 @@ fun HotkeysModal(
                             KeyEvent.KEYCODE_BUTTON_A -> startRecording(currentState.focusedIndex)
                             KeyEvent.KEYCODE_BUTTON_Y -> clearBind(currentState.focusedIndex)
                             KeyEvent.KEYCODE_BUTTON_X -> cycleHoldDelayAt(currentState.focusedIndex)
-                            KeyEvent.KEYCODE_BUTTON_SELECT -> if (canScopePlatform) scopeToPlatform = !scopeToPlatform
                             KeyEvent.KEYCODE_DPAD_UP -> {
                                 if (currentState.focusedIndex > 0) {
                                     state = currentState.copy(focusedIndex = currentState.focusedIndex - 1)
@@ -254,19 +265,12 @@ fun HotkeysModal(
         scopeToPlatform -> "Editing ${platformName ?: platformSlug} only"
         else -> "Editing all systems"
     }
-    val scopeHint = if (canScopePlatform) {
-        InputButton.SELECT to if (scopeToPlatform) "All systems" else "This system"
-    } else {
-        null
-    }
-
     when (val currentState = state) {
         is HotkeysState.ActionList -> MenuListContent(
             rows = rows,
             focusableRows = focusableRows,
             focusedIndex = currentState.focusedIndex,
             subtitle = subtitle,
-            scopeHint = scopeHint,
             onSelect = ::startRecording,
             onCycleHoldDelay = ::cycleHoldDelayAt,
             onDismiss = onDismiss
@@ -303,8 +307,12 @@ private fun buildRows(
     conflictingActions: Set<HotkeyAction>,
     scopeType: HotkeyScopeType,
     scopeKey: String?,
-    platformSlug: String?
+    platformSlug: String?,
+    platformLabel: String?
 ): List<MenuRow> = buildList {
+    if (platformLabel != null) {
+        add(MenuRow.ScopeToggle(platformLabel = platformLabel, enabled = scopeType == HotkeyScopeType.PLATFORM))
+    }
     add(MenuRow.Header("System Hotkeys", dimmed = false))
     HOTKEY_ACTIONS.forEach { action ->
         val scopeEntity = hotkeys.find { it.action == action && it.scopeType == scopeType && it.scopeKey == scopeKey }
@@ -354,7 +362,6 @@ private fun MenuListContent(
     focusableRows: List<MenuRow>,
     focusedIndex: Int,
     subtitle: String,
-    scopeHint: Pair<InputButton, String>?,
     onSelect: (Int) -> Unit,
     onCycleHoldDelay: (Int) -> Unit,
     onDismiss: () -> Unit
@@ -370,25 +377,32 @@ private fun MenuListContent(
         subtitle = subtitle,
         baseWidth = 520.dp,
         onDismiss = onDismiss,
-        footerHints = listOfNotNull(
+        inlineFooterHints = true,
+        footerHints = listOf(
             InputButton.A to "Record",
             InputButton.B to "Back",
             InputButton.X to "Hold delay",
-            InputButton.Y to "Clear",
-            scopeHint
+            InputButton.Y to "Clear"
         )
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .heightIn(max = 400.dp),
+            modifier = Modifier.weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
             itemsIndexed(rows) { _, row ->
                 when (row) {
                     is MenuRow.Header -> SectionHeaderRow(row.title, row.dimmed)
                     is MenuRow.Placeholder -> PlaceholderRow(row.text)
+                    is MenuRow.ScopeToggle -> {
+                        val fIndex = focusableRows.indexOf(row)
+                        ScopeToggleRow(
+                            platformLabel = row.platformLabel,
+                            enabled = row.enabled,
+                            isFocused = fIndex == focusedIndex,
+                            onToggle = { onSelect(fIndex) }
+                        )
+                    }
                     is MenuRow.System -> {
                         val fIndex = focusableRows.indexOf(row)
                         HotkeyRow(
@@ -418,6 +432,50 @@ private fun MenuListContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScopeToggleRow(
+    platformLabel: String,
+    enabled: Boolean,
+    isFocused: Boolean,
+    onToggle: () -> Unit
+) {
+    val theme = LocalArgosyTheme.current
+    val backgroundColor = if (isFocused) theme.focusAccent.copy(alpha = 0.15f) else Color.Transparent
+    val borderColor = if (isFocused) theme.focusAccent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val contentColor = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f) else MaterialTheme.colorScheme.onSurface
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Dimens.radiusSm))
+            .background(backgroundColor)
+            .border(1.dp, borderColor, RoundedCornerShape(Dimens.radiusSm))
+            .clickableNoFocus(onClick = onToggle)
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = "Only for $platformLabel",
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor
+            )
+            Text(
+                text = if (enabled) "Overrides the shared hotkeys" else "Using the shared hotkeys",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = enabled,
+            onCheckedChange = { onToggle() },
+            modifier = Modifier.focusProperties { canFocus = false },
+            interactionSource = remember { MutableInteractionSource() }
+        )
     }
 }
 
